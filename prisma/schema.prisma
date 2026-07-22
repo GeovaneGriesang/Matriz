@@ -1,0 +1,208 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- Reference / structural entities ----------
+
+model Autarquia {
+  id        Int      @id @default(autoincrement())
+  sigla     String   @unique
+  nome      String
+  campi     Campus[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Campus {
+  id          Int               @id @default(autoincrement())
+  codigoPnp   String            @unique
+  nome        String
+  autarquiaId Int
+  autarquia   Autarquia         @relation(fields: [autarquiaId], references: [id])
+  cursos      Curso[]
+  indicadores IndicadorCampus[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([autarquiaId])
+}
+
+enum ModalidadeEnsino {
+  PRESENCIAL
+  EAD_PROPRIO
+  EAD_FOMENTO_EXTERNO
+}
+
+// Enumeração parcial dos eixos tecnológicos do CNCT.
+// TODO: completar com a lista integral do CNCT quando o PDF normativo/planilha
+// ground truth estiverem disponíveis (ver Pendências no plano de M1).
+enum EixoTecnologico {
+  RECURSOS_NATURAIS
+  PRODUCAO_INDUSTRIAL
+  INFORMACAO_COMUNICACAO
+  GESTAO_NEGOCIOS
+  AMBIENTE_SAUDE
+  PRODUCAO_ALIMENTOS
+  INFRAESTRUTURA
+  MILITAR
+  CONTROLE_PROCESSOS_INDUSTRIAIS
+  DESENVOLVIMENTO_EDUCACIONAL_SOCIAL
+  PRODUCAO_CULTURAL_DESIGN
+  SEGURANCA
+  TURISMO_HOSPITALIDADE_LAZER
+  OUTRO
+}
+
+enum NivelCurso {
+  TECNICO_INTEGRADO
+  TECNICO_CONCOMITANTE
+  TECNICO_SUBSEQUENTE
+  GRADUACAO
+  ESPECIALIZACAO
+  MESTRADO
+  DOUTORADO
+}
+
+model Curso {
+  id              Int              @id @default(autoincrement())
+  campusId        Int
+  campus          Campus           @relation(fields: [campusId], references: [id])
+  codigoPnp       String
+  nome            String
+  eixoTecnologico EixoTecnologico
+  nivel           NivelCurso
+  modalidade      ModalidadeEnsino
+  // 1 = 1.0 | 2 = 1.5 | 3 = 2.0 | 4 = 2.5 — ver LAB_INFRA_WEIGHT_BY_TIER no calculation-engine
+  cnctLabTier     Int
+  matriculas      Matricula[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([campusId, codigoPnp])
+  @@index([campusId])
+}
+
+// ---------- Ingested facts / audit trail ----------
+
+enum PnpFileType {
+  DADOS_GERAIS
+  EFICIENCIA_ACADEMICA
+  RELACAO_ALUNO_PROFESSOR_RAP
+  PERCENTUAIS_LEGAIS
+  CLASSIFICACAO_RACIAL_RENDA_SEXO
+  SITUACAO_MATRICULA
+}
+
+enum BatchStatus {
+  PENDING
+  VALIDATING
+  VALIDATED_WITH_WARNINGS
+  FAILED_VALIDATION
+  PERSISTED
+}
+
+model IngestionBatch {
+  id               Int               @id @default(autoincrement())
+  status           BatchStatus       @default(PENDING)
+  uploadedByEmail  String?
+  originalFilename String
+  fileType         PnpFileType
+  detectedEncoding String?
+  checksum         String
+  rowCount         Int?
+  validationReport Json?
+  createdAt        DateTime          @default(now())
+  completedAt      DateTime?
+  matriculas       Matricula[]
+  indicadores      IndicadorCampus[]
+
+  @@index([fileType, status])
+  @@index([checksum])
+}
+
+model Matricula {
+  id                   Int            @id @default(autoincrement())
+  cursoId              Int
+  curso                Curso          @relation(fields: [cursoId], references: [id])
+  ingestionBatchId     Int
+  ingestionBatch       IngestionBatch @relation(fields: [ingestionBatchId], references: [id])
+  matriculaEquivalente Decimal        @db.Decimal(12, 4)
+  situacao             String
+  dataIngressoCiclo    DateTime?
+  dataReferencia       DateTime
+  createdAt            DateTime       @default(now())
+
+  @@index([cursoId])
+  @@index([ingestionBatchId])
+}
+
+enum IndicadorTipo {
+  IEA
+  RAP
+  IAPL_TECNICOS
+  IAPL_FORMACAO_PROFESSORES
+  IAPL_PROEJA
+}
+
+model IndicadorCampus {
+  id               Int             @id @default(autoincrement())
+  campusId         Int
+  campus           Campus          @relation(fields: [campusId], references: [id])
+  ingestionBatchId Int
+  ingestionBatch   IngestionBatch  @relation(fields: [ingestionBatchId], references: [id])
+  tipo             IndicadorTipo
+  valor            Decimal         @db.Decimal(12, 6)
+  regimeTrabalho   String?
+  referenciaAno    Int
+  createdAt        DateTime        @default(now())
+
+  @@index([campusId, tipo, referenciaAno])
+  @@index([ingestionBatchId])
+}
+
+// ---------- Calculation run outputs ----------
+
+enum RunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum BlocoTipo {
+  FUNCIONAMENTO
+  REITORIAS
+  QUALIDADE_EFICIENCIA
+}
+
+model CalculationRun {
+  id                 Int                 @id @default(autoincrement())
+  status             RunStatus           @default(RUNNING)
+  ingestionBatchIds  Json
+  parametersSnapshot Json
+  startedAt          DateTime            @default(now())
+  finishedAt         DateTime?
+  errorMessage       String?             @db.Text
+  results            CalculationResult[]
+
+  @@index([status])
+}
+
+model CalculationResult {
+  id        Int            @id @default(autoincrement())
+  runId     Int
+  run       CalculationRun @relation(fields: [runId], references: [id])
+  campusId  Int?
+  cursoId   Int?
+  bloco     BlocoTipo
+  metrica   String
+  valor     Decimal        @db.Decimal(18, 6)
+  createdAt DateTime       @default(now())
+
+  @@index([runId, bloco])
+  @@index([campusId])
+}
