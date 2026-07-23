@@ -131,6 +131,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
 
   const parametersSnapshot = {
     ano: input.ano,
+    orcamentoTotal: input.orcamentoTotal,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
   };
