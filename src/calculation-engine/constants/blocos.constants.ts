@@ -7,6 +7,3 @@ export const PESO_BLOCO_QUALIDADE_EFICIENCIA = 0.1;
 export const PESO_IEA_SUBBLOCO = 0.025;
 export const PESO_RAP_SUBBLOCO = 0.025;
 export const PESO_IAPL_SUBBLOCO = 0.05;
-
-/** Número de autarquias da Rede Federal, usado no placeholder de split igualitário do Bloco de Reitorias. */
-export const NUMERO_AUTARQUIAS_REDE_FEDERAL = 41;
