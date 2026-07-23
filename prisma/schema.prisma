@@ -128,9 +128,15 @@ enum BlocoTipo {
   QUALIDADE_EFICIENCIA
 }
 
+enum CalculationOrigem {
+  SIMULACAO
+  OFICIAL
+}
+
 model CalculationRun {
   id                 Int                 @id @default(autoincrement())
   status             RunStatus           @default(RUNNING)
+  origem             CalculationOrigem   @default(SIMULACAO)
   ingestionBatchIds  Json
   parametersSnapshot Json
   startedAt          DateTime            @default(now())
@@ -139,6 +145,7 @@ model CalculationRun {
   results            CalculationResult[]
 
   @@index([status])
+  @@index([origem])
 }
 
 model CalculationResult {
@@ -150,8 +157,18 @@ model CalculationResult {
   bloco     BlocoTipo
   metrica   String
   valor     Decimal        @db.Decimal(18, 6)
+  /// "Memória de cálculo": share, band/peso, totais de rede usados para chegar em `valor` — para fins didáticos (ver runCalculation.ts).
+  detalhe   Json?
   createdAt DateTime       @default(now())
 
   @@index([runId, bloco])
   @@index([campusId])
+}
+
+/// Orçamento total oficial definido pelo administrador para um ano — base fixa usada pela distribuição oficial (ver CalculationRun.origem).
+model OrcamentoAnual {
+  id         Int      @id @default(autoincrement())
+  ano        Int      @unique
+  valorTotal Decimal  @db.Decimal(18, 2)
+  updatedAt  DateTime @updatedAt
 }

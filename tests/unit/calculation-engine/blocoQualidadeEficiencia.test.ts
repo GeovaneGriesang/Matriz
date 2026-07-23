@@ -23,8 +23,8 @@ describe("blocoQualidadeEficiencia", () => {
         { campusId: 2, valorIea: 0.3 },
       ],
       [
-        { campusId: 1, razaoDocenteAluno: 0.2 },
-        { campusId: 2, razaoDocenteAluno: 0.05 },
+        { campusId: 1, razaoDocenteAluno: 22 },
+        { campusId: 2, razaoDocenteAluno: 19 },
       ],
       [
         { campusId: 1, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },

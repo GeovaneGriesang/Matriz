@@ -27,11 +27,14 @@ const TEMA_INICIAL_SCRIPT = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={openSans.variable}>
+    <html lang="pt-BR" className={openSans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: TEMA_INICIAL_SCRIPT }} />
       </head>
-      <body className="flex min-h-screen flex-col bg-neutral-50 font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+      <body
+        className="flex min-h-screen flex-col bg-neutral-50 font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100"
+        suppressHydrationWarning
+      >
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />

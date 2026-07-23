@@ -9,8 +9,14 @@ export default function HomePage() {
       </p>
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/simulador"
+          href="/consulta"
           className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+        >
+          Consultar distribuição oficial
+        </Link>
+        <Link
+          href="/simulador"
+          className="w-fit rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
         >
           Simular distribuição da matriz
         </Link>

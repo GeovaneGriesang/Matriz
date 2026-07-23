@@ -7,15 +7,14 @@ import { PESO_IEA_SUBBLOCO } from "@/calculation-engine/constants/blocos.constan
 describe("bucketizeIea", () => {
   it.each([
     [0.1, "MUITO_BAIXO"],
-    [0.2, "MUITO_BAIXO"], // limite inclusivo
-    [0.3, "BAIXO"],
-    [0.4, "BAIXO"],
-    [0.5, "MEDIO"],
-    [0.6, "MEDIO"],
-    [0.7, "ALTO"],
-    [0.8, "ALTO"],
+    [0.3, "MUITO_BAIXO"],
+    [0.4707, "MUITO_BAIXO"], // limite inclusivo
+    [0.48, "MEDIO"],
+    [0.5178, "MEDIO"], // limite inclusivo
+    [0.52, "ALTO"],
+    [0.5648, "ALTO"], // limite inclusivo
+    [0.6, "MUITO_ALTO"],
     [0.9, "MUITO_ALTO"],
-    [1.0, "MUITO_ALTO"],
   ] as const)("classifica IEA %f como %s", (valor, esperado) => {
     expect(bucketizeIea(valor)).toBe(esperado);
   });
@@ -50,10 +49,10 @@ describe("calcularBlocoIea", () => {
     const somaValores = resultado.reduce((total, r) => total + r.valorReais, 0);
     expect(somaValores).toBeCloseTo(PESO_IEA_SUBBLOCO * orcamentoTotal, 6);
 
-    // câmpus 1 tem peso 5x maior que o câmpus 2 (2.5 vs 0.5)
+    // IEA Ponderado = IEA × Peso: câmpus 1 = 0.9 × 2.5 = 2.25, câmpus 2 = 0.1 × 0.5 = 0.05 → razão 45x
     const campus1 = resultado.find((r) => r.campusId === 1)!;
     const campus2 = resultado.find((r) => r.campusId === 2)!;
-    expect(campus1.valorReais).toBeCloseTo(campus2.valorReais * 5, 6);
+    expect(campus1.valorReais).toBeCloseTo(campus2.valorReais * 45, 6);
   });
 
   it("retorna lista vazia quando não há câmpus", () => {

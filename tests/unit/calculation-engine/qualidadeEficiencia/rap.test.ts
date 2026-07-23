@@ -5,12 +5,14 @@ import { PESO_RAP_SUBBLOCO } from "@/calculation-engine/constants/blocos.constan
 
 describe("bucketizeRap", () => {
   it.each([
-    [0.02, "MUITO_BAIXA"],
-    [0.05, "MUITO_BAIXA"],
-    [0.08, "BAIXA"],
-    [0.15, "MEDIA"],
-    [0.2, "ALTA"],
-    [0.5, "MUITO_ALTA"],
+    [10, "MUITO_BAIXA"],
+    [17.99, "MUITO_BAIXA"], // limite inclusivo
+    [18, "BAIXA"],
+    [19.99, "BAIXA"], // limite inclusivo
+    [20, "MEDIA"],
+    [21.99, "MEDIA"], // limite inclusivo
+    [22, "MUITO_ALTA"],
+    [30, "MUITO_ALTA"],
   ] as const)("classifica a razão %f como %s", (razao, esperado) => {
     expect(bucketizeRap(razao)).toBe(esperado);
   });
@@ -21,8 +23,8 @@ describe("calcularBlocoRap", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, razaoDocenteAluno: 0.5 }, // MUITO_ALTA -> peso 2.5
-        { campusId: 2, razaoDocenteAluno: 0.02 }, // MUITO_BAIXA -> peso 0.5
+        { campusId: 1, razaoDocenteAluno: 20.5 }, // MEDIA -> peso 2.0
+        { campusId: 2, razaoDocenteAluno: 19 }, // BAIXA -> peso 1.0
       ],
       orcamentoTotal,
     );
