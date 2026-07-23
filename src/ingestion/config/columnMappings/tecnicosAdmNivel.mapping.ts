@@ -12,9 +12,12 @@ export const tecnicosAdmNivelMapping: ColumnMapping<TecnicosAdmNivelRow> = {
   fileType: "TECNICOS_ADM_NIVEL",
   columns: {
     ...sharedDimensionColumns(),
+    // Confirmado no export nacional real: algumas linhas de TAE não têm titulação
+    // registrada (célula vazia) — é um valor legítimo da PNP, não dado ausente/quebrado.
     titulacao: {
       sourceHeaderCandidates: ["Titulação"],
       required: true,
+      allowEmptyValue: true,
       transform: identity,
       kind: "dimension",
     },

@@ -18,6 +18,20 @@ export interface ColumnDefinition<V> {
   kind: "dimension" | "measure";
   /** Nome PNP literal da medida (ex: "Matrícula Equivalente | Geral"). Obrigatório quando kind === "measure". */
   measureLabel?: string;
+  /**
+   * Quando true, tolera célula vazia mesmo com `required: true` — a coluna
+   * continua obrigatória (deve existir no header), mas linhas com valor vazio
+   * não geram ERROR. Uso: dimensões onde a própria PNP registra "não
+   * informado" como string vazia (confirmado com dado real, não presumir).
+   */
+  allowEmptyValue?: boolean;
+  /**
+   * Quando true, isenta esta medida da checagem de não-negatividade. Uso:
+   * medidas que são deltas contábeis e podem legitimamente ficar negativas
+   * (ex: despesa empenhada a liquidar, por estornos entre exercícios) —
+   * confirmado com dado real, não presumir.
+   */
+  allowNegativeValue?: boolean;
 }
 
 export type ColumnMapping<T> = {
