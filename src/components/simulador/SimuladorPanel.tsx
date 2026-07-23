@@ -189,11 +189,22 @@ export function SimuladorPanel() {
       overridesPorUnidade[ajuste.unidadeId] = ajuste.campos;
     }
 
+    if (!instituicaoSelecionada) {
+      setErro("Selecione a instituição para a qual o orçamento informado será distribuído.");
+      setCalculando(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/calculations/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orcamentoTotal, ano: Number(ano), overridesPorUnidade }),
+        body: JSON.stringify({
+          instituicaoId: Number(instituicaoSelecionada),
+          orcamentoTotal,
+          ano: Number(ano),
+          overridesPorUnidade,
+        }),
       });
       const corpo = (await response.json().catch(() => null)) as { error?: string; runId?: number } | null;
       if (!response.ok || !corpo?.runId) {
@@ -218,6 +229,30 @@ export function SimuladorPanel() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800"
       >
+        <div className="flex flex-col gap-1">
+          <label htmlFor="instituicao" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            Instituição
+          </label>
+          <select
+            id="instituicao"
+            required
+            value={instituicaoSelecionada}
+            onChange={(e) => setInstituicaoSelecionada(e.target.value)}
+            disabled={calculando}
+            className={inputClass}
+          >
+            <option value="">Selecione...</option>
+            {instituicoes.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.sigla} — {i.nome}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            O orçamento informado abaixo é distribuído só entre os câmpus desta instituição.
+          </p>
+        </div>
+
         <div className="flex flex-col gap-1">
           <label htmlFor="orcamentoTotal" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
             Orçamento total (R$)
@@ -273,38 +308,23 @@ export function SimuladorPanel() {
             Ajustes por câmpus (opcional) — teste "e se" mudando um indicador específico
           </summary>
           <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 dark:border-neutral-800">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">Instituição</label>
-                <select
-                  value={instituicaoSelecionada}
-                  onChange={(e) => setInstituicaoSelecionada(e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Selecione...</option>
-                  {instituicoes.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.sigla} — {i.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">Câmpus</label>
-                <select
-                  value={unidadeSelecionada}
-                  onChange={(e) => setUnidadeSelecionada(e.target.value)}
-                  disabled={unidades.length === 0}
-                  className={inputClass}
-                >
-                  <option value="">Selecione...</option>
-                  {unidades.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">Câmpus</label>
+              <select
+                value={unidadeSelecionada}
+                onChange={(e) => setUnidadeSelecionada(e.target.value)}
+                disabled={!instituicaoSelecionada || unidades.length === 0}
+                className={inputClass}
+              >
+                <option value="">
+                  {instituicaoSelecionada ? "Selecione..." : "Selecione uma instituição acima primeiro"}
+                </option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

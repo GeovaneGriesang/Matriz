@@ -3,7 +3,7 @@
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { runCalculation } from "@/server/actions/runCalculation";
-import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
+import { DEFASAGEM_ANOS_REFERENCIA_PNP, SIGLA_INSTITUICAO_OFICIAL } from "@/server/config/orcamentoAnual.constants";
 
 export interface SalvarOrcamentoAnualResult {
   ok: boolean;
@@ -57,16 +57,27 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     return { ok: false, errorMessage: `Nenhum orçamento configurado para o ano ${ano}.` };
   }
 
+  const instituicao = await prisma.instituicao.findUnique({ where: { sigla: SIGLA_INSTITUICAO_OFICIAL } });
+  if (!instituicao) {
+    return {
+      ok: false,
+      errorMessage: `Instituição "${SIGLA_INSTITUICAO_OFICIAL}" ainda não foi importada — nenhum dado da PNP para ela foi encontrado.`,
+    };
+  }
+
   const anoReferenciaPnp = ano - DEFASAGEM_ANOS_REFERENCIA_PNP;
-  const temDadosReferencia = await prisma.fatoIndicador.findFirst({ where: { ano: anoReferenciaPnp } });
+  const temDadosReferencia = await prisma.fatoIndicador.findFirst({
+    where: { ano: anoReferenciaPnp, instituicaoId: instituicao.id },
+  });
   if (!temDadosReferencia) {
     return {
       ok: false,
-      errorMessage: `O orçamento de ${ano} é calculado com dados da PNP de ${anoReferenciaPnp}, mas nenhum dado desse ano foi importado ainda.`,
+      errorMessage: `O orçamento de ${ano} é calculado com dados da PNP de ${anoReferenciaPnp}, mas nenhum dado desse ano foi importado ainda para ${SIGLA_INSTITUICAO_OFICIAL}.`,
     };
   }
 
   const resultado = await runCalculation({
+    instituicaoId: instituicao.id,
     ano: anoReferenciaPnp,
     anoOrcamento: ano,
     orcamentoTotal: Number(orcamento.valorTotal),
