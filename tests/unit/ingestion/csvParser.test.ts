@@ -31,4 +31,13 @@ describe("parseCsv", () => {
     const linhas = parseCsv(texto);
     expect(linhas[0]?.[0]).toBe("Nome");
   });
+
+  it("tolera aspas soltas dentro de um campo não citado (dado real da PNP)", () => {
+    const texto = 'Ano;Curso\n2024;Especialização em Ensino de Ciências "Avançada"\n';
+    const linhas = parseCsv(texto);
+    expect(linhas).toEqual([
+      ["Ano", "Curso"],
+      ["2024", 'Especialização em Ensino de Ciências "Avançada"'],
+    ]);
+  });
 });
