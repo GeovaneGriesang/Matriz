@@ -2,120 +2,173 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const ifsul = await prisma.autarquia.upsert({
-    where: { sigla: "IFSUL" },
-    create: { sigla: "IFSUL", nome: "Instituto Federal Sul-rio-grandense" },
-    update: {},
-  });
+const ANO = 2024;
 
-  const campusVenancioAires = await prisma.campus.upsert({
-    where: { codigoPnp: "IFSUL-VA" },
-    create: { codigoPnp: "IFSUL-VA", nome: "Câmpus Venâncio Aires", autarquiaId: ifsul.id },
-    update: {},
-  });
-
-  const campusPelotas = await prisma.campus.upsert({
-    where: { codigoPnp: "IFSUL-PEL" },
-    create: { codigoPnp: "IFSUL-PEL", nome: "Câmpus Pelotas", autarquiaId: ifsul.id },
-    update: {},
-  });
-
-  const cursoInformatica = await prisma.curso.upsert({
-    where: { campusId_codigoPnp: { campusId: campusVenancioAires.id, codigoPnp: "TEC-INF" } },
-    create: {
-      campusId: campusVenancioAires.id,
-      codigoPnp: "TEC-INF",
-      nome: "Técnico em Informática Integrado",
-      eixoTecnologico: "INFORMACAO_COMUNICACAO",
-      nivel: "TECNICO_INTEGRADO",
-      modalidade: "PRESENCIAL",
-      cnctLabTier: 3,
-    },
-    update: {},
-  });
-
-  const cursoAgropecuaria = await prisma.curso.upsert({
-    where: { campusId_codigoPnp: { campusId: campusPelotas.id, codigoPnp: "TEC-AGRO" } },
-    create: {
-      campusId: campusPelotas.id,
-      codigoPnp: "TEC-AGRO",
-      nome: "Técnico em Agropecuária Integrado",
-      eixoTecnologico: "RECURSOS_NATURAIS",
-      nivel: "TECNICO_INTEGRADO",
-      modalidade: "PRESENCIAL",
-      cnctLabTier: 4,
-    },
-    update: {},
-  });
-
-  const seedBatch = await prisma.ingestionBatch.create({
+async function criarBatchSeed(fileType: Parameters<typeof prisma.ingestionBatch.create>[0]["data"]["fileType"]) {
+  return prisma.ingestionBatch.create({
     data: {
       status: "PERSISTED",
       originalFilename: "seed-data",
-      fileType: "SITUACAO_MATRICULA",
-      checksum: "seed-checksum",
+      fileType,
+      checksum: `seed-checksum-${fileType}`,
       rowCount: 2,
       validationReport: { issues: [] },
       completedAt: new Date(),
     },
   });
+}
 
-  await prisma.matricula.createMany({
+/** Dados de exemplo (valores reais de amostras da PNP para o IFB) para o dev local funcionar sem upload manual. */
+async function main() {
+  const ifb = await prisma.instituicao.upsert({
+    where: { sigla: "IFB" },
+    create: {
+      sigla: "IFB",
+      nome: "Instituto Federal de Brasília",
+      organizacaoAcademica: "Instituto Federal",
+      regiao: "Centro-Oeste",
+      uf: "DF",
+      estado: "Distrito Federal",
+    },
+    update: {},
+  });
+
+  const campusBrasilia = await prisma.unidade.upsert({
+    where: { instituicaoId_nome: { instituicaoId: ifb.id, nome: "Campus Brasília" } },
+    create: { instituicaoId: ifb.id, nome: "Campus Brasília" },
+    update: {},
+  });
+
+  const campusCeilandia = await prisma.unidade.upsert({
+    where: { instituicaoId_nome: { instituicaoId: ifb.id, nome: "Campus Ceilândia" } },
+    create: { instituicaoId: ifb.id, nome: "Campus Ceilândia" },
+    update: {},
+  });
+
+  const dadosGeraisBatch = await criarBatchSeed("DADOS_GERAIS");
+  await prisma.fatoIndicador.createMany({
     data: [
       {
-        cursoId: cursoInformatica.id,
-        ingestionBatchId: seedBatch.id,
-        matriculaEquivalente: 40,
-        situacao: "ATIVA",
-        dataIngressoCiclo: new Date("2023-02-01T00:00:00Z"),
-        dataReferencia: new Date("2024-12-01T00:00:00Z"),
+        ingestionBatchId: dadosGeraisBatch.id,
+        fileType: "DADOS_GERAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "Matrícula Equivalente | Geral",
+        valor: 552335.25,
       },
       {
-        cursoId: cursoAgropecuaria.id,
-        ingestionBatchId: seedBatch.id,
-        matriculaEquivalente: 30,
-        situacao: "ATIVA",
-        dataIngressoCiclo: new Date("2023-02-01T00:00:00Z"),
-        dataReferencia: new Date("2024-12-01T00:00:00Z"),
+        ingestionBatchId: dadosGeraisBatch.id,
+        fileType: "DADOS_GERAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusCeilandia.id,
+        medida: "Matrícula Equivalente | Geral",
+        valor: 168568.18,
       },
     ],
   });
 
-  await prisma.indicadorCampus.createMany({
+  const eficienciaBatch = await criarBatchSeed("EFICIENCIA_ACADEMICA");
+  await prisma.fatoIndicador.createMany({
     data: [
       {
-        campusId: campusVenancioAires.id,
-        ingestionBatchId: seedBatch.id,
-        tipo: "IEA",
-        valor: 0.75,
-        referenciaAno: 2024,
+        ingestionBatchId: eficienciaBatch.id,
+        fileType: "EFICIENCIA_ACADEMICA",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "Eficiência Acadêmica | Índice de Eficiência Acadêmica %",
+        valor: 36.07,
       },
       {
-        campusId: campusPelotas.id,
-        ingestionBatchId: seedBatch.id,
-        tipo: "IEA",
-        valor: 0.4,
-        referenciaAno: 2024,
-      },
-      {
-        campusId: campusVenancioAires.id,
-        ingestionBatchId: seedBatch.id,
-        tipo: "IAPL_TECNICOS",
-        valor: 40,
-        referenciaAno: 2024,
-      },
-      {
-        campusId: campusPelotas.id,
-        ingestionBatchId: seedBatch.id,
-        tipo: "IAPL_TECNICOS",
-        valor: 30,
-        referenciaAno: 2024,
+        ingestionBatchId: eficienciaBatch.id,
+        fileType: "EFICIENCIA_ACADEMICA",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusCeilandia.id,
+        medida: "Eficiência Acadêmica | Índice de Eficiência Acadêmica %",
+        valor: 34.85,
       },
     ],
   });
 
-  console.log("Seed concluído: 1 autarquia, 2 câmpus, 2 cursos, 2 matrículas, 4 indicadores.");
+  const rapBatch = await criarBatchSeed("RELACAO_ALUNO_PROFESSOR_RAP");
+  await prisma.fatoIndicador.createMany({
+    data: [
+      {
+        ingestionBatchId: rapBatch.id,
+        fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "RAP | RAP",
+        valor: 38.26,
+      },
+      {
+        ingestionBatchId: rapBatch.id,
+        fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusCeilandia.id,
+        medida: "RAP | RAP",
+        valor: 26.13,
+      },
+    ],
+  });
+
+  const percentuaisLegaisBatch = await criarBatchSeed("PERCENTUAIS_LEGAIS");
+  await prisma.fatoIndicador.createMany({
+    data: [
+      {
+        ingestionBatchId: percentuaisLegaisBatch.id,
+        fileType: "PERCENTUAIS_LEGAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "Matrícula Equivalente | Técnicos",
+        valor: 250581.6,
+      },
+      {
+        ingestionBatchId: percentuaisLegaisBatch.id,
+        fileType: "PERCENTUAIS_LEGAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "Matrícula Equivalente | Formação de Professores",
+        valor: 59592.05,
+      },
+      {
+        ingestionBatchId: percentuaisLegaisBatch.id,
+        fileType: "PERCENTUAIS_LEGAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusBrasilia.id,
+        medida: "Matrícula Equivalente | Proeja",
+        valor: 4000,
+      },
+      {
+        ingestionBatchId: percentuaisLegaisBatch.id,
+        fileType: "PERCENTUAIS_LEGAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusCeilandia.id,
+        medida: "Matrícula Equivalente | Técnicos",
+        valor: 128915.1,
+      },
+      {
+        ingestionBatchId: percentuaisLegaisBatch.id,
+        fileType: "PERCENTUAIS_LEGAIS",
+        ano: ANO,
+        instituicaoId: ifb.id,
+        unidadeId: campusCeilandia.id,
+        medida: "Matrícula Equivalente | Formação de Professores",
+        valor: 36700.4,
+      },
+    ],
+  });
+
+  console.log("Seed concluído: 1 instituição, 2 unidades, 4 batches, 11 fatos.");
 }
 
 main()

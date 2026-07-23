@@ -1,34 +1,76 @@
 import type { ColumnMapping } from "../mappingTypes";
-import { identity, parseDecimalBr, parseInteiro } from "../../parsing/transforms";
+import { parseDecimalBrOptional } from "../../parsing/transforms";
+import { sharedDimensionColumns, unidadeNomeColumn, type SharedDimensions } from "./shared";
 
 /**
- * EficienciaAcademica.csv — valor do IEA por câmpus/ano.
- * TODO: verificar os nomes exatos de coluna contra um export real da PNP ou
- * a Portaria MEC 646/2022. Nomes abaixo são best-guess a partir do PRD.
+ * EficienciaAcademica.csv — Índice de Eficiência Acadêmica (IEA) e
+ * indicadores relacionados, por câmpus/ano. `indiceEficienciaAcademicaPercentual`
+ * alimenta o Bloco de Qualidade e Eficiência (vem em escala 0-100%).
  */
-export interface EficienciaAcademicaRow {
-  codigoCampus: string;
-  valorIea: number;
-  referenciaAno: number;
+export interface EficienciaAcademicaRow extends SharedDimensions {
+  unidadeNome: string;
+  concluidos: number | null;
+  concluidosPercentual: number | null;
+  indiceEficienciaAcademicaPercentual: number | null;
+  numeroEvadidos: number | null;
+  retidos: number | null;
+  retidosPercentual: number | null;
+  taxaEvasaoPercentual: number | null;
 }
 
 export const eficienciaAcademicaMapping: ColumnMapping<EficienciaAcademicaRow> = {
   fileType: "EFICIENCIA_ACADEMICA",
   columns: {
-    codigoCampus: {
-      sourceHeaderCandidates: ["Codigo_Campus", "CO_CAMPUS", "Código do Câmpus"],
+    ...sharedDimensionColumns(),
+    unidadeNome: unidadeNomeColumn,
+    concluidos: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Concluídos"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Concluídos",
     },
-    valorIea: {
-      sourceHeaderCandidates: ["IEA", "Indice_Eficiencia_Academica", "Valor_IEA"],
+    concluidosPercentual: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Concluídos %"],
       required: true,
-      transform: parseDecimalBr,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Concluídos %",
     },
-    referenciaAno: {
-      sourceHeaderCandidates: ["Ano", "ANO_REFERENCIA", "Ano_Referencia"],
+    indiceEficienciaAcademicaPercentual: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Índice de Eficiência Acadêmica %"],
       required: true,
-      transform: parseInteiro,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Índice de Eficiência Acadêmica %",
+    },
+    numeroEvadidos: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Número de Evadidos"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Número de Evadidos",
+    },
+    retidos: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Retidos"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Retidos",
+    },
+    retidosPercentual: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Retidos %"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Retidos %",
+    },
+    taxaEvasaoPercentual: {
+      sourceHeaderCandidates: ["Eficiência Acadêmica | Taxa de Evasão %"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Eficiência Acadêmica | Taxa de Evasão %",
     },
   },
 };

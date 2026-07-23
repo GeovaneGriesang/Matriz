@@ -23,16 +23,8 @@ describe("blocoQualidadeEficiencia", () => {
         { campusId: 2, valorIea: 0.3 },
       ],
       [
-        {
-          campusId: 1,
-          docentes: [{ regime: "DEDICACAO_EXCLUSIVA", quantidade: 20 }],
-          alunosPresenciais: 100,
-        },
-        {
-          campusId: 2,
-          docentes: [{ regime: "DEDICACAO_EXCLUSIVA", quantidade: 5 }],
-          alunosPresenciais: 100,
-        },
+        { campusId: 1, razaoDocenteAluno: 0.2 },
+        { campusId: 2, razaoDocenteAluno: 0.05 },
       ],
       [
         { campusId: 1, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },

@@ -8,94 +8,58 @@ generator client {
 }
 
 // ---------- Reference / structural entities ----------
+//
+// Chave de identidade da PNP é sempre por NOME (não existe código numérico
+// de câmpus/curso nos exports reais) — ver Instituicao.sigla/Unidade.nome.
 
-model Autarquia {
-  id        Int      @id @default(autoincrement())
-  sigla     String   @unique
-  nome      String
-  campi     Campus[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Instituicao {
+  id                   Int      @id @default(autoincrement())
+  sigla                String   @unique
+  nome                 String
+  organizacaoAcademica String
+  regiao               String
+  uf                   String
+  estado               String
+  unidades             Unidade[]
+  fatos                FatoIndicador[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
-model Campus {
-  id          Int               @id @default(autoincrement())
-  codigoPnp   String            @unique
-  nome        String
-  autarquiaId Int
-  autarquia   Autarquia         @relation(fields: [autarquiaId], references: [id])
-  cursos      Curso[]
-  indicadores IndicadorCampus[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+model Unidade {
+  id            Int      @id @default(autoincrement())
+  nome          String
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  fatos         FatoIndicador[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@index([autarquiaId])
-}
-
-enum ModalidadeEnsino {
-  PRESENCIAL
-  EAD_PROPRIO
-  EAD_FOMENTO_EXTERNO
-}
-
-// Enumeração parcial dos eixos tecnológicos do CNCT.
-// TODO: completar com a lista integral do CNCT quando o PDF normativo/planilha
-// ground truth estiverem disponíveis (ver Pendências no plano de M1).
-enum EixoTecnologico {
-  RECURSOS_NATURAIS
-  PRODUCAO_INDUSTRIAL
-  INFORMACAO_COMUNICACAO
-  GESTAO_NEGOCIOS
-  AMBIENTE_SAUDE
-  PRODUCAO_ALIMENTOS
-  INFRAESTRUTURA
-  MILITAR
-  CONTROLE_PROCESSOS_INDUSTRIAIS
-  DESENVOLVIMENTO_EDUCACIONAL_SOCIAL
-  PRODUCAO_CULTURAL_DESIGN
-  SEGURANCA
-  TURISMO_HOSPITALIDADE_LAZER
-  OUTRO
-}
-
-enum NivelCurso {
-  TECNICO_INTEGRADO
-  TECNICO_CONCOMITANTE
-  TECNICO_SUBSEQUENTE
-  GRADUACAO
-  ESPECIALIZACAO
-  MESTRADO
-  DOUTORADO
-}
-
-model Curso {
-  id              Int              @id @default(autoincrement())
-  campusId        Int
-  campus          Campus           @relation(fields: [campusId], references: [id])
-  codigoPnp       String
-  nome            String
-  eixoTecnologico EixoTecnologico
-  nivel           NivelCurso
-  modalidade      ModalidadeEnsino
-  // 1 = 1.0 | 2 = 1.5 | 3 = 2.0 | 4 = 2.5 — ver LAB_INFRA_WEIGHT_BY_TIER no calculation-engine
-  cnctLabTier     Int
-  matriculas      Matricula[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  @@unique([campusId, codigoPnp])
-  @@index([campusId])
+  @@unique([instituicaoId, nome])
+  @@index([instituicaoId])
 }
 
 // ---------- Ingested facts / audit trail ----------
 
 enum PnpFileType {
   DADOS_GERAIS
+  SITUACAO_MATRICULA
+  CLASSIFICACAO_RACIAL_RENDA_SEXO
+  PERCENTUAIS_LEGAIS
+  RESERVA_VAGAS
+  OFERTA_VAGAS_NOTURNAS
+  RELACAO_INSCRITOS_VAGAS
+  TAXA_EVASAO
   EFICIENCIA_ACADEMICA
   RELACAO_ALUNO_PROFESSOR_RAP
-  PERCENTUAIS_LEGAIS
-  CLASSIFICACAO_RACIAL_RENDA_SEXO
-  SITUACAO_MATRICULA
+  INDICE_VERTICALIZACAO
+  TAXA_OCUPACAO
+  PROFESSORES_POR_INSTITUICAO
+  TECNICOS_ADM_NIVEL
+  TITULACAO_DOCENTE
+  INDICADORES_GASTOS
+  PANORAMA_ORCAMENTARIO
+  CARGOS_CARREIRA
 }
 
 enum BatchStatus {
@@ -107,8 +71,8 @@ enum BatchStatus {
 }
 
 model IngestionBatch {
-  id               Int               @id @default(autoincrement())
-  status           BatchStatus       @default(PENDING)
+  id               Int             @id @default(autoincrement())
+  status           BatchStatus     @default(PENDING)
   uploadedByEmail  String?
   originalFilename String
   fileType         PnpFileType
@@ -116,52 +80,37 @@ model IngestionBatch {
   checksum         String
   rowCount         Int?
   validationReport Json?
-  createdAt        DateTime          @default(now())
+  createdAt        DateTime        @default(now())
   completedAt      DateTime?
-  matriculas       Matricula[]
-  indicadores      IndicadorCampus[]
+  fatos            FatoIndicador[]
 
   @@index([fileType, status])
   @@index([checksum])
 }
 
-model Matricula {
-  id                   Int            @id @default(autoincrement())
-  cursoId              Int
-  curso                Curso          @relation(fields: [cursoId], references: [id])
-  ingestionBatchId     Int
-  ingestionBatch       IngestionBatch @relation(fields: [ingestionBatchId], references: [id])
-  matriculaEquivalente Decimal        @db.Decimal(12, 4)
-  situacao             String
-  dataIngressoCiclo    DateTime?
-  dataReferencia       DateTime
-  createdAt            DateTime       @default(now())
-
-  @@index([cursoId])
-  @@index([ingestionBatchId])
-}
-
-enum IndicadorTipo {
-  IEA
-  RAP
-  IAPL_TECNICOS
-  IAPL_FORMACAO_PROFESSORES
-  IAPL_PROEJA
-}
-
-model IndicadorCampus {
-  id               Int             @id @default(autoincrement())
-  campusId         Int
-  campus           Campus          @relation(fields: [campusId], references: [id])
+/// Fato genérico: uma linha por (medida, dimensões) extraída de um arquivo
+/// PNP. O grão real varia por fileType (Instituição-only, +Unidade,
+/// +Unidade+Curso, etc) — unidadeId fica nullable e qualquer dimensão além
+/// de ano/instituição/unidade vai em dimensoesExtra. `medida` é o nome PNP
+/// literal (ex: "Matrícula Equivalente | Geral", "RAP | RAP").
+model FatoIndicador {
+  id               Int            @id @default(autoincrement())
   ingestionBatchId Int
-  ingestionBatch   IngestionBatch  @relation(fields: [ingestionBatchId], references: [id])
-  tipo             IndicadorTipo
-  valor            Decimal         @db.Decimal(12, 6)
-  regimeTrabalho   String?
-  referenciaAno    Int
-  createdAt        DateTime        @default(now())
+  ingestionBatch   IngestionBatch @relation(fields: [ingestionBatchId], references: [id])
+  fileType         PnpFileType
+  ano              Int
+  instituicaoId    Int
+  instituicao      Instituicao    @relation(fields: [instituicaoId], references: [id])
+  unidadeId        Int?
+  unidade          Unidade?       @relation(fields: [unidadeId], references: [id])
+  dimensoesExtra   Json?
+  medida           String
+  valor            Decimal        @db.Decimal(18, 6)
+  createdAt        DateTime       @default(now())
 
-  @@index([campusId, tipo, referenciaAno])
+  @@index([fileType, medida, ano])
+  @@index([unidadeId])
+  @@index([instituicaoId])
   @@index([ingestionBatchId])
 }
 
