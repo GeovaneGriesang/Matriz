@@ -9,18 +9,21 @@ import Image from "next/image";
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-neutral-200 bg-white px-6 py-6">
+    <footer className="mt-auto border-t border-neutral-200 bg-white px-6 py-6 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-2 text-center">
-        <Image
-          src="/branding/ifsul-venancio-aires-horizontal.png"
-          alt="Instituto Federal Sul-rio-grandense - Câmpus Venâncio Aires"
-          width={211}
-          height={48}
-          className="h-8 w-auto"
-        />
-        <p className="text-xs text-neutral-500">
-          Desenvolvido pelo Instituto Federal Sul-rio-grandense — Câmpus Venâncio Aires.
+        <div className="rounded-md bg-white p-2 dark:bg-white">
+          <Image
+            src="/branding/ifsul-venancio-aires-horizontal.png"
+            alt="Instituto Federal Sul-rio-grandense - Câmpus Venâncio Aires"
+            width={211}
+            height={48}
+            className="h-14 w-auto"
+          />
+        </div>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Instituto Federal Sul-rio-grandense — Câmpus Venâncio Aires.
         </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">Desenvolvido por Geovane Griesang</p>
       </div>
     </footer>
   );

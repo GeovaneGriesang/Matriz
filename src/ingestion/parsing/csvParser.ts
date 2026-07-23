@@ -11,6 +11,7 @@ export function parseCsv(texto: string): string[][] {
     trim: false,
     skip_empty_lines: true,
     relax_column_count: true,
+    relax_quotes: true,
     delimiter: ";",
   }) as string[][];
 }

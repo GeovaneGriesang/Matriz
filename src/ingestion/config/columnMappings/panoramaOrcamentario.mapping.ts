@@ -25,9 +25,12 @@ export const panoramaOrcamentarioMapping: ColumnMapping<PanoramaOrcamentarioRow>
       transform: identity,
       kind: "dimension",
     },
+    // Confirmado no export nacional real: 1 linha (execução zerada) não tem
+    // Resultado Primário classificado — valor legítimo da PNP, não dado quebrado.
     resultadoPrimario: {
       sourceHeaderCandidates: ["Resultado Primário (Cidadã)"],
       required: true,
+      allowEmptyValue: true,
       transform: identity,
       kind: "dimension",
     },
@@ -66,9 +69,13 @@ export const panoramaOrcamentarioMapping: ColumnMapping<PanoramaOrcamentarioRow>
       kind: "measure",
       measureLabel: "Despesa liq&RP",
     },
+    // Confirmado no export nacional real: único campo do arquivo com valores
+    // negativos (199 linhas) — delta contábil (empenhado - liquidado) que pode
+    // ficar negativo por estornos entre exercícios, não é dado inválido.
     despesaEmpenhadaALiquidar: {
       sourceHeaderCandidates: ["Despesa empenhada a liquidar"],
       required: true,
+      allowNegativeValue: true,
       transform: parseDecimalBrOptional,
       kind: "measure",
       measureLabel: "Despesa empenhada a liquidar",

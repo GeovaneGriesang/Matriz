@@ -65,8 +65,11 @@ export const taxaEvasaoMapping: ColumnMapping<TaxaEvasaoRow> = {
       transform: identity,
       kind: "dimension",
     },
+    // Header varia entre exports reais: amostra original trazia "nomeFonteFinanciamento"
+    // (valores como "Recursos Orçamentários"); export nacional completo trouxe "nomePrograma"
+    // no mesmo lugar, mesmos valores — mesma coluna, nome trocado pela PNP entre versões.
     nomeFonteFinanciamento: {
-      sourceHeaderCandidates: ["nomeFonteFinanciamento"],
+      sourceHeaderCandidates: ["nomeFonteFinanciamento", "nomePrograma"],
       required: true,
       transform: identity,
       kind: "dimension",

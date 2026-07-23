@@ -1,8 +1,16 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnMapping } from "../config/mappingTypes";
 import type { PnpFileType } from "../config/fileTypes";
+import { atualizarProgresso, cancelamentoFoiSolicitado } from "../../server/ingestionProgress";
+import { IngestionCancelledError } from "../errors";
 
-const CHUNK_SIZE = 500;
+/**
+ * Exports reais da PNP podem ter dezenas de milhares de linhas. Cada chunk
+ * vira uma ida-e-volta de rede dentro da transação interativa do Prisma —
+ * poucas linhas por chunk multiplicam esse round-trip e estouram o timeout
+ * da transação em arquivos grandes, então usamos um lote maior aqui.
+ */
+const CHUNK_SIZE = 5_000;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -36,7 +44,8 @@ export async function persistFatoIndicador(
   fileType: PnpFileType,
   mapping: ColumnMapping<Record<string, unknown>>,
   rows: Record<string, unknown>[],
-): Promise<void> {
+  uploadId?: string,
+): Promise<{ insertedFactCount: number; instituicaoCount: number; unidadeCount: number }> {
   const instituicaoIdBySigla = new Map<string, number>();
   const unidadeIdByKey = new Map<string, number>();
 
@@ -46,6 +55,7 @@ export async function persistFatoIndicador(
 
   const fatos: Prisma.FatoIndicadorCreateManyInput[] = [];
 
+  let linhasProcessadas = 0;
   for (const row of rows) {
     const sigla = row.instituicaoSigla as string;
 
@@ -114,9 +124,26 @@ export async function persistFatoIndicador(
         valor: valor as number,
       });
     }
+
+    linhasProcessadas += 1;
+    if (uploadId) {
+      atualizarProgresso(uploadId, { processed: linhasProcessadas });
+      if (cancelamentoFoiSolicitado(uploadId)) {
+        throw new IngestionCancelledError();
+      }
+    }
   }
 
   for (const parte of chunk(fatos, CHUNK_SIZE)) {
+    if (uploadId && cancelamentoFoiSolicitado(uploadId)) {
+      throw new IngestionCancelledError();
+    }
     await tx.fatoIndicador.createMany({ data: parte });
   }
+
+  return {
+    insertedFactCount: fatos.length,
+    instituicaoCount: instituicaoIdBySigla.size,
+    unidadeCount: unidadeIdByKey.size,
+  };
 }
