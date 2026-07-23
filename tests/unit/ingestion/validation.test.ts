@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateRequiredFields } from "@/ingestion/validation/rules/requiredFields";
 import { validateNonNegativeNumbers } from "@/ingestion/validation/rules/typeCoercion";
-import { validateReferentialConsistency } from "@/ingestion/validation/rules/referentialConsistency";
 import { validateCrossFileMatriculaCounts } from "@/ingestion/validation/rules/crossFileConsistency";
 
 describe("validateRequiredFields", () => {
@@ -27,25 +26,6 @@ describe("validateNonNegativeNumbers", () => {
     const issues = validateNonNegativeNumbers([{ mateq: -5 }], ["mateq"]);
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({ severity: "ERROR", code: "INVALID_NUMERIC_VALUE" });
-  });
-});
-
-describe("validateReferentialConsistency", () => {
-  it("passa sem issues quando o código de câmpus é conhecido", () => {
-    const issues = validateReferentialConsistency(
-      [{ codigoCampus: "VA" }],
-      new Set(["VA", "PF"]),
-    );
-    expect(issues).toEqual([]);
-  });
-
-  it("reporta WARNING para código de câmpus desconhecido", () => {
-    const issues = validateReferentialConsistency(
-      [{ codigoCampus: "XX" }],
-      new Set(["VA", "PF"]),
-    );
-    expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ severity: "WARNING", code: "UNKNOWN_CAMPUS_REFERENCE" });
   });
 });
 

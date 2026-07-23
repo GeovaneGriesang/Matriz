@@ -1,49 +1,77 @@
 import type { ColumnMapping } from "../mappingTypes";
-import { identity } from "../../parsing/transforms";
+import { identity, parseDecimalBrOptional } from "../../parsing/transforms";
+import { sharedDimensionColumns, type SharedDimensions } from "./shared";
 
 /**
- * CassificacaoRacialRendaSexo.csv — dados demográficos e de renda per capita por
- * matrícula, usados na M2 para o Bloco de Assistência Estudantil (Ação 2994).
- * Fora do escopo de cálculo da M1 — ingerido/validado, mas ainda sem tabela de
- * persistência dedicada (ver Pendências do plano de M1).
- * TODO: verificar os nomes exatos de coluna contra um export real da PNP ou
- * a Portaria MEC 646/2022. Nomes abaixo são best-guess a partir do PRD.
+ * ClassificacaoRacialRendaSexo.csv — dados demográficos e de renda por
+ * matrícula. Só por instituição (sem nomeUnidadeRecente no export real).
  */
-export interface ClassificacaoRacialRendaSexoRow {
-  codigoCampus: string;
-  codigoCurso: string;
-  classificacaoRacial: string;
+export interface ClassificacaoRacialRendaSexoRow extends SharedDimensions {
+  corRaca: string;
+  rendaFamiliar: string;
+  faixaEtaria: string;
   sexo: string;
-  faixaRendaFamiliarPerCapita: string;
+  numeroConcluintes: number | null;
+  numeroIngressantes: number | null;
+  numeroMatriculas: number | null;
+  numeroVagas: number | null;
 }
 
 export const classificacaoRacialRendaSexoMapping: ColumnMapping<ClassificacaoRacialRendaSexoRow> = {
   fileType: "CLASSIFICACAO_RACIAL_RENDA_SEXO",
   columns: {
-    codigoCampus: {
-      sourceHeaderCandidates: ["Codigo_Campus", "CO_CAMPUS", "Código do Câmpus"],
+    ...sharedDimensionColumns(),
+    corRaca: {
+      sourceHeaderCandidates: ["CorRaca"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    codigoCurso: {
-      sourceHeaderCandidates: ["Codigo_Curso", "CO_CURSO", "Código do Curso"],
+    rendaFamiliar: {
+      sourceHeaderCandidates: ["RendaFamiliar"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    classificacaoRacial: {
-      sourceHeaderCandidates: ["Cor_Raca", "TP_COR_RACA", "Classificação Racial"],
-      required: false,
+    faixaEtaria: {
+      sourceHeaderCandidates: ["FaixaEtaria"],
+      required: true,
       transform: identity,
+      kind: "dimension",
     },
     sexo: {
-      sourceHeaderCandidates: ["Sexo", "TP_SEXO"],
-      required: false,
+      sourceHeaderCandidates: ["Sexo"],
+      required: true,
       transform: identity,
+      kind: "dimension",
     },
-    faixaRendaFamiliarPerCapita: {
-      sourceHeaderCandidates: ["Faixa_Renda_Familiar_Per_Capita", "RENDA_FAMILIAR_PER_CAPITA", "Faixa RFP"],
-      required: false,
-      transform: identity,
+    numeroConcluintes: {
+      sourceHeaderCandidates: ["Número de concluintes"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de concluintes",
+    },
+    numeroIngressantes: {
+      sourceHeaderCandidates: ["Número de ingressantes"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de ingressantes",
+    },
+    numeroMatriculas: {
+      sourceHeaderCandidates: ["Número de Matrículas"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de Matrículas",
+    },
+    numeroVagas: {
+      sourceHeaderCandidates: ["Número de vagas"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de vagas",
     },
   },
 };

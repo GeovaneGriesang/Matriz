@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mapRows } from "@/ingestion/parsing/mapRows";
 import type { ColumnMapping } from "@/ingestion/config/mappingTypes";
-import { identity, parseInteiro } from "@/ingestion/parsing/transforms";
+import { identity, parseDecimalBr } from "@/ingestion/parsing/transforms";
 
 interface TestRow {
   nome: string;
@@ -12,9 +12,15 @@ interface TestRow {
 const mapping: ColumnMapping<TestRow> = {
   fileType: "DADOS_GERAIS",
   columns: {
-    nome: { sourceHeaderCandidates: ["Nome", "NO_NOME"], required: true, transform: identity },
-    idade: { sourceHeaderCandidates: ["Idade", "NU_IDADE"], required: true, transform: parseInteiro },
-    apelido: { sourceHeaderCandidates: ["Apelido"], required: false, transform: identity },
+    nome: { sourceHeaderCandidates: ["Nome", "NO_NOME"], required: true, transform: identity, kind: "dimension" },
+    idade: {
+      sourceHeaderCandidates: ["Idade", "NU_IDADE"],
+      required: true,
+      transform: parseDecimalBr,
+      kind: "measure",
+      measureLabel: "Idade",
+    },
+    apelido: { sourceHeaderCandidates: ["Apelido"], required: false, transform: identity, kind: "dimension" },
   },
 };
 

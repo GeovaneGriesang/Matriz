@@ -1,11 +1,9 @@
 "use server";
 
 import { prisma } from "@/server/db/prisma";
-import { calcularMatriculaPonderada } from "@/calculation-engine/alunoMatriz/calcularMatriculaPonderada";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
-import * as alunoMatrizConstants from "@/calculation-engine/constants/alunoMatriz.constants";
 import * as qualidadeEficienciaConstants from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import * as blocosConstants from "@/calculation-engine/constants/blocos.constants";
 import type {
@@ -13,105 +11,126 @@ import type {
   IeaInput,
   RapInput,
 } from "@/calculation-engine/types/qualidadeEficiencia.types";
-import type {
-  LabInfraTier,
-  ModalidadeEnsino,
-  NivelCurso,
-} from "@/calculation-engine/types/alunoMatriz.types";
 
 export interface RunCalculationInput {
   orcamentoTotal: number;
+  /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
+  ano: number;
 }
 
 export interface RunCalculationResult {
   runId: number;
-  campusCount: number;
-  autarquiaCount: number;
+  unidadeCount: number;
+  instituicaoCount: number;
 }
 
-/** Curso do eixo agropecuário — placeholder até a lista completa do CNCT ser confirmada. */
-function isEixoAgricola(eixoTecnologico: string): boolean {
-  return eixoTecnologico === "RECURSOS_NATURAIS";
-}
+const MEDIDA_MATRICULA_EQUIVALENTE_GERAL = "Matrícula Equivalente | Geral";
+const MEDIDA_INDICE_EFICIENCIA_ACADEMICA = "Eficiência Acadêmica | Índice de Eficiência Acadêmica %";
+const MEDIDA_RAP = "RAP | RAP";
+
+const IAPL_CAMPO_POR_MEDIDA = {
+  "Matrícula Equivalente | Técnicos": "matriculasTecnicos",
+  "Matrícula Equivalente | Formação de Professores": "matriculasFormacaoProfessores",
+  "Matrícula Equivalente | Proeja": "matriculasProeja",
+} as const satisfies Record<string, keyof Omit<IaplCampusInput, "campusId">>;
 
 /**
  * Executa um run de cálculo completo (Bloco Funcionamento + Reitorias + Qualidade
- * e Eficiência) sobre os dados atualmente no banco e persiste o resultado com
- * um snapshot dos parâmetros (constantes) usados, para auditoria futura.
+ * e Eficiência) sobre os fatos já ingeridos (`FatoIndicador`) para o ano
+ * informado, e persiste o resultado com um snapshot dos parâmetros (constantes)
+ * usados, para auditoria futura.
+ *
+ * A Matrícula Ponderada do Bloco de Funcionamento usa a Matrícula Equivalente
+ * oficial da PNP (DadosGerais, medida "Matrícula Equivalente | Geral") somada
+ * por unidade — a PNP já aplica sua própria metodologia de peso, então não
+ * reimplementamos um cálculo por matrícula individual.
  *
  * Nota: o valor de Reitorias é armazenado com `campusId = null` e o id da
- * autarquia codificado na `metrica` (`valorReais_autarquia_<id>`), já que
- * `CalculationResult` não tem uma coluna dedicada para autarquia na M1.
+ * instituição codificado na `metrica` (`valorReais_autarquia_<id>`), já que
+ * `CalculationResult` não tem uma coluna dedicada para instituição na M1.
  */
 export async function runCalculation(input: RunCalculationInput): Promise<RunCalculationResult> {
-  const cursos = await prisma.curso.findMany({
-    include: { matriculas: true, campus: true },
+  const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
+    by: ["unidadeId"],
+    where: {
+      fileType: "DADOS_GERAIS",
+      medida: MEDIDA_MATRICULA_EQUIVALENTE_GERAL,
+      ano: input.ano,
+      unidadeId: { not: null },
+    },
+    _sum: { valor: true },
   });
-  const campi = await prisma.campus.findMany();
-  const indicadores = await prisma.indicadorCampus.findMany();
 
-  const funcionamentoInputs: FuncionamentoInput[] = [];
-  for (const curso of cursos) {
-    for (const matricula of curso.matriculas) {
-      const resultado = calcularMatriculaPonderada({
-        matriculaEquivalente: Number(matricula.matriculaEquivalente),
-        modalidade: curso.modalidade as ModalidadeEnsino,
-        nivel: curso.nivel as NivelCurso,
-        eixoAgricola: isEixoAgricola(curso.eixoTecnologico),
-        labInfraTier: curso.cnctLabTier as LabInfraTier,
-        dataIngressoCiclo: matricula.dataIngressoCiclo ?? matricula.dataReferencia,
-        dataReferencia: matricula.dataReferencia,
-      });
-      funcionamentoInputs.push({
-        campusId: curso.campusId,
-        matriculaPonderada: resultado.matriculaPonderada,
-      });
-    }
-  }
+  const funcionamentoInputs: FuncionamentoInput[] = mateqPorUnidade
+    .filter((f) => f.unidadeId !== null)
+    .map((f) => ({
+      campusId: f.unidadeId as number,
+      matriculaPonderada: Number(f._sum.valor ?? 0),
+    }));
 
-  const autarquiaIds = Array.from(new Set(campi.map((c) => c.autarquiaId)));
+  const instituicoes = await prisma.instituicao.findMany({ select: { id: true } });
+  const instituicaoIds = instituicoes.map((i) => i.id);
 
-  const ieaInputs: IeaInput[] = indicadores
-    .filter((i) => i.tipo === "IEA")
-    .map((i) => ({ campusId: i.campusId, valorIea: Number(i.valor) }));
+  const ieaFatos = await prisma.fatoIndicador.findMany({
+    where: {
+      fileType: "EFICIENCIA_ACADEMICA",
+      medida: MEDIDA_INDICE_EFICIENCIA_ACADEMICA,
+      ano: input.ano,
+      unidadeId: { not: null },
+    },
+  });
+  // PNP entrega o IEA em escala 0-100%; bucketizeIea espera [0, 1].
+  const ieaInputs: IeaInput[] = ieaFatos.map((f) => ({
+    campusId: f.unidadeId as number,
+    valorIea: Number(f.valor) / 100,
+  }));
 
-  // Ingestão de indicadores RAP ainda não persiste linhas de fato (ver
-  // persistIngestionBatch.ts) — sem dados de RAP, o sub-bloco fica vazio.
-  const rapInputs: RapInput[] = [];
+  const rapFatos = await prisma.fatoIndicador.findMany({
+    where: {
+      fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
+      medida: MEDIDA_RAP,
+      ano: input.ano,
+      unidadeId: { not: null },
+    },
+  });
+  const rapInputs: RapInput[] = rapFatos.map((f) => ({
+    campusId: f.unidadeId as number,
+    razaoDocenteAluno: Number(f.valor),
+  }));
 
-  const iaplPorCampus = new Map<number, IaplCampusInput>();
-  for (const indicador of indicadores) {
-    if (
-      indicador.tipo !== "IAPL_TECNICOS" &&
-      indicador.tipo !== "IAPL_FORMACAO_PROFESSORES" &&
-      indicador.tipo !== "IAPL_PROEJA"
-    ) {
-      continue;
-    }
-    const atual = iaplPorCampus.get(indicador.campusId) ?? {
-      campusId: indicador.campusId,
+  const iaplFatos = await prisma.fatoIndicador.findMany({
+    where: {
+      fileType: "PERCENTUAIS_LEGAIS",
+      medida: { in: Object.keys(IAPL_CAMPO_POR_MEDIDA) },
+      ano: input.ano,
+      unidadeId: { not: null },
+    },
+  });
+  const iaplPorUnidade = new Map<number, IaplCampusInput>();
+  for (const fato of iaplFatos) {
+    const unidadeId = fato.unidadeId as number;
+    const atual = iaplPorUnidade.get(unidadeId) ?? {
+      campusId: unidadeId,
       matriculasTecnicos: 0,
       matriculasFormacaoProfessores: 0,
       matriculasProeja: 0,
     };
-    if (indicador.tipo === "IAPL_TECNICOS") atual.matriculasTecnicos += Number(indicador.valor);
-    if (indicador.tipo === "IAPL_FORMACAO_PROFESSORES")
-      atual.matriculasFormacaoProfessores += Number(indicador.valor);
-    if (indicador.tipo === "IAPL_PROEJA") atual.matriculasProeja += Number(indicador.valor);
-    iaplPorCampus.set(indicador.campusId, atual);
+    const campo = IAPL_CAMPO_POR_MEDIDA[fato.medida as keyof typeof IAPL_CAMPO_POR_MEDIDA];
+    atual[campo] += Number(fato.valor);
+    iaplPorUnidade.set(unidadeId, atual);
   }
 
   const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
-  const reitorias = blocoReitorias(autarquiaIds, input.orcamentoTotal);
+  const reitorias = blocoReitorias(instituicaoIds, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(
     ieaInputs,
     rapInputs,
-    Array.from(iaplPorCampus.values()),
+    Array.from(iaplPorUnidade.values()),
     input.orcamentoTotal,
   );
 
   const parametersSnapshot = {
-    alunoMatriz: alunoMatrizConstants,
+    ano: input.ano,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
   };
@@ -157,5 +176,9 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     data: { status: "COMPLETED", finishedAt: new Date() },
   });
 
-  return { runId: run.id, campusCount: funcionamento.length, autarquiaCount: autarquiaIds.length };
+  return {
+    runId: run.id,
+    unidadeCount: funcionamento.length,
+    instituicaoCount: instituicaoIds.length,
+  };
 }

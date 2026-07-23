@@ -1,70 +1,100 @@
 import type { ColumnMapping } from "../mappingTypes";
-import { identity } from "../../parsing/transforms";
+import { identity, parseDecimalBrOptional } from "../../parsing/transforms";
+import { sharedDimensionColumns, unidadeNomeColumn, type SharedDimensions } from "./shared";
 
-/**
- * DadosGerais.csv — dado de referência (autarquia/câmpus/curso).
- * TODO: verificar os nomes exatos de coluna contra um export real da PNP ou
- * a Portaria MEC 646/2022. Nomes abaixo são best-guess a partir do PRD.
- */
-export interface DadosGeraisRow {
-  siglaAutarquia: string;
-  nomeAutarquia: string;
-  codigoCampus: string;
-  nomeCampus: string;
-  codigoCurso: string;
-  nomeCurso: string;
-  eixoTecnologico: string;
-  nivel: string;
-  modalidade: string;
+/** DadosGerais.csv — cadastro de curso, matrícula e oferta por câmpus/curso. */
+export interface DadosGeraisRow extends SharedDimensions {
+  unidadeNome: string;
+  nomeIdCurso: string;
+  tipoCurso: string;
+  tipoOferta: string;
+  modalidadeEnsino: string;
+  numeroCursos: number | null;
+  numeroConcluintes: number | null;
+  numeroIngressantes: number | null;
+  numeroInscritos: number | null;
+  numeroMatriculas: number | null;
+  numeroVagas: number | null;
+  matriculaEquivalenteGeral: number | null;
 }
 
 export const dadosGeraisMapping: ColumnMapping<DadosGeraisRow> = {
   fileType: "DADOS_GERAIS",
   columns: {
-    siglaAutarquia: {
-      sourceHeaderCandidates: ["Sigla_Autarquia", "SIGLA_IF", "Instituição"],
+    ...sharedDimensionColumns(),
+    unidadeNome: unidadeNomeColumn,
+    nomeIdCurso: {
+      sourceHeaderCandidates: ["nomeIdCurso"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    nomeAutarquia: {
-      sourceHeaderCandidates: ["Nome_Autarquia", "Instituto Federal", "Nome_IF"],
+    tipoCurso: {
+      sourceHeaderCandidates: ["tipoCurso"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    codigoCampus: {
-      sourceHeaderCandidates: ["Codigo_Campus", "CO_CAMPUS", "Código do Câmpus"],
+    tipoOferta: {
+      sourceHeaderCandidates: ["tipoOferta"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    nomeCampus: {
-      sourceHeaderCandidates: ["Nome_Campus", "NO_CAMPUS", "Câmpus"],
+    modalidadeEnsino: {
+      sourceHeaderCandidates: ["ModalidadeEnsino"],
       required: true,
       transform: identity,
+      kind: "dimension",
     },
-    codigoCurso: {
-      sourceHeaderCandidates: ["Codigo_Curso", "CO_CURSO", "Código do Curso"],
+    numeroCursos: {
+      sourceHeaderCandidates: ["Número de cursos"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de cursos",
     },
-    nomeCurso: {
-      sourceHeaderCandidates: ["Nome_Curso", "NO_CURSO", "Curso"],
+    numeroConcluintes: {
+      sourceHeaderCandidates: ["Número de concluintes"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de concluintes",
     },
-    eixoTecnologico: {
-      sourceHeaderCandidates: ["Eixo_Tecnologico", "EIXO_TECNOLOGICO", "Eixo Tecnológico"],
+    numeroIngressantes: {
+      sourceHeaderCandidates: ["Número de ingressantes"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de ingressantes",
     },
-    nivel: {
-      sourceHeaderCandidates: ["Nivel_Curso", "NIVEL_CURSO", "Nível"],
+    numeroInscritos: {
+      sourceHeaderCandidates: ["Número de inscritos"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de inscritos",
     },
-    modalidade: {
-      sourceHeaderCandidates: ["Modalidade_Ensino", "MODALIDADE", "Modalidade"],
+    numeroMatriculas: {
+      sourceHeaderCandidates: ["Número de Matrículas"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de Matrículas",
+    },
+    numeroVagas: {
+      sourceHeaderCandidates: ["Número de vagas"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Número de vagas",
+    },
+    matriculaEquivalenteGeral: {
+      sourceHeaderCandidates: ["Matrícula Equivalente | Geral"],
+      required: true,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Matrícula Equivalente | Geral",
     },
   },
 };

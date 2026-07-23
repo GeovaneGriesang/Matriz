@@ -1,4 +1,4 @@
-import type { IeaBand, RapBand, RegimeTrabalho } from "../types/qualidadeEficiencia.types";
+import type { IeaBand, RapBand } from "../types/qualidadeEficiencia.types";
 
 /**
  * Faixas normativas do IEA e pesos aplicados (0,5 a 2,5).
@@ -19,17 +19,6 @@ export const IEA_BAND_WEIGHTS: Record<IeaBand, number> = {
   MEDIO: 1.5,
   ALTO: 2.0,
   MUITO_ALTO: 2.5,
-};
-
-/**
- * Peso por regime de trabalho docente, usado para compor "docentes equivalentes"
- * na razão docente/aluno do RAP. Placeholder — categorias e pesos exatos pendentes
- * de confirmação contra a norma oficial.
- */
-export const REGIME_TRABALHO_WEIGHTS: Record<RegimeTrabalho, number> = {
-  DEDICACAO_EXCLUSIVA: 1.0,
-  QUARENTA_HORAS: 0.75,
-  VINTE_HORAS: 0.5,
 };
 
 /**

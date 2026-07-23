@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { PNP_FILE_TYPES, type PnpFileType } from "@/ingestion/config/fileTypes";
-import { getFileTypeMetadata } from "@/ingestion/config/fileMetadata";
+import { ALL_FILE_TYPE_METADATA, getFileTypeMetadata } from "@/ingestion/config/fileMetadata";
 
 interface UploadResponse {
   ok: boolean;
@@ -31,6 +31,16 @@ export function CsvUploadForm() {
   const [resultado, setResultado] = useState<UploadResponse | null>(null);
 
   const metadata = useMemo(() => getFileTypeMetadata(fileType), [fileType]);
+
+  const gruposOrdenados = useMemo(() => {
+    const porGrupo = new Map<string, typeof ALL_FILE_TYPE_METADATA>();
+    for (const item of ALL_FILE_TYPE_METADATA) {
+      const lista = porGrupo.get(item.grupo) ?? [];
+      lista.push(item);
+      porGrupo.set(item.grupo, lista);
+    }
+    return Array.from(porGrupo.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,10 +79,14 @@ export function CsvUploadForm() {
             onChange={(e) => setFileType(e.target.value as PnpFileType)}
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
           >
-            {PNP_FILE_TYPES.map((tipo) => (
-              <option key={tipo} value={tipo}>
-                {getFileTypeMetadata(tipo).label}
-              </option>
+            {gruposOrdenados.map(([grupo, itens]) => (
+              <optgroup key={grupo} label={grupo}>
+                {itens.map((item) => (
+                  <option key={item.fileType} value={item.fileType}>
+                    {item.subgrupo ? `${item.subgrupo} — ${item.label}` : item.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>

@@ -5,6 +5,7 @@ import { mapRows } from "./parsing/mapRows";
 import type { PnpFileType } from "./config/fileTypes";
 import { MAPPING_BY_FILE_TYPE } from "./config/fileMetadata";
 import { validateRequiredFields } from "./validation/rules/requiredFields";
+import { validateNonNegativeNumbers } from "./validation/rules/typeCoercion";
 import type { ValidationIssue, ValidationReport } from "./validation/ValidationReport";
 import { persistIngestionBatch } from "./persistence/persistIngestionBatch";
 import type { PersistIngestionBatchResult } from "./persistence/persistIngestionBatch";
@@ -31,13 +32,18 @@ export async function ingestCsv(input: IngestCsvInput): Promise<IngestCsvResult>
   const mapping = MAPPING_BY_FILE_TYPE[input.fileType];
   const { rows, issues: issuesMapeamento } = mapRows(csvRows, mapping);
 
-  const requiredStringFields = Object.entries(mapping.columns)
-    .filter(([, def]) => def.required)
+  const requiredDimensionFields = Object.entries(mapping.columns)
+    .filter(([, def]) => def.required && def.kind === "dimension")
     .map(([field]) => field);
-  const issuesCamposObrigatorios: ValidationIssue[] = validateRequiredFields(rows, requiredStringFields);
+  const issuesCamposObrigatorios: ValidationIssue[] = validateRequiredFields(rows, requiredDimensionFields);
+
+  const measureFields = Object.entries(mapping.columns)
+    .filter(([, def]) => def.kind === "measure")
+    .map(([field]) => field);
+  const issuesValoresNumericos: ValidationIssue[] = validateNonNegativeNumbers(rows, measureFields);
 
   const validationReport: ValidationReport = {
-    issues: [...issuesMapeamento, ...issuesCamposObrigatorios],
+    issues: [...issuesMapeamento, ...issuesCamposObrigatorios, ...issuesValoresNumericos],
   };
 
   const persistResult = await persistIngestionBatch({
