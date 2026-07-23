@@ -8,23 +8,18 @@ export function parseDecimalBr(raw: string): number {
   return valor;
 }
 
-/** Converte uma data no formato dd/mm/aaaa (padrão dos extratos da PNP) para `Date`. */
-export function parseDataBr(raw: string): Date {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw.trim());
-  if (!match) {
-    throw new Error(`Data inválida (esperado dd/mm/aaaa): "${raw}"`);
+/**
+ * Como `parseDecimalBr`, mas célula vazia vira `null` em vez de lançar —
+ * a maioria das medidas dos exports PNP fica em branco quando não há dado
+ * para aquela combinação de dimensões (ex: Oferta de Vagas Noturnas de um
+ * câmpus sem curso noturno).
+ */
+export function parseDecimalBrOptional(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return null;
   }
-  const [, dia, mes, ano] = match;
-  const data = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia)));
-  return data;
-}
-
-export function parseInteiro(raw: string): number {
-  const valor = Number.parseInt(raw.trim(), 10);
-  if (Number.isNaN(valor)) {
-    throw new Error(`Valor inteiro inválido: "${raw}"`);
-  }
-  return valor;
+  return parseDecimalBr(trimmed);
 }
 
 export function identity(raw: string): string {

@@ -16,25 +16,20 @@ export interface IeaDistribuicaoResult {
 }
 
 // ---------- RAP (Relação Aluno-Professor) ----------
-
-export type RegimeTrabalho = "DEDICACAO_EXCLUSIVA" | "QUARENTA_HORAS" | "VINTE_HORAS";
-
-export interface DocenteRegime {
-  regime: RegimeTrabalho;
-  quantidade: number;
-}
+//
+// A razão docente/aluno já vem calculada pela PNP (medida "RAP | RAP" do
+// arquivo RelacaoAlunoProfessorRAP.csv) — não há dado de docentes por regime
+// de trabalho nos exports reais, então não reimplementamos esse cálculo.
 
 export type RapBand = "MUITO_BAIXA" | "BAIXA" | "MEDIA" | "ALTA" | "MUITO_ALTA";
 
 export interface RapInput {
   campusId: number;
-  docentes: DocenteRegime[];
-  alunosPresenciais: number;
+  razaoDocenteAluno: number;
 }
 
 export interface RapDistribuicaoResult {
   campusId: number;
-  docentesEquivalentes: number;
   razaoDocenteAluno: number;
   band: RapBand;
   peso: number;

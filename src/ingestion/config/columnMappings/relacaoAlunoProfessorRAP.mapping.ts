@@ -1,46 +1,44 @@
 import type { ColumnMapping } from "../mappingTypes";
-import { identity, parseInteiro } from "../../parsing/transforms";
+import { parseDecimalBrOptional } from "../../parsing/transforms";
+import { sharedDimensionColumns, unidadeNomeColumn, type SharedDimensions } from "./shared";
 
 /**
- * RelacaoAlunoProfessorRAP.csv — docentes por regime de trabalho e alunos presenciais, por câmpus/ano.
- * TODO: verificar os nomes exatos de coluna contra um export real da PNP ou
- * a Portaria MEC 646/2022. Nomes abaixo são best-guess a partir do PRD.
+ * RelacaoAlunoProfessorRAP.csv — razão Aluno/Professor (RAP) já calculada
+ * pela PNP, por câmpus/ano. `rap` alimenta direto o Bloco de Qualidade e
+ * Eficiência (não precisa recalcular a partir de docentes por regime).
  */
-export interface RelacaoAlunoProfessorRapRow {
-  codigoCampus: string;
-  regimeTrabalho: string;
-  quantidadeDocentes: number;
-  alunosPresenciais: number;
-  referenciaAno: number;
+export interface RelacaoAlunoProfessorRapRow extends SharedDimensions {
+  unidadeNome: string;
+  rap: number | null;
+  matriculasRap: number | null;
+  professorEquivalente: number | null;
 }
 
 export const relacaoAlunoProfessorRapMapping: ColumnMapping<RelacaoAlunoProfessorRapRow> = {
   fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
   columns: {
-    codigoCampus: {
-      sourceHeaderCandidates: ["Codigo_Campus", "CO_CAMPUS", "Código do Câmpus"],
+    ...sharedDimensionColumns(),
+    unidadeNome: unidadeNomeColumn,
+    rap: {
+      sourceHeaderCandidates: ["RAP | RAP"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "RAP | RAP",
     },
-    regimeTrabalho: {
-      sourceHeaderCandidates: ["Regime_Trabalho", "REGIME_TRABALHO", "Regime de Trabalho"],
+    matriculasRap: {
+      sourceHeaderCandidates: ["RAP | Matrículas RAP"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "RAP | Matrículas RAP",
     },
-    quantidadeDocentes: {
-      sourceHeaderCandidates: ["Qtd_Docentes", "QT_DOCENTES", "Quantidade de Docentes"],
+    professorEquivalente: {
+      sourceHeaderCandidates: ["RAP | Professor Equivalente"],
       required: true,
-      transform: parseInteiro,
-    },
-    alunosPresenciais: {
-      sourceHeaderCandidates: ["Alunos_Presenciais", "QT_ALUNOS_PRESENCIAL", "Alunos Presenciais"],
-      required: true,
-      transform: parseInteiro,
-    },
-    referenciaAno: {
-      sourceHeaderCandidates: ["Ano", "ANO_REFERENCIA", "Ano_Referencia"],
-      required: true,
-      transform: parseInteiro,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "RAP | Professor Equivalente",
     },
   },
 };

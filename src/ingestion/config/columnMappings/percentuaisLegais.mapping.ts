@@ -1,51 +1,48 @@
 import type { ColumnMapping } from "../mappingTypes";
-import { identity, parseInteiro } from "../../parsing/transforms";
+import { parseDecimalBrOptional } from "../../parsing/transforms";
+import { sharedDimensionColumns, unidadeNomeColumn, type SharedDimensions } from "./shared";
 
-/**
- * PercentuaisLegais.csv — matrículas por meta legal do IAPL (Técnicos/Formação de
- * Professores/PROEJA), por câmpus/ano.
- * TODO: verificar os nomes exatos de coluna contra um export real da PNP ou
- * a Portaria MEC 646/2022. Nomes abaixo são best-guess a partir do PRD.
- */
-export interface PercentuaisLegaisRow {
-  codigoCampus: string;
-  matriculasTecnicos: number;
-  matriculasFormacaoProfessores: number;
-  matriculasProeja: number;
-  referenciaAno: number;
+/** PercentuaisLegais.csv — Matrícula Equivalente por meta legal, por câmpus. */
+export interface PercentuaisLegaisRow extends SharedDimensions {
+  unidadeNome: string;
+  mateqFormacaoProfessores: number | null;
+  mateqTecnicos: number | null;
+  mateqProeja: number | null;
+  mateqGeral: number | null;
 }
 
 export const percentuaisLegaisMapping: ColumnMapping<PercentuaisLegaisRow> = {
   fileType: "PERCENTUAIS_LEGAIS",
   columns: {
-    codigoCampus: {
-      sourceHeaderCandidates: ["Codigo_Campus", "CO_CAMPUS", "Código do Câmpus"],
+    ...sharedDimensionColumns(),
+    unidadeNome: unidadeNomeColumn,
+    mateqFormacaoProfessores: {
+      sourceHeaderCandidates: ["Matrícula Equivalente | Formação de Professores"],
       required: true,
-      transform: identity,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Matrícula Equivalente | Formação de Professores",
     },
-    matriculasTecnicos: {
-      sourceHeaderCandidates: ["Matriculas_Tecnicos", "QT_MATRICULA_TECNICO", "Matrículas Técnicos"],
+    mateqTecnicos: {
+      sourceHeaderCandidates: ["Matrícula Equivalente | Técnicos"],
       required: true,
-      transform: parseInteiro,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Matrícula Equivalente | Técnicos",
     },
-    matriculasFormacaoProfessores: {
-      sourceHeaderCandidates: [
-        "Matriculas_Formacao_Professores",
-        "QT_MATRICULA_FORMACAO_PROF",
-        "Matrículas Formação de Professores",
-      ],
+    mateqProeja: {
+      sourceHeaderCandidates: ["Matrícula Equivalente | Proeja"],
       required: true,
-      transform: parseInteiro,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Matrícula Equivalente | Proeja",
     },
-    matriculasProeja: {
-      sourceHeaderCandidates: ["Matriculas_Proeja", "QT_MATRICULA_PROEJA", "Matrículas PROEJA"],
+    mateqGeral: {
+      sourceHeaderCandidates: ["Matrícula Equivalente | Geral"],
       required: true,
-      transform: parseInteiro,
-    },
-    referenciaAno: {
-      sourceHeaderCandidates: ["Ano", "ANO_REFERENCIA", "Ano_Referencia"],
-      required: true,
-      transform: parseInteiro,
+      transform: parseDecimalBrOptional,
+      kind: "measure",
+      measureLabel: "Matrícula Equivalente | Geral",
     },
   },
 };
