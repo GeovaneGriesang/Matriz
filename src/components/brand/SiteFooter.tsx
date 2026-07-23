@@ -11,13 +11,20 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-neutral-200 bg-white px-6 py-6 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-2 text-center">
-        <div className="rounded-md bg-white p-2 dark:bg-white">
+        <div className="rounded-md bg-white p-2 dark:bg-transparent">
           <Image
             src="/branding/ifsul-venancio-aires-horizontal.png"
             alt="Instituto Federal Sul-rio-grandense - Câmpus Venâncio Aires"
             width={211}
             height={48}
-            className="h-14 w-auto"
+            className="h-14 w-auto dark:hidden"
+          />
+          <Image
+            src="/branding/ifsul-venancio-aires-horizontal-mono.png"
+            alt="Instituto Federal Sul-rio-grandense - Câmpus Venâncio Aires"
+            width={211}
+            height={48}
+            className="hidden h-14 w-auto dark:block"
           />
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">

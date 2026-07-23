@@ -10,6 +10,14 @@ export function SiteHeader() {
         <Link href="/" className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
           Matriz Orçamentária RFEPCT
         </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            href="/simulador"
+            className="text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Simulador
+          </Link>
+        </nav>
         <ThemeToggle />
       </div>
     </header>

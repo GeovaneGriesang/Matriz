@@ -4,6 +4,7 @@ import { ingestCsv } from "@/ingestion/pipeline";
 import { IngestionCancelledError } from "@/ingestion/errors";
 import type { PnpFileType } from "@/ingestion/config/fileTypes";
 import { PNP_FILE_TYPES } from "@/ingestion/config/fileTypes";
+import { getAdminSession } from "@/server/auth/session";
 
 export interface UploadCsvActionResult {
   ok: boolean;
@@ -25,6 +26,10 @@ export interface UploadCsvActionResult {
 
 /** Server Action que recebe um upload de CSV da PNP e dispara o pipeline de ingestão. */
 export async function uploadCsvAction(formData: FormData): Promise<UploadCsvActionResult> {
+  if (!(await getAdminSession())) {
+    return { ok: false, errorMessage: "Não autenticado." };
+  }
+
   const file = formData.get("file");
   const fileType = formData.get("fileType");
   const uploadId = formData.get("uploadId");

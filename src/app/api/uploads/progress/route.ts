@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { obterProgresso } from "@/server/ingestionProgress";
+import { requireAdminSessionOrResponse } from "@/server/auth/session";
 
 /** Consultado via polling pelo formulário de upload para mostrar linhas processadas e status. */
 export async function GET(request: Request) {
+  const naoAutenticado = await requireAdminSessionOrResponse();
+  if (naoAutenticado) return naoAutenticado;
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
