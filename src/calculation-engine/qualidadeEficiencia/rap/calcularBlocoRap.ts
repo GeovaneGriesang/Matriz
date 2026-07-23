@@ -3,9 +3,10 @@ import type { RapDistribuicaoResult, RapInput } from "../../types/qualidadeEfici
 import { bucketizeRap, weightRap } from "./bucketizeRap";
 
 /**
- * Enquadra a razão docente/aluno (já calculada pela PNP) em faixa, equaliza
- * (share somando 1.0) e distribui o sub-bloco RAP (2,5%) entre os câmpus
- * informados.
+ * Enquadra a razão docente/aluno (já calculada pela PNP) em faixa, pondera
+ * (RAP Ponderado = RAP × Peso), equaliza (share somando 1.0, RAP Equalizado =
+ * RAP Ponderado / Σ RAP Ponderado) e distribui o sub-bloco RAP (2,5%) entre os
+ * câmpus informados — fórmula da Figura 9 do livro da Matriz.
  */
 export function calcularBlocoRap(
   campiInputs: RapInput[],
@@ -17,19 +18,27 @@ export function calcularBlocoRap(
 
   const pesados = campiInputs.map((input) => {
     const band = bucketizeRap(input.razaoDocenteAluno);
-    return { campusId: input.campusId, razaoDocenteAluno: input.razaoDocenteAluno, band, peso: weightRap(band) };
+    const peso = weightRap(band);
+    return {
+      campusId: input.campusId,
+      razaoDocenteAluno: input.razaoDocenteAluno,
+      band,
+      peso,
+      ponderado: input.razaoDocenteAluno * peso,
+    };
   });
 
-  const somaPesos = pesados.reduce((total, item) => total + item.peso, 0);
+  const somaPonderados = pesados.reduce((total, item) => total + item.ponderado, 0);
   const valorSubBloco = PESO_RAP_SUBBLOCO * orcamentoTotal;
 
   return pesados.map((item) => {
-    const share = somaPesos === 0 ? 0 : item.peso / somaPesos;
+    const share = somaPonderados === 0 ? 0 : item.ponderado / somaPonderados;
     return {
       campusId: item.campusId,
       razaoDocenteAluno: item.razaoDocenteAluno,
       band: item.band,
       peso: item.peso,
+      ponderado: item.ponderado,
       share,
       valorReais: share * valorSubBloco,
     };

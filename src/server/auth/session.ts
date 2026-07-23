@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 const SESSION_COOKIE_NAME = "admin_session";
@@ -57,4 +58,12 @@ export async function requireAdminSessionOrResponse(): Promise<NextResponse | nu
     return NextResponse.json({ errorMessage: "Não autenticado." }, { status: 401 });
   }
   return null;
+}
+
+/** Layouts de páginas admin: redireciona para o login se não houver sessão válida. */
+export async function requireAdminOrRedirect(nextPath: string): Promise<void> {
+  const autenticado = await getAdminSession();
+  if (!autenticado) {
+    redirect(`/admin/login?next=${encodeURIComponent(nextPath)}`);
+  }
 }

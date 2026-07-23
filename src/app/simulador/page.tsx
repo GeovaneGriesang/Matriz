@@ -2,7 +2,7 @@ import { SimuladorPanel } from "@/components/simulador/SimuladorPanel";
 
 export default function SimuladorPage() {
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-16">
+    <main className="flex flex-col gap-6 px-6 py-16">
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
           Simulador da Matriz Orçamentária

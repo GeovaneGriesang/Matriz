@@ -9,8 +9,11 @@ export interface IeaInput {
 
 export interface IeaDistribuicaoResult {
   campusId: number;
+  valorIea: number;
   band: IeaBand;
   peso: number;
+  /** IEA Ponderado = valorIea × peso (Figura 7 do livro da Matriz). */
+  ponderado: number;
   share: number;
   valorReais: number;
 }
@@ -33,6 +36,8 @@ export interface RapDistribuicaoResult {
   razaoDocenteAluno: number;
   band: RapBand;
   peso: number;
+  /** RAP Ponderado = razaoDocenteAluno × peso (Figura 9 do livro da Matriz). */
+  ponderado: number;
   share: number;
   valorReais: number;
 }

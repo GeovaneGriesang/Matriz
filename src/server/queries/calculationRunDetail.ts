@@ -6,6 +6,10 @@ export interface UnidadeResultado {
   funcionamentoValorReais: number;
   qualidadeEficienciaValorReais: number;
   subtotalReais: number;
+  /** "Memória de cálculo" do Bloco Funcionamento para este câmpus — formato definido em runCalculation.ts. */
+  detalheFuncionamento: unknown;
+  /** "Memória de cálculo" do Bloco Qualidade e Eficiência (IEA/RAP/IAPL) para este câmpus. */
+  detalheQualidadeEficiencia: unknown;
 }
 
 export interface InstituicaoResultado {
@@ -15,13 +19,18 @@ export interface InstituicaoResultado {
   reitoriaValorReais: number;
   unidades: UnidadeResultado[];
   subtotalReais: number;
+  /** "Memória de cálculo" do Bloco Reitorias para esta instituição. */
+  detalheReitoria: unknown;
 }
 
 export interface CalculationRunDetail {
   run: {
     id: number;
     status: string;
+    /** Ano de referência da PNP consultado (`FatoIndicador.ano`) — para runs oficiais, é `anoOrcamento - 2`. */
     ano: number | null;
+    /** Ano do orçamento oficial (só preenchido para `origem: "OFICIAL"`); `null` em simulações. */
+    anoOrcamento: number | null;
     orcamentoTotal: number | null;
     startedAt: string;
     finishedAt: string | null;
@@ -41,10 +50,18 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
   });
   if (!run) return null;
 
-  const snapshot = run.parametersSnapshot as { ano?: number; orcamentoTotal?: number } | null;
+  const snapshot = run.parametersSnapshot as { ano?: number; anoOrcamento?: number; orcamentoTotal?: number } | null;
 
-  const unidadeValores = new Map<number, { funcionamento: number; qualidadeEficiencia: number }>();
+  interface ValoresUnidade {
+    funcionamento: number;
+    qualidadeEficiencia: number;
+    detalheFuncionamento: unknown;
+    detalheQualidadeEficiencia: unknown;
+  }
+
+  const unidadeValores = new Map<number, ValoresUnidade>();
   const reitoriaPorInstituicao = new Map<number, number>();
+  const detalheReitoriaPorInstituicao = new Map<number, unknown>();
 
   for (const resultado of run.results) {
     const valor = Number(resultado.valor);
@@ -54,13 +71,25 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       if (!match) continue;
       const instituicaoId = Number(match[1]);
       reitoriaPorInstituicao.set(instituicaoId, (reitoriaPorInstituicao.get(instituicaoId) ?? 0) + valor);
+      detalheReitoriaPorInstituicao.set(instituicaoId, resultado.detalhe);
       continue;
     }
 
     if (resultado.campusId === null) continue;
-    const atual = unidadeValores.get(resultado.campusId) ?? { funcionamento: 0, qualidadeEficiencia: 0 };
-    if (resultado.bloco === "FUNCIONAMENTO") atual.funcionamento += valor;
-    if (resultado.bloco === "QUALIDADE_EFICIENCIA") atual.qualidadeEficiencia += valor;
+    const atual = unidadeValores.get(resultado.campusId) ?? {
+      funcionamento: 0,
+      qualidadeEficiencia: 0,
+      detalheFuncionamento: null,
+      detalheQualidadeEficiencia: null,
+    };
+    if (resultado.bloco === "FUNCIONAMENTO") {
+      atual.funcionamento += valor;
+      atual.detalheFuncionamento = resultado.detalhe;
+    }
+    if (resultado.bloco === "QUALIDADE_EFICIENCIA") {
+      atual.qualidadeEficiencia += valor;
+      atual.detalheQualidadeEficiencia = resultado.detalhe;
+    }
     unidadeValores.set(resultado.campusId, atual);
   }
 
@@ -88,13 +117,19 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       reitoriaValorReais: reitoriaPorInstituicao.get(id) ?? 0,
       unidades: [],
       subtotalReais: 0,
+      detalheReitoria: detalheReitoriaPorInstituicao.get(id) ?? null,
     };
     instituicoesPorId.set(id, nova);
     return nova;
   }
 
   for (const unidade of unidades) {
-    const valores = unidadeValores.get(unidade.id) ?? { funcionamento: 0, qualidadeEficiencia: 0 };
+    const valores = unidadeValores.get(unidade.id) ?? {
+      funcionamento: 0,
+      qualidadeEficiencia: 0,
+      detalheFuncionamento: null,
+      detalheQualidadeEficiencia: null,
+    };
     const instituicao = obterOuCriarInstituicao(
       unidade.instituicao.id,
       unidade.instituicao.sigla,
@@ -106,6 +141,8 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       funcionamentoValorReais: valores.funcionamento,
       qualidadeEficienciaValorReais: valores.qualidadeEficiencia,
       subtotalReais: valores.funcionamento + valores.qualidadeEficiencia,
+      detalheFuncionamento: valores.detalheFuncionamento,
+      detalheQualidadeEficiencia: valores.detalheQualidadeEficiencia,
     });
   }
 
@@ -128,6 +165,7 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       id: run.id,
       status: run.status,
       ano: snapshot?.ano ?? null,
+      anoOrcamento: snapshot?.anoOrcamento ?? null,
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
