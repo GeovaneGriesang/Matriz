@@ -37,6 +37,12 @@ export interface CampusOverride {
 }
 
 export interface RunCalculationInput {
+  /** Instituição (autarquia) para a qual este cálculo é feito — escopa todas as consultas de fatos. */
+  instituicaoId: number;
+  /**
+   * `orcamentoTotal` é o Custeio (Ação 20RL) já específico desta instituição
+   * (ex.: o valor aprovado na LOA para o IFSul), não o total da Rede Federal.
+   */
   orcamentoTotal: number;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
   ano: number;
@@ -59,7 +65,6 @@ export interface RunCalculationInput {
 export interface RunCalculationResult {
   runId: number;
   unidadeCount: number;
-  instituicaoCount: number;
 }
 
 const MEDIDA_MATRICULA_EQUIVALENTE_GERAL = "Matrícula Equivalente | Geral";
@@ -176,6 +181,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "DADOS_GERAIS",
       medida: MEDIDA_MATRICULA_EQUIVALENTE_GERAL,
       ano: input.ano,
+      instituicaoId: input.instituicaoId,
       unidadeId: { not: null },
     },
     _sum: { valor: true },
@@ -191,14 +197,12 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     overrides,
   );
 
-  const instituicoes = await prisma.instituicao.findMany({ select: { id: true } });
-  const instituicaoIds = instituicoes.map((i) => i.id);
-
   const ieaFatos = await prisma.fatoIndicador.findMany({
     where: {
       fileType: "EFICIENCIA_ACADEMICA",
       medida: MEDIDA_INDICE_EFICIENCIA_ACADEMICA,
       ano: input.ano,
+      instituicaoId: input.instituicaoId,
       unidadeId: { not: null },
     },
   });
@@ -216,6 +220,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
       medida: MEDIDA_RAP,
       ano: input.ano,
+      instituicaoId: input.instituicaoId,
       unidadeId: { not: null },
     },
   });
@@ -232,6 +237,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "PERCENTUAIS_LEGAIS",
       medida: { in: Object.keys(IAPL_CAMPO_POR_MEDIDA) },
       ano: input.ano,
+      instituicaoId: input.instituicaoId,
       unidadeId: { not: null },
     },
   });
@@ -263,7 +269,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const totalMatriculasProejaRede = iaplInputs.reduce((s, i) => s + i.matriculasProeja, 0);
 
   const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
-  const reitorias = blocoReitorias(instituicaoIds, input.orcamentoTotal);
+  const reitoria = blocoReitorias(input.instituicaoId, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
 
   // Recalculados isoladamente (mesmas funções puras, mesmos inputs finais) só para expor
@@ -277,6 +283,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const iaplInputPorCampus = new Map(iaplInputs.map((i) => [i.campusId, i]));
 
   const parametersSnapshot = {
+    instituicaoId: input.instituicaoId,
     ano: input.ano,
     anoOrcamento: input.anoOrcamento ?? null,
     orcamentoTotal: input.orcamentoTotal,
@@ -310,19 +317,18 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         valorReais: f.valorReais,
       },
     })),
-    ...reitorias.map((r) => ({
+    {
       runId: run.id,
       campusId: null,
       bloco: "REITORIAS" as const,
-      metrica: `valorReais_autarquia_${r.autarquiaId}`,
-      valor: r.valorReais,
+      metrica: `valorReais_autarquia_${reitoria.autarquiaId}`,
+      valor: reitoria.valorReais,
       detalhe: {
-        numeroInstituicoes: instituicaoIds.length,
         pesoBloco: PESO_BLOCO_REITORIAS,
         valorBlocoRede: PESO_BLOCO_REITORIAS * input.orcamentoTotal,
-        valorReais: r.valorReais,
+        valorReais: reitoria.valorReais,
       },
-    })),
+    },
     ...qualidadeEficiencia.map((q) => {
       const ieaD = ieaDetalhePorCampus.get(q.campusId);
       const rapD = rapDetalhePorCampus.get(q.campusId);
@@ -415,6 +421,5 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   return {
     runId: run.id,
     unidadeCount: funcionamento.length,
-    instituicaoCount: instituicaoIds.length,
   };
 }

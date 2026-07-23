@@ -34,9 +34,13 @@ function parseOverrides(raw: unknown): Record<number, CampusOverride> {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
+  const instituicaoId = Number(body?.instituicaoId);
   const orcamentoTotal = Number(body?.orcamentoTotal);
   const ano = Number(body?.ano);
 
+  if (!Number.isInteger(instituicaoId) || instituicaoId <= 0) {
+    return NextResponse.json({ error: "instituicaoId deve identificar uma instituição válida." }, { status: 400 });
+  }
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
     return NextResponse.json({ error: "orcamentoTotal deve ser um número positivo." }, { status: 400 });
   }
@@ -46,6 +50,6 @@ export async function POST(request: Request) {
 
   const overridesPorUnidade = parseOverrides(body?.overridesPorUnidade);
 
-  const resultado = await runCalculation({ orcamentoTotal, ano, overridesPorUnidade });
+  const resultado = await runCalculation({ instituicaoId, orcamentoTotal, ano, overridesPorUnidade });
   return NextResponse.json(resultado);
 }
