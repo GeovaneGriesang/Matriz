@@ -4,6 +4,7 @@ import { prisma } from "@/server/db/prisma";
 export interface CalculationRunSummary {
   id: number;
   status: string;
+  origem: string;
   ano: number | null;
   orcamentoTotal: number | null;
   startedAt: string;
@@ -22,6 +23,7 @@ export async function GET() {
     return {
       id: run.id,
       status: run.status,
+      origem: run.origem,
       ano: snapshot?.ano ?? null,
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
       startedAt: run.startedAt.toISOString(),
