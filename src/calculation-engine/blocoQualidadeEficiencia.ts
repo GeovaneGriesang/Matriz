@@ -9,8 +9,8 @@ import { calcularBlocoIea } from "./qualidadeEficiencia/iea/calcularBlocoIea";
 import { calcularBlocoRap } from "./qualidadeEficiencia/rap/calcularBlocoRap";
 import { calcularBlocoIapl } from "./qualidadeEficiencia/iapl/calcularBlocoIapl";
 
-export interface QualidadeEficienciaCampusResult {
-  campusId: number;
+export interface QualidadeEficienciaInstituicaoResult {
+  instituicaoId: number;
   valorIea: number;
   valorRap: number;
   valorIapl: number;
@@ -25,29 +25,34 @@ if (Math.abs(SOMA_SUBBLOCOS - PESO_BLOCO_QUALIDADE_EFICIENCIA) > 1e-9) {
   );
 }
 
-/** Compõe IEA (2,5%) + RAP (2,5%) + IAPL (5,0%) no Bloco de Qualidade e Eficiência (10%). */
+/**
+ * Compõe IEA (2,5%) + RAP (2,5%) + IAPL (5,0%) no Bloco de Qualidade e
+ * Eficiência (10%) — resultado por INSTITUIÇÃO, não por câmpus (mesmo padrão
+ * do Bloco Reitorias: a Matriz CONIF só apura esses sub-blocos em nível
+ * institucional).
+ */
 export function blocoQualidadeEficiencia(
   ieaInputs: IeaInput[],
   rapInputs: RapInput[],
   iaplInputs: IaplCampusInput[],
   orcamentoTotal: number,
-): QualidadeEficienciaCampusResult[] {
+): QualidadeEficienciaInstituicaoResult[] {
   const iea = calcularBlocoIea(ieaInputs, orcamentoTotal);
   const rap = calcularBlocoRap(rapInputs, orcamentoTotal);
   const iapl = calcularBlocoIapl(iaplInputs, orcamentoTotal);
 
-  const campusIds = new Set<number>([
-    ...iea.map((r) => r.campusId),
-    ...rap.map((r) => r.campusId),
-    ...iapl.map((r) => r.campusId),
+  const instituicaoIds = new Set<number>([
+    ...iea.map((r) => r.instituicaoId),
+    ...rap.map((r) => r.instituicaoId),
+    ...iapl.map((r) => r.instituicaoId),
   ]);
 
-  return Array.from(campusIds).map((campusId) => {
-    const valorIea = iea.find((r) => r.campusId === campusId)?.valorReais ?? 0;
-    const valorRap = rap.find((r) => r.campusId === campusId)?.valorReais ?? 0;
-    const valorIapl = iapl.find((r) => r.campusId === campusId)?.valorTotal ?? 0;
+  return Array.from(instituicaoIds).map((instituicaoId) => {
+    const valorIea = iea.find((r) => r.instituicaoId === instituicaoId)?.valorReais ?? 0;
+    const valorRap = rap.find((r) => r.instituicaoId === instituicaoId)?.valorReais ?? 0;
+    const valorIapl = iapl.find((r) => r.instituicaoId === instituicaoId)?.valorTotal ?? 0;
     return {
-      campusId,
+      instituicaoId,
       valorIea,
       valorRap,
       valorIapl,

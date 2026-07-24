@@ -5,11 +5,19 @@ export interface AssistenciaEstudantilRfpInput {
   numeroMatriculas: number;
 }
 
-/** Matrícula Ponderada de um câmpus — mesma base do Bloco Funcionamento, usada para subdividir o valor da instituição entre seus câmpus. */
+/**
+ * Matrícula Ponderada de um câmpus, separada por modalidade de ensino — a
+ * Matriz CONIF pondera MECHDA como Presencial (peso cheio) + EAD/4 (um quarto
+ * do peso), então precisamos das duas parcelas separadas para o MECHDA
+ * institucional (usado no passo 2). A subdivisão do valor da instituição entre
+ * seus câmpus (passo 3) usa a soma das duas (mesma base "matrícula ponderada
+ * total" de sempre — essa etapa continua uma aproximação, ver types acima).
+ */
 export interface AssistenciaEstudantilCampusInput {
   campusId: number;
   instituicaoId: number;
-  matriculaPonderada: number;
+  matriculaPonderadaPresencial: number;
+  matriculaPonderadaEad: number;
 }
 
 export interface AssistenciaEstudantilCampusResultado {
@@ -17,6 +25,8 @@ export interface AssistenciaEstudantilCampusResultado {
   instituicaoId: number;
   /** VR (RF Ponderada): Σ (% de matrículas na faixa × peso da faixa) — índice de vulnerabilidade, 0 a 2,5. */
   vrInstituicao: number;
+  /** MECHDA institucional = Σ Matrícula Ponderada Presencial + (Σ Matrícula Ponderada EAD ÷ 4). */
+  mechdaInstituicao: number;
   /** MECHDA × VR — só aqui o porte da instituição (Matrícula Ponderada) entra na fórmula. */
   participacaoPonderadaInstituicao: number;
   somaParticipacoesRede: number;

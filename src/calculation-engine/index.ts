@@ -20,4 +20,4 @@ export { blocoReitorias } from "./blocoReitorias";
 export type { ReitoriaInput, ReitoriaResult } from "./blocoReitorias";
 
 export { blocoQualidadeEficiencia } from "./blocoQualidadeEficiencia";
-export type { QualidadeEficienciaCampusResult } from "./blocoQualidadeEficiencia";
+export type { QualidadeEficienciaInstituicaoResult } from "./blocoQualidadeEficiencia";
