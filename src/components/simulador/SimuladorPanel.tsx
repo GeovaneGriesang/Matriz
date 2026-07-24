@@ -13,6 +13,7 @@ interface CalculationRunSummary {
   origem: string;
   ano: number | null;
   orcamentoTotal: number | null;
+  orcamentoAssistenciaEstudantil: number | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -66,6 +67,7 @@ function resumirAjuste(ajuste: AjusteCampus): string {
 export function SimuladorPanel() {
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
   const [orcamentoTotal, setOrcamentoTotal] = useState(0);
+  const [orcamentoAssistenciaEstudantil, setOrcamentoAssistenciaEstudantil] = useState(0);
   const [ano, setAno] = useState("");
   const [escopo, setEscopo] = useState<Escopo>("CONIF");
   const [instituicaoFiltro, setInstituicaoFiltro] = useState("");
@@ -202,6 +204,7 @@ export function SimuladorPanel() {
           escopo,
           instituicaoId: instituicaoFiltro ? Number(instituicaoFiltro) : undefined,
           orcamentoTotal,
+          orcamentoAssistenciaEstudantil,
           ano: Number(ano),
           overridesPorUnidade,
         }),
@@ -293,7 +296,8 @@ export function SimuladorPanel() {
 
           <div className="flex flex-col gap-1">
             <label htmlFor="orcamentoTotal" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              Orçamento total (R$) — soma de {instituicaoFiltro ? "toda a instituição selecionada" : "todo o escopo"}
+              Orçamento Total de Custeio e Funcionamento (Ação 20RL) [R$] — soma de{" "}
+              {instituicaoFiltro ? "toda a instituição selecionada" : "todo o escopo"}
             </label>
             <CurrencyInput
               id="orcamentoTotal"
@@ -302,6 +306,31 @@ export function SimuladorPanel() {
               disabled={calculando}
               className={inputClass}
             />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Separado automaticamente em 80% Funcionamento (por câmpus), 10% Reitorias (por instituição) e 10%
+              Qualidade e Eficiência (IEA/RAP/IAPL). A Ação 2994 abaixo é calculada de forma independente.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="orcamentoAssistenciaEstudantil"
+              className="text-sm font-medium text-neutral-900 dark:text-neutral-100"
+            >
+              Orçamento de Assistência Estudantil (Ação 2994 / PNAES) [R$]
+            </label>
+            <CurrencyInput
+              id="orcamentoAssistenciaEstudantil"
+              value={orcamentoAssistenciaEstudantil}
+              onChange={setOrcamentoAssistenciaEstudantil}
+              disabled={calculando}
+              className={inputClass}
+            />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Isolado do Custeio 20RL acima — rateado por faixa de Renda Familiar Per Capita (RFP) por instituição
+              e depois subdividido entre os câmpus pela Matrícula Ponderada. Opcional aqui: fica em R$ 0,00 se
+              você quiser simular só o Custeio 20RL.
+            </p>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -468,6 +497,9 @@ export function SimuladorPanel() {
                     <span>
                       #{execucao.id} — ano {execucao.ano ?? "?"} —{" "}
                       {execucao.orcamentoTotal !== null ? formatoMoeda.format(execucao.orcamentoTotal) : "—"}
+                      {execucao.orcamentoAssistenciaEstudantil ? (
+                        <> · Assist. Estudantil: {formatoMoeda.format(execucao.orcamentoAssistenciaEstudantil)}</>
+                      ) : null}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       {formatoData.format(new Date(execucao.startedAt))} · {execucao.status}

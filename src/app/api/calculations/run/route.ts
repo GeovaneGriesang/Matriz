@@ -39,12 +39,23 @@ export async function POST(request: Request) {
   const escopo: EscopoDistribuicao = body?.escopo === "TODAS" ? "TODAS" : "CONIF";
   const orcamentoTotal = Number(body?.orcamentoTotal);
   const ano = Number(body?.ano);
+  const orcamentoAssistenciaEstudantilBruto = body?.orcamentoAssistenciaEstudantil;
+  const orcamentoAssistenciaEstudantil =
+    orcamentoAssistenciaEstudantilBruto === undefined || orcamentoAssistenciaEstudantilBruto === null
+      ? 0
+      : Number(orcamentoAssistenciaEstudantilBruto);
 
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
-    return NextResponse.json({ error: "orcamentoTotal deve ser um número positivo." }, { status: 400 });
+    return NextResponse.json({ error: "O valor deve ser maior que R$ 0,00." }, { status: 400 });
   }
   if (!Number.isInteger(ano) || ano <= 0) {
     return NextResponse.json({ error: "ano deve ser um ano de referência válido." }, { status: 400 });
+  }
+  if (!Number.isFinite(orcamentoAssistenciaEstudantil) || orcamentoAssistenciaEstudantil < 0) {
+    return NextResponse.json(
+      { error: "orcamentoAssistenciaEstudantil deve ser um número maior ou igual a zero." },
+      { status: 400 },
+    );
   }
 
   const instituicaoIdFiltro = Number(body?.instituicaoId);
@@ -73,6 +84,7 @@ export async function POST(request: Request) {
   const resultado = await runCalculation({
     instituicaoIds: instituicoes.map((i) => i.id),
     orcamentoTotal,
+    orcamentoAssistenciaEstudantil,
     ano,
     escopo,
     overridesPorUnidade,

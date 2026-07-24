@@ -6,6 +6,7 @@ import { TabelaDistribuicao, type CalculationRunDetail } from "@/components/dist
 interface DistribuicaoOficialResumo {
   ano: number;
   valorTotal: number;
+  valorAssistenciaEstudantil: number;
   anoReferenciaPnp: number;
   runId: number | null;
   calculadoEm: string | null;
@@ -78,7 +79,8 @@ export function ConsultaPanel() {
                       : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   }`}
                 >
-                  {resumo.ano} — {formatoMoeda.format(resumo.valorTotal)}
+                  {resumo.ano} — Custeio (20RL): {formatoMoeda.format(resumo.valorTotal)} · Assist. Estudantil
+                  (2994): {formatoMoeda.format(resumo.valorAssistenciaEstudantil)}
                   {resumo.runId
                     ? resumo.escopo && ` (${ROTULO_ESCOPO[resumo.escopo]})`
                     : ` (não calculado — usará dados PNP de ${resumo.anoReferenciaPnp})`}

@@ -10,6 +10,7 @@ type Escopo = "CONIF" | "TODAS";
 interface OrcamentoAnual {
   ano: number;
   valorTotal: number;
+  valorAssistenciaEstudantil: number;
   updatedAt: string;
 }
 
@@ -28,6 +29,7 @@ export function OrcamentoAnualPanel() {
   const [orcamentos, setOrcamentos] = useState<OrcamentoAnual[]>([]);
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [valorTotal, setValorTotal] = useState(0);
+  const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [escopoPorAno, setEscopoPorAno] = useState<Record<number, Escopo>>({});
@@ -64,6 +66,7 @@ export function OrcamentoAnualPanel() {
         throw new Error(resultado.errorMessage ?? "Não foi possível salvar o orçamento.");
       }
       setValorTotal(0);
+      setValorAssistenciaEstudantil(0);
       carregarOrcamentos();
     } catch (error) {
       setErro((error as Error).message);
@@ -107,12 +110,24 @@ export function OrcamentoAnualPanel() {
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
         <p className="font-medium">Como funciona a distribuição:</p>
         <p>
-          O valor informado abaixo é o orçamento total (Ação 20RL) de <strong>todo o escopo</strong>{" "}
-          selecionado — ele não é copiado para cada instituição. O Bloco Reitorias (10%) é dividido em
-          partes iguais entre as instituições do escopo. Os Blocos Funcionamento (80%) e Qualidade e
-          Eficiência (10%) são divididos proporcionalmente entre <strong>todos os câmpus de todas as
-          instituições do escopo</strong>, de acordo com os indicadores da PNP de cada um — câmpus
-          maiores ou com melhores indicadores recebem uma fatia maior, não um valor fixo por instituição.
+          Os dois valores informados abaixo são o orçamento total de <strong>todo o escopo</strong> selecionado —
+          eles não são copiados para cada instituição. O Custeio e Funcionamento (Ação 20RL) é separado
+          automaticamente em 80% para o Bloco Funcionamento, 10% para o Bloco Reitorias e 10% para o Bloco
+          Qualidade e Eficiência. Os Blocos Funcionamento e Qualidade e Eficiência são divididos
+          proporcionalmente entre <strong>todos os câmpus de todas as instituições do escopo</strong>, de acordo
+          com os indicadores da PNP de cada um — câmpus maiores ou com melhores indicadores recebem uma fatia
+          maior, não um valor fixo por instituição. O Bloco Reitorias usa essa mesma base (Matrícula Ponderada),
+          só que agregada por instituição — uma instituição maior recebe uma fatia maior dos 10%, não uma
+          divisão igual entre as instituições.
+        </p>
+        <p className="mt-2">
+          A Assistência Estudantil (Ação 2994 / PNAES) é isolada do Custeio 20RL — não é deduzida dele. É rateada
+          primeiro entre as instituições do escopo, proporcionalmente à RF Ponderada de cada uma (soma do
+          percentual de matrículas em cada faixa de Renda Familiar Per Capita × peso da faixa — peso 2,5 para a
+          faixa de menor renda até 0 para RFP&gt;3,5 ou não declarada, escala oficial da Matriz de Distribuição
+          Orçamentária da Rede Federal). Como a PNP só fornece a faixa de RFP por instituição (não por câmpus), o
+          valor de cada instituição é então subdividido entre seus câmpus proporcionalmente à Matrícula Ponderada
+          (mesma base do Bloco Funcionamento).
         </p>
         <p className="mt-2">
           <strong>CONIF</strong>: 38 Institutos Federais + CEFET-MG + CEFET-RJ + Colégio Pedro II (41
@@ -150,7 +165,7 @@ export function OrcamentoAnualPanel() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="valorTotal" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-            Orçamento total do ano (R$) — soma de todo o escopo
+            Orçamento Total de Custeio e Funcionamento (Ação 20RL) [R$]
           </label>
           <CurrencyInput
             id="valorTotal"
@@ -160,6 +175,34 @@ export function OrcamentoAnualPanel() {
             disabled={salvando}
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           />
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Valor global destinado ao Custeio e Funcionamento (Ação 20RL da LOA). A partir deste montante, o
+            sistema separa automaticamente 10% para Reitorias, 10% para Indicadores de Qualidade/Eficiência (IEA,
+            RAP e IAPL calculados via CSV) e 80% para Funcionamento dos Câmpus. A Ação 2994 (Assistência
+            Estudantil) é calculada de forma independente.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="valorAssistenciaEstudantil"
+            className="text-sm font-medium text-neutral-900 dark:text-neutral-100"
+          >
+            Orçamento de Assistência Estudantil (Ação 2994 / PNAES) [R$]
+          </label>
+          <CurrencyInput
+            id="valorAssistenciaEstudantil"
+            name="valorAssistenciaEstudantil"
+            value={valorAssistenciaEstudantil}
+            onChange={setValorAssistenciaEstudantil}
+            disabled={salvando}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Valor exato da Ação 2994 (PNAES na LOA). Isolado do custeio geral e distribuído entre a instituição e
+            seus câmpis, apurado com base nas faixas de Renda Familiar Per Capita (RFP) declaradas pelos
+            estudantes (dados da Plataforma Nilo Peçanha).
+          </p>
         </div>
 
         <button
@@ -191,7 +234,8 @@ export function OrcamentoAnualPanel() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                      {o.ano} — {formatoMoeda.format(o.valorTotal)}
+                      {o.ano} — Custeio (20RL): {formatoMoeda.format(o.valorTotal)} · Assist. Estudantil (2994):{" "}
+                      {formatoMoeda.format(o.valorAssistenciaEstudantil)}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       Atualizado em {formatoData.format(new Date(o.updatedAt))}
