@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `CalculationResult` MODIFY `bloco` ENUM('FUNCIONAMENTO', 'REITORIAS', 'QUALIDADE_EFICIENCIA', 'ASSISTENCIA_ESTUDANTIL') NOT NULL;
+
+-- AlterTable
+ALTER TABLE `OrcamentoAnual` ADD COLUMN `valorAssistenciaEstudantil` DECIMAL(18, 2) NOT NULL DEFAULT 0;

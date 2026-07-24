@@ -5,6 +5,7 @@ import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.co
 export interface DistribuicaoOficialResumo {
   ano: number;
   valorTotal: number;
+  valorAssistenciaEstudantil: number;
   /** Ano da PNP usado (ou a ser usado) como referência para este orçamento: `ano - 2`. */
   anoReferenciaPnp: number;
   runId: number | null;
@@ -33,6 +34,7 @@ export async function GET() {
       return {
         ano: orcamento.ano,
         valorTotal: Number(orcamento.valorTotal),
+        valorAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
         anoReferenciaPnp: orcamento.ano - DEFASAGEM_ANOS_REFERENCIA_PNP,
         runId: run?.id ?? null,
         calculadoEm: run ? run.startedAt.toISOString() : null,

@@ -13,8 +13,8 @@ generator client {
 // de câmpus/curso nos exports reais) — ver Instituicao.sigla/Unidade.nome.
 
 model Instituicao {
-  id                   Int      @id @default(autoincrement())
-  sigla                String   @unique
+  id                   Int             @id @default(autoincrement())
+  sigla                String          @unique
   nome                 String
   organizacaoAcademica String
   regiao               String
@@ -22,18 +22,18 @@ model Instituicao {
   estado               String
   unidades             Unidade[]
   fatos                FatoIndicador[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 }
 
 model Unidade {
-  id            Int      @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   nome          String
   instituicaoId Int
-  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  instituicao   Instituicao     @relation(fields: [instituicaoId], references: [id])
   fatos         FatoIndicador[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -126,6 +126,7 @@ enum BlocoTipo {
   FUNCIONAMENTO
   REITORIAS
   QUALIDADE_EFICIENCIA
+  ASSISTENCIA_ESTUDANTIL
 }
 
 enum CalculationOrigem {
@@ -168,8 +169,11 @@ model CalculationResult {
 /// Orçamento total oficial de um ano — definido pelo administrador, usado como Custeio (Ação 20RL)
 /// no cálculo de todas as instituições com dados PNP disponíveis (ver CalculationRun.origem).
 model OrcamentoAnual {
-  id         Int      @id @default(autoincrement())
-  ano        Int      @unique
-  valorTotal Decimal  @db.Decimal(18, 2)
-  updatedAt  DateTime @updatedAt
+  id                         Int      @id @default(autoincrement())
+  ano                        Int      @unique
+  valorTotal                 Decimal  @db.Decimal(18, 2)
+  /// Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do ano — isolado do Custeio 20RL,
+  /// distribuído pelo Bloco de Assistência Estudantil (ver blocoAssistenciaEstudantil.ts).
+  valorAssistenciaEstudantil Decimal  @default(0) @db.Decimal(18, 2)
+  updatedAt                  DateTime @updatedAt
 }

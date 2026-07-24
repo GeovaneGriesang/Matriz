@@ -19,18 +19,22 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
 
   const ano = Number(formData.get("ano"));
   const valorTotal = Number(formData.get("valorTotal"));
+  const valorAssistenciaEstudantil = Number(formData.get("valorAssistenciaEstudantil"));
 
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };
   }
   if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
-    return { ok: false, errorMessage: "Valor do orçamento deve ser um número positivo." };
+    return { ok: false, errorMessage: "O valor deve ser maior que R$ 0,00." };
+  }
+  if (!Number.isFinite(valorAssistenciaEstudantil) || valorAssistenciaEstudantil <= 0) {
+    return { ok: false, errorMessage: "O valor deve ser maior que R$ 0,00." };
   }
 
   await prisma.orcamentoAnual.upsert({
     where: { ano },
-    create: { ano, valorTotal },
-    update: { valorTotal },
+    create: { ano, valorTotal, valorAssistenciaEstudantil },
+    update: { valorTotal, valorAssistenciaEstudantil },
   });
 
   return { ok: true };
@@ -78,6 +82,7 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     ano: anoReferenciaPnp,
     anoOrcamento: ano,
     orcamentoTotal: Number(orcamento.valorTotal),
+    orcamentoAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
     origem: "OFICIAL",
     escopo,
   });

@@ -59,6 +59,19 @@ interface DetalheQualidadeEficiencia {
   valorTotal: number;
 }
 
+interface DetalheAssistenciaEstudantil {
+  vrInstituicao: number;
+  participacaoPonderadaInstituicao: number;
+  somaParticipacoesRede: number;
+  shareInstituicao: number;
+  valorOrcamentoAssistenciaEstudantil: number;
+  valorInstituicao: number;
+  matriculaPonderadaCampus: number;
+  matriculaPonderadaInstituicao: number;
+  shareDentroInstituicao: number;
+  valorReais: number;
+}
+
 interface DetalheReitoria {
   numeroInstituicoes: number;
   matriculaPonderadaInstituicao: number;
@@ -74,9 +87,11 @@ export interface UnidadeResultado {
   nome: string;
   funcionamentoValorReais: number;
   qualidadeEficienciaValorReais: number;
+  assistenciaEstudantilValorReais: number;
   subtotalReais: number;
   detalheFuncionamento: DetalheFuncionamento | null;
   detalheQualidadeEficiencia: DetalheQualidadeEficiencia | null;
+  detalheAssistenciaEstudantil: DetalheAssistenciaEstudantil | null;
 }
 
 export interface InstituicaoResultado {
@@ -96,6 +111,7 @@ export interface CalculationRunDetail {
     ano: number | null;
     anoOrcamento: number | null;
     orcamentoTotal: number | null;
+    orcamentoAssistenciaEstudantil: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -246,6 +262,56 @@ function MemoriaQualidadeEficiencia({ detalhe }: { detalhe: DetalheQualidadeEfic
   );
 }
 
+function MemoriaAssistenciaEstudantil({ detalhe }: { detalhe: DetalheAssistenciaEstudantil }) {
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      <ItemMemoria>
+        Passo 1 — VR (RF Ponderada) da instituição (Σ % de matrículas em cada faixa de RFP × peso da faixa):{" "}
+        <strong>{formatoNumero.format(detalhe.vrInstituicao)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Passo 2 — Participação = MECHDA (Matrícula Ponderada da instituição) × VR:{" "}
+        <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> ×{" "}
+        <strong>{formatoNumero.format(detalhe.vrInstituicao)}</strong> ={" "}
+        <strong>{formatoNumero.format(detalhe.participacaoPonderadaInstituicao)}</strong> ÷ soma da rede{" "}
+        <strong>{formatoNumero.format(detalhe.somaParticipacoesRede)}</strong> = participação{" "}
+        <strong>{formatoPercentual.format(detalhe.shareInstituicao)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Valor da instituição: {formatoPercentual.format(detalhe.shareInstituicao)} ×{" "}
+        {formatoMoeda.format(detalhe.valorOrcamentoAssistenciaEstudantil)} ={" "}
+        <strong>{formatoMoeda.format(detalhe.valorInstituicao)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Passo 3 — a PNP só fornece a faixa de RFP por instituição, não por câmpus: o valor acima é subdividido
+        entre os câmpus pela Matrícula Ponderada (mesma base do passo 2): Matrícula Ponderada do câmpus{" "}
+        <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> ÷ total da instituição{" "}
+        <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> = participação{" "}
+        <strong>{formatoPercentual.format(detalhe.shareDentroInstituicao)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Valor do câmpus: {formatoPercentual.format(detalhe.shareDentroInstituicao)} ×{" "}
+        {formatoMoeda.format(detalhe.valorInstituicao)} = <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+      </ItemMemoria>
+    </ul>
+  );
+}
+
+/**
+ * Transparência pedagógica (plataforma tem fins didáticos): explicita que a subdivisão por câmpus
+ * da Ação 2994 é uma aproximação, já que a PNP só entrega a faixa de RFP por instituição.
+ */
+function NotaMetodologicaAssistenciaEstudantil() {
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      💡 <strong>Nota Metodológica sobre a Distribuição por Câmpus:</strong> Os dados oficiais de Renda Familiar Per
+      Capita (RFP) extraídos da Plataforma Nilo Peçanha (PNP) são disponibilizados consolidados no nível
+      Institucional. Para fins didáticos e de simulação, a verba apurada da Ação 2994 para a Instituição é
+      distribuída entre seus câmpus proporcionalmente à Matrícula Ponderada de cada unidade.
+    </div>
+  );
+}
+
 function MemoriaReitoria({ detalhe }: { detalhe: DetalheReitoria }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
@@ -331,7 +397,10 @@ export function TabelaDistribuicao({
         </h2>
         {detalhe.run.orcamentoTotal !== null && (
           <span className="text-sm text-neutral-500 dark:text-neutral-400">
-            Orçamento: {formatoMoeda.format(detalhe.run.orcamentoTotal)}
+            Custeio (20RL): {formatoMoeda.format(detalhe.run.orcamentoTotal)}
+            {detalhe.run.orcamentoAssistenciaEstudantil ? (
+              <> · Assist. Estudantil (2994): {formatoMoeda.format(detalhe.run.orcamentoAssistenciaEstudantil)}</>
+            ) : null}
           </span>
         )}
       </div>
@@ -341,6 +410,8 @@ export function TabelaDistribuicao({
             ? `Calculado com base nos dados da PNP de ${detalhe.run.ano ?? "?"} (referência oficial: dois anos antes do orçamento).`
             : `Simulação executada com os dados da PNP de ${detalhe.run.ano ?? "?"}.`)}
       </p>
+
+      {Boolean(detalhe.run.orcamentoAssistenciaEstudantil) && <NotaMetodologicaAssistenciaEstudantil />}
 
       {instituicoesComCampi.length > 0 && (
         <button
@@ -368,6 +439,9 @@ export function TabelaDistribuicao({
               </th>
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
                 Qualidade e Eficiência
+              </th>
+              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                Assistência Estudantil
               </th>
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 dark:bg-neutral-950" />
             </tr>
@@ -407,6 +481,7 @@ export function TabelaDistribuicao({
                     <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.reitoriaValorReais)}</td>
                     <td className="py-2 pr-4 text-right">—</td>
                     <td className="py-2 pr-4 text-right">—</td>
+                    <td className="py-2 pr-4 text-right">—</td>
                     <td className="py-2 pr-4 text-right">
                       {instituicao.detalheReitoria && (
                         <BotaoMemoria
@@ -418,7 +493,7 @@ export function TabelaDistribuicao({
                   </tr>
                   {instituicaoAberta && instituicao.detalheReitoria && (
                     <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                      <td colSpan={6} className="px-4 py-3">
+                      <td colSpan={7} className="px-4 py-3">
                         <MemoriaReitoria detalhe={instituicao.detalheReitoria} />
                       </td>
                     </tr>
@@ -441,7 +516,12 @@ export function TabelaDistribuicao({
                               {formatoMoeda.format(unidade.qualidadeEficienciaValorReais)}
                             </td>
                             <td className="py-1.5 pr-4 text-right">
-                              {(unidade.detalheFuncionamento || unidade.detalheQualidadeEficiencia) && (
+                              {formatoMoeda.format(unidade.assistenciaEstudantilValorReais)}
+                            </td>
+                            <td className="py-1.5 pr-4 text-right">
+                              {(unidade.detalheFuncionamento ||
+                                unidade.detalheQualidadeEficiencia ||
+                                unidade.detalheAssistenciaEstudantil) && (
                                 <BotaoMemoria
                                   aberto={unidadeAberta}
                                   onClick={() => alternar(unidadesAbertas, setUnidadesAbertas, unidade.id)}
@@ -451,7 +531,7 @@ export function TabelaDistribuicao({
                           </tr>
                           {unidadeAberta && (
                             <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                              <td colSpan={6} className="px-4 py-3">
+                              <td colSpan={7} className="px-4 py-3">
                                 <div className="flex flex-col gap-4">
                                   {unidade.detalheFuncionamento && (
                                     <div>
@@ -469,6 +549,14 @@ export function TabelaDistribuicao({
                                       <MemoriaQualidadeEficiencia detalhe={unidade.detalheQualidadeEficiencia} />
                                     </div>
                                   )}
+                                  {unidade.detalheAssistenciaEstudantil && (
+                                    <div>
+                                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                                        Bloco Assistência Estudantil
+                                      </p>
+                                      <MemoriaAssistenciaEstudantil detalhe={unidade.detalheAssistenciaEstudantil} />
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -484,6 +572,7 @@ export function TabelaDistribuicao({
             <tr className="font-semibold text-neutral-900 dark:text-neutral-100">
               <td className="pt-3 pr-4">Total geral</td>
               <td className="pt-3 pr-4 text-right">{formatoMoeda.format(detalhe.totalGeralReais)}</td>
+              <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />

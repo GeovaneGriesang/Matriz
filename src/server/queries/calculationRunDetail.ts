@@ -6,11 +6,14 @@ export interface UnidadeResultado {
   nome: string;
   funcionamentoValorReais: number;
   qualidadeEficienciaValorReais: number;
+  assistenciaEstudantilValorReais: number;
   subtotalReais: number;
   /** "Memória de cálculo" do Bloco Funcionamento para este câmpus — formato definido em runCalculation.ts. */
   detalheFuncionamento: unknown;
   /** "Memória de cálculo" do Bloco Qualidade e Eficiência (IEA/RAP/IAPL) para este câmpus. */
   detalheQualidadeEficiencia: unknown;
+  /** "Memória de cálculo" do Bloco de Assistência Estudantil (Ação 2994) para este câmpus. */
+  detalheAssistenciaEstudantil: unknown;
 }
 
 export interface InstituicaoResultado {
@@ -33,6 +36,8 @@ export interface CalculationRunDetail {
     /** Ano do orçamento oficial (só preenchido para `origem: "OFICIAL"`); `null` em simulações. */
     anoOrcamento: number | null;
     orcamentoTotal: number | null;
+    /** Orçamento da Ação 2994 (Assistência Estudantil / PNAES), `null` quando o run não informou nenhum. */
+    orcamentoAssistenciaEstudantil: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -50,8 +55,10 @@ async function montarInstituicoes(
   interface ValoresUnidade {
     funcionamento: number;
     qualidadeEficiencia: number;
+    assistenciaEstudantil: number;
     detalheFuncionamento: unknown;
     detalheQualidadeEficiencia: unknown;
+    detalheAssistenciaEstudantil: unknown;
   }
 
   const unidadeValores = new Map<number, ValoresUnidade>();
@@ -74,8 +81,10 @@ async function montarInstituicoes(
     const atual = unidadeValores.get(resultado.campusId) ?? {
       funcionamento: 0,
       qualidadeEficiencia: 0,
+      assistenciaEstudantil: 0,
       detalheFuncionamento: null,
       detalheQualidadeEficiencia: null,
+      detalheAssistenciaEstudantil: null,
     };
     if (resultado.bloco === "FUNCIONAMENTO") {
       atual.funcionamento += valor;
@@ -84,6 +93,10 @@ async function montarInstituicoes(
     if (resultado.bloco === "QUALIDADE_EFICIENCIA") {
       atual.qualidadeEficiencia += valor;
       atual.detalheQualidadeEficiencia = resultado.detalhe;
+    }
+    if (resultado.bloco === "ASSISTENCIA_ESTUDANTIL") {
+      atual.assistenciaEstudantil += valor;
+      atual.detalheAssistenciaEstudantil = resultado.detalhe;
     }
     unidadeValores.set(resultado.campusId, atual);
   }
@@ -122,8 +135,10 @@ async function montarInstituicoes(
     const valores = unidadeValores.get(unidade.id) ?? {
       funcionamento: 0,
       qualidadeEficiencia: 0,
+      assistenciaEstudantil: 0,
       detalheFuncionamento: null,
       detalheQualidadeEficiencia: null,
+      detalheAssistenciaEstudantil: null,
     };
     const instituicao = obterOuCriarInstituicao(
       unidade.instituicao.id,
@@ -135,9 +150,11 @@ async function montarInstituicoes(
       nome: unidade.nome,
       funcionamentoValorReais: valores.funcionamento,
       qualidadeEficienciaValorReais: valores.qualidadeEficiencia,
-      subtotalReais: valores.funcionamento + valores.qualidadeEficiencia,
+      assistenciaEstudantilValorReais: valores.assistenciaEstudantil,
+      subtotalReais: valores.funcionamento + valores.qualidadeEficiencia + valores.assistenciaEstudantil,
       detalheFuncionamento: valores.detalheFuncionamento,
       detalheQualidadeEficiencia: valores.detalheQualidadeEficiencia,
+      detalheAssistenciaEstudantil: valores.detalheAssistenciaEstudantil,
     });
   }
 
@@ -166,7 +183,12 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
   });
   if (!run) return null;
 
-  const snapshot = run.parametersSnapshot as { ano?: number; anoOrcamento?: number; orcamentoTotal?: number } | null;
+  const snapshot = run.parametersSnapshot as {
+    ano?: number;
+    anoOrcamento?: number;
+    orcamentoTotal?: number;
+    orcamentoAssistenciaEstudantil?: number;
+  } | null;
   const { instituicoes, totalGeralReais } = await montarInstituicoes(run.results);
 
   return {
@@ -176,6 +198,8 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       ano: snapshot?.ano ?? null,
       anoOrcamento: snapshot?.anoOrcamento ?? null,
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
+      orcamentoAssistenciaEstudantil:
+        snapshot?.orcamentoAssistenciaEstudantil !== undefined ? snapshot.orcamentoAssistenciaEstudantil : null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
       errorMessage: run.errorMessage,

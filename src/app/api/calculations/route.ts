@@ -7,6 +7,7 @@ export interface CalculationRunSummary {
   origem: string;
   ano: number | null;
   orcamentoTotal: number | null;
+  orcamentoAssistenciaEstudantil: number | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -19,13 +20,18 @@ export async function GET() {
   });
 
   const resumo: CalculationRunSummary[] = runs.map((run) => {
-    const snapshot = run.parametersSnapshot as { ano?: number; orcamentoTotal?: number } | null;
+    const snapshot = run.parametersSnapshot as {
+      ano?: number;
+      orcamentoTotal?: number;
+      orcamentoAssistenciaEstudantil?: number;
+    } | null;
     return {
       id: run.id,
       status: run.status,
       origem: run.origem,
       ano: snapshot?.ano ?? null,
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
+      orcamentoAssistenciaEstudantil: snapshot?.orcamentoAssistenciaEstudantil ?? null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
     };
