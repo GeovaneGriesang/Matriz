@@ -44,6 +44,9 @@ export async function POST(request: Request) {
     orcamentoAssistenciaEstudantilBruto === undefined || orcamentoAssistenciaEstudantilBruto === null
       ? 0
       : Number(orcamentoAssistenciaEstudantilBruto);
+  const percentualAnuidadeBruto = body?.percentualAnuidade;
+  const percentualAnuidade =
+    percentualAnuidadeBruto === undefined || percentualAnuidadeBruto === null ? 0 : Number(percentualAnuidadeBruto);
 
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
     return NextResponse.json({ error: "O valor deve ser maior que R$ 0,00." }, { status: 400 });
@@ -54,6 +57,12 @@ export async function POST(request: Request) {
   if (!Number.isFinite(orcamentoAssistenciaEstudantil) || orcamentoAssistenciaEstudantil < 0) {
     return NextResponse.json(
       { error: "orcamentoAssistenciaEstudantil deve ser um número maior ou igual a zero." },
+      { status: 400 },
+    );
+  }
+  if (!Number.isFinite(percentualAnuidade) || percentualAnuidade < 0 || percentualAnuidade > 100) {
+    return NextResponse.json(
+      { error: "percentualAnuidade deve ser um número entre 0 e 100." },
       { status: 400 },
     );
   }
@@ -85,6 +94,7 @@ export async function POST(request: Request) {
     instituicaoIds: instituicoes.map((i) => i.id),
     orcamentoTotal,
     orcamentoAssistenciaEstudantil,
+    percentualAnuidade,
     ano,
     escopo,
     overridesPorUnidade,

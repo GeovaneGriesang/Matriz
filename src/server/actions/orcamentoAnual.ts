@@ -20,6 +20,9 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   const ano = Number(formData.get("ano"));
   const valorTotal = Number(formData.get("valorTotal"));
   const valorAssistenciaEstudantil = Number(formData.get("valorAssistenciaEstudantil"));
+  const percentualAnuidadeBruto = formData.get("percentualAnuidade");
+  const percentualAnuidade =
+    percentualAnuidadeBruto === null || percentualAnuidadeBruto === "" ? 0 : Number(percentualAnuidadeBruto);
 
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };
@@ -30,11 +33,14 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   if (!Number.isFinite(valorAssistenciaEstudantil) || valorAssistenciaEstudantil <= 0) {
     return { ok: false, errorMessage: "O valor deve ser maior que R$ 0,00." };
   }
+  if (!Number.isFinite(percentualAnuidade) || percentualAnuidade < 0 || percentualAnuidade > 100) {
+    return { ok: false, errorMessage: "O percentual de anuidade deve estar entre 0 e 100." };
+  }
 
   await prisma.orcamentoAnual.upsert({
     where: { ano },
-    create: { ano, valorTotal, valorAssistenciaEstudantil },
-    update: { valorTotal, valorAssistenciaEstudantil },
+    create: { ano, valorTotal, valorAssistenciaEstudantil, percentualAnuidade },
+    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade },
   });
 
   return { ok: true };
@@ -83,6 +89,7 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     anoOrcamento: ano,
     orcamentoTotal: Number(orcamento.valorTotal),
     orcamentoAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
+    percentualAnuidade: Number(orcamento.percentualAnuidade),
     origem: "OFICIAL",
     escopo,
   });
