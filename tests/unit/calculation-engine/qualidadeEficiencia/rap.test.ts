@@ -19,12 +19,12 @@ describe("bucketizeRap", () => {
 });
 
 describe("calcularBlocoRap", () => {
-  it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco", () => {
+  it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco (1 câmpus por instituição)", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, razaoDocenteAluno: 20.5 }, // MEDIA -> peso 2.0
-        { campusId: 2, razaoDocenteAluno: 19 }, // BAIXA -> peso 1.0
+        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 20.5 }, // MEDIA -> peso 2.0
+        { campusId: 2, instituicaoId: 20, razaoDocenteAluno: 19 }, // BAIXA -> peso 1.0
       ],
       orcamentoTotal,
     );
@@ -34,6 +34,23 @@ describe("calcularBlocoRap", () => {
 
     const somaValores = resultado.reduce((total, r) => total + r.valorReais, 0);
     expect(somaValores).toBeCloseTo(PESO_RAP_SUBBLOCO * orcamentoTotal, 6);
+  });
+
+  it("soma o RAP Ponderado de todos os câmpus da mesma instituição antes de calcular o share", () => {
+    const resultado = calcularBlocoRap(
+      [
+        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 22 }, // MUITO_ALTA -> peso 2.5 -> ponderado 55
+        { campusId: 2, instituicaoId: 10, razaoDocenteAluno: 22 }, // mesma instituição -> +55
+        { campusId: 3, instituicaoId: 20, razaoDocenteAluno: 22 }, // instituição diferente, só 1 câmpus -> 55
+      ],
+      1_000_000,
+    );
+
+    expect(resultado).toHaveLength(2);
+    const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
+    const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
+    expect(inst10.ponderadoInstituicao).toBeCloseTo(inst20.ponderadoInstituicao * 2, 6);
+    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 2, 6);
   });
 
   it("retorna lista vazia quando não há câmpus", () => {

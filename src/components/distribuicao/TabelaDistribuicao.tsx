@@ -12,10 +12,8 @@ interface DetalheFuncionamento {
 }
 
 interface DetalheIea {
-  valorIea: number | null;
-  band: string;
-  peso: number;
-  ponderado: number;
+  /** IEA/RAP/IAPL só são apurados por instituição na Matriz CONIF — este é o ponderado somado dos câmpus. */
+  ponderadoInstituicao: number;
   somaPonderadosRede: number;
   share: number;
   pesoSubBloco: number;
@@ -24,10 +22,7 @@ interface DetalheIea {
 }
 
 interface DetalheRap {
-  razaoDocenteAluno: number;
-  band: string;
-  peso: number;
-  ponderado: number;
+  ponderadoInstituicao: number;
   somaPonderadosRede: number;
   share: number;
   pesoSubBloco: number;
@@ -36,7 +31,7 @@ interface DetalheRap {
 }
 
 interface DetalheIaplCategoria {
-  matriculasCampus: number;
+  matriculasInstituicao: number;
   totalMatriculasRede: number;
   share: number;
   valorCategoriaRede: number;
@@ -61,6 +56,8 @@ interface DetalheQualidadeEficiencia {
 
 interface DetalheAssistenciaEstudantil {
   vrInstituicao: number;
+  /** MECHDA institucional = Matrícula Ponderada Presencial + (Matrícula Ponderada EAD ÷ 4). */
+  mechdaInstituicao: number;
   participacaoPonderadaInstituicao: number;
   somaParticipacoesRede: number;
   shareInstituicao: number;
@@ -86,11 +83,9 @@ export interface UnidadeResultado {
   id: number;
   nome: string;
   funcionamentoValorReais: number;
-  qualidadeEficienciaValorReais: number;
   assistenciaEstudantilValorReais: number;
   subtotalReais: number;
   detalheFuncionamento: DetalheFuncionamento | null;
-  detalheQualidadeEficiencia: DetalheQualidadeEficiencia | null;
   detalheAssistenciaEstudantil: DetalheAssistenciaEstudantil | null;
 }
 
@@ -99,9 +94,11 @@ export interface InstituicaoResultado {
   sigla: string;
   nome: string;
   reitoriaValorReais: number;
+  qualidadeEficienciaValorReais: number;
   unidades: UnidadeResultado[];
   subtotalReais: number;
   detalheReitoria: DetalheReitoria | null;
+  detalheQualidadeEficiencia: DetalheQualidadeEficiencia | null;
 }
 
 export interface CalculationRunDetail {
@@ -123,19 +120,6 @@ export interface CalculationRunDetail {
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoPercentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 });
 const formatoNumero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
-
-const NOME_FAIXA: Record<string, string> = {
-  MUITO_BAIXO: "muito baixa",
-  BAIXO: "baixa",
-  MEDIO: "média",
-  ALTO: "alta",
-  MUITO_ALTO: "muito alta",
-  MUITO_BAIXA: "muito baixa",
-  BAIXA: "baixa",
-  MEDIA: "média",
-  ALTA: "alta",
-  MUITO_ALTA: "muito alta",
-};
 
 function ItemMemoria({ children }: { children: React.ReactNode }) {
   return <li className="text-neutral-700 dark:text-neutral-300">{children}</li>;
@@ -165,16 +149,12 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        IEA do câmpus: {detalhe.valorIea !== null ? formatoPercentual.format(detalhe.valorIea) : "—"} → faixa{" "}
-        <strong>{NOME_FAIXA[detalhe.band] ?? detalhe.band}</strong> (peso {formatoNumero.format(detalhe.peso)})
+        IEA Ponderado (soma dos câmpus da instituição, IEA × peso da faixa de cada um):{" "}
+        <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        IEA Ponderado = IEA × peso = {detalhe.valorIea !== null ? formatoPercentual.format(detalhe.valorIea) : "—"} ×{" "}
-        {formatoNumero.format(detalhe.peso)} = <strong>{formatoNumero.format(detalhe.ponderado)}</strong>
-      </ItemMemoria>
-      <ItemMemoria>
-        IEA Equalizado = ponderado do câmpus {formatoNumero.format(detalhe.ponderado)} ÷ soma de ponderados da rede{" "}
-        {formatoNumero.format(detalhe.somaPonderadosRede)} = participação{" "}
+        IEA Equalizado = ponderado da instituição {formatoNumero.format(detalhe.ponderadoInstituicao)} ÷ soma de
+        ponderados da rede {formatoNumero.format(detalhe.somaPonderadosRede)} = participação{" "}
         <strong>{formatoPercentual.format(detalhe.share)}</strong>
       </ItemMemoria>
       <ItemMemoria>
@@ -182,7 +162,7 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
         {formatoMoeda.format(detalhe.valorSubBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
-        Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorSubBlocoRede)}{" "}
+        Valor da instituição: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorSubBlocoRede)}{" "}
         = <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
       </ItemMemoria>
     </ul>
@@ -193,16 +173,12 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        Razão docente/aluno do câmpus: <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> → faixa{" "}
-        <strong>{NOME_FAIXA[detalhe.band] ?? detalhe.band}</strong> (peso {formatoNumero.format(detalhe.peso)})
+        RAP Ponderado (soma dos câmpus da instituição, razão docente/aluno × peso da faixa de cada um):{" "}
+        <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        RAP Ponderado = RAP × peso = {formatoNumero.format(detalhe.razaoDocenteAluno)} ×{" "}
-        {formatoNumero.format(detalhe.peso)} = <strong>{formatoNumero.format(detalhe.ponderado)}</strong>
-      </ItemMemoria>
-      <ItemMemoria>
-        RAP Equalizado = ponderado do câmpus {formatoNumero.format(detalhe.ponderado)} ÷ soma de ponderados da rede{" "}
-        {formatoNumero.format(detalhe.somaPonderadosRede)} = participação{" "}
+        RAP Equalizado = ponderado da instituição {formatoNumero.format(detalhe.ponderadoInstituicao)} ÷ soma de
+        ponderados da rede {formatoNumero.format(detalhe.somaPonderadosRede)} = participação{" "}
         <strong>{formatoPercentual.format(detalhe.share)}</strong>
       </ItemMemoria>
       <ItemMemoria>
@@ -210,7 +186,7 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
         {formatoMoeda.format(detalhe.valorSubBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
-        Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorSubBlocoRede)}{" "}
+        Valor da instituição: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorSubBlocoRede)}{" "}
         = <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
       </ItemMemoria>
     </ul>
@@ -220,8 +196,8 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
 function MemoriaIaplCategoria({ nome, detalhe }: { nome: string; detalhe: DetalheIaplCategoria }) {
   return (
     <ItemMemoria>
-      <strong>{nome}</strong>: matrículas do câmpus {formatoNumero.format(detalhe.matriculasCampus)} ÷ total da rede{" "}
-      {formatoNumero.format(detalhe.totalMatriculasRede)} = {formatoPercentual.format(detalhe.share)} ×{" "}
+      <strong>{nome}</strong>: matrículas da instituição {formatoNumero.format(detalhe.matriculasInstituicao)} ÷
+      total da rede {formatoNumero.format(detalhe.totalMatriculasRede)} = {formatoPercentual.format(detalhe.share)} ×{" "}
       {formatoMoeda.format(detalhe.valorCategoriaRede)} ={" "}
       <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
     </ItemMemoria>
@@ -270,8 +246,8 @@ function MemoriaAssistenciaEstudantil({ detalhe }: { detalhe: DetalheAssistencia
         <strong>{formatoNumero.format(detalhe.vrInstituicao)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        Passo 2 — Participação = MECHDA (Matrícula Ponderada da instituição) × VR:{" "}
-        <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> ×{" "}
+        Passo 2 — Participação = MECHDA × VR, onde MECHDA = Matrícula Ponderada Presencial + (Matrícula Ponderada EAD
+        ÷ 4) = <strong>{formatoNumero.format(detalhe.mechdaInstituicao)}</strong> ×{" "}
         <strong>{formatoNumero.format(detalhe.vrInstituicao)}</strong> ={" "}
         <strong>{formatoNumero.format(detalhe.participacaoPonderadaInstituicao)}</strong> ÷ soma da rede{" "}
         <strong>{formatoNumero.format(detalhe.somaParticipacoesRede)}</strong> = participação{" "}
@@ -284,7 +260,8 @@ function MemoriaAssistenciaEstudantil({ detalhe }: { detalhe: DetalheAssistencia
       </ItemMemoria>
       <ItemMemoria>
         Passo 3 — a PNP só fornece a faixa de RFP por instituição, não por câmpus: o valor acima é subdividido
-        entre os câmpus pela Matrícula Ponderada (mesma base do passo 2): Matrícula Ponderada do câmpus{" "}
+        entre os câmpus pela Matrícula Ponderada total (Presencial + EAD, sem o desconto de 1/4 do passo 2):
+        Matrícula Ponderada do câmpus{" "}
         <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> ÷ total da instituição{" "}
         <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> = participação{" "}
         <strong>{formatoPercentual.format(detalhe.shareDentroInstituicao)}</strong>
@@ -480,10 +457,12 @@ export function TabelaDistribuicao({
                     <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.subtotalReais)}</td>
                     <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.reitoriaValorReais)}</td>
                     <td className="py-2 pr-4 text-right">—</td>
-                    <td className="py-2 pr-4 text-right">—</td>
+                    <td className="py-2 pr-4 text-right">
+                      {formatoMoeda.format(instituicao.qualidadeEficienciaValorReais)}
+                    </td>
                     <td className="py-2 pr-4 text-right">—</td>
                     <td className="py-2 pr-4 text-right">
-                      {instituicao.detalheReitoria && (
+                      {(instituicao.detalheReitoria || instituicao.detalheQualidadeEficiencia) && (
                         <BotaoMemoria
                           aberto={instituicaoAberta}
                           onClick={() => alternar(instituicoesAbertas, setInstituicoesAbertas, instituicao.id)}
@@ -491,10 +470,25 @@ export function TabelaDistribuicao({
                       )}
                     </td>
                   </tr>
-                  {instituicaoAberta && instituicao.detalheReitoria && (
+                  {instituicaoAberta && (instituicao.detalheReitoria || instituicao.detalheQualidadeEficiencia) && (
                     <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
                       <td colSpan={7} className="px-4 py-3">
-                        <MemoriaReitoria detalhe={instituicao.detalheReitoria} />
+                        <div className="flex flex-col gap-4">
+                          {instituicao.detalheReitoria && (
+                            <div>
+                              <p className="font-medium text-neutral-900 dark:text-neutral-100">Bloco Reitorias</p>
+                              <MemoriaReitoria detalhe={instituicao.detalheReitoria} />
+                            </div>
+                          )}
+                          {instituicao.detalheQualidadeEficiencia && (
+                            <div>
+                              <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                                Bloco Qualidade e Eficiência
+                              </p>
+                              <MemoriaQualidadeEficiencia detalhe={instituicao.detalheQualidadeEficiencia} />
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -512,16 +506,12 @@ export function TabelaDistribuicao({
                             <td className="py-1.5 pr-4 text-right">
                               {formatoMoeda.format(unidade.funcionamentoValorReais)}
                             </td>
-                            <td className="py-1.5 pr-4 text-right">
-                              {formatoMoeda.format(unidade.qualidadeEficienciaValorReais)}
-                            </td>
+                            <td className="py-1.5 pr-4 text-right">—</td>
                             <td className="py-1.5 pr-4 text-right">
                               {formatoMoeda.format(unidade.assistenciaEstudantilValorReais)}
                             </td>
                             <td className="py-1.5 pr-4 text-right">
-                              {(unidade.detalheFuncionamento ||
-                                unidade.detalheQualidadeEficiencia ||
-                                unidade.detalheAssistenciaEstudantil) && (
+                              {(unidade.detalheFuncionamento || unidade.detalheAssistenciaEstudantil) && (
                                 <BotaoMemoria
                                   aberto={unidadeAberta}
                                   onClick={() => alternar(unidadesAbertas, setUnidadesAbertas, unidade.id)}
@@ -539,14 +529,6 @@ export function TabelaDistribuicao({
                                         Bloco Funcionamento
                                       </p>
                                       <MemoriaFuncionamento detalhe={unidade.detalheFuncionamento} />
-                                    </div>
-                                  )}
-                                  {unidade.detalheQualidadeEficiencia && (
-                                    <div>
-                                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
-                                        Bloco Qualidade e Eficiência
-                                      </p>
-                                      <MemoriaQualidadeEficiencia detalhe={unidade.detalheQualidadeEficiencia} />
                                     </div>
                                   )}
                                   {unidade.detalheAssistenciaEstudantil && (
