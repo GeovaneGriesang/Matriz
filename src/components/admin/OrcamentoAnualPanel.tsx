@@ -11,6 +11,7 @@ interface OrcamentoAnual {
   ano: number;
   valorTotal: number;
   valorAssistenciaEstudantil: number;
+  percentualAnuidade: number;
   updatedAt: string;
 }
 
@@ -30,6 +31,7 @@ export function OrcamentoAnualPanel() {
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [valorTotal, setValorTotal] = useState(0);
   const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
+  const [percentualAnuidade, setPercentualAnuidade] = useState("0");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [escopoPorAno, setEscopoPorAno] = useState<Record<number, Escopo>>({});
@@ -67,6 +69,7 @@ export function OrcamentoAnualPanel() {
       }
       setValorTotal(0);
       setValorAssistenciaEstudantil(0);
+      setPercentualAnuidade("0");
       carregarOrcamentos();
     } catch (error) {
       setErro((error as Error).message);
@@ -205,6 +208,30 @@ export function OrcamentoAnualPanel() {
           </p>
         </div>
 
+        <div className="flex flex-col gap-1">
+          <label htmlFor="percentualAnuidade" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            Percentual de Anuidade CONIF [%]
+          </label>
+          <input
+            id="percentualAnuidade"
+            name="percentualAnuidade"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            value={percentualAnuidade}
+            onChange={(e) => setPercentualAnuidade(e.target.value)}
+            disabled={salvando}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Percentual único para toda a rede, calculado sobre o Custeio (20RL) já distribuído de cada instituição
+            (Funcionamento + Reitorias + Qualidade e Eficiência). Valor informativo — não é deduzido do que a
+            instituição recebe, só exibido como referência do que ela deve repassar ao CONIF. Deixe em 0% para não
+            calcular anuidade.
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={salvando}
@@ -236,6 +263,7 @@ export function OrcamentoAnualPanel() {
                     <span className="font-medium text-neutral-900 dark:text-neutral-100">
                       {o.ano} — Custeio (20RL): {formatoMoeda.format(o.valorTotal)} · Assist. Estudantil (2994):{" "}
                       {formatoMoeda.format(o.valorAssistenciaEstudantil)}
+                      {o.percentualAnuidade ? <> · Anuidade CONIF: {o.percentualAnuidade}%</> : null}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       Atualizado em {formatoData.format(new Date(o.updatedAt))}

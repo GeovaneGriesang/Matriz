@@ -127,6 +127,7 @@ enum BlocoTipo {
   REITORIAS
   QUALIDADE_EFICIENCIA
   ASSISTENCIA_ESTUDANTIL
+  ANUIDADE_CONIF
 }
 
 enum CalculationOrigem {
@@ -175,5 +176,8 @@ model OrcamentoAnual {
   /// Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do ano — isolado do Custeio 20RL,
   /// distribuído pelo Bloco de Assistência Estudantil (ver blocoAssistenciaEstudantil.ts).
   valorAssistenciaEstudantil Decimal  @default(0) @db.Decimal(18, 2)
+  /// Percentual (0-100) da anuidade CONIF, calculado sobre o Custeio (20RL) já distribuído de cada
+  /// instituição — informativo, não deduzido do valor que a instituição recebe (ver anuidadeConif.ts).
+  percentualAnuidade         Decimal  @default(0) @db.Decimal(7, 4)
   updatedAt                  DateTime @updatedAt
 }

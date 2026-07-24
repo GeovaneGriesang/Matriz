@@ -20,12 +20,16 @@ export interface InstituicaoResultado {
   reitoriaValorReais: number;
   /** IEA/RAP/IAPL só são apurados em nível de instituição na Matriz CONIF, não por câmpus. */
   qualidadeEficienciaValorReais: number;
+  /** Anuidade CONIF (percentual sobre o Custeio já distribuído) — informativa, não deduzida do subtotal abaixo. */
+  anuidadeConifValorReais: number;
   unidades: UnidadeResultado[];
   subtotalReais: number;
   /** "Memória de cálculo" do Bloco Reitorias para esta instituição. */
   detalheReitoria: unknown;
   /** "Memória de cálculo" do Bloco Qualidade e Eficiência (IEA/RAP/IAPL) para esta instituição. */
   detalheQualidadeEficiencia: unknown;
+  /** "Memória de cálculo" da Anuidade CONIF para esta instituição. */
+  detalheAnuidadeConif: unknown;
 }
 
 export interface CalculationRunDetail {
@@ -39,6 +43,8 @@ export interface CalculationRunDetail {
     orcamentoTotal: number | null;
     /** Orçamento da Ação 2994 (Assistência Estudantil / PNAES), `null` quando o run não informou nenhum. */
     orcamentoAssistenciaEstudantil: number | null;
+    /** Percentual (0-100) da anuidade CONIF usado neste run, `null` quando não informado. */
+    percentualAnuidade: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -65,23 +71,32 @@ async function montarInstituicoes(
   const detalheReitoriaPorInstituicao = new Map<number, unknown>();
   const qualidadeEficienciaPorInstituicao = new Map<number, number>();
   const detalheQualidadeEficienciaPorInstituicao = new Map<number, unknown>();
+  const anuidadeConifPorInstituicao = new Map<number, number>();
+  const detalheAnuidadeConifPorInstituicao = new Map<number, unknown>();
 
   for (const resultado of results) {
     const valor = Number(resultado.valor);
 
-    if (resultado.bloco === "REITORIAS" || resultado.bloco === "QUALIDADE_EFICIENCIA") {
+    if (
+      resultado.bloco === "REITORIAS" ||
+      resultado.bloco === "QUALIDADE_EFICIENCIA" ||
+      resultado.bloco === "ANUIDADE_CONIF"
+    ) {
       const match = resultado.metrica.match(REGEX_AUTARQUIA);
       if (!match) continue;
       const instituicaoId = Number(match[1]);
       if (resultado.bloco === "REITORIAS") {
         reitoriaPorInstituicao.set(instituicaoId, (reitoriaPorInstituicao.get(instituicaoId) ?? 0) + valor);
         detalheReitoriaPorInstituicao.set(instituicaoId, resultado.detalhe);
-      } else {
+      } else if (resultado.bloco === "QUALIDADE_EFICIENCIA") {
         qualidadeEficienciaPorInstituicao.set(
           instituicaoId,
           (qualidadeEficienciaPorInstituicao.get(instituicaoId) ?? 0) + valor,
         );
         detalheQualidadeEficienciaPorInstituicao.set(instituicaoId, resultado.detalhe);
+      } else {
+        anuidadeConifPorInstituicao.set(instituicaoId, (anuidadeConifPorInstituicao.get(instituicaoId) ?? 0) + valor);
+        detalheAnuidadeConifPorInstituicao.set(instituicaoId, resultado.detalhe);
       }
       continue;
     }
@@ -112,6 +127,7 @@ async function montarInstituicoes(
   const idsComSoInstituicao = new Set([
     ...reitoriaPorInstituicao.keys(),
     ...qualidadeEficienciaPorInstituicao.keys(),
+    ...anuidadeConifPorInstituicao.keys(),
   ]);
   const instituicoesComSoInstituicaoSemUnidade = Array.from(idsComSoInstituicao).filter(
     (id) => !unidades.some((u) => u.instituicaoId === id),
@@ -131,10 +147,12 @@ async function montarInstituicoes(
       nome,
       reitoriaValorReais: reitoriaPorInstituicao.get(id) ?? 0,
       qualidadeEficienciaValorReais: qualidadeEficienciaPorInstituicao.get(id) ?? 0,
+      anuidadeConifValorReais: anuidadeConifPorInstituicao.get(id) ?? 0,
       unidades: [],
       subtotalReais: 0,
       detalheReitoria: detalheReitoriaPorInstituicao.get(id) ?? null,
       detalheQualidadeEficiencia: detalheQualidadeEficienciaPorInstituicao.get(id) ?? null,
+      detalheAnuidadeConif: detalheAnuidadeConifPorInstituicao.get(id) ?? null,
     };
     instituicoesPorId.set(id, nova);
     return nova;
@@ -195,6 +213,7 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
     anoOrcamento?: number;
     orcamentoTotal?: number;
     orcamentoAssistenciaEstudantil?: number;
+    percentualAnuidade?: number;
   } | null;
   const { instituicoes, totalGeralReais } = await montarInstituicoes(run.results);
 
@@ -207,6 +226,7 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
       orcamentoAssistenciaEstudantil:
         snapshot?.orcamentoAssistenciaEstudantil !== undefined ? snapshot.orcamentoAssistenciaEstudantil : null,
+      percentualAnuidade: snapshot?.percentualAnuidade !== undefined ? snapshot.percentualAnuidade : null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
       errorMessage: run.errorMessage,
