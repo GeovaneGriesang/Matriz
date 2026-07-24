@@ -165,7 +165,8 @@ model CalculationResult {
   @@index([campusId])
 }
 
-/// Orçamento total oficial definido pelo administrador para um ano — base fixa usada pela distribuição oficial (ver CalculationRun.origem).
+/// Orçamento total oficial de um ano — definido pelo administrador, usado como Custeio (Ação 20RL)
+/// no cálculo de todas as instituições com dados PNP disponíveis (ver CalculationRun.origem).
 model OrcamentoAnual {
   id         Int      @id @default(autoincrement())
   ano        Int      @unique

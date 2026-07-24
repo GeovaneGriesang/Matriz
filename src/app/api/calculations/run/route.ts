@@ -50,6 +50,6 @@ export async function POST(request: Request) {
 
   const overridesPorUnidade = parseOverrides(body?.overridesPorUnidade);
 
-  const resultado = await runCalculation({ instituicaoId, orcamentoTotal, ano, overridesPorUnidade });
+  const resultado = await runCalculation({ instituicaoIds: [instituicaoId], orcamentoTotal, ano, overridesPorUnidade });
   return NextResponse.json(resultado);
 }
