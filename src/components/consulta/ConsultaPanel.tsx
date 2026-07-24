@@ -9,9 +9,15 @@ interface DistribuicaoOficialResumo {
   anoReferenciaPnp: number;
   runId: number | null;
   calculadoEm: string | null;
+  escopo: "CONIF" | "TODAS" | null;
 }
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+const ROTULO_ESCOPO: Record<"CONIF" | "TODAS", string> = {
+  CONIF: "CONIF",
+  TODAS: "todas as instituições federais",
+};
 
 export function ConsultaPanel() {
   const [anos, setAnos] = useState<DistribuicaoOficialResumo[]>([]);
@@ -73,7 +79,9 @@ export function ConsultaPanel() {
                   }`}
                 >
                   {resumo.ano} — {formatoMoeda.format(resumo.valorTotal)}
-                  {!resumo.runId && ` (não calculado — usará dados PNP de ${resumo.anoReferenciaPnp})`}
+                  {resumo.runId
+                    ? resumo.escopo && ` (${ROTULO_ESCOPO[resumo.escopo]})`
+                    : ` (não calculado — usará dados PNP de ${resumo.anoReferenciaPnp})`}
                 </button>
               </li>
             ))}

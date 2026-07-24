@@ -37,11 +37,12 @@ export interface CampusOverride {
 }
 
 export interface RunCalculationInput {
-  /** Instituição (autarquia) para a qual este cálculo é feito — escopa todas as consultas de fatos. */
-  instituicaoId: number;
+  /** Instituições (autarquias) incluídas neste cálculo — escopa todas as consultas de fatos. */
+  instituicaoIds: number[];
   /**
-   * `orcamentoTotal` é o Custeio (Ação 20RL) já específico desta instituição
-   * (ex.: o valor aprovado na LOA para o IFSul), não o total da Rede Federal.
+   * `orcamentoTotal` é o Custeio (Ação 20RL) do escopo inteiro (todas as instituições em
+   * `instituicaoIds` juntas) — dividido entre elas e seus câmpus pela metodologia dos blocos, não
+   * copiado integralmente para cada uma.
    */
   orcamentoTotal: number;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
@@ -55,6 +56,8 @@ export interface RunCalculationInput {
   anoOrcamento?: number;
   /** "OFICIAL" trava o número usado na tela de Consulta; "SIMULACAO" (padrão) é um cenário ad-hoc. */
   origem?: "SIMULACAO" | "OFICIAL";
+  /** Escopo usado para resolver `instituicaoIds` (só para `origem: "OFICIAL"`) — guardado para auditoria/exibição. */
+  escopo?: "TODAS" | "CONIF";
   /**
    * Sobrescreve, só para este cálculo (nunca grava em `FatoIndicador`), indicadores de câmpus
    * específicos — usado pelo simulador para testar cenários ("e se o RAP desse câmpus fosse X?").
@@ -171,6 +174,12 @@ function aplicarOverrideIapl(
  * Nota: o valor de Reitorias é armazenado com `campusId = null` e o id da
  * instituição codificado na `metrica` (`valorReais_autarquia_<id>`), já que
  * `CalculationResult` não tem uma coluna dedicada para instituição na M1.
+ *
+ * Bloco Funcionamento e Bloco Qualidade e Eficiência são naturalmente agnósticos a quantas
+ * instituições estão representadas — operam sobre a lista plana de câmpus de todo `instituicaoIds`,
+ * então o câmpus de uma instituição maior/com melhores indicadores recebe uma fatia maior do bloco,
+ * não um valor fixo por instituição. Só o Bloco Reitorias precisa saber quantas instituições há no
+ * escopo, para dividir os 10% entre elas (ver `blocoReitorias.ts`).
  */
 export async function runCalculation(input: RunCalculationInput): Promise<RunCalculationResult> {
   const overrides = input.overridesPorUnidade ?? {};
@@ -181,7 +190,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "DADOS_GERAIS",
       medida: MEDIDA_MATRICULA_EQUIVALENTE_GERAL,
       ano: input.ano,
-      instituicaoId: input.instituicaoId,
+      instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
     _sum: { valor: true },
@@ -202,7 +211,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "EFICIENCIA_ACADEMICA",
       medida: MEDIDA_INDICE_EFICIENCIA_ACADEMICA,
       ano: input.ano,
-      instituicaoId: input.instituicaoId,
+      instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
@@ -220,7 +229,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
       medida: MEDIDA_RAP,
       ano: input.ano,
-      instituicaoId: input.instituicaoId,
+      instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
@@ -237,7 +246,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       fileType: "PERCENTUAIS_LEGAIS",
       medida: { in: Object.keys(IAPL_CAMPO_POR_MEDIDA) },
       ano: input.ano,
-      instituicaoId: input.instituicaoId,
+      instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
@@ -269,7 +278,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const totalMatriculasProejaRede = iaplInputs.reduce((s, i) => s + i.matriculasProeja, 0);
 
   const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
-  const reitoria = blocoReitorias(input.instituicaoId, input.orcamentoTotal);
+  const reitorias = blocoReitorias(input.instituicaoIds, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
 
   // Recalculados isoladamente (mesmas funções puras, mesmos inputs finais) só para expor
@@ -283,7 +292,8 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const iaplInputPorCampus = new Map(iaplInputs.map((i) => [i.campusId, i]));
 
   const parametersSnapshot = {
-    instituicaoId: input.instituicaoId,
+    instituicaoIds: input.instituicaoIds,
+    escopo: input.escopo ?? null,
     ano: input.ano,
     anoOrcamento: input.anoOrcamento ?? null,
     orcamentoTotal: input.orcamentoTotal,
@@ -317,18 +327,19 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         valorReais: f.valorReais,
       },
     })),
-    {
+    ...reitorias.map((r) => ({
       runId: run.id,
       campusId: null,
       bloco: "REITORIAS" as const,
-      metrica: `valorReais_autarquia_${reitoria.autarquiaId}`,
-      valor: reitoria.valorReais,
+      metrica: `valorReais_autarquia_${r.autarquiaId}`,
+      valor: r.valorReais,
       detalhe: {
+        numeroInstituicoes: input.instituicaoIds.length,
         pesoBloco: PESO_BLOCO_REITORIAS,
         valorBlocoRede: PESO_BLOCO_REITORIAS * input.orcamentoTotal,
-        valorReais: reitoria.valorReais,
+        valorReais: r.valorReais,
       },
-    },
+    })),
     ...qualidadeEficiencia.map((q) => {
       const ieaD = ieaDetalhePorCampus.get(q.campusId);
       const rapD = rapDetalhePorCampus.get(q.campusId);
