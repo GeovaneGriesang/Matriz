@@ -56,7 +56,7 @@ export interface RunCalculationInput {
   anoOrcamento?: number;
   /** "OFICIAL" trava o número usado na tela de Consulta; "SIMULACAO" (padrão) é um cenário ad-hoc. */
   origem?: "SIMULACAO" | "OFICIAL";
-  /** Escopo usado para resolver `instituicaoIds` (só para `origem: "OFICIAL"`) — guardado para auditoria/exibição. */
+  /** Escopo usado para resolver `instituicaoIds` (CONIF ou Todas) — guardado para auditoria/exibição. */
   escopo?: "TODAS" | "CONIF";
   /**
    * Sobrescreve, só para este cálculo (nunca grava em `FatoIndicador`), indicadores de câmpus
@@ -178,14 +178,15 @@ function aplicarOverrideIapl(
  * Bloco Funcionamento e Bloco Qualidade e Eficiência são naturalmente agnósticos a quantas
  * instituições estão representadas — operam sobre a lista plana de câmpus de todo `instituicaoIds`,
  * então o câmpus de uma instituição maior/com melhores indicadores recebe uma fatia maior do bloco,
- * não um valor fixo por instituição. Só o Bloco Reitorias precisa saber quantas instituições há no
- * escopo, para dividir os 10% entre elas (ver `blocoReitorias.ts`).
+ * não um valor fixo por instituição. O Bloco Reitorias usa a mesma base do Bloco Funcionamento
+ * (matrícula ponderada), só agregada por instituição em vez de por câmpus — uma instituição maior
+ * recebe uma fatia maior dos 10% (Portaria MEC nº 646/2022, Art. 3º, II; ver `blocoReitorias.ts`).
  */
 export async function runCalculation(input: RunCalculationInput): Promise<RunCalculationResult> {
   const overrides = input.overridesPorUnidade ?? {};
 
   const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
-    by: ["unidadeId"],
+    by: ["unidadeId", "instituicaoId"],
     where: {
       fileType: "DADOS_GERAIS",
       medida: MEDIDA_MATRICULA_EQUIVALENTE_GERAL,
@@ -205,6 +206,18 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       })),
     overrides,
   );
+
+  // Bloco Reitorias usa a mesma base do Bloco Funcionamento (matrícula ponderada
+  // pós-override), só que agregada por instituição — ver blocoReitorias.ts.
+  const instituicaoIdPorCampus = new Map(
+    mateqPorUnidade.filter((f) => f.unidadeId !== null).map((f) => [f.unidadeId as number, f.instituicaoId]),
+  );
+  const reitoriaInputs = funcionamentoInputs
+    .map((f) => {
+      const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
+      return instituicaoId !== undefined ? { instituicaoId, matriculaPonderada: f.matriculaPonderada } : null;
+    })
+    .filter((r): r is { instituicaoId: number; matriculaPonderada: number } => r !== null);
 
   const ieaFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -278,7 +291,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const totalMatriculasProejaRede = iaplInputs.reduce((s, i) => s + i.matriculasProeja, 0);
 
   const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
-  const reitorias = blocoReitorias(input.instituicaoIds, input.orcamentoTotal);
+  const reitorias = blocoReitorias(reitoriaInputs, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
 
   // Recalculados isoladamente (mesmas funções puras, mesmos inputs finais) só para expor
@@ -335,6 +348,9 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       valor: r.valorReais,
       detalhe: {
         numeroInstituicoes: input.instituicaoIds.length,
+        matriculaPonderadaInstituicao: r.totalMatriculaPonderada,
+        totalMatriculaPonderadaRede,
+        share: r.share,
         pesoBloco: PESO_BLOCO_REITORIAS,
         valorBlocoRede: PESO_BLOCO_REITORIAS * input.orcamentoTotal,
         valorReais: r.valorReais,

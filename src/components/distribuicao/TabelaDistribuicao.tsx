@@ -61,6 +61,9 @@ interface DetalheQualidadeEficiencia {
 
 interface DetalheReitoria {
   numeroInstituicoes: number;
+  matriculaPonderadaInstituicao: number;
+  totalMatriculaPonderadaRede: number;
+  share: number;
   pesoBloco: number;
   valorBlocoRede: number;
   valorReais: number;
@@ -244,17 +247,21 @@ function MemoriaQualidadeEficiencia({ detalhe }: { detalhe: DetalheQualidadeEfic
 }
 
 function MemoriaReitoria({ detalhe }: { detalhe: DetalheReitoria }) {
-  const valorPorInstituicao = detalhe.numeroInstituicoes === 0 ? 0 : detalhe.valorBlocoRede / detalhe.numeroInstituicoes;
   return (
     <ul className="list-disc space-y-1 pl-5">
+      <ItemMemoria>
+        Matrícula Ponderada da instituição (mesma base do Bloco Funcionamento):{" "}
+        <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> ÷ total da rede{" "}
+        <strong>{formatoNumero.format(detalhe.totalMatriculaPonderadaRede)}</strong> = participação{" "}
+        <strong>{formatoPercentual.format(detalhe.share)}</strong>
+      </ItemMemoria>
       <ItemMemoria>
         Bloco Reitorias: {formatoPercentual.format(detalhe.pesoBloco)} × orçamento total ={" "}
         {formatoMoeda.format(detalhe.valorBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
-        Dividido igualmente entre {detalhe.numeroInstituicoes} instituições:{" "}
-        {formatoMoeda.format(detalhe.valorBlocoRede)} ÷ {detalhe.numeroInstituicoes} ={" "}
-        <strong>{formatoMoeda.format(valorPorInstituicao)}</strong>
+        Valor da instituição: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
+        <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
       </ItemMemoria>
     </ul>
   );

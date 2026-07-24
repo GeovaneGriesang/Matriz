@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runCalculation, type CampusOverride } from "@/server/actions/runCalculation";
+import { listarInstituicoesDoEscopo, type EscopoDistribuicao } from "@/server/queries/escopoInstituicoes";
 
 const CAMPOS_OVERRIDE: (keyof CampusOverride)[] = [
   "matriculaPonderada",
@@ -32,15 +33,13 @@ function parseOverrides(raw: unknown): Record<number, CampusOverride> {
   return overrides;
 }
 
+/** Endpoint aberto (sem checagem de admin) — qualquer pessoa pode simular; só a distribuição OFICIAL é restrita. */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  const instituicaoId = Number(body?.instituicaoId);
+  const escopo: EscopoDistribuicao = body?.escopo === "TODAS" ? "TODAS" : "CONIF";
   const orcamentoTotal = Number(body?.orcamentoTotal);
   const ano = Number(body?.ano);
 
-  if (!Number.isInteger(instituicaoId) || instituicaoId <= 0) {
-    return NextResponse.json({ error: "instituicaoId deve identificar uma instituição válida." }, { status: 400 });
-  }
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
     return NextResponse.json({ error: "orcamentoTotal deve ser um número positivo." }, { status: 400 });
   }
@@ -48,8 +47,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "ano deve ser um ano de referência válido." }, { status: 400 });
   }
 
+  const instituicaoIdFiltro = Number(body?.instituicaoId);
+  const temFiltroInstituicao = Number.isInteger(instituicaoIdFiltro) && instituicaoIdFiltro > 0;
+
+  // Uma instituição específica escolhida pelo usuário é mais específica que o Escopo (CONIF/Todas) —
+  // vale mesmo que essa instituição não pertença ao CONIF, então buscamos em "TODAS" e filtramos por id.
+  let instituicoes = await listarInstituicoesDoEscopo(temFiltroInstituicao ? "TODAS" : escopo, ano);
+  if (temFiltroInstituicao) {
+    instituicoes = instituicoes.filter((i) => i.id === instituicaoIdFiltro);
+    if (instituicoes.length === 0) {
+      return NextResponse.json(
+        { error: `Essa instituição não tem dados da PNP de ${ano} importados ainda.` },
+        { status: 400 },
+      );
+    }
+  } else if (instituicoes.length === 0) {
+    return NextResponse.json(
+      { error: `Nenhuma instituição do escopo "${escopo}" tem dados da PNP de ${ano} importados ainda.` },
+      { status: 400 },
+    );
+  }
+
   const overridesPorUnidade = parseOverrides(body?.overridesPorUnidade);
 
-  const resultado = await runCalculation({ instituicaoIds: [instituicaoId], orcamentoTotal, ano, overridesPorUnidade });
+  const resultado = await runCalculation({
+    instituicaoIds: instituicoes.map((i) => i.id),
+    orcamentoTotal,
+    ano,
+    escopo,
+    overridesPorUnidade,
+  });
   return NextResponse.json(resultado);
 }
