@@ -5,13 +5,10 @@ export interface UnidadeResultado {
   id: number;
   nome: string;
   funcionamentoValorReais: number;
-  qualidadeEficienciaValorReais: number;
   assistenciaEstudantilValorReais: number;
   subtotalReais: number;
   /** "Memória de cálculo" do Bloco Funcionamento para este câmpus — formato definido em runCalculation.ts. */
   detalheFuncionamento: unknown;
-  /** "Memória de cálculo" do Bloco Qualidade e Eficiência (IEA/RAP/IAPL) para este câmpus. */
-  detalheQualidadeEficiencia: unknown;
   /** "Memória de cálculo" do Bloco de Assistência Estudantil (Ação 2994) para este câmpus. */
   detalheAssistenciaEstudantil: unknown;
 }
@@ -21,10 +18,14 @@ export interface InstituicaoResultado {
   sigla: string;
   nome: string;
   reitoriaValorReais: number;
+  /** IEA/RAP/IAPL só são apurados em nível de instituição na Matriz CONIF, não por câmpus. */
+  qualidadeEficienciaValorReais: number;
   unidades: UnidadeResultado[];
   subtotalReais: number;
   /** "Memória de cálculo" do Bloco Reitorias para esta instituição. */
   detalheReitoria: unknown;
+  /** "Memória de cálculo" do Bloco Qualidade e Eficiência (IEA/RAP/IAPL) para esta instituição. */
+  detalheQualidadeEficiencia: unknown;
 }
 
 export interface CalculationRunDetail {
@@ -54,45 +55,47 @@ async function montarInstituicoes(
 ): Promise<{ instituicoes: InstituicaoResultado[]; totalGeralReais: number }> {
   interface ValoresUnidade {
     funcionamento: number;
-    qualidadeEficiencia: number;
     assistenciaEstudantil: number;
     detalheFuncionamento: unknown;
-    detalheQualidadeEficiencia: unknown;
     detalheAssistenciaEstudantil: unknown;
   }
 
   const unidadeValores = new Map<number, ValoresUnidade>();
   const reitoriaPorInstituicao = new Map<number, number>();
   const detalheReitoriaPorInstituicao = new Map<number, unknown>();
+  const qualidadeEficienciaPorInstituicao = new Map<number, number>();
+  const detalheQualidadeEficienciaPorInstituicao = new Map<number, unknown>();
 
   for (const resultado of results) {
     const valor = Number(resultado.valor);
 
-    if (resultado.bloco === "REITORIAS") {
+    if (resultado.bloco === "REITORIAS" || resultado.bloco === "QUALIDADE_EFICIENCIA") {
       const match = resultado.metrica.match(REGEX_AUTARQUIA);
       if (!match) continue;
       const instituicaoId = Number(match[1]);
-      reitoriaPorInstituicao.set(instituicaoId, (reitoriaPorInstituicao.get(instituicaoId) ?? 0) + valor);
-      detalheReitoriaPorInstituicao.set(instituicaoId, resultado.detalhe);
+      if (resultado.bloco === "REITORIAS") {
+        reitoriaPorInstituicao.set(instituicaoId, (reitoriaPorInstituicao.get(instituicaoId) ?? 0) + valor);
+        detalheReitoriaPorInstituicao.set(instituicaoId, resultado.detalhe);
+      } else {
+        qualidadeEficienciaPorInstituicao.set(
+          instituicaoId,
+          (qualidadeEficienciaPorInstituicao.get(instituicaoId) ?? 0) + valor,
+        );
+        detalheQualidadeEficienciaPorInstituicao.set(instituicaoId, resultado.detalhe);
+      }
       continue;
     }
 
     if (resultado.campusId === null) continue;
     const atual = unidadeValores.get(resultado.campusId) ?? {
       funcionamento: 0,
-      qualidadeEficiencia: 0,
       assistenciaEstudantil: 0,
       detalheFuncionamento: null,
-      detalheQualidadeEficiencia: null,
       detalheAssistenciaEstudantil: null,
     };
     if (resultado.bloco === "FUNCIONAMENTO") {
       atual.funcionamento += valor;
       atual.detalheFuncionamento = resultado.detalhe;
-    }
-    if (resultado.bloco === "QUALIDADE_EFICIENCIA") {
-      atual.qualidadeEficiencia += valor;
-      atual.detalheQualidadeEficiencia = resultado.detalhe;
     }
     if (resultado.bloco === "ASSISTENCIA_ESTUDANTIL") {
       atual.assistenciaEstudantil += valor;
@@ -106,11 +109,15 @@ async function montarInstituicoes(
     include: { instituicao: true },
   });
 
-  const instituicoesComReitoriaSemUnidade = Array.from(reitoriaPorInstituicao.keys()).filter(
+  const idsComSoInstituicao = new Set([
+    ...reitoriaPorInstituicao.keys(),
+    ...qualidadeEficienciaPorInstituicao.keys(),
+  ]);
+  const instituicoesComSoInstituicaoSemUnidade = Array.from(idsComSoInstituicao).filter(
     (id) => !unidades.some((u) => u.instituicaoId === id),
   );
   const instituicoesAvulsas = await prisma.instituicao.findMany({
-    where: { id: { in: instituicoesComReitoriaSemUnidade } },
+    where: { id: { in: instituicoesComSoInstituicaoSemUnidade } },
   });
 
   const instituicoesPorId = new Map<number, InstituicaoResultado>();
@@ -123,9 +130,11 @@ async function montarInstituicoes(
       sigla,
       nome,
       reitoriaValorReais: reitoriaPorInstituicao.get(id) ?? 0,
+      qualidadeEficienciaValorReais: qualidadeEficienciaPorInstituicao.get(id) ?? 0,
       unidades: [],
       subtotalReais: 0,
       detalheReitoria: detalheReitoriaPorInstituicao.get(id) ?? null,
+      detalheQualidadeEficiencia: detalheQualidadeEficienciaPorInstituicao.get(id) ?? null,
     };
     instituicoesPorId.set(id, nova);
     return nova;
@@ -134,10 +143,8 @@ async function montarInstituicoes(
   for (const unidade of unidades) {
     const valores = unidadeValores.get(unidade.id) ?? {
       funcionamento: 0,
-      qualidadeEficiencia: 0,
       assistenciaEstudantil: 0,
       detalheFuncionamento: null,
-      detalheQualidadeEficiencia: null,
       detalheAssistenciaEstudantil: null,
     };
     const instituicao = obterOuCriarInstituicao(
@@ -149,11 +156,9 @@ async function montarInstituicoes(
       id: unidade.id,
       nome: unidade.nome,
       funcionamentoValorReais: valores.funcionamento,
-      qualidadeEficienciaValorReais: valores.qualidadeEficiencia,
       assistenciaEstudantilValorReais: valores.assistenciaEstudantil,
-      subtotalReais: valores.funcionamento + valores.qualidadeEficiencia + valores.assistenciaEstudantil,
+      subtotalReais: valores.funcionamento + valores.assistenciaEstudantil,
       detalheFuncionamento: valores.detalheFuncionamento,
-      detalheQualidadeEficiencia: valores.detalheQualidadeEficiencia,
       detalheAssistenciaEstudantil: valores.detalheAssistenciaEstudantil,
     });
   }
@@ -166,7 +171,9 @@ async function montarInstituicoes(
     .map((instituicao) => ({
       ...instituicao,
       subtotalReais:
-        instituicao.reitoriaValorReais + instituicao.unidades.reduce((soma, u) => soma + u.subtotalReais, 0),
+        instituicao.reitoriaValorReais +
+        instituicao.qualidadeEficienciaValorReais +
+        instituicao.unidades.reduce((soma, u) => soma + u.subtotalReais, 0),
     }))
     .sort((a, b) => a.sigla.localeCompare(b.sigla));
 

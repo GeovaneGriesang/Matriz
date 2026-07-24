@@ -33,12 +33,12 @@ describe("weightIea", () => {
 });
 
 describe("calcularBlocoIea", () => {
-  it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco", () => {
+  it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco (1 câmpus por instituição)", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoIea(
       [
-        { campusId: 1, valorIea: 0.9 }, // MUITO_ALTO -> peso 2.5
-        { campusId: 2, valorIea: 0.1 }, // MUITO_BAIXO -> peso 0.5
+        { campusId: 1, instituicaoId: 10, valorIea: 0.9 }, // MUITO_ALTO -> peso 2.5
+        { campusId: 2, instituicaoId: 20, valorIea: 0.1 }, // MUITO_BAIXO -> peso 0.5
       ],
       orcamentoTotal,
     );
@@ -49,10 +49,30 @@ describe("calcularBlocoIea", () => {
     const somaValores = resultado.reduce((total, r) => total + r.valorReais, 0);
     expect(somaValores).toBeCloseTo(PESO_IEA_SUBBLOCO * orcamentoTotal, 6);
 
-    // IEA Ponderado = IEA × Peso: câmpus 1 = 0.9 × 2.5 = 2.25, câmpus 2 = 0.1 × 0.5 = 0.05 → razão 45x
-    const campus1 = resultado.find((r) => r.campusId === 1)!;
-    const campus2 = resultado.find((r) => r.campusId === 2)!;
-    expect(campus1.valorReais).toBeCloseTo(campus2.valorReais * 45, 6);
+    // IEA Ponderado = IEA × Peso: instituição 10 = 0.9 × 2.5 = 2.25, instituição 20 = 0.1 × 0.5 = 0.05 → razão 45x
+    const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
+    const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
+    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 45, 6);
+  });
+
+  it("soma o IEA Ponderado de todos os câmpus da mesma instituição antes de calcular o share", () => {
+    const orcamentoTotal = 1_000_000;
+    const resultado = calcularBlocoIea(
+      [
+        { campusId: 1, instituicaoId: 10, valorIea: 0.9 }, // MUITO_ALTO -> peso 2.5 -> ponderado 2.25
+        { campusId: 2, instituicaoId: 10, valorIea: 0.9 }, // mesmo câmpus/instituição -> +2.25
+        { campusId: 3, instituicaoId: 20, valorIea: 0.9 }, // instituição diferente, só 1 câmpus -> 2.25
+      ],
+      orcamentoTotal,
+    );
+
+    expect(resultado).toHaveLength(2);
+    const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
+    const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
+    // instituição 10 tem 2 câmpus com o mesmo IEA -> ponderado (e valor) 2x o da instituição 20
+    expect(inst10.ponderadoInstituicao).toBeCloseTo(inst20.ponderadoInstituicao * 2, 6);
+    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 2, 6);
+    expect(inst10.porCampus).toHaveLength(2);
   });
 
   it("retorna lista vazia quando não há câmpus", () => {

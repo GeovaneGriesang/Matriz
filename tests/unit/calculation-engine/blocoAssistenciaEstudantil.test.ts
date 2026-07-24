@@ -15,10 +15,11 @@ describe("blocoAssistenciaEstudantil", () => {
     ];
 
     // Instituição 187 tem 2 câmpus (MECHDA = 3000+1000 = 4000); instituição 181 tem 1 câmpus (MECHDA = 500).
+    // Só matrícula presencial neste teste (EAD = 0), pra isolar o comportamento já coberto antes do desconto de 1/4.
     const campusInputs = [
-      { campusId: 1, instituicaoId: 187, matriculaPonderada: 3000 },
-      { campusId: 2, instituicaoId: 187, matriculaPonderada: 1000 },
-      { campusId: 3, instituicaoId: 181, matriculaPonderada: 500 },
+      { campusId: 1, instituicaoId: 187, matriculaPonderadaPresencial: 3000, matriculaPonderadaEad: 0 },
+      { campusId: 2, instituicaoId: 187, matriculaPonderadaPresencial: 1000, matriculaPonderadaEad: 0 },
+      { campusId: 3, instituicaoId: 181, matriculaPonderadaPresencial: 500, matriculaPonderadaEad: 0 },
     ];
 
     const resultado = blocoAssistenciaEstudantil(rfpInputs, campusInputs, orcamentoAssistenciaEstudantil);
@@ -54,8 +55,8 @@ describe("blocoAssistenciaEstudantil", () => {
     ];
     // MECHDA (Matrícula Ponderada) igual para as duas — é isso que soma tamanho, não o dataset de RFP.
     const campusInputs = [
-      { campusId: 1, instituicaoId: 1, matriculaPonderada: 100 },
-      { campusId: 2, instituicaoId: 2, matriculaPonderada: 100 },
+      { campusId: 1, instituicaoId: 1, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 },
+      { campusId: 2, instituicaoId: 2, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 },
     ];
 
     const resultado = blocoAssistenciaEstudantil(rfpInputs, campusInputs, 1_000_000);
@@ -71,8 +72,8 @@ describe("blocoAssistenciaEstudantil", () => {
       { instituicaoId: 2, faixaRfp: "0<RFP<=0,5", numeroMatriculas: 100 },
     ];
     const campusInputs = [
-      { campusId: 1, instituicaoId: 1, matriculaPonderada: 100 }, // MECHDA menor
-      { campusId: 2, instituicaoId: 2, matriculaPonderada: 300 }, // MECHDA 3x maior
+      { campusId: 1, instituicaoId: 1, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 }, // MECHDA menor
+      { campusId: 2, instituicaoId: 2, matriculaPonderadaPresencial: 300, matriculaPonderadaEad: 0 }, // MECHDA 3x maior
     ];
 
     const resultado = blocoAssistenciaEstudantil(rfpInputs, campusInputs, 1_000_000);
@@ -83,6 +84,30 @@ describe("blocoAssistenciaEstudantil", () => {
     expect(porCampus.get(2)?.valorReais).toBeCloseTo(750_000, 6);
   });
 
+  it("MECHDA pondera matrícula EAD a 1/4 do peso da presencial — mesma matrícula presencial, mas uma instituição só tem EAD extra", () => {
+    const rfpInputs = [
+      { instituicaoId: 1, faixaRfp: "0<RFP<=0,5", numeroMatriculas: 100 },
+      { instituicaoId: 2, faixaRfp: "0<RFP<=0,5", numeroMatriculas: 100 },
+    ];
+    const campusInputs = [
+      // Instituição 1: só presencial -> MECHDA = 100
+      { campusId: 1, instituicaoId: 1, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 },
+      // Instituição 2: mesma presencial + 400 de EAD -> MECHDA = 100 + 400/4 = 200 (2x a da instituição 1)
+      { campusId: 2, instituicaoId: 2, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 400 },
+    ];
+
+    const resultado = blocoAssistenciaEstudantil(rfpInputs, campusInputs, 1_000_000);
+    const porCampus = new Map(resultado.map((r) => [r.campusId, r]));
+
+    expect(porCampus.get(1)?.mechdaInstituicao).toBeCloseTo(100, 6);
+    expect(porCampus.get(2)?.mechdaInstituicao).toBeCloseTo(200, 6);
+    expect(porCampus.get(2)?.valorReais).toBeCloseTo(2 * (porCampus.get(1)?.valorReais ?? 0), 6);
+
+    // A subdivisão por câmpus (aqui só 1 câmpus por instituição) usa a matrícula total (Presencial + EAD, sem
+    // desconto), não o MECHDA — mas com 1 câmpus só, shareDentroInstituicao é sempre 1.0 e não muda o resultado.
+    expect(porCampus.get(2)?.matriculaPonderadaCampus).toBeCloseTo(500, 6);
+  });
+
   it("retorna lista vazia quando não há câmpus no escopo", () => {
     expect(blocoAssistenciaEstudantil([], [], 1_000_000)).toEqual([]);
   });
@@ -90,7 +115,7 @@ describe("blocoAssistenciaEstudantil", () => {
   it("dá share zero quando não há dado de RFP para a instituição do câmpus", () => {
     const resultado = blocoAssistenciaEstudantil(
       [],
-      [{ campusId: 1, instituicaoId: 999, matriculaPonderada: 100 }],
+      [{ campusId: 1, instituicaoId: 999, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 }],
       1_000_000,
     );
 
@@ -108,8 +133,8 @@ describe("blocoAssistenciaEstudantil", () => {
         { instituicaoId: 2, faixaRfp: "0<RFP<=0,5", numeroMatriculas: 1 },
       ],
       [
-        { campusId: 1, instituicaoId: 1, matriculaPonderada: 100 },
-        { campusId: 2, instituicaoId: 2, matriculaPonderada: 100 },
+        { campusId: 1, instituicaoId: 1, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 },
+        { campusId: 2, instituicaoId: 2, matriculaPonderadaPresencial: 100, matriculaPonderadaEad: 0 },
       ],
       1_000_000,
     );

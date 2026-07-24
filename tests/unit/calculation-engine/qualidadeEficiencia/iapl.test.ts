@@ -30,34 +30,49 @@ describe("splitLegal", () => {
 });
 
 describe("calcularBlocoIapl", () => {
-  it("distribui cada meta proporcionalmente às matrículas da categoria por câmpus", () => {
+  it("distribui cada meta proporcionalmente às matrículas da categoria por instituição (1 câmpus cada)", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoIapl(
       [
-        { campusId: 1, matriculasTecnicos: 300, matriculasFormacaoProfessores: 20, matriculasProeja: 50 },
-        { campusId: 2, matriculasTecnicos: 100, matriculasFormacaoProfessores: 20, matriculasProeja: 50 },
+        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 300, matriculasFormacaoProfessores: 20, matriculasProeja: 50 },
+        { campusId: 2, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 20, matriculasProeja: 50 },
       ],
       orcamentoTotal,
     );
 
-    const campus1 = resultado.find((r) => r.campusId === 1)!;
-    const campus2 = resultado.find((r) => r.campusId === 2)!;
+    const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
+    const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
 
-    // câmpus 1 tem 3x mais matrículas técnicas -> 3x o valor de técnicos
-    expect(campus1.valorTecnicos).toBeCloseTo(campus2.valorTecnicos * 3, 6);
-    // PROEJA e formação de professores são iguais entre os dois -> valores iguais
-    expect(campus1.valorProeja).toBeCloseTo(campus2.valorProeja, 6);
-    expect(campus1.valorFormacaoProfessores).toBeCloseTo(campus2.valorFormacaoProfessores, 6);
+    // instituição 10 tem 3x mais matrículas técnicas -> 3x o valor de técnicos
+    expect(inst10.valorTecnicos).toBeCloseTo(inst20.valorTecnicos * 3, 6);
+    // PROEJA e formação de professores são iguais entre as duas -> valores iguais
+    expect(inst10.valorProeja).toBeCloseTo(inst20.valorProeja, 6);
+    expect(inst10.valorFormacaoProfessores).toBeCloseTo(inst20.valorFormacaoProfessores, 6);
 
     const somaTotal = resultado.reduce((total, r) => total + r.valorTotal, 0);
     expect(somaTotal).toBeCloseTo(PESO_IAPL_SUBBLOCO * orcamentoTotal, 6);
   });
 
-  it("quando uma categoria não tem matrículas em nenhum câmpus, todos recebem 0 nessa categoria (valor não distribuído)", () => {
+  it("soma as matrículas de todos os câmpus da mesma instituição antes de calcular o share", () => {
     const resultado = calcularBlocoIapl(
       [
-        { campusId: 1, matriculasTecnicos: 300, matriculasFormacaoProfessores: 0, matriculasProeja: 50 },
-        { campusId: 2, matriculasTecnicos: 100, matriculasFormacaoProfessores: 0, matriculasProeja: 50 },
+        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 150, matriculasFormacaoProfessores: 0, matriculasProeja: 0 },
+        { campusId: 2, instituicaoId: 10, matriculasTecnicos: 150, matriculasFormacaoProfessores: 0, matriculasProeja: 0 },
+        { campusId: 3, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 0, matriculasProeja: 0 },
+      ],
+      1_000_000,
+    );
+
+    expect(resultado).toHaveLength(2);
+    const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
+    expect(inst10.matriculasTecnicos).toBe(300);
+  });
+
+  it("quando uma categoria não tem matrículas em nenhuma instituição, todas recebem 0 nessa categoria (valor não distribuído)", () => {
+    const resultado = calcularBlocoIapl(
+      [
+        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 300, matriculasFormacaoProfessores: 0, matriculasProeja: 50 },
+        { campusId: 2, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 0, matriculasProeja: 50 },
       ],
       1_000_000,
     );

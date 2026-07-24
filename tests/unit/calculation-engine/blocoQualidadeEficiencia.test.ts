@@ -15,20 +15,20 @@ describe("blocoQualidadeEficiencia", () => {
     );
   });
 
-  it("compõe IEA + RAP + IAPL por câmpus e a soma total bate com o bloco de 10%", () => {
+  it("compõe IEA + RAP + IAPL por instituição (não por câmpus) e a soma total bate com o bloco de 10%", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = blocoQualidadeEficiencia(
       [
-        { campusId: 1, valorIea: 0.9 },
-        { campusId: 2, valorIea: 0.3 },
+        { campusId: 1, instituicaoId: 10, valorIea: 0.9 },
+        { campusId: 2, instituicaoId: 20, valorIea: 0.3 },
       ],
       [
-        { campusId: 1, razaoDocenteAluno: 22 },
-        { campusId: 2, razaoDocenteAluno: 19 },
+        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 22 },
+        { campusId: 2, instituicaoId: 20, razaoDocenteAluno: 19 },
       ],
       [
-        { campusId: 1, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
-        { campusId: 2, matriculasTecnicos: 100, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
+        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
+        { campusId: 2, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
       ],
       orcamentoTotal,
     );
