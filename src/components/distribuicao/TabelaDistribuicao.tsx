@@ -283,7 +283,17 @@ function ToggleCampiIcon({ expandido }: { expandido: boolean }) {
   );
 }
 
-export function TabelaDistribuicao({ detalhe }: { detalhe: CalculationRunDetail }) {
+export function TabelaDistribuicao({
+  detalhe,
+  titulo,
+  subtitulo,
+}: {
+  detalhe: CalculationRunDetail;
+  /** Sobrescreve o título derivado de `detalhe.run` — usado quando `detalhe` agrega várias instituições/runs. */
+  titulo?: string;
+  /** Sobrescreve o texto explicativo abaixo do título. */
+  subtitulo?: string;
+}) {
   const [instituicoesAbertas, setInstituicoesAbertas] = useState<Set<number>>(new Set());
   const [unidadesAbertas, setUnidadesAbertas] = useState<Set<number>>(new Set());
   const [instituicoesExpandidas, setInstituicoesExpandidas] = useState<Set<number>>(new Set());
@@ -307,18 +317,22 @@ export function TabelaDistribuicao({ detalhe }: { detalhe: CalculationRunDetail 
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          {detalhe.run.anoOrcamento !== null
-            ? `Execução #${detalhe.run.id} — orçamento oficial ${detalhe.run.anoOrcamento}`
-            : `Execução #${detalhe.run.id} — ano ${detalhe.run.ano ?? "?"}`}
+          {titulo ??
+            (detalhe.run.anoOrcamento !== null
+              ? `Execução #${detalhe.run.id} — orçamento oficial ${detalhe.run.anoOrcamento}`
+              : `Execução #${detalhe.run.id} — ano ${detalhe.run.ano ?? "?"}`)}
         </h2>
-        <span className="text-sm text-neutral-500 dark:text-neutral-400">
-          Orçamento: {detalhe.run.orcamentoTotal !== null ? formatoMoeda.format(detalhe.run.orcamentoTotal) : "—"}
-        </span>
+        {detalhe.run.orcamentoTotal !== null && (
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+            Orçamento: {formatoMoeda.format(detalhe.run.orcamentoTotal)}
+          </span>
+        )}
       </div>
       <p className="rounded-md bg-neutral-100 px-3 py-2 text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
-        {detalhe.run.anoOrcamento !== null
-          ? `Calculado com base nos dados da PNP de ${detalhe.run.ano ?? "?"} (referência oficial: dois anos antes do orçamento).`
-          : `Simulação executada com os dados da PNP de ${detalhe.run.ano ?? "?"}.`}
+        {subtitulo ??
+          (detalhe.run.anoOrcamento !== null
+            ? `Calculado com base nos dados da PNP de ${detalhe.run.ano ?? "?"} (referência oficial: dois anos antes do orçamento).`
+            : `Simulação executada com os dados da PNP de ${detalhe.run.ano ?? "?"}.`)}
       </p>
 
       {instituicoesComCampi.length > 0 && (

@@ -9,6 +9,8 @@ export interface DistribuicaoOficialResumo {
   anoReferenciaPnp: number;
   runId: number | null;
   calculadoEm: string | null;
+  /** Escopo usado no cálculo mais recente ("CONIF" ou "TODAS"), lido do `parametersSnapshot` do run. */
+  escopo: "CONIF" | "TODAS" | null;
 }
 
 /** Para cada ano com orçamento configurado, a execução `origem: OFICIAL` mais recente (se já houver uma). */
@@ -26,12 +28,15 @@ export async function GET() {
         orderBy: { startedAt: "desc" },
       });
 
+      const snapshot = run?.parametersSnapshot as { escopo?: "CONIF" | "TODAS" | null } | undefined;
+
       return {
         ano: orcamento.ano,
         valorTotal: Number(orcamento.valorTotal),
         anoReferenciaPnp: orcamento.ano - DEFASAGEM_ANOS_REFERENCIA_PNP,
         runId: run?.id ?? null,
         calculadoEm: run ? run.startedAt.toISOString() : null,
+        escopo: snapshot?.escopo ?? null,
       };
     }),
   );

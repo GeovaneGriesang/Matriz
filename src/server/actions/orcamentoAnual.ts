@@ -3,7 +3,8 @@
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { runCalculation } from "@/server/actions/runCalculation";
-import { DEFASAGEM_ANOS_REFERENCIA_PNP, SIGLA_INSTITUICAO_OFICIAL } from "@/server/config/orcamentoAnual.constants";
+import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
+import { listarInstituicoesDoEscopo, type EscopoDistribuicao } from "@/server/queries/escopoInstituicoes";
 
 export interface SalvarOrcamentoAnualResult {
   ok: boolean;
@@ -37,52 +38,49 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
 
 export interface CalcularDistribuicaoOficialResult {
   ok: boolean;
-  runId?: number;
   errorMessage?: string;
+  runId?: number;
+  instituicoesIncluidas?: number;
 }
 
-/** Server Action (admin) que trava a distribuição oficial de um ano, usando o orçamento configurado para ele. */
+/**
+ * Server Action (admin) que trava a distribuição oficial de um ano: divide o orçamento configurado
+ * entre todas as instituições do escopo escolhido (CONIF ou Todas) e seus câmpus, pela metodologia
+ * dos blocos — não copia o valor inteiro para cada instituição (ver `runCalculation`/`blocoReitorias`).
+ */
 export async function calcularDistribuicaoOficialAction(formData: FormData): Promise<CalcularDistribuicaoOficialResult> {
   if (!(await getAdminSession())) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
 
   const ano = Number(formData.get("ano"));
+  const escopo: EscopoDistribuicao = formData.get("escopo") === "TODAS" ? "TODAS" : "CONIF";
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };
   }
 
   const orcamento = await prisma.orcamentoAnual.findUnique({ where: { ano } });
   if (!orcamento) {
-    return { ok: false, errorMessage: `Nenhum orçamento configurado para o ano ${ano}.` };
-  }
-
-  const instituicao = await prisma.instituicao.findUnique({ where: { sigla: SIGLA_INSTITUICAO_OFICIAL } });
-  if (!instituicao) {
-    return {
-      ok: false,
-      errorMessage: `Instituição "${SIGLA_INSTITUICAO_OFICIAL}" ainda não foi importada — nenhum dado da PNP para ela foi encontrado.`,
-    };
+    return { ok: false, errorMessage: `Nenhum orçamento configurado para ${ano}.` };
   }
 
   const anoReferenciaPnp = ano - DEFASAGEM_ANOS_REFERENCIA_PNP;
-  const temDadosReferencia = await prisma.fatoIndicador.findFirst({
-    where: { ano: anoReferenciaPnp, instituicaoId: instituicao.id },
-  });
-  if (!temDadosReferencia) {
+  const instituicoes = await listarInstituicoesDoEscopo(escopo, anoReferenciaPnp);
+  if (instituicoes.length === 0) {
     return {
       ok: false,
-      errorMessage: `O orçamento de ${ano} é calculado com dados da PNP de ${anoReferenciaPnp}, mas nenhum dado desse ano foi importado ainda para ${SIGLA_INSTITUICAO_OFICIAL}.`,
+      errorMessage: `Nenhuma instituição do escopo "${escopo}" tem dados da PNP de ${anoReferenciaPnp} importados ainda.`,
     };
   }
 
   const resultado = await runCalculation({
-    instituicaoId: instituicao.id,
+    instituicaoIds: instituicoes.map((i) => i.id),
     ano: anoReferenciaPnp,
     anoOrcamento: ano,
     orcamentoTotal: Number(orcamento.valorTotal),
     origem: "OFICIAL",
+    escopo,
   });
 
-  return { ok: true, runId: resultado.runId };
+  return { ok: true, runId: resultado.runId, instituicoesIncluidas: instituicoes.length };
 }

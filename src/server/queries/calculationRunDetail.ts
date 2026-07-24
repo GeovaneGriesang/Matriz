@@ -1,4 +1,5 @@
 import { prisma } from "@/server/db/prisma";
+import type { CalculationResult } from "@prisma/client";
 
 export interface UnidadeResultado {
   id: number;
@@ -43,15 +44,9 @@ export interface CalculationRunDetail {
 const REGEX_AUTARQUIA = /^valorReais_autarquia_(\d+)$/;
 
 /** Monta a árvore Instituição → Unidade a partir dos `CalculationResult` de um run, para exibição/consulta. */
-export async function getCalculationRunDetail(runId: number): Promise<CalculationRunDetail | null> {
-  const run = await prisma.calculationRun.findUnique({
-    where: { id: runId },
-    include: { results: true },
-  });
-  if (!run) return null;
-
-  const snapshot = run.parametersSnapshot as { ano?: number; anoOrcamento?: number; orcamentoTotal?: number } | null;
-
+async function montarInstituicoes(
+  results: Pick<CalculationResult, "campusId" | "bloco" | "metrica" | "valor" | "detalhe">[],
+): Promise<{ instituicoes: InstituicaoResultado[]; totalGeralReais: number }> {
   interface ValoresUnidade {
     funcionamento: number;
     qualidadeEficiencia: number;
@@ -63,7 +58,7 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
   const reitoriaPorInstituicao = new Map<number, number>();
   const detalheReitoriaPorInstituicao = new Map<number, unknown>();
 
-  for (const resultado of run.results) {
+  for (const resultado of results) {
     const valor = Number(resultado.valor);
 
     if (resultado.bloco === "REITORIAS") {
@@ -159,6 +154,20 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
     .sort((a, b) => a.sigla.localeCompare(b.sigla));
 
   const totalGeralReais = instituicoes.reduce((soma, i) => soma + i.subtotalReais, 0);
+
+  return { instituicoes, totalGeralReais };
+}
+
+/** Monta o detalhe de exibição de um único run (usado pelo Simulador e para recalcular uma instituição isolada). */
+export async function getCalculationRunDetail(runId: number): Promise<CalculationRunDetail | null> {
+  const run = await prisma.calculationRun.findUnique({
+    where: { id: runId },
+    include: { results: true },
+  });
+  if (!run) return null;
+
+  const snapshot = run.parametersSnapshot as { ano?: number; anoOrcamento?: number; orcamentoTotal?: number } | null;
+  const { instituicoes, totalGeralReais } = await montarInstituicoes(run.results);
 
   return {
     run: {
