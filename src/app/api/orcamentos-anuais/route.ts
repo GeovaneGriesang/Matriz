@@ -9,6 +9,7 @@ export async function GET() {
     orcamentos.map((o) => ({
       ano: o.ano,
       valorTotal: Number(o.valorTotal),
+      valorAssistenciaEstudantil: Number(o.valorAssistenciaEstudantil),
       updatedAt: o.updatedAt.toISOString(),
     })),
   );

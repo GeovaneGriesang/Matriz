@@ -4,6 +4,8 @@ import { prisma } from "@/server/db/prisma";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
+import { blocoAssistenciaEstudantil } from "@/calculation-engine/blocoAssistenciaEstudantil";
+import type { AssistenciaEstudantilRfpInput } from "@/calculation-engine/types/assistenciaEstudantil.types";
 import { calcularBlocoIea } from "@/calculation-engine/qualidadeEficiencia/iea/calcularBlocoIea";
 import { bucketizeIea } from "@/calculation-engine/qualidadeEficiencia/iea/bucketizeIea";
 import { weightIea } from "@/calculation-engine/qualidadeEficiencia/iea/weightIea";
@@ -45,6 +47,12 @@ export interface RunCalculationInput {
    * copiado integralmente para cada uma.
    */
   orcamentoTotal: number;
+  /**
+   * Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do escopo inteiro — isolado do
+   * Custeio 20RL (`orcamentoTotal`), não fatiado em 80/10/10 (ver blocoAssistenciaEstudantil.ts).
+   * Padrão 0 (nenhum valor de Assistência Estudantil distribuído) quando omitido.
+   */
+  orcamentoAssistenciaEstudantil?: number;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
   ano: number;
   /**
@@ -279,6 +287,31 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   iaplPorUnidade = aplicarOverrideIapl(iaplPorUnidade, overrides);
   const iaplInputs = Array.from(iaplPorUnidade.values());
 
+  // Faixa de RFP (Renda Familiar Per Capita) só existe por instituição na PNP real
+  // (ClassificacaoRacialRendaSexo.csv não tem unidadeId) — ver blocoAssistenciaEstudantil.ts.
+  const rendaFatos = await prisma.fatoIndicador.findMany({
+    where: {
+      fileType: "CLASSIFICACAO_RACIAL_RENDA_SEXO",
+      medida: "Número de Matrículas",
+      ano: input.ano,
+      instituicaoId: { in: input.instituicaoIds },
+    },
+  });
+  const rfpInputs: AssistenciaEstudantilRfpInput[] = rendaFatos.map((f) => ({
+    instituicaoId: f.instituicaoId,
+    faixaRfp: (f.dimensoesExtra as { rendaFamiliar?: string } | null)?.rendaFamiliar ?? "",
+    numeroMatriculas: Number(f.valor),
+  }));
+  // Subdivisão por câmpus usa a mesma Matrícula Ponderada (pós-override) do Bloco Funcionamento.
+  const assistenciaEstudantilCampusInputs = funcionamentoInputs
+    .map((f) => {
+      const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
+      return instituicaoId !== undefined
+        ? { campusId: f.campusId, instituicaoId, matriculaPonderada: f.matriculaPonderada }
+        : null;
+    })
+    .filter((c): c is { campusId: number; instituicaoId: number; matriculaPonderada: number } => c !== null);
+
   // ---- totais de rede usados só para a "memória de cálculo" (detalhe) ----
   const totalMatriculaPonderadaRede = funcionamentoInputs.reduce((s, i) => s + i.matriculaPonderada, 0);
   const somaPonderadosIeaRede = ieaInputs.reduce((s, i) => s + i.valorIea * weightIea(bucketizeIea(i.valorIea)), 0);
@@ -293,6 +326,12 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
   const reitorias = blocoReitorias(reitoriaInputs, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
+  const assistenciaEstudantil = blocoAssistenciaEstudantil(
+    rfpInputs,
+    assistenciaEstudantilCampusInputs,
+    input.orcamentoAssistenciaEstudantil ?? 0,
+  );
+  const assistenciaEstudantilPorCampus = new Map(assistenciaEstudantil.map((a) => [a.campusId, a]));
 
   // Recalculados isoladamente (mesmas funções puras, mesmos inputs finais) só para expor
   // band/peso/share por sub-bloco na memória de cálculo — blocoQualidadeEficiencia não
@@ -310,6 +349,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     ano: input.ano,
     anoOrcamento: input.anoOrcamento ?? null,
     orcamentoTotal: input.orcamentoTotal,
+    orcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
     overridesPorUnidade: overrides,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
@@ -434,6 +474,25 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         },
       };
     }),
+    ...Array.from(assistenciaEstudantilPorCampus.values()).map((a) => ({
+      runId: run.id,
+      campusId: a.campusId,
+      bloco: "ASSISTENCIA_ESTUDANTIL" as const,
+      metrica: "valorReais",
+      valor: a.valorReais,
+      detalhe: {
+        vrInstituicao: a.vrInstituicao,
+        participacaoPonderadaInstituicao: a.participacaoPonderadaInstituicao,
+        somaParticipacoesRede: a.somaParticipacoesRede,
+        shareInstituicao: a.shareInstituicao,
+        valorOrcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
+        valorInstituicao: a.valorInstituicao,
+        matriculaPonderadaCampus: a.matriculaPonderadaCampus,
+        matriculaPonderadaInstituicao: a.matriculaPonderadaInstituicao,
+        shareDentroInstituicao: a.shareDentroInstituicao,
+        valorReais: a.valorReais,
+      },
+    })),
   ];
 
   if (resultados.length > 0) {
