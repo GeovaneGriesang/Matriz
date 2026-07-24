@@ -17,7 +17,7 @@ export { blocoFuncionamento } from "./blocoFuncionamento";
 export type { FuncionamentoInput, FuncionamentoResult } from "./blocoFuncionamento";
 
 export { blocoReitorias } from "./blocoReitorias";
-export type { ReitoriaResult } from "./blocoReitorias";
+export type { ReitoriaInput, ReitoriaResult } from "./blocoReitorias";
 
 export { blocoQualidadeEficiencia } from "./blocoQualidadeEficiencia";
 export type { QualidadeEficienciaCampusResult } from "./blocoQualidadeEficiencia";
