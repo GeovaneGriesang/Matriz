@@ -79,6 +79,12 @@ interface DetalheReitoria {
   valorReais: number;
 }
 
+interface DetalheAnuidadeConif {
+  custeioInstituicao: number;
+  percentualAnuidade: number;
+  valorReais: number;
+}
+
 export interface UnidadeResultado {
   id: number;
   nome: string;
@@ -95,10 +101,13 @@ export interface InstituicaoResultado {
   nome: string;
   reitoriaValorReais: number;
   qualidadeEficienciaValorReais: number;
+  /** Percentual sobre o Custeio já distribuído — informativo, não incluído em `subtotalReais`. */
+  anuidadeConifValorReais: number;
   unidades: UnidadeResultado[];
   subtotalReais: number;
   detalheReitoria: DetalheReitoria | null;
   detalheQualidadeEficiencia: DetalheQualidadeEficiencia | null;
+  detalheAnuidadeConif: DetalheAnuidadeConif | null;
 }
 
 export interface CalculationRunDetail {
@@ -109,6 +118,7 @@ export interface CalculationRunDetail {
     anoOrcamento: number | null;
     orcamentoTotal: number | null;
     orcamentoAssistenciaEstudantil: number | null;
+    percentualAnuidade: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -310,6 +320,25 @@ function MemoriaReitoria({ detalhe }: { detalhe: DetalheReitoria }) {
   );
 }
 
+function MemoriaAnuidadeConif({ detalhe }: { detalhe: DetalheAnuidadeConif }) {
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      <ItemMemoria>
+        Custeio (20RL) já distribuído para a instituição (Funcionamento + Reitorias + Qualidade e Eficiência):{" "}
+        <strong>{formatoMoeda.format(detalhe.custeioInstituicao)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Anuidade CONIF: {formatoPercentual.format(detalhe.percentualAnuidade / 100)} ×{" "}
+        {formatoMoeda.format(detalhe.custeioInstituicao)} ={" "}
+        <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        Valor informativo — não é deduzido do Custeio distribuído acima nem do total geral desta tela.
+      </ItemMemoria>
+    </ul>
+  );
+}
+
 function BotaoMemoria({ aberto, onClick }: { aberto: boolean; onClick: () => void }) {
   return (
     <button
@@ -378,6 +407,9 @@ export function TabelaDistribuicao({
             {detalhe.run.orcamentoAssistenciaEstudantil ? (
               <> · Assist. Estudantil (2994): {formatoMoeda.format(detalhe.run.orcamentoAssistenciaEstudantil)}</>
             ) : null}
+            {detalhe.run.percentualAnuidade ? (
+              <> · Anuidade CONIF: {formatoPercentual.format(detalhe.run.percentualAnuidade / 100)}</>
+            ) : null}
           </span>
         )}
       </div>
@@ -419,6 +451,9 @@ export function TabelaDistribuicao({
               </th>
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
                 Assistência Estudantil
+              </th>
+              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                Anuidade CONIF
               </th>
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 dark:bg-neutral-950" />
             </tr>
@@ -462,7 +497,12 @@ export function TabelaDistribuicao({
                     </td>
                     <td className="py-2 pr-4 text-right">—</td>
                     <td className="py-2 pr-4 text-right">
-                      {(instituicao.detalheReitoria || instituicao.detalheQualidadeEficiencia) && (
+                      {formatoMoeda.format(instituicao.anuidadeConifValorReais)}
+                    </td>
+                    <td className="py-2 pr-4 text-right">
+                      {(instituicao.detalheReitoria ||
+                        instituicao.detalheQualidadeEficiencia ||
+                        instituicao.detalheAnuidadeConif) && (
                         <BotaoMemoria
                           aberto={instituicaoAberta}
                           onClick={() => alternar(instituicoesAbertas, setInstituicoesAbertas, instituicao.id)}
@@ -470,9 +510,12 @@ export function TabelaDistribuicao({
                       )}
                     </td>
                   </tr>
-                  {instituicaoAberta && (instituicao.detalheReitoria || instituicao.detalheQualidadeEficiencia) && (
+                  {instituicaoAberta &&
+                    (instituicao.detalheReitoria ||
+                      instituicao.detalheQualidadeEficiencia ||
+                      instituicao.detalheAnuidadeConif) && (
                     <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                      <td colSpan={7} className="px-4 py-3">
+                      <td colSpan={8} className="px-4 py-3">
                         <div className="flex flex-col gap-4">
                           {instituicao.detalheReitoria && (
                             <div>
@@ -486,6 +529,12 @@ export function TabelaDistribuicao({
                                 Bloco Qualidade e Eficiência
                               </p>
                               <MemoriaQualidadeEficiencia detalhe={instituicao.detalheQualidadeEficiencia} />
+                            </div>
+                          )}
+                          {instituicao.detalheAnuidadeConif && (
+                            <div>
+                              <p className="font-medium text-neutral-900 dark:text-neutral-100">Anuidade CONIF</p>
+                              <MemoriaAnuidadeConif detalhe={instituicao.detalheAnuidadeConif} />
                             </div>
                           )}
                         </div>
@@ -510,6 +559,7 @@ export function TabelaDistribuicao({
                             <td className="py-1.5 pr-4 text-right">
                               {formatoMoeda.format(unidade.assistenciaEstudantilValorReais)}
                             </td>
+                            <td className="py-1.5 pr-4 text-right">—</td>
                             <td className="py-1.5 pr-4 text-right">
                               {(unidade.detalheFuncionamento || unidade.detalheAssistenciaEstudantil) && (
                                 <BotaoMemoria
@@ -521,7 +571,7 @@ export function TabelaDistribuicao({
                           </tr>
                           {unidadeAberta && (
                             <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                              <td colSpan={7} className="px-4 py-3">
+                              <td colSpan={8} className="px-4 py-3">
                                 <div className="flex flex-col gap-4">
                                   {unidade.detalheFuncionamento && (
                                     <div>
@@ -554,6 +604,7 @@ export function TabelaDistribuicao({
             <tr className="font-semibold text-neutral-900 dark:text-neutral-100">
               <td className="pt-3 pr-4">Total geral</td>
               <td className="pt-3 pr-4 text-right">{formatoMoeda.format(detalhe.totalGeralReais)}</td>
+              <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />
               <td className="pt-3 pr-4" />

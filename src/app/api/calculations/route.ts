@@ -8,6 +8,7 @@ export interface CalculationRunSummary {
   ano: number | null;
   orcamentoTotal: number | null;
   orcamentoAssistenciaEstudantil: number | null;
+  percentualAnuidade: number | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -24,6 +25,7 @@ export async function GET() {
       ano?: number;
       orcamentoTotal?: number;
       orcamentoAssistenciaEstudantil?: number;
+      percentualAnuidade?: number;
     } | null;
     return {
       id: run.id,
@@ -32,6 +34,7 @@ export async function GET() {
       ano: snapshot?.ano ?? null,
       orcamentoTotal: snapshot?.orcamentoTotal ?? null,
       orcamentoAssistenciaEstudantil: snapshot?.orcamentoAssistenciaEstudantil ?? null,
+      percentualAnuidade: snapshot?.percentualAnuidade ?? null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
     };

@@ -10,6 +10,7 @@ export async function GET() {
       ano: o.ano,
       valorTotal: Number(o.valorTotal),
       valorAssistenciaEstudantil: Number(o.valorAssistenciaEstudantil),
+      percentualAnuidade: Number(o.percentualAnuidade),
       updatedAt: o.updatedAt.toISOString(),
     })),
   );

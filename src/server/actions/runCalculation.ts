@@ -5,6 +5,7 @@ import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engin
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
 import { blocoAssistenciaEstudantil } from "@/calculation-engine/blocoAssistenciaEstudantil";
+import { calcularAnuidadeConif } from "@/calculation-engine/anuidadeConif";
 import type {
   AssistenciaEstudantilCampusInput,
   AssistenciaEstudantilRfpInput,
@@ -56,6 +57,12 @@ export interface RunCalculationInput {
    * Padrão 0 (nenhum valor de Assistência Estudantil distribuído) quando omitido.
    */
   orcamentoAssistenciaEstudantil?: number;
+  /**
+   * Percentual (escala 0-100) da anuidade CONIF, calculado sobre o Custeio (20RL) já distribuído
+   * de cada instituição (Funcionamento + Reitorias + Qualidade e Eficiência). Informativo — não é
+   * deduzido do valor que a instituição recebe (ver calcularAnuidadeConif). Padrão 0 quando omitido.
+   */
+  percentualAnuidade?: number;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
   ano: number;
   /**
@@ -385,6 +392,32 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   );
   const assistenciaEstudantilPorCampus = new Map(assistenciaEstudantil.map((a) => [a.campusId, a]));
 
+  // Anuidade CONIF: percentual sobre o Custeio (20RL) já distribuído de cada instituição
+  // (Funcionamento agregado por instituição + Reitorias + Qualidade e Eficiência) — informativo,
+  // não deduzido do valor distribuído (ver calcularAnuidadeConif).
+  const custeioPorInstituicao = new Map<number, number>();
+  for (const f of funcionamento) {
+    const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
+    if (instituicaoId === undefined) continue;
+    custeioPorInstituicao.set(instituicaoId, (custeioPorInstituicao.get(instituicaoId) ?? 0) + f.valorReais);
+  }
+  for (const r of reitorias) {
+    custeioPorInstituicao.set(r.autarquiaId, (custeioPorInstituicao.get(r.autarquiaId) ?? 0) + r.valorReais);
+  }
+  for (const q of qualidadeEficiencia) {
+    custeioPorInstituicao.set(
+      q.instituicaoId,
+      (custeioPorInstituicao.get(q.instituicaoId) ?? 0) + q.valorTotal,
+    );
+  }
+  const anuidadeConif = calcularAnuidadeConif(
+    Array.from(custeioPorInstituicao.entries()).map(([instituicaoId, custeioInstituicao]) => ({
+      instituicaoId,
+      custeioInstituicao,
+    })),
+    input.percentualAnuidade ?? 0,
+  );
+
   // Recalculados isoladamente (mesmas funções puras, mesmos inputs finais) só para expor
   // band/peso/share por sub-bloco na memória de cálculo — blocoQualidadeEficiencia não
   // expõe esse detalhe, só o valor combinado. Agora por instituição, não por câmpus (ver
@@ -406,6 +439,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     anoOrcamento: input.anoOrcamento ?? null,
     orcamentoTotal: input.orcamentoTotal,
     orcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
+    percentualAnuidade: input.percentualAnuidade ?? 0,
     overridesPorUnidade: overrides,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
@@ -539,6 +573,18 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         matriculaPonderadaCampus: a.matriculaPonderadaCampus,
         matriculaPonderadaInstituicao: a.matriculaPonderadaInstituicao,
         shareDentroInstituicao: a.shareDentroInstituicao,
+        valorReais: a.valorReais,
+      },
+    })),
+    ...anuidadeConif.map((a) => ({
+      runId: run.id,
+      campusId: null,
+      bloco: "ANUIDADE_CONIF" as const,
+      metrica: `valorReais_autarquia_${a.instituicaoId}`,
+      valor: a.valorReais,
+      detalhe: {
+        custeioInstituicao: a.custeioInstituicao,
+        percentualAnuidade: a.percentualAnuidade,
         valorReais: a.valorReais,
       },
     })),
