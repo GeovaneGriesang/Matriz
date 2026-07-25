@@ -31,6 +31,9 @@ model Unidade {
   nome          String
   instituicaoId Int
   instituicao   Instituicao     @relation(fields: [instituicaoId], references: [id])
+  /// Ano de criação do câmpus — cadastro manual (não existe em nenhum arquivo PNP ingerido),
+  /// usado só para o Piso Mínimo por Câmpus Novo (ver aplicarPisoMinimoCampusNovo.ts).
+  anoCriacao    Int?
   fatos         FatoIndicador[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -179,5 +182,9 @@ model OrcamentoAnual {
   /// Percentual (0-100) da anuidade CONIF, calculado sobre o Custeio (20RL) já distribuído de cada
   /// instituição — informativo, não deduzido do valor que a instituição recebe (ver anuidadeConif.ts).
   percentualAnuidade         Decimal  @default(0) @db.Decimal(7, 4)
+  /// Piso mínimo em R$ do Bloco Funcionamento para câmpus novos (criados a partir de 2018), já com o
+  /// IPCA do ano aplicado externamente (não calculado pelo sistema) — 0 desativa a regra. Ver
+  /// aplicarPisoMinimoCampusNovo.ts e Unidade.anoCriacao.
+  pisoMinimoCampusNovo       Decimal  @default(0) @db.Decimal(18, 2)
   updatedAt                  DateTime @updatedAt
 }

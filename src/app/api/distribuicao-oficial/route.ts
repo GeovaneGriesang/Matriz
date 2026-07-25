@@ -7,6 +7,7 @@ export interface DistribuicaoOficialResumo {
   valorTotal: number;
   valorAssistenciaEstudantil: number;
   percentualAnuidade: number;
+  pisoMinimoCampusNovo: number;
   /** Ano da PNP usado (ou a ser usado) como referência para este orçamento: `ano - 2`. */
   anoReferenciaPnp: number;
   runId: number | null;
@@ -37,6 +38,7 @@ export async function GET() {
         valorTotal: Number(orcamento.valorTotal),
         valorAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
         percentualAnuidade: Number(orcamento.percentualAnuidade),
+        pisoMinimoCampusNovo: Number(orcamento.pisoMinimoCampusNovo),
         anoReferenciaPnp: orcamento.ano - DEFASAGEM_ANOS_REFERENCIA_PNP,
         runId: run?.id ?? null,
         calculadoEm: run ? run.startedAt.toISOString() : null,

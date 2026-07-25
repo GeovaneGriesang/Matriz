@@ -16,8 +16,17 @@ export { splitLegal } from "./qualidadeEficiencia/iapl/splitLegal";
 export { blocoFuncionamento } from "./blocoFuncionamento";
 export type { FuncionamentoInput, FuncionamentoResult } from "./blocoFuncionamento";
 
+export { aplicarPisoMinimoCampusNovo } from "./aplicarPisoMinimoCampusNovo";
+export type { PisoMinimoCampusNovoResult } from "./aplicarPisoMinimoCampusNovo";
+
 export { blocoReitorias } from "./blocoReitorias";
 export type { ReitoriaInput, ReitoriaResult } from "./blocoReitorias";
 
 export { blocoQualidadeEficiencia } from "./blocoQualidadeEficiencia";
 export type { QualidadeEficienciaInstituicaoResult } from "./blocoQualidadeEficiencia";
+
+export { blocoAssistenciaEstudantil } from "./blocoAssistenciaEstudantil";
+export type * from "./types/assistenciaEstudantil.types";
+
+export { calcularAnuidadeConif } from "./anuidadeConif";
+export type { AnuidadeConifInput, AnuidadeConifResult } from "./anuidadeConif";

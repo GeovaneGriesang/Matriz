@@ -8,6 +8,10 @@ interface DetalheFuncionamento {
   share: number;
   pesoBloco: number;
   valorBlocoRede: number;
+  /** Piso Mínimo do Bloco Funcionamento para câmpus criados a partir de 2018 (0 = regra desativada). */
+  pisoMinimoCampusNovo: number;
+  pisoAplicado: boolean;
+  valorAntesDoPiso: number;
   valorReais: number;
 }
 
@@ -119,6 +123,7 @@ export interface CalculationRunDetail {
     orcamentoTotal: number | null;
     orcamentoAssistenciaEstudantil: number | null;
     percentualAnuidade: number | null;
+    pisoMinimoCampusNovo: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -149,8 +154,16 @@ function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
       </ItemMemoria>
       <ItemMemoria>
         Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
-        <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+        <strong>{formatoMoeda.format(detalhe.pisoAplicado ? detalhe.valorAntesDoPiso : detalhe.valorReais)}</strong>
       </ItemMemoria>
+      {detalhe.pisoAplicado && (
+        <ItemMemoria>
+          Piso Mínimo por Câmpus Novo aplicado: valor calculado{" "}
+          {formatoMoeda.format(detalhe.valorAntesDoPiso)} ficou abaixo do piso de{" "}
+          {formatoMoeda.format(detalhe.pisoMinimoCampusNovo)} — usado o piso.{" "}
+          <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+        </ItemMemoria>
+      )}
     </ul>
   );
 }
@@ -409,6 +422,9 @@ export function TabelaDistribuicao({
             ) : null}
             {detalhe.run.percentualAnuidade ? (
               <> · Anuidade CONIF: {formatoPercentual.format(detalhe.run.percentualAnuidade / 100)}</>
+            ) : null}
+            {detalhe.run.pisoMinimoCampusNovo ? (
+              <> · Piso Câmpus Novo: {formatoMoeda.format(detalhe.run.pisoMinimoCampusNovo)}</>
             ) : null}
           </span>
         )}

@@ -12,6 +12,7 @@ interface OrcamentoAnual {
   valorTotal: number;
   valorAssistenciaEstudantil: number;
   percentualAnuidade: number;
+  pisoMinimoCampusNovo: number;
   updatedAt: string;
 }
 
@@ -32,6 +33,7 @@ export function OrcamentoAnualPanel() {
   const [valorTotal, setValorTotal] = useState(0);
   const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
   const [percentualAnuidade, setPercentualAnuidade] = useState("0");
+  const [pisoMinimoCampusNovo, setPisoMinimoCampusNovo] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [escopoPorAno, setEscopoPorAno] = useState<Record<number, Escopo>>({});
@@ -70,6 +72,7 @@ export function OrcamentoAnualPanel() {
       setValorTotal(0);
       setValorAssistenciaEstudantil(0);
       setPercentualAnuidade("0");
+      setPisoMinimoCampusNovo(0);
       carregarOrcamentos();
     } catch (error) {
       setErro((error as Error).message);
@@ -232,6 +235,32 @@ export function OrcamentoAnualPanel() {
           </p>
         </div>
 
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="pisoMinimoCampusNovo"
+            className="text-sm font-medium text-neutral-900 dark:text-neutral-100"
+          >
+            Piso Mínimo do Bloco Funcionamento para Câmpus Novo [R$]
+          </label>
+          <CurrencyInput
+            id="pisoMinimoCampusNovo"
+            name="pisoMinimoCampusNovo"
+            value={pisoMinimoCampusNovo}
+            onChange={setPisoMinimoCampusNovo}
+            disabled={salvando}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Valor mínimo garantido do Bloco Funcionamento para câmpus criados a partir de 2018 (cadastrados em{" "}
+            <Link href="/admin/unidades" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
+              Câmpus
+            </Link>
+            ), já com o IPCA do ano aplicado (calcule fora do sistema — ele não estima IPCA). Regra oficial CONIF:
+            R$ 700.000 corrigidos, se o cálculo proporcional do câmpus ficar abaixo disso. Deixe em R$ 0,00 para
+            não aplicar nenhum piso.
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={salvando}
@@ -264,6 +293,9 @@ export function OrcamentoAnualPanel() {
                       {o.ano} — Custeio (20RL): {formatoMoeda.format(o.valorTotal)} · Assist. Estudantil (2994):{" "}
                       {formatoMoeda.format(o.valorAssistenciaEstudantil)}
                       {o.percentualAnuidade ? <> · Anuidade CONIF: {o.percentualAnuidade}%</> : null}
+                      {o.pisoMinimoCampusNovo ? (
+                        <> · Piso Câmpus Novo: {formatoMoeda.format(o.pisoMinimoCampusNovo)}</>
+                      ) : null}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       Atualizado em {formatoData.format(new Date(o.updatedAt))}

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/server/db/prisma";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
+import { aplicarPisoMinimoCampusNovo } from "@/calculation-engine/aplicarPisoMinimoCampusNovo";
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
 import { blocoAssistenciaEstudantil } from "@/calculation-engine/blocoAssistenciaEstudantil";
@@ -63,6 +64,12 @@ export interface RunCalculationInput {
    * deduzido do valor que a instituição recebe (ver calcularAnuidadeConif). Padrão 0 quando omitido.
    */
   percentualAnuidade?: number;
+  /**
+   * Piso mínimo em R$ do Bloco Funcionamento para câmpus criados a partir de 2018
+   * (`Unidade.anoCriacao`), já com o IPCA do ano aplicado externamente — ver
+   * aplicarPisoMinimoCampusNovo.ts. Padrão 0 (regra desativada) quando omitido.
+   */
+  pisoMinimoCampusNovo?: number;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
   ano: number;
   /**
@@ -382,7 +389,18 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const totalMatriculasFormacaoRede = iaplInputs.reduce((s, i) => s + i.matriculasFormacaoProfessores, 0);
   const totalMatriculasProejaRede = iaplInputs.reduce((s, i) => s + i.matriculasProeja, 0);
 
-  const funcionamento = blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal);
+  // Piso Mínimo por Câmpus Novo: só afeta o Bloco Funcionamento (Reitorias/Qualidade e
+  // Eficiência continuam usando a Matrícula Ponderada crua, sem o piso — ver blocoReitorias.ts).
+  const unidadesAnoCriacao = await prisma.unidade.findMany({
+    where: { id: { in: funcionamentoInputs.map((f) => f.campusId) } },
+    select: { id: true, anoCriacao: true },
+  });
+  const anoCriacaoPorCampus = new Map(unidadesAnoCriacao.map((u) => [u.id, u.anoCriacao]));
+  const funcionamento = aplicarPisoMinimoCampusNovo(
+    blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal),
+    anoCriacaoPorCampus,
+    input.pisoMinimoCampusNovo ?? 0,
+  );
   const reitorias = blocoReitorias(reitoriaInputs, input.orcamentoTotal);
   const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
   const assistenciaEstudantil = blocoAssistenciaEstudantil(
@@ -440,6 +458,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     orcamentoTotal: input.orcamentoTotal,
     orcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
     percentualAnuidade: input.percentualAnuidade ?? 0,
+    pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
     overridesPorUnidade: overrides,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
@@ -467,6 +486,9 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         share: f.share,
         pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
         valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * input.orcamentoTotal,
+        pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
+        pisoAplicado: f.pisoAplicado,
+        valorAntesDoPiso: f.valorAntesDoPiso,
         valorReais: f.valorReais,
       },
     })),

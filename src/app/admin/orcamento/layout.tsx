@@ -9,12 +9,20 @@ export default async function OrcamentoLayout({ children }: { children: ReactNod
   return (
     <div>
       <div className="mx-auto flex max-w-2xl items-center justify-between px-6 pt-4">
-        <Link
-          href="/upload"
-          className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
-        >
-          Upload de extrato PNP
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/upload"
+            className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Upload de extrato PNP
+          </Link>
+          <Link
+            href="/admin/unidades"
+            className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Câmpus
+          </Link>
+        </div>
         <form action={logoutAction}>
           <button
             type="submit"

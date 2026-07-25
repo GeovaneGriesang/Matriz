@@ -45,6 +45,8 @@ export interface CalculationRunDetail {
     orcamentoAssistenciaEstudantil: number | null;
     /** Percentual (0-100) da anuidade CONIF usado neste run, `null` quando não informado. */
     percentualAnuidade: number | null;
+    /** Piso Mínimo do Bloco Funcionamento (R$) usado neste run, `null` quando não informado. */
+    pisoMinimoCampusNovo: number | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -214,6 +216,7 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
     orcamentoTotal?: number;
     orcamentoAssistenciaEstudantil?: number;
     percentualAnuidade?: number;
+    pisoMinimoCampusNovo?: number;
   } | null;
   const { instituicoes, totalGeralReais } = await montarInstituicoes(run.results);
 
@@ -227,6 +230,8 @@ export async function getCalculationRunDetail(runId: number): Promise<Calculatio
       orcamentoAssistenciaEstudantil:
         snapshot?.orcamentoAssistenciaEstudantil !== undefined ? snapshot.orcamentoAssistenciaEstudantil : null,
       percentualAnuidade: snapshot?.percentualAnuidade !== undefined ? snapshot.percentualAnuidade : null,
+      pisoMinimoCampusNovo:
+        snapshot?.pisoMinimoCampusNovo !== undefined ? snapshot.pisoMinimoCampusNovo : null,
       startedAt: run.startedAt.toISOString(),
       finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
       errorMessage: run.errorMessage,
