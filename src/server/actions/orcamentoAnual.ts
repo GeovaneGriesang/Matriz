@@ -23,6 +23,9 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   const percentualAnuidadeBruto = formData.get("percentualAnuidade");
   const percentualAnuidade =
     percentualAnuidadeBruto === null || percentualAnuidadeBruto === "" ? 0 : Number(percentualAnuidadeBruto);
+  const pisoMinimoCampusNovoBruto = formData.get("pisoMinimoCampusNovo");
+  const pisoMinimoCampusNovo =
+    pisoMinimoCampusNovoBruto === null || pisoMinimoCampusNovoBruto === "" ? 0 : Number(pisoMinimoCampusNovoBruto);
 
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };
@@ -36,11 +39,14 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   if (!Number.isFinite(percentualAnuidade) || percentualAnuidade < 0 || percentualAnuidade > 100) {
     return { ok: false, errorMessage: "O percentual de anuidade deve estar entre 0 e 100." };
   }
+  if (!Number.isFinite(pisoMinimoCampusNovo) || pisoMinimoCampusNovo < 0) {
+    return { ok: false, errorMessage: "O piso mínimo por câmpus novo não pode ser negativo." };
+  }
 
   await prisma.orcamentoAnual.upsert({
     where: { ano },
-    create: { ano, valorTotal, valorAssistenciaEstudantil, percentualAnuidade },
-    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade },
+    create: { ano, valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo },
+    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo },
   });
 
   return { ok: true };
@@ -90,6 +96,7 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     orcamentoTotal: Number(orcamento.valorTotal),
     orcamentoAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
     percentualAnuidade: Number(orcamento.percentualAnuidade),
+    pisoMinimoCampusNovo: Number(orcamento.pisoMinimoCampusNovo),
     origem: "OFICIAL",
     escopo,
   });

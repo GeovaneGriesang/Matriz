@@ -11,6 +11,7 @@ export async function GET() {
       valorTotal: Number(o.valorTotal),
       valorAssistenciaEstudantil: Number(o.valorAssistenciaEstudantil),
       percentualAnuidade: Number(o.percentualAnuidade),
+      pisoMinimoCampusNovo: Number(o.pisoMinimoCampusNovo),
       updatedAt: o.updatedAt.toISOString(),
     })),
   );
