@@ -3,6 +3,11 @@
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 
+/** Mesmo critério de `/api/unidades` — Reitoria/Direção Geral não são elegíveis ao Piso Mínimo por Câmpus Novo. */
+function ehUnidadeAdministrativa(nome: string): boolean {
+  return /^(reitoria|direção geral|direcao geral)\b/i.test(nome);
+}
+
 export interface SalvarAnoCriacaoUnidadeResult {
   ok: boolean;
   errorMessage?: string;
@@ -28,6 +33,14 @@ export async function salvarAnoCriacaoUnidadeAction(formData: FormData): Promise
   const anoCriacao = anoCriacaoBruto === null || anoCriacaoBruto === "" ? null : Number(anoCriacaoBruto);
   if (anoCriacao !== null && (!Number.isInteger(anoCriacao) || anoCriacao < 1900 || anoCriacao > 2100)) {
     return { ok: false, errorMessage: "Ano de criação inválido." };
+  }
+
+  const unidade = await prisma.unidade.findUnique({ where: { id: unidadeId }, select: { nome: true } });
+  if (!unidade) {
+    return { ok: false, errorMessage: "Câmpus inválido." };
+  }
+  if (ehUnidadeAdministrativa(unidade.nome)) {
+    return { ok: false, errorMessage: "Reitoria/Direção Geral não têm ano de criação de câmpus." };
   }
 
   await prisma.unidade.update({ where: { id: unidadeId }, data: { anoCriacao } });

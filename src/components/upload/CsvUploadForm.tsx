@@ -27,6 +27,16 @@ interface ProgressoServidor {
   status: "parsing" | "persisting" | "done" | "error" | "cancelled";
 }
 
+interface UltimoUploadPorTipo {
+  fileType: PnpFileType;
+  originalFilename: string;
+  rowCount: number | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
 /**
  * `fetch` não expõe progresso de envio; `XMLHttpRequest` sim, via
  * `upload.onprogress`. Usado só para ter uma barra de progresso real do
@@ -83,6 +93,7 @@ export function CsvUploadForm() {
   const [segundosDecorridos, setSegundosDecorridos] = useState(0);
   const [resultado, setResultado] = useState<UploadResponse | null>(null);
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
+  const [ultimosUploads, setUltimosUploads] = useState<Map<PnpFileType, UltimoUploadPorTipo>>(new Map());
 
   const uploadIdRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,6 +125,19 @@ export function CsvUploadForm() {
   // Garante que os intervalos não sobrevivem se o componente desmontar em plena importação.
   useEffect(() => () => pararAcompanhamento(), []);
 
+  function carregarUltimosUploads() {
+    fetch("/api/ingestion-batches")
+      .then((response) => (response.ok ? (response.json() as Promise<UltimoUploadPorTipo[]>) : []))
+      .then((lista) => setUltimosUploads(new Map(lista.map((item) => [item.fileType, item]))))
+      .catch(() => {
+        // Falha pontual ao listar não deve travar a tela de upload.
+      });
+  }
+
+  useEffect(() => carregarUltimosUploads(), []);
+
+  const ultimoUploadDoTipo = ultimosUploads.get(fileType) ?? null;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -144,6 +168,7 @@ export function CsvUploadForm() {
     try {
       const data = await enviarComProgresso(formData, setProgressoUpload);
       setResultado(data);
+      if (data.ok) carregarUltimosUploads();
     } catch (error) {
       setResultado({ ok: false, errorMessage: (error as Error).message });
     } finally {
@@ -199,7 +224,10 @@ export function CsvUploadForm() {
             name="fileType"
             value={fileType}
             disabled={enviando}
-            onChange={(e) => setFileType(e.target.value as PnpFileType)}
+            onChange={(e) => {
+              setFileType(e.target.value as PnpFileType);
+              setResultado(null);
+            }}
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           >
             {gruposOrdenados.map(([grupo, itens]) => (
@@ -220,6 +248,24 @@ export function CsvUploadForm() {
             <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">{metadata.suggestedFileName}</code>
           </p>
           <p className="text-neutral-700 dark:text-neutral-300">{metadata.description}</p>
+
+          <p className="text-neutral-600 dark:text-neutral-400">
+            {ultimoUploadDoTipo ? (
+              <>
+                Último upload deste tipo:{" "}
+                <strong>
+                  {formatoData.format(new Date(ultimoUploadDoTipo.completedAt ?? ultimoUploadDoTipo.createdAt))}
+                </strong>{" "}
+                — {ultimoUploadDoTipo.rowCount ?? "?"} linha(s) importada(s) (
+                <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">
+                  {ultimoUploadDoTipo.originalFilename}
+                </code>
+                )
+              </>
+            ) : (
+              "Nenhum upload registrado ainda para este tipo de arquivo."
+            )}
+          </p>
 
           {!metadata.inScopeM1 && (
             <p className="rounded-md bg-amber-100 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
