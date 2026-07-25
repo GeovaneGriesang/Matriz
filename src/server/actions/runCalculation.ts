@@ -26,6 +26,7 @@ import {
   PESO_IEA_SUBBLOCO,
   PESO_RAP_SUBBLOCO,
   PESO_IAPL_SUBBLOCO,
+  ANO_MINIMO_CAMPUS_NOVO,
 } from "@/calculation-engine/constants/blocos.constants";
 import type {
   IaplCampusInput,
@@ -233,21 +234,47 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     _sum: { valor: true },
   });
 
-  const funcionamentoInputs = aplicarOverrideFuncionamento(
-    mateqPorUnidade
+  // Câmpus elegíveis ao Piso Mínimo (anoCriacao >= ANO_MINIMO_CAMPUS_NOVO) mas sem nenhuma linha de
+  // Matrícula Equivalente no ano base (recém-criados, ainda não consolidados na PNP) precisam entrar
+  // no Bloco Funcionamento com matrícula ponderada 0 — do contrário nunca aparecem no groupBy acima e
+  // ficam de fora por completo, mesmo tendo direito ao piso (ver aplicarPisoMinimoCampusNovo.ts). Só
+  // vale a consulta extra quando o piso está de fato configurado.
+  let campusElegiveisSemMatricula: { id: number; instituicaoId: number }[] = [];
+  if ((input.pisoMinimoCampusNovo ?? 0) > 0) {
+    const idsComMatricula = mateqPorUnidade
       .filter((f) => f.unidadeId !== null)
-      .map((f) => ({
-        campusId: f.unidadeId as number,
-        matriculaPonderada: Number(f._sum.valor ?? 0),
-      })),
+      .map((f) => f.unidadeId as number);
+    campusElegiveisSemMatricula = await prisma.unidade.findMany({
+      where: {
+        instituicaoId: { in: input.instituicaoIds },
+        anoCriacao: { gte: ANO_MINIMO_CAMPUS_NOVO },
+        id: { notIn: idsComMatricula },
+      },
+      select: { id: true, instituicaoId: true },
+    });
+  }
+
+  const funcionamentoInputs = aplicarOverrideFuncionamento(
+    [
+      ...mateqPorUnidade
+        .filter((f) => f.unidadeId !== null)
+        .map((f) => ({
+          campusId: f.unidadeId as number,
+          matriculaPonderada: Number(f._sum.valor ?? 0),
+        })),
+      ...campusElegiveisSemMatricula.map((u) => ({ campusId: u.id, matriculaPonderada: 0 })),
+    ],
     overrides,
   );
 
   // Bloco Reitorias usa a mesma base do Bloco Funcionamento (matrícula ponderada
   // pós-override), só que agregada por instituição — ver blocoReitorias.ts.
-  const instituicaoIdPorCampus = new Map(
-    mateqPorUnidade.filter((f) => f.unidadeId !== null).map((f) => [f.unidadeId as number, f.instituicaoId]),
-  );
+  const instituicaoIdPorCampus = new Map([
+    ...mateqPorUnidade
+      .filter((f) => f.unidadeId !== null)
+      .map((f): [number, number] => [f.unidadeId as number, f.instituicaoId]),
+    ...campusElegiveisSemMatricula.map((u): [number, number] => [u.id, u.instituicaoId]),
+  ]);
   const reitoriaInputs = funcionamentoInputs
     .map((f) => {
       const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
