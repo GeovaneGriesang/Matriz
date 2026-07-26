@@ -25,3 +25,16 @@ export function parseDecimalBrOptional(raw: string): number | null {
 export function identity(raw: string): string {
   return raw.trim();
 }
+
+/**
+ * Como `parseDecimalBrOptional`, mas divide o resultado por 100 — a PNP exporta os valores
+ * absolutos de "Matrícula Equivalente" de `PercentuaisLegais.csv` (Geral/Técnicos/Formação de
+ * Professores/Proeja) 100x maiores que o valor real, confirmado cruzando com `DadosGerais.csv`
+ * em múltiplos câmpus (ver Achado 6 de docs/pnp-matriz/Comparacao_CSV_vs_Matriz_5aFase.md). Os
+ * percentuais (%ME) não são afetados pelo bug (numerador e denominador inflados igualmente) — só
+ * os valores absolutos precisam dessa correção.
+ */
+export function parseDecimalBrOptionalEscala100(raw: string): number | null {
+  const valor = parseDecimalBrOptional(raw);
+  return valor === null ? null : valor / 100;
+}
