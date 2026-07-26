@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
+import { Variacao, calcularVariacao } from "@/components/shared/Variacao";
 import { salvarOrcamentoAnualAction, calcularDistribuicaoOficialAction } from "@/server/actions/orcamentoAnual";
 import {
   PESO_BLOCO_FUNCIONAMENTO,
@@ -22,8 +23,30 @@ interface OrcamentoAnual {
 }
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const formatoMoedaComSinal = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  signDisplay: "exceptZero",
+});
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const formatoPercentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 });
+const formatoPercentualComSinal = new Intl.NumberFormat("pt-BR", {
+  style: "percent",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+/** Blocos calculados no nível da rede a partir de um `OrcamentoAnual` — usado na memória de cálculo e no comparativo. */
+function calcularBlocosRede(o: OrcamentoAnual) {
+  const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * o.valorTotal;
+  const bloco1Reitoria = PESO_BLOCO_REITORIAS * o.valorTotal;
+  const bloco1Subtotal = bloco1Matriculas + bloco1Reitoria;
+  const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * o.valorTotal;
+  const bloco3 = o.valorAssistenciaEstudantil;
+  const totalGeral = bloco1Subtotal + bloco2 + bloco3;
+  return { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2, bloco3, totalGeral };
+}
 
 type TipoOrigem = "digitado" | "totalizador" | "calculo" | "normativo";
 
@@ -194,10 +217,7 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
   const totalGeral = o.valorTotal + o.valorAssistenciaEstudantil;
   const anuidadeValor = (o.percentualAnuidade / 100) * o.valorTotal;
   const totalMenosAnuidade = o.valorTotal - anuidadeValor;
-  const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * o.valorTotal;
-  const bloco1Reitoria = PESO_BLOCO_REITORIAS * o.valorTotal;
-  const bloco1Subtotal = bloco1Matriculas + bloco1Reitoria;
-  const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * o.valorTotal;
+  const { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2 } = calcularBlocosRede(o);
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-900/40">
@@ -284,6 +304,68 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
   );
 }
 
+function CelulaVariacaoRede({ anterior, atual }: { anterior: number; atual: number }) {
+  const { delta, percentual } = calcularVariacao(anterior, atual);
+  return (
+    <>
+      <td className="py-2 pr-4 text-right font-mono">
+        <Variacao delta={delta}>{delta !== null ? formatoMoedaComSinal.format(delta) : ""}</Variacao>
+      </td>
+      <td className="py-2 text-right font-mono">
+        <Variacao delta={delta}>{percentual !== null ? formatoPercentualComSinal.format(percentual) : "novo"}</Variacao>
+      </td>
+    </>
+  );
+}
+
+/**
+ * Comparativo interanual no nível da rede — mesma aritmética pura de `MemoriaCalculoGeracao`, mas
+ * lado a lado para dois anos já salvos. Não depende de nenhuma execução de cálculo.
+ */
+function ComparativoOrcamentoAnual({ anoAnterior, anoAtual }: { anoAnterior: OrcamentoAnual; anoAtual: OrcamentoAnual }) {
+  const a = calcularBlocosRede(anoAnterior);
+  const b = calcularBlocosRede(anoAtual);
+  const linhas: { label: string; a: number; b: number; destaque?: boolean }[] = [
+    { label: "Bloco 1 — Matrículas/Campi (80%)", a: a.bloco1Matriculas, b: b.bloco1Matriculas },
+    { label: "Bloco 1 — Reitoria (10%)", a: a.bloco1Reitoria, b: b.bloco1Reitoria },
+    { label: "Subtotal Bloco 1 (90%)", a: a.bloco1Subtotal, b: b.bloco1Subtotal, destaque: true },
+    { label: "Bloco 2 — Qualidade e Eficiência (10%)", a: a.bloco2, b: b.bloco2 },
+    { label: "Bloco 3 — Assistência Estudantil (2994)", a: a.bloco3, b: b.bloco3 },
+    { label: "Total Geral", a: a.totalGeral, b: b.totalGeral, destaque: true },
+  ];
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+      <table className="w-full min-w-max border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-neutral-200 text-left text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+            <th className="py-2 pr-4">Item</th>
+            <th className="py-2 pr-4 text-right">{anoAnterior.ano}</th>
+            <th className="py-2 pr-4 text-right">{anoAtual.ano}</th>
+            <th className="py-2 pr-4 text-right">Δ R$</th>
+            <th className="py-2 text-right">Δ %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((linha) => (
+            <tr
+              key={linha.label}
+              className={`border-b border-neutral-100 dark:border-neutral-900 ${
+                linha.destaque ? "font-semibold text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300"
+              }`}
+            >
+              <td className="py-2 pr-4">{linha.label}</td>
+              <td className="py-2 pr-4 text-right font-mono">{formatoMoeda.format(linha.a)}</td>
+              <td className="py-2 pr-4 text-right font-mono">{formatoMoeda.format(linha.b)}</td>
+              <CelulaVariacaoRede anterior={linha.a} atual={linha.b} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function formatarTempo(segundos: number): string {
   const min = Math.floor(segundos / 60)
     .toString()
@@ -306,12 +388,22 @@ export function OrcamentoAnualPanel() {
   const [segundosDecorridos, setSegundosDecorridos] = useState(0);
   const [mensagemPorAno, setMensagemPorAno] = useState<Record<number, string>>({});
   const [memoriaAbertaPorAno, setMemoriaAbertaPorAno] = useState<Record<number, boolean>>({});
+  const [compararAtivo, setCompararAtivo] = useState(false);
+  const [anoComparacaoAnterior, setAnoComparacaoAnterior] = useState<number | null>(null);
+  const [anoComparacaoAtual, setAnoComparacaoAtual] = useState<number | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => () => {
     if (timerRef.current !== null) clearInterval(timerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (compararAtivo && orcamentos.length >= 2 && anoComparacaoAnterior === null && anoComparacaoAtual === null) {
+      setAnoComparacaoAtual(orcamentos[0]?.ano ?? null);
+      setAnoComparacaoAnterior(orcamentos[1]?.ano ?? null);
+    }
+  }, [compararAtivo, orcamentos, anoComparacaoAnterior, anoComparacaoAtual]);
 
   function carregarOrcamentos() {
     fetch("/api/orcamentos-anuais")
@@ -634,6 +726,91 @@ export function OrcamentoAnualPanel() {
             })}
           </ul>
         )}
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Comparativo interanual</h2>
+          <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={compararAtivo}
+              onChange={(e) => setCompararAtivo(e.target.checked)}
+            />
+            Comparar com outro ano
+          </label>
+        </div>
+
+        {compararAtivo &&
+          (orcamentos.length < 2 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              É preciso pelo menos dois anos cadastrados para comparar.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="anoComparacaoAnterior"
+                    className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                  >
+                    Ano de comparação (anterior/histórico)
+                  </label>
+                  <select
+                    id="anoComparacaoAnterior"
+                    value={anoComparacaoAnterior ?? ""}
+                    onChange={(e) => setAnoComparacaoAnterior(Number(e.target.value))}
+                    className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="" disabled>
+                      Selecione...
+                    </option>
+                    {orcamentos.map((o) => (
+                      <option key={o.ano} value={o.ano}>
+                        {o.ano}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="anoComparacaoAtual"
+                    className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                  >
+                    Ano de referência (atual)
+                  </label>
+                  <select
+                    id="anoComparacaoAtual"
+                    value={anoComparacaoAtual ?? ""}
+                    onChange={(e) => setAnoComparacaoAtual(Number(e.target.value))}
+                    className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="" disabled>
+                      Selecione...
+                    </option>
+                    {orcamentos.map((o) => (
+                      <option key={o.ano} value={o.ano}>
+                        {o.ano}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {anoComparacaoAnterior !== null &&
+                anoComparacaoAtual !== null &&
+                (anoComparacaoAnterior === anoComparacaoAtual ? (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">Selecione dois anos diferentes.</p>
+                ) : (
+                  (() => {
+                    const oAnterior = orcamentos.find((o) => o.ano === anoComparacaoAnterior);
+                    const oAtual = orcamentos.find((o) => o.ano === anoComparacaoAtual);
+                    if (!oAnterior || !oAtual) return null;
+                    return <ComparativoOrcamentoAnual anoAnterior={oAnterior} anoAtual={oAtual} />;
+                  })()
+                ))}
+            </>
+          ))}
       </div>
     </div>
   );
