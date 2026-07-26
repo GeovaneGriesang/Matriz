@@ -19,16 +19,16 @@ describe("blocoQualidadeEficiencia", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = blocoQualidadeEficiencia(
       [
-        { campusId: 1, instituicaoId: 10, valorIea: 0.9 },
-        { campusId: 2, instituicaoId: 20, valorIea: 0.3 },
+        { campusId: 1, instituicaoId: 10, concluidos: 90, evadidos: 10, retidos: 0 },
+        { campusId: 2, instituicaoId: 20, concluidos: 30, evadidos: 70, retidos: 0 },
       ],
       [
-        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 22 },
-        { campusId: 2, instituicaoId: 20, razaoDocenteAluno: 19 },
+        { campusId: 1, instituicaoId: 10, matriculasRap: 440, professorEquivalente: 20 },
+        { campusId: 2, instituicaoId: 20, matriculasRap: 380, professorEquivalente: 20 },
       ],
       [
-        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
-        { campusId: 2, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 10, matriculasProeja: 50 },
+        { campusId: 1, instituicaoId: 10, matriculasTecnicos: 300, matriculasFormacaoProfessores: 10, matriculasProeja: 50, matriculasGeral: 100 },
+        { campusId: 2, instituicaoId: 20, matriculasTecnicos: 100, matriculasFormacaoProfessores: 10, matriculasProeja: 50, matriculasGeral: 100 },
       ],
       orcamentoTotal,
     );

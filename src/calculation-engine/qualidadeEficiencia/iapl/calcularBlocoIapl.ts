@@ -1,11 +1,13 @@
 import { PESO_IAPL_SUBBLOCO } from "../../constants/blocos.constants";
-import type { IaplCampusInput, IaplInstituicaoResult } from "../../types/qualidadeEficiencia.types";
+import type { IaplCampusInput, IaplCategoriaResult, IaplInstituicaoResult } from "../../types/qualidadeEficiencia.types";
 import { splitLegal } from "./splitLegal";
+import { pesoIaplFormacaoProfessores, pesoIaplProeja, pesoIaplTecnicos } from "./bucketizeIapl";
 
 interface TotaisInstituicao {
   matriculasTecnicos: number;
   matriculasFormacaoProfessores: number;
   matriculasProeja: number;
+  matriculasGeral: number;
 }
 
 function agregarPorInstituicao(campiInputs: IaplCampusInput[]): Map<number, TotaisInstituicao> {
@@ -15,37 +17,70 @@ function agregarPorInstituicao(campiInputs: IaplCampusInput[]): Map<number, Tota
       matriculasTecnicos: 0,
       matriculasFormacaoProfessores: 0,
       matriculasProeja: 0,
+      matriculasGeral: 0,
     };
     resultado.set(input.instituicaoId, {
       matriculasTecnicos: atual.matriculasTecnicos + input.matriculasTecnicos,
       matriculasFormacaoProfessores: atual.matriculasFormacaoProfessores + input.matriculasFormacaoProfessores,
       matriculasProeja: atual.matriculasProeja + input.matriculasProeja,
+      matriculasGeral: atual.matriculasGeral + input.matriculasGeral,
     });
   }
   return resultado;
 }
 
-function distribuirPorMatriculas(
+/**
+ * Enquadra o %ME de uma categoria (Técnicos/Formação de Professores/Proeja) de cada instituição na
+ * respectiva tabela de faixas/pesos (seção 2.1 da metodologia), pondera (%ME × peso) e distribui o
+ * valor da categoria proporcionalmente a esse ponderado — mesmo padrão de IEA/RAP. Uma instituição
+ * que não atinge nenhum piso legal (%ME abaixo do primeiro degrau) recebe peso 0 e não participa
+ * do rateio dessa categoria, mesmo tendo matrículas nela.
+ */
+function calcularCategoria(
   totaisPorInstituicao: Map<number, TotaisInstituicao>,
-  matriculasDaInstituicao: (totais: TotaisInstituicao) => number,
-  valorCategoria: number,
-): Map<number, number> {
-  const totalMatriculas = Array.from(totaisPorInstituicao.values()).reduce(
-    (total, t) => total + matriculasDaInstituicao(t),
-    0,
-  );
-  const resultado = new Map<number, number>();
-  for (const [instituicaoId, totais] of totaisPorInstituicao) {
-    const share = totalMatriculas === 0 ? 0 : matriculasDaInstituicao(totais) / totalMatriculas;
-    resultado.set(instituicaoId, share * valorCategoria);
+  matriculasDaCategoria: (totais: TotaisInstituicao) => number,
+  peso: (percentualMe: number) => number,
+  valorCategoriaRede: number,
+): Map<number, IaplCategoriaResult> {
+  const agregados = Array.from(totaisPorInstituicao.entries()).map(([instituicaoId, totais]) => {
+    const matriculas = matriculasDaCategoria(totais);
+    const matriculasGeral = totais.matriculasGeral;
+    const percentualMe = matriculasGeral === 0 ? 0 : matriculas / matriculasGeral;
+    const pesoCategoria = peso(percentualMe);
+    return {
+      instituicaoId,
+      matriculas,
+      matriculasGeral,
+      percentualMe,
+      peso: pesoCategoria,
+      ponderado: percentualMe * pesoCategoria,
+    };
+  });
+
+  const somaPonderadosRede = agregados.reduce((total, item) => total + item.ponderado, 0);
+
+  const resultado = new Map<number, IaplCategoriaResult>();
+  for (const item of agregados) {
+    const share = somaPonderadosRede === 0 ? 0 : item.ponderado / somaPonderadosRede;
+    resultado.set(item.instituicaoId, {
+      matriculas: item.matriculas,
+      matriculasGeral: item.matriculasGeral,
+      percentualMe: item.percentualMe,
+      peso: item.peso,
+      ponderado: item.ponderado,
+      somaPonderadosRede,
+      share,
+      valorReais: share * valorCategoriaRede,
+    });
   }
   return resultado;
 }
 
 /**
- * Divide o sub-bloco IAPL (5,0%) nas três metas legais e distribui cada meta
- * por INSTITUIÇÃO (não por câmpus) proporcionalmente às matrículas de cada
- * categoria — a Matriz CONIF só apura IAPL em nível institucional.
+ * Divide o sub-bloco IAPL (5,0%) nas três metas legais (70% Técnicos / 20% Formação de
+ * Professores / 10% Proeja) e, dentro de cada meta, distribui proporcionalmente ao %ME da
+ * instituição enquadrado em faixa de peso — nunca proporcionalmente à matrícula bruta da
+ * categoria (isso ignoraria se a instituição atinge ou não o piso legal).
  */
 export function calcularBlocoIapl(
   campiInputs: IaplCampusInput[],
@@ -59,27 +94,25 @@ export function calcularBlocoIapl(
   const split = splitLegal(totalIapl);
   const totaisPorInstituicao = agregarPorInstituicao(campiInputs);
 
-  const valoresTecnicos = distribuirPorMatriculas(totaisPorInstituicao, (t) => t.matriculasTecnicos, split.tecnicos);
-  const valoresFormacao = distribuirPorMatriculas(
+  const tecnicos = calcularCategoria(totaisPorInstituicao, (t) => t.matriculasTecnicos, pesoIaplTecnicos, split.tecnicos);
+  const formacaoProfessores = calcularCategoria(
     totaisPorInstituicao,
     (t) => t.matriculasFormacaoProfessores,
+    pesoIaplFormacaoProfessores,
     split.formacaoProfessores,
   );
-  const valoresProeja = distribuirPorMatriculas(totaisPorInstituicao, (t) => t.matriculasProeja, split.proeja);
+  const proeja = calcularCategoria(totaisPorInstituicao, (t) => t.matriculasProeja, pesoIaplProeja, split.proeja);
 
-  return Array.from(totaisPorInstituicao.entries()).map(([instituicaoId, totais]) => {
-    const valorTecnicos = valoresTecnicos.get(instituicaoId) ?? 0;
-    const valorFormacaoProfessores = valoresFormacao.get(instituicaoId) ?? 0;
-    const valorProeja = valoresProeja.get(instituicaoId) ?? 0;
+  return Array.from(totaisPorInstituicao.keys()).map((instituicaoId) => {
+    const tecnicosD = tecnicos.get(instituicaoId)!;
+    const formacaoD = formacaoProfessores.get(instituicaoId)!;
+    const proejaD = proeja.get(instituicaoId)!;
     return {
       instituicaoId,
-      matriculasTecnicos: totais.matriculasTecnicos,
-      matriculasFormacaoProfessores: totais.matriculasFormacaoProfessores,
-      matriculasProeja: totais.matriculasProeja,
-      valorTecnicos,
-      valorFormacaoProfessores,
-      valorProeja,
-      valorTotal: valorTecnicos + valorFormacaoProfessores + valorProeja,
+      tecnicos: tecnicosD,
+      formacaoProfessores: formacaoD,
+      proeja: proejaD,
+      valorTotal: tecnicosD.valorReais + formacaoD.valorReais + proejaD.valorReais,
     };
   });
 }

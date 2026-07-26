@@ -19,12 +19,26 @@ describe("bucketizeRap", () => {
 });
 
 describe("calcularBlocoRap", () => {
+  it("calcula RAP = Σ Matrículas RAP ÷ Σ Professor Equivalente uma única vez por instituição", () => {
+    // Câmpus A isolado teria RAP = 100/10 = 10 (MUITO_BAIXA); Câmpus B isolado teria RAP = 5/1 = 5 (MUITO_BAIXA).
+    // Somando primeiro (correto): (100+5)/(10+1) = 105/11 ≈ 9,545 — resultado que não é a média das razões.
+    const resultado = calcularBlocoRap(
+      [
+        { campusId: 1, instituicaoId: 10, matriculasRap: 100, professorEquivalente: 10 },
+        { campusId: 2, instituicaoId: 10, matriculasRap: 5, professorEquivalente: 1 },
+      ],
+      1_000_000,
+    );
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]!.razaoDocenteAluno).toBeCloseTo(105 / 11, 9);
+  });
+
   it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco (1 câmpus por instituição)", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 20.5 }, // MEDIA -> peso 2.0
-        { campusId: 2, instituicaoId: 20, razaoDocenteAluno: 19 }, // BAIXA -> peso 1.0
+        { campusId: 1, instituicaoId: 10, matriculasRap: 410, professorEquivalente: 20 }, // RAP 20.5 -> MEDIA -> peso 2.0
+        { campusId: 2, instituicaoId: 20, matriculasRap: 380, professorEquivalente: 20 }, // RAP 19 -> BAIXA -> peso 1.0
       ],
       orcamentoTotal,
     );
@@ -36,12 +50,12 @@ describe("calcularBlocoRap", () => {
     expect(somaValores).toBeCloseTo(PESO_RAP_SUBBLOCO * orcamentoTotal, 6);
   });
 
-  it("soma o RAP Ponderado de todos os câmpus da mesma instituição antes de calcular o share", () => {
+  it("soma Matrículas RAP e Professor Equivalente de todos os câmpus da mesma instituição no resultado", () => {
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, instituicaoId: 10, razaoDocenteAluno: 22 }, // MUITO_ALTA -> peso 2.5 -> ponderado 55
-        { campusId: 2, instituicaoId: 10, razaoDocenteAluno: 22 }, // mesma instituição -> +55
-        { campusId: 3, instituicaoId: 20, razaoDocenteAluno: 22 }, // instituição diferente, só 1 câmpus -> 55
+        { campusId: 1, instituicaoId: 10, matriculasRap: 220, professorEquivalente: 10 },
+        { campusId: 2, instituicaoId: 10, matriculasRap: 220, professorEquivalente: 10 },
+        { campusId: 3, instituicaoId: 20, matriculasRap: 220, professorEquivalente: 10 },
       ],
       1_000_000,
     );
@@ -49,11 +63,25 @@ describe("calcularBlocoRap", () => {
     expect(resultado).toHaveLength(2);
     const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
     const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
-    expect(inst10.ponderadoInstituicao).toBeCloseTo(inst20.ponderadoInstituicao * 2, 6);
-    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 2, 6);
+    // As duas instituições têm a mesma razão agregada (22) -> mesmo RAP, mesmo ponderado, mesmo valor.
+    expect(inst10.razaoDocenteAluno).toBeCloseTo(inst20.razaoDocenteAluno, 9);
+    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais, 6);
+    expect(inst10.porCampus).toHaveLength(2);
+    expect(inst10.matriculasRap).toBe(440);
+    expect(inst10.professorEquivalente).toBe(20);
   });
 
-  it("retorna lista vazia quando não há câmpus", () => {
+  it("override por instituição substitui a razão calculada (simulador)", () => {
+    const resultado = calcularBlocoRap(
+      [{ campusId: 1, instituicaoId: 10, matriculasRap: 440, professorEquivalente: 20 }], // RAP real 22
+      1_000_000,
+      new Map([[10, 15]]), // simula RAP 15 para a instituição 10
+    );
+    expect(resultado[0]!.razaoDocenteAluno).toBe(15);
+    expect(resultado[0]!.band).toBe("MUITO_BAIXA");
+  });
+
+  it("retorna lista vazia quando não há câmpus nem overrides", () => {
     expect(calcularBlocoRap([], 1_000_000)).toEqual([]);
   });
 });

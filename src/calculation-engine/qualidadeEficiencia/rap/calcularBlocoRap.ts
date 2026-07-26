@@ -3,55 +3,71 @@ import type { RapInstituicaoResult, RapInput } from "../../types/qualidadeEficie
 import { bucketizeRap, weightRap } from "./bucketizeRap";
 
 /**
- * Enquadra e pondera (RAP Ponderado = RAP × Peso) cada câmpus, mas equaliza
- * (share) e distribui o sub-bloco RAP (2,5%) por INSTITUIÇÃO, não por câmpus —
- * a Matriz CONIF só apura RAP em nível institucional (fórmula da Figura 9 do
- * livro da Matriz, aplicada sobre a soma dos câmpus da instituição).
+ * Soma Matrículas RAP e Professor Equivalente de todos os câmpus de cada instituição, calcula a
+ * razão docente/aluno institucional UMA ÚNICA VEZ a partir dessas somas — nunca por câmpus — e só
+ * então enquadra esse valor único em faixa/peso. A Matriz CONIF só apura RAP em nível
+ * institucional (fórmula da Figura 9 do livro da Matriz); a razão de duas somas não é igual à
+ * combinação de razões já calculadas por câmpus.
+ *
+ * RAP = Σ Matrículas RAP ÷ Σ Professor Equivalente (Portaria SETEC/MEC nº 51/2018, Art. 5º — ver
+ * seção 3.2 de docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md). Ainda usa Matrículas RAP
+ * de todas as modalidades (o filtro para RAP Presencial fica para um próximo passo).
+ *
+ * `overridesPorInstituicao`, quando informado, substitui a razão calculada de uma instituição pelo
+ * valor fornecido antes do enquadramento — usado pelo simulador ("e se o RAP desta instituição
+ * fosse X?"). Como RAP só existe em nível de instituição, o override é por instituição, não por
+ * câmpus.
  */
 export function calcularBlocoRap(
   campiInputs: RapInput[],
   orcamentoTotal: number,
+  overridesPorInstituicao?: Map<number, number>,
 ): RapInstituicaoResult[] {
-  if (campiInputs.length === 0) {
+  const porInstituicao = new Map<number, RapInput[]>();
+  for (const input of campiInputs) {
+    const atual = porInstituicao.get(input.instituicaoId) ?? [];
+    atual.push(input);
+    porInstituicao.set(input.instituicaoId, atual);
+  }
+
+  const instituicaoIds = new Set<number>([...porInstituicao.keys(), ...(overridesPorInstituicao?.keys() ?? [])]);
+  if (instituicaoIds.size === 0) {
     return [];
   }
 
-  const pesados = campiInputs.map((input) => {
-    const band = bucketizeRap(input.razaoDocenteAluno);
+  const agregados = Array.from(instituicaoIds).map((instituicaoId) => {
+    const porCampus = porInstituicao.get(instituicaoId) ?? [];
+    const matriculasRap = porCampus.reduce((total, c) => total + c.matriculasRap, 0);
+    const professorEquivalente = porCampus.reduce((total, c) => total + c.professorEquivalente, 0);
+
+    const razaoCalculada = professorEquivalente === 0 ? 0 : matriculasRap / professorEquivalente;
+    const razaoDocenteAluno = overridesPorInstituicao?.get(instituicaoId) ?? razaoCalculada;
+    const band = bucketizeRap(razaoDocenteAluno);
     const peso = weightRap(band);
+
     return {
-      campusId: input.campusId,
-      instituicaoId: input.instituicaoId,
-      razaoDocenteAluno: input.razaoDocenteAluno,
+      instituicaoId,
+      porCampus: porCampus.map(({ campusId, matriculasRap, professorEquivalente }) => ({
+        campusId,
+        matriculasRap,
+        professorEquivalente,
+      })),
+      matriculasRap,
+      professorEquivalente,
+      razaoDocenteAluno,
       band,
       peso,
-      ponderado: input.razaoDocenteAluno * peso,
+      ponderado: razaoDocenteAluno * peso,
     };
   });
 
-  const somaPonderadosRede = pesados.reduce((total, item) => total + item.ponderado, 0);
+  const somaPonderadosRede = agregados.reduce((total, item) => total + item.ponderado, 0);
   const valorSubBloco = PESO_RAP_SUBBLOCO * orcamentoTotal;
 
-  const porInstituicao = new Map<number, typeof pesados>();
-  for (const item of pesados) {
-    const atual = porInstituicao.get(item.instituicaoId) ?? [];
-    atual.push(item);
-    porInstituicao.set(item.instituicaoId, atual);
-  }
-
-  return Array.from(porInstituicao.entries()).map(([instituicaoId, porCampus]) => {
-    const ponderadoInstituicao = porCampus.reduce((total, item) => total + item.ponderado, 0);
-    const share = somaPonderadosRede === 0 ? 0 : ponderadoInstituicao / somaPonderadosRede;
+  return agregados.map((item) => {
+    const share = somaPonderadosRede === 0 ? 0 : item.ponderado / somaPonderadosRede;
     return {
-      instituicaoId,
-      porCampus: porCampus.map(({ campusId, razaoDocenteAluno, band, peso, ponderado }) => ({
-        campusId,
-        razaoDocenteAluno,
-        band,
-        peso,
-        ponderado,
-      })),
-      ponderadoInstituicao,
+      ...item,
       somaPonderadosRede,
       share,
       valorReais: share * valorSubBloco,

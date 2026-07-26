@@ -33,12 +33,39 @@ describe("weightIea", () => {
 });
 
 describe("calcularBlocoIea", () => {
+  it("aplica a fórmula oficial IEA = C_ciclo + R_ciclo × (C_ciclo ÷ (C_ciclo + Ev_ciclo))", () => {
+    // Caso real validado no documento de metodologia (Campus Cruzeiro do Sul, IFAC, 2024):
+    // C=36,30% Ev=55,56% R=8,15% -> IEA=39,52%. Alimentado como um único câmpus (contagens somam 100).
+    const resultado = calcularBlocoIea(
+      [{ campusId: 1, instituicaoId: 10, concluidos: 36.3, evadidos: 55.56, retidos: 8.15 }],
+      1_000_000,
+    );
+    expect(resultado[0]!.valorIea).toBeCloseTo(0.3952, 4);
+  });
+
+  it("soma as contagens absolutas de todos os câmpus da instituição ANTES de calcular o IEA uma única vez", () => {
+    // Câmpus A isolado teria IEA=0.95 (MUITO_ALTO); Câmpus B isolado teria IEA=0.05 (MUITO_BAIXO).
+    // Agregando as contagens primeiro (correto), a instituição fica em 0.5 (MEDIO) — resultado que
+    // não é obtido combinando bandas/pesos já calculados por câmpus.
+    const resultado = calcularBlocoIea(
+      [
+        { campusId: 1, instituicaoId: 10, concluidos: 95, evadidos: 5, retidos: 0 },
+        { campusId: 2, instituicaoId: 10, concluidos: 5, evadidos: 95, retidos: 0 },
+      ],
+      1_000_000,
+    );
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]!.valorIea).toBeCloseTo(0.5, 9);
+    expect(resultado[0]!.band).toBe("MEDIO");
+    expect(resultado[0]!.peso).toBe(1.5);
+  });
+
   it("equaliza shares somando 1.0 e distribui o valor total do sub-bloco (1 câmpus por instituição)", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoIea(
       [
-        { campusId: 1, instituicaoId: 10, valorIea: 0.9 }, // MUITO_ALTO -> peso 2.5
-        { campusId: 2, instituicaoId: 20, valorIea: 0.1 }, // MUITO_BAIXO -> peso 0.5
+        { campusId: 1, instituicaoId: 10, concluidos: 90, evadidos: 10, retidos: 0 }, // IEA 0.9 -> MUITO_ALTO -> peso 2.5
+        { campusId: 2, instituicaoId: 20, concluidos: 10, evadidos: 90, retidos: 0 }, // IEA 0.1 -> MUITO_BAIXO -> peso 0.5
       ],
       orcamentoTotal,
     );
@@ -55,27 +82,36 @@ describe("calcularBlocoIea", () => {
     expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 45, 6);
   });
 
-  it("soma o IEA Ponderado de todos os câmpus da mesma instituição antes de calcular o share", () => {
-    const orcamentoTotal = 1_000_000;
+  it("soma as contagens de todos os câmpus da mesma instituição no resultado (porCampus) mesmo com o cálculo unificado", () => {
     const resultado = calcularBlocoIea(
       [
-        { campusId: 1, instituicaoId: 10, valorIea: 0.9 }, // MUITO_ALTO -> peso 2.5 -> ponderado 2.25
-        { campusId: 2, instituicaoId: 10, valorIea: 0.9 }, // mesmo câmpus/instituição -> +2.25
-        { campusId: 3, instituicaoId: 20, valorIea: 0.9 }, // instituição diferente, só 1 câmpus -> 2.25
+        { campusId: 1, instituicaoId: 10, concluidos: 45, evadidos: 5, retidos: 0 },
+        { campusId: 2, instituicaoId: 10, concluidos: 45, evadidos: 5, retidos: 0 },
+        { campusId: 3, instituicaoId: 20, concluidos: 90, evadidos: 10, retidos: 0 },
       ],
-      orcamentoTotal,
+      1_000_000,
     );
 
     expect(resultado).toHaveLength(2);
     const inst10 = resultado.find((r) => r.instituicaoId === 10)!;
     const inst20 = resultado.find((r) => r.instituicaoId === 20)!;
-    // instituição 10 tem 2 câmpus com o mesmo IEA -> ponderado (e valor) 2x o da instituição 20
-    expect(inst10.ponderadoInstituicao).toBeCloseTo(inst20.ponderadoInstituicao * 2, 6);
-    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais * 2, 6);
+    // As duas instituições têm a mesma proporção agregada (90/10) -> mesmo IEA, mesmo ponderado, mesmo valor.
+    expect(inst10.valorIea).toBeCloseTo(inst20.valorIea, 9);
+    expect(inst10.valorReais).toBeCloseTo(inst20.valorReais, 6);
     expect(inst10.porCampus).toHaveLength(2);
   });
 
-  it("retorna lista vazia quando não há câmpus", () => {
+  it("override por instituição substitui o IEA calculado (simulador)", () => {
+    const resultado = calcularBlocoIea(
+      [{ campusId: 1, instituicaoId: 10, concluidos: 90, evadidos: 10, retidos: 0 }], // IEA real 0.9
+      1_000_000,
+      new Map([[10, 0.1]]), // simula IEA 0.1 para a instituição 10
+    );
+    expect(resultado[0]!.valorIea).toBe(0.1);
+    expect(resultado[0]!.band).toBe("MUITO_BAIXO");
+  });
+
+  it("retorna lista vazia quando não há câmpus nem overrides", () => {
     expect(calcularBlocoIea([], 1_000_000)).toEqual([]);
   });
 });
