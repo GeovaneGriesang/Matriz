@@ -5,6 +5,9 @@ import { Fragment, useState } from "react";
 interface DetalheFuncionamento {
   matriculaPonderadaCampus: number;
   totalMatriculaPonderadaRede: number;
+  /** Matrículas antes da equalização MECHDA da PNP — ausente em execuções anteriores a essa exibição. */
+  matriculasBrutasCampus?: number;
+  totalMatriculasBrutasRede?: number;
   share: number;
   pesoBloco: number;
   valorBlocoRede: number;
@@ -140,31 +143,61 @@ function ItemMemoria({ children }: { children: React.ReactNode }) {
   return <li className="text-neutral-700 dark:text-neutral-300">{children}</li>;
 }
 
-function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
+/**
+ * Transparência normativa: explicita que a Matrícula Equivalente (MECHDA) já vem calculada pela
+ * PNP — este sistema não reaplica os pesos oficiais (modalidade, laboratórios, retenção etc.),
+ * só consome o valor final, para não contá-los em dobro.
+ */
+function NotaNormativaMechda() {
   return (
-    <ul className="list-disc space-y-1 pl-5">
-      <ItemMemoria>
-        Matrícula Ponderada do câmpus: <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> ÷
-        total da rede <strong>{formatoNumero.format(detalhe.totalMatriculaPonderadaRede)}</strong> = participação{" "}
-        <strong>{formatoPercentual.format(detalhe.share)}</strong>
-      </ItemMemoria>
-      <ItemMemoria>
-        Bloco Funcionamento: {formatoPercentual.format(detalhe.pesoBloco)} × orçamento total ={" "}
-        {formatoMoeda.format(detalhe.valorBlocoRede)}
-      </ItemMemoria>
-      <ItemMemoria>
-        Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
-        <strong>{formatoMoeda.format(detalhe.pisoAplicado ? detalhe.valorAntesDoPiso : detalhe.valorReais)}</strong>
-      </ItemMemoria>
-      {detalhe.pisoAplicado && (
+    <div className="rounded-md border border-neutral-300 bg-neutral-100 p-3 text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+      🩶 <strong>Parâmetro Normativo (fonte: PNP):</strong> a Matrícula Equivalente (MECHDA) já é calculada pela
+      Plataforma Nilo Peçanha, aplicando a metodologia oficial de pesos por modalidade de ensino (Presencial,
+      EaD Recurso Próprio, EaD Fomento Externo), número de laboratórios, piso de cursos Integrados, bônus de
+      cursos agrícolas/pós-graduação e desconto por retenção acima de 1.095 dias. Este sistema consome o valor
+      final já equalizado pela PNP por câmpus/curso — não reaplica esses pesos, para evitar contá-los em dobro.
+    </div>
+  );
+}
+
+function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
+  const temMatriculasBrutas = detalhe.matriculasBrutasCampus !== undefined && detalhe.matriculasBrutasCampus > 0;
+  return (
+    <div className="flex flex-col gap-2">
+      <ul className="list-disc space-y-1 pl-5">
+        {temMatriculasBrutas && (
+          <ItemMemoria>
+            Matrículas brutas do câmpus (antes da equalização MECHDA):{" "}
+            <strong>{formatoNumero.format(detalhe.matriculasBrutasCampus as number)}</strong> → Matrícula
+            Equivalente (após MECHDA, fonte PNP):{" "}
+            <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> (fator médio{" "}
+            {formatoNumero.format(detalhe.matriculaPonderadaCampus / (detalhe.matriculasBrutasCampus as number))})
+          </ItemMemoria>
+        )}
         <ItemMemoria>
-          Piso Mínimo por Câmpus Novo aplicado: valor calculado{" "}
-          {formatoMoeda.format(detalhe.valorAntesDoPiso)} ficou abaixo do piso de{" "}
-          {formatoMoeda.format(detalhe.pisoMinimoCampusNovo)} — usado o piso.{" "}
-          <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+          Matrícula Ponderada do câmpus: <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> ÷
+          total da rede <strong>{formatoNumero.format(detalhe.totalMatriculaPonderadaRede)}</strong> = participação{" "}
+          <strong>{formatoPercentual.format(detalhe.share)}</strong>
         </ItemMemoria>
-      )}
-    </ul>
+        <ItemMemoria>
+          Bloco Funcionamento: {formatoPercentual.format(detalhe.pesoBloco)} × orçamento total ={" "}
+          {formatoMoeda.format(detalhe.valorBlocoRede)}
+        </ItemMemoria>
+        <ItemMemoria>
+          Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
+          <strong>{formatoMoeda.format(detalhe.pisoAplicado ? detalhe.valorAntesDoPiso : detalhe.valorReais)}</strong>
+        </ItemMemoria>
+        {detalhe.pisoAplicado && (
+          <ItemMemoria>
+            Piso Mínimo por Câmpus Novo aplicado: valor calculado{" "}
+            {formatoMoeda.format(detalhe.valorAntesDoPiso)} ficou abaixo do piso de{" "}
+            {formatoMoeda.format(detalhe.pisoMinimoCampusNovo)} — usado o piso.{" "}
+            <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+          </ItemMemoria>
+        )}
+      </ul>
+      {temMatriculasBrutas && <NotaNormativaMechda />}
+    </div>
   );
 }
 
