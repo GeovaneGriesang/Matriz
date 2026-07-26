@@ -13,7 +13,7 @@ import {
 
 type Escopo = "CONIF" | "TODAS";
 
-interface OrcamentoAnual {
+export interface OrcamentoAnual {
   ano: number;
   valorTotal: number;
   valorAssistenciaEstudantil: number;
@@ -38,14 +38,30 @@ const formatoPercentualComSinal = new Intl.NumberFormat("pt-BR", {
 });
 
 /** Blocos calculados no nível da rede a partir de um `OrcamentoAnual` — usado na memória de cálculo e no comparativo. */
-function calcularBlocosRede(o: OrcamentoAnual) {
+export function calcularBlocosRede(o: OrcamentoAnual) {
   const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * o.valorTotal;
   const bloco1Reitoria = PESO_BLOCO_REITORIAS * o.valorTotal;
   const bloco1Subtotal = bloco1Matriculas + bloco1Reitoria;
   const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * o.valorTotal;
   const bloco3 = o.valorAssistenciaEstudantil;
-  const totalGeral = bloco1Subtotal + bloco2 + bloco3;
-  return { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2, bloco3, totalGeral };
+  const acao20RL = bloco1Subtotal + bloco2;
+  const totalGeral = acao20RL + bloco3;
+  return { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2, bloco3, acao20RL, totalGeral };
+}
+
+/**
+ * Simula a Reitoria do Ano Atual fixada no mesmo valor (em reais) do Ano Anterior — a diferença é
+ * devolvida ao Bloco Matrículas/Campi. Sem granularidade de câmpus neste painel (só totais de rede),
+ * então não há redistribuição por MECHDA aqui — essa parte fica no comparativo por câmpus do /consulta.
+ * O total geral não muda (dinheiro só migra de bolso).
+ */
+export function simularCongelamentoReitoria(anoAnterior: OrcamentoAnual, anoAtual: OrcamentoAnual) {
+  const a = calcularBlocosRede(anoAnterior);
+  const bOficial = calcularBlocosRede(anoAtual);
+  const reitoriaSimulada = a.bloco1Reitoria;
+  const deltaReitoria = bOficial.bloco1Reitoria - reitoriaSimulada;
+  const bloco1Matriculas = bOficial.bloco1Matriculas + deltaReitoria;
+  return { ...bOficial, bloco1Reitoria: reitoriaSimulada, bloco1Matriculas };
 }
 
 type TipoOrigem = "digitado" | "totalizador" | "calculo" | "normativo";
@@ -320,17 +336,28 @@ function CelulaVariacaoRede({ anterior, atual }: { anterior: number; atual: numb
 
 /**
  * Comparativo interanual no nível da rede — mesma aritmética pura de `MemoriaCalculoGeracao`, mas
- * lado a lado para dois anos já salvos. Não depende de nenhuma execução de cálculo.
+ * lado a lado para dois anos já salvos. Não depende de nenhuma execução de cálculo. Quando
+ * `congelarReitoria` está ativo, o Ano Atual usa `simularCongelamentoReitoria` (Reitoria fixada no
+ * valor do Ano Anterior, diferença devolvida ao Bloco Matrículas/Campi).
  */
-function ComparativoOrcamentoAnual({ anoAnterior, anoAtual }: { anoAnterior: OrcamentoAnual; anoAtual: OrcamentoAnual }) {
+function ComparativoOrcamentoAnual({
+  anoAnterior,
+  anoAtual,
+  congelarReitoria,
+}: {
+  anoAnterior: OrcamentoAnual;
+  anoAtual: OrcamentoAnual;
+  congelarReitoria: boolean;
+}) {
   const a = calcularBlocosRede(anoAnterior);
-  const b = calcularBlocosRede(anoAtual);
-  const linhas: { label: string; a: number; b: number; destaque?: boolean }[] = [
-    { label: "Bloco 1 — Matrículas/Campi (80%)", a: a.bloco1Matriculas, b: b.bloco1Matriculas },
-    { label: "Bloco 1 — Reitoria (10%)", a: a.bloco1Reitoria, b: b.bloco1Reitoria },
+  const b = congelarReitoria ? simularCongelamentoReitoria(anoAnterior, anoAtual) : calcularBlocosRede(anoAtual);
+  const linhas: { label: string; a: number; b: number; destaque?: boolean; simulado?: boolean }[] = [
+    { label: "Bloco 1 — Matrículas/Campi (80%)", a: a.bloco1Matriculas, b: b.bloco1Matriculas, simulado: congelarReitoria },
+    { label: "Bloco 1 — Reitoria (10%)", a: a.bloco1Reitoria, b: b.bloco1Reitoria, simulado: congelarReitoria },
     { label: "Subtotal Bloco 1 (90%)", a: a.bloco1Subtotal, b: b.bloco1Subtotal, destaque: true },
     { label: "Bloco 2 — Qualidade e Eficiência (10%)", a: a.bloco2, b: b.bloco2 },
-    { label: "Bloco 3 — Assistência Estudantil (2994)", a: a.bloco3, b: b.bloco3 },
+    { label: "Total Ação 20RL (Bloco 1 + Bloco 2)", a: a.acao20RL, b: b.acao20RL, destaque: true },
+    { label: "Total Ação 2994 (Assistência Estudantil)", a: a.bloco3, b: b.bloco3, destaque: true },
     { label: "Total Geral", a: a.totalGeral, b: b.totalGeral, destaque: true },
   ];
 
@@ -354,7 +381,14 @@ function ComparativoOrcamentoAnual({ anoAnterior, anoAtual }: { anoAnterior: Orc
                 linha.destaque ? "font-semibold text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300"
               }`}
             >
-              <td className="py-2 pr-4">{linha.label}</td>
+              <td className="py-2 pr-4">
+                {linha.label}
+                {linha.simulado && (
+                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    ⚡ simulado
+                  </span>
+                )}
+              </td>
               <td className="py-2 pr-4 text-right font-mono">{formatoMoeda.format(linha.a)}</td>
               <td className="py-2 pr-4 text-right font-mono">{formatoMoeda.format(linha.b)}</td>
               <CelulaVariacaoRede anterior={linha.a} atual={linha.b} />
@@ -391,6 +425,7 @@ export function OrcamentoAnualPanel() {
   const [compararAtivo, setCompararAtivo] = useState(false);
   const [anoComparacaoAnterior, setAnoComparacaoAnterior] = useState<number | null>(null);
   const [anoComparacaoAtual, setAnoComparacaoAtual] = useState<number | null>(null);
+  const [congelarReitoria, setCongelarReitoria] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -748,6 +783,22 @@ export function OrcamentoAnualPanel() {
             </p>
           ) : (
             <>
+              <label className="flex w-fit items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={congelarReitoria}
+                  onChange={(e) => setCongelarReitoria(e.target.checked)}
+                />
+                Congelar valor da Reitoria (equalizar Reitoria A e B)
+              </label>
+              {congelarReitoria && (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  A Reitoria do Ano de Referência é fixada no mesmo valor do Ano de Comparação; a diferença é
+                  devolvida ao Bloco Matrículas/Campi. Isola a variação do custo administrativo da Reitoria — a
+                  redistribuição por câmpus/MECHDA aparece no comparativo detalhado do /consulta.
+                </p>
+              )}
+
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex flex-col gap-1">
                   <label
@@ -806,7 +857,13 @@ export function OrcamentoAnualPanel() {
                     const oAnterior = orcamentos.find((o) => o.ano === anoComparacaoAnterior);
                     const oAtual = orcamentos.find((o) => o.ano === anoComparacaoAtual);
                     if (!oAnterior || !oAtual) return null;
-                    return <ComparativoOrcamentoAnual anoAnterior={oAnterior} anoAtual={oAtual} />;
+                    return (
+                      <ComparativoOrcamentoAnual
+                        anoAnterior={oAnterior}
+                        anoAtual={oAtual}
+                        congelarReitoria={congelarReitoria}
+                      />
+                    );
                   })()
                 ))}
             </>
