@@ -4,6 +4,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { salvarOrcamentoAnualAction, calcularDistribuicaoOficialAction } from "@/server/actions/orcamentoAnual";
+import {
+  PESO_BLOCO_FUNCIONAMENTO,
+  PESO_BLOCO_REITORIAS,
+  PESO_BLOCO_QUALIDADE_EFICIENCIA,
+} from "@/calculation-engine/constants/blocos.constants";
 
 type Escopo = "CONIF" | "TODAS";
 
@@ -18,6 +23,157 @@ interface OrcamentoAnual {
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const formatoPercentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 });
+
+type TipoOrigem = "digitado" | "totalizador" | "calculo";
+
+const ORIGEM_ESTILO: Record<TipoOrigem, string> = {
+  digitado: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  totalizador: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+  calculo: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+};
+
+const ORIGEM_LABEL: Record<TipoOrigem, string> = {
+  digitado: "Digitado",
+  totalizador: "Totalizador",
+  calculo: "Cálculo",
+};
+
+function TagOrigem({ tipo }: { tipo: TipoOrigem }) {
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${ORIGEM_ESTILO[tipo]}`}>
+      {ORIGEM_LABEL[tipo]}
+    </span>
+  );
+}
+
+function LinhaMemoria({
+  label,
+  formula,
+  valor,
+  tipo,
+  destaque,
+}: {
+  label: string;
+  formula?: string;
+  valor: string;
+  tipo: TipoOrigem;
+  destaque?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1.5">
+      <div className="flex items-center gap-2">
+        <TagOrigem tipo={tipo} />
+        <span className={destaque ? "font-medium text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300"}>
+          {label}
+        </span>
+        {formula && <span className="text-xs text-neutral-500 dark:text-neutral-400">({formula})</span>}
+      </div>
+      <span className={destaque ? "font-mono font-semibold text-neutral-900 dark:text-neutral-100" : "font-mono text-neutral-700 dark:text-neutral-300"}>
+        {valor}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Memória de cálculo do topo da árvore (rede inteira, a partir dos valores digitados no
+ * orçamento do ano) — mostra como a Ação 20RL Bruta se reparte em Bloco 1 (Funcionamento
+ * 80% + Reitoria 10% = 90%) e Bloco 2 (Qualidade e Eficiência 10%), isola o Bloco 3
+ * (Assistência Estudantil, Ação 2994) do rateio do 20RL, e evidencia que a Anuidade CONIF é
+ * só informativa (não abate a base de rateio). Não depende de nenhuma execução de cálculo —
+ * é aritmética pura sobre o `OrcamentoAnual` já salvo, disponível assim que o ano é salvo.
+ */
+function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
+  const totalGeral = o.valorTotal + o.valorAssistenciaEstudantil;
+  const anuidadeValor = (o.percentualAnuidade / 100) * o.valorTotal;
+  const totalMenosAnuidade = o.valorTotal - anuidadeValor;
+  const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * o.valorTotal;
+  const bloco1Reitoria = PESO_BLOCO_REITORIAS * o.valorTotal;
+  const bloco1Subtotal = bloco1Matriculas + bloco1Reitoria;
+  const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * o.valorTotal;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-900/40">
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200 pb-2 dark:border-neutral-800">
+        <span className="font-medium text-neutral-900 dark:text-neutral-100">Legenda:</span>
+        <TagOrigem tipo="digitado" />
+        <span className="text-neutral-500 dark:text-neutral-400">informado manualmente</span>
+        <TagOrigem tipo="totalizador" />
+        <span className="text-neutral-500 dark:text-neutral-400">totalizadores</span>
+        <TagOrigem tipo="calculo" />
+        <span className="text-neutral-500 dark:text-neutral-400">cálculos / fórmulas</span>
+      </div>
+
+      <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
+        <LinhaMemoria label="Ação 20RL (Custeio Bruto)" valor={formatoMoeda.format(o.valorTotal)} tipo="digitado" destaque />
+        <LinhaMemoria
+          label="Ação 2994 (Assistência Estudantil)"
+          valor={formatoMoeda.format(o.valorAssistenciaEstudantil)}
+          tipo="digitado"
+          destaque
+        />
+        <LinhaMemoria
+          label="Total Geral"
+          formula="20RL + 2994"
+          valor={formatoMoeda.format(totalGeral)}
+          tipo="totalizador"
+          destaque
+        />
+        <LinhaMemoria
+          label={`Anuidade CONIF (${formatoPercentual.format(o.percentualAnuidade / 100)})`}
+          formula="% sobre o 20RL Bruto"
+          valor={formatoMoeda.format(anuidadeValor)}
+          tipo="calculo"
+        />
+        <LinhaMemoria
+          label="20RL − Anuidade"
+          formula="exibição informativa — não realimenta nenhum cálculo abaixo"
+          valor={formatoMoeda.format(totalMenosAnuidade)}
+          tipo="calculo"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <p className="font-medium text-neutral-900 dark:text-neutral-100">
+          Bloco 1 — Funcionamento (90% do 20RL Bruto)
+        </p>
+        <LinhaMemoria label="Matrículas / Campi" formula="80% × 20RL Bruto" valor={formatoMoeda.format(bloco1Matriculas)} tipo="calculo" />
+        <LinhaMemoria label="Reitoria" formula="10% × 20RL Bruto" valor={formatoMoeda.format(bloco1Reitoria)} tipo="calculo" />
+        <LinhaMemoria label="Subtotal Bloco 1" valor={formatoMoeda.format(bloco1Subtotal)} tipo="totalizador" destaque />
+      </div>
+
+      <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <p className="font-medium text-neutral-900 dark:text-neutral-100">
+          Bloco 2 — Qualidade e Eficiência (10% do 20RL Bruto)
+        </p>
+        <LinhaMemoria label="IEA + RAP + IAPL" formula="10% × 20RL Bruto" valor={formatoMoeda.format(bloco2)} tipo="calculo" destaque />
+      </div>
+
+      <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <p className="font-medium text-neutral-900 dark:text-neutral-100">
+          Bloco 3 — Assistência Estudantil (isolado do 20RL)
+        </p>
+        <LinhaMemoria
+          label="Ação 2994 (100%)"
+          valor={formatoMoeda.format(o.valorAssistenciaEstudantil)}
+          tipo="calculo"
+          destaque
+        />
+      </div>
+
+      <p className="text-neutral-500 dark:text-neutral-400">
+        Esta é a árvore no nível da rede, a partir dos valores digitados neste ano — o rateio por instituição/câmpus
+        (Matrícula Ponderada, IEA/RAP/IAPL, RFP) só existe depois de{" "}
+        <span className="font-medium">Calcular distribuição oficial</span>; veja essa trilha detalhada em{" "}
+        <Link href="/consulta" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
+          /consulta
+        </Link>
+        .
+      </p>
+    </div>
+  );
+}
 
 function formatarTempo(segundos: number): string {
   const min = Math.floor(segundos / 60)
@@ -32,7 +188,7 @@ export function OrcamentoAnualPanel() {
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [valorTotal, setValorTotal] = useState(0);
   const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
-  const [percentualAnuidade, setPercentualAnuidade] = useState("0");
+  const [percentualAnuidade, setPercentualAnuidade] = useState("0.15");
   const [pisoMinimoCampusNovo, setPisoMinimoCampusNovo] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -40,6 +196,7 @@ export function OrcamentoAnualPanel() {
   const [calculandoAno, setCalculandoAno] = useState<number | null>(null);
   const [segundosDecorridos, setSegundosDecorridos] = useState(0);
   const [mensagemPorAno, setMensagemPorAno] = useState<Record<number, string>>({});
+  const [memoriaAbertaPorAno, setMemoriaAbertaPorAno] = useState<Record<number, boolean>>({});
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -71,7 +228,7 @@ export function OrcamentoAnualPanel() {
       }
       setValorTotal(0);
       setValorAssistenciaEstudantil(0);
-      setPercentualAnuidade("0");
+      setPercentualAnuidade("0.15");
       setPisoMinimoCampusNovo(0);
       carregarOrcamentos();
     } catch (error) {
@@ -230,8 +387,9 @@ export function OrcamentoAnualPanel() {
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
             Percentual único para toda a rede, calculado sobre o Custeio (20RL) já distribuído de cada instituição
             (Funcionamento + Reitorias + Qualidade e Eficiência). Valor informativo — não é deduzido do que a
-            instituição recebe, só exibido como referência do que ela deve repassar ao CONIF. Deixe em 0% para não
-            calcular anuidade.
+            instituição recebe, só exibido como referência do que ela deve repassar ao CONIF. Alíquota oficial
+            CONIF: 0,15% (já pré-preenchido) — ajuste aqui se o CONIF alterar a taxa em anos futuros. Deixe em 0%
+            para não calcular anuidade.
           </p>
         </div>
 
@@ -346,7 +504,18 @@ export function OrcamentoAnualPanel() {
                     >
                       Ver no /consulta
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMemoriaAbertaPorAno((atual) => ({ ...atual, [o.ano]: !atual[o.ano] }))
+                      }
+                      className="text-xs font-medium text-neutral-600 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                    >
+                      {memoriaAbertaPorAno[o.ano] ? "Ocultar memória de cálculo" : "Ver memória de cálculo"}
+                    </button>
                   </div>
+
+                  {memoriaAbertaPorAno[o.ano] && <MemoriaCalculoGeracao o={o} />}
 
                   {mensagemPorAno[o.ano] && (
                     <p className="text-xs text-neutral-600 dark:text-neutral-400">{mensagemPorAno[o.ano]}</p>
