@@ -455,6 +455,9 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
 
   // Faixa de RFP (Renda Familiar Per Capita) só existe por instituição na PNP real
   // (ClassificacaoRacialRendaSexo.csv não tem unidadeId) — ver blocoAssistenciaEstudantil.ts.
+  // NÃO VALIDADO CONTRA A PLANILHA OFICIAL: o rótulo da faixa bate com a metodologia, mas o VR
+  // resultante nunca foi conferido contra a planilha nem confirmado com CONIF/SETEC (ver aviso
+  // em blocoAssistenciaEstudantil.ts e AssistenciaEstudantilRfpInput).
   const rendaFatos = await prisma.fatoIndicador.findMany({
     where: {
       fileType: "CLASSIFICACAO_RACIAL_RENDA_SEXO",
