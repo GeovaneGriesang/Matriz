@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
+import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
 interface DetalheFuncionamento {
   matriculaPonderadaCampus: number;
@@ -29,6 +31,8 @@ interface DetalheIea {
   rCiclo: number;
   /** IEA institucional, calculado uma única vez a partir das somas (nunca por câmpus). */
   valorIea: number;
+  /** Qual tabela de faixas/pesos enquadrou este IEA — sempre exibido explicitamente na memória de cálculo. */
+  estrategia: EstrategiaFaixasIea;
   /** IEA × peso da faixa da instituição (Figura 7 do livro da Matriz). */
   ponderadoInstituicao: number;
   somaPonderadosRede: number;
@@ -237,6 +241,13 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
         IEA = C_ciclo + R_ciclo × (C_ciclo ÷ (C_ciclo + Ev_ciclo)) ={" "}
         <strong>{formatoPercentual.format(detalhe.valorIea)}</strong> — calculado uma única vez para a instituição
         (nunca por câmpus)
+      </ItemMemoria>
+      <ItemMemoria>
+        Faixas usadas para enquadrar o IEA:{" "}
+        <strong>{ESTRATEGIA_FAIXAS_IEA_INFO[detalhe.estrategia].label}</strong>
+        <span className="block text-neutral-500 dark:text-neutral-400">
+          {ESTRATEGIA_FAIXAS_IEA_INFO[detalhe.estrategia].descricao}
+        </span>
       </ItemMemoria>
       <ItemMemoria>
         IEA Ponderado = IEA × peso da faixa: <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>

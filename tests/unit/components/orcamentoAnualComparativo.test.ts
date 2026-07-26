@@ -5,6 +5,7 @@ function orcamento(overrides: Partial<OrcamentoAnual> & Pick<OrcamentoAnual, "an
   return {
     percentualAnuidade: 0.15,
     pisoMinimoCampusNovo: 0,
+    estrategiaFaixasIea: "PLANILHA_2026",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };

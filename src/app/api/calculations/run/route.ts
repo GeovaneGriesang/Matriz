@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runCalculation, type CampusOverride } from "@/server/actions/runCalculation";
 import { listarInstituicoesDoEscopo, type EscopoDistribuicao } from "@/server/queries/escopoInstituicoes";
+import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
 const CAMPOS_OVERRIDE: (keyof CampusOverride)[] = [
   "matriculaPonderada",
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     pisoMinimoCampusNovoBruto === undefined || pisoMinimoCampusNovoBruto === null
       ? 0
       : Number(pisoMinimoCampusNovoBruto);
+  const estrategiaFaixasIea: EstrategiaFaixasIea = body?.estrategiaFaixasIea === "FORPLAN_2025" ? "FORPLAN_2025" : "PLANILHA_2026";
 
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
     return NextResponse.json({ error: "O valor deve ser maior que R$ 0,00." }, { status: 400 });
@@ -107,6 +109,7 @@ export async function POST(request: Request) {
     orcamentoAssistenciaEstudantil,
     percentualAnuidade,
     pisoMinimoCampusNovo,
+    estrategiaFaixasIea,
     ano,
     escopo,
     overridesPorUnidade,

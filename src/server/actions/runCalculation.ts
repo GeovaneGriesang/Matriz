@@ -25,7 +25,9 @@ import {
   PESO_IAPL_SUBBLOCO,
   ANO_MINIMO_CAMPUS_NOVO,
 } from "@/calculation-engine/constants/blocos.constants";
+import { ESTRATEGIA_FAIXAS_IEA_PADRAO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import type {
+  EstrategiaFaixasIea,
   IaplCampusInput,
   IeaInput,
   RapInput,
@@ -68,6 +70,14 @@ export interface RunCalculationInput {
    * aplicarPisoMinimoCampusNovo.ts. Padrão 0 (regra desativada) quando omitido.
    */
   pisoMinimoCampusNovo?: number;
+  /**
+   * Qual tabela de faixas/pesos de IEA usar no enquadramento (ver qualidadeEficiencia.constants.ts)
+   * — "PLANILHA_2026" (padrão) usa os limites da planilha-modelo oficial do ciclo 2026;
+   * "FORPLAN_2025" usa os limites do livro "A Matriz Orçamentária da Rede Federal de EPCT"
+   * (CONIF/Forplan, 2025). Nenhuma das duas é descartada; o sistema sempre mantém as duas
+   * disponíveis. Padrão "PLANILHA_2026" quando omitido.
+   */
+  estrategiaFaixasIea?: EstrategiaFaixasIea;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */
   ano: number;
   /**
@@ -245,6 +255,7 @@ function aplicarOverrideIapl(
  */
 export async function runCalculation(input: RunCalculationInput): Promise<RunCalculationResult> {
   const overrides = input.overridesPorUnidade ?? {};
+  const estrategiaFaixasIea = input.estrategiaFaixasIea ?? ESTRATEGIA_FAIXAS_IEA_PADRAO;
 
   const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
     by: ["unidadeId", "instituicaoId"],
@@ -492,6 +503,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     input.orcamentoTotal,
     ieaOverridesPorInstituicao,
     rapOverridesPorInstituicao,
+    estrategiaFaixasIea,
   );
   const assistenciaEstudantil = blocoAssistenciaEstudantil(
     rfpInputs,
@@ -531,7 +543,10 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   // expõe esse detalhe, só o valor combinado. Agora por instituição, não por câmpus (ver
   // blocoQualidadeEficiencia.ts).
   const ieaDetalhePorInstituicao = new Map(
-    calcularBlocoIea(ieaInputs, input.orcamentoTotal, ieaOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
+    calcularBlocoIea(ieaInputs, input.orcamentoTotal, ieaOverridesPorInstituicao, estrategiaFaixasIea).map((d) => [
+      d.instituicaoId,
+      d,
+    ]),
   );
   const rapDetalhePorInstituicao = new Map(
     calcularBlocoRap(rapInputs, input.orcamentoTotal, rapOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
@@ -549,6 +564,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     orcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
     percentualAnuidade: input.percentualAnuidade ?? 0,
     pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
+    estrategiaFaixasIea,
     overridesPorUnidade: overrides,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,
@@ -622,6 +638,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                 evCiclo: ieaD.evCiclo,
                 rCiclo: ieaD.rCiclo,
                 valorIea: ieaD.valorIea,
+                estrategia: ieaD.estrategia,
                 band: ieaD.band,
                 peso: ieaD.peso,
                 ponderadoInstituicao: ieaD.ponderado,

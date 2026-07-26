@@ -73,6 +73,18 @@ enum BatchStatus {
   PERSISTED
 }
 
+/// Duas fontes oficiais documentam faixas/pesos de IEA diferentes — nenhuma é descartada, o
+/// sistema mantém as duas disponíveis e deixa o usuário escolher qual usar em cada ano/cálculo
+/// (ver src/calculation-engine/constants/qualidadeEficiencia.constants.ts para as tabelas em si).
+enum EstrategiaFaixasIea {
+  /// Padrão. Faixas da planilha-modelo oficial do ciclo orçamentário de 2026 (seção 2.1 de
+  /// docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
+  PLANILHA_2026
+  /// Faixas do livro "A Matriz Orçamentária da Rede Federal de EPCT" (CONIF/Forplan, 2025) — pode
+  /// divergir da planilha-modelo do ciclo vigente.
+  FORPLAN_2025
+}
+
 model IngestionBatch {
   id               Int             @id @default(autoincrement())
   status           BatchStatus     @default(PENDING)
@@ -196,5 +208,8 @@ model OrcamentoAnual {
   /// IPCA do ano aplicado externamente (não calculado pelo sistema) — 0 desativa a regra. Ver
   /// aplicarPisoMinimoCampusNovo.ts e Unidade.anoCriacao.
   pisoMinimoCampusNovo       Decimal  @default(0) @db.Decimal(18, 2)
+  /// Qual tabela de faixas/pesos de IEA usar no cálculo oficial deste ano — nenhuma das duas é
+  /// descartada, esta escolha só decide qual delas enquadra o IEA (ver calcularBlocoIea.ts).
+  estrategiaFaixasIea        EstrategiaFaixasIea @default(PLANILHA_2026)
   updatedAt                  DateTime @updatedAt
 }

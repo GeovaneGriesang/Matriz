@@ -10,6 +10,8 @@ import {
   PESO_BLOCO_REITORIAS,
   PESO_BLOCO_QUALIDADE_EFICIENCIA,
 } from "@/calculation-engine/constants/blocos.constants";
+import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
+import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
 type Escopo = "CONIF" | "TODAS";
 
@@ -19,6 +21,7 @@ export interface OrcamentoAnual {
   valorAssistenciaEstudantil: number;
   percentualAnuidade: number;
   pisoMinimoCampusNovo: number;
+  estrategiaFaixasIea: EstrategiaFaixasIea;
   updatedAt: string;
 }
 
@@ -415,6 +418,7 @@ export function OrcamentoAnualPanel() {
   const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
   const [percentualAnuidade, setPercentualAnuidade] = useState("0.15");
   const [pisoMinimoCampusNovo, setPisoMinimoCampusNovo] = useState(0);
+  const [estrategiaFaixasIea, setEstrategiaFaixasIea] = useState<EstrategiaFaixasIea>("PLANILHA_2026");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [escopoPorAno, setEscopoPorAno] = useState<Record<number, Escopo>>({});
@@ -466,6 +470,7 @@ export function OrcamentoAnualPanel() {
       setValorAssistenciaEstudantil(0);
       setPercentualAnuidade("0.15");
       setPisoMinimoCampusNovo(0);
+      setEstrategiaFaixasIea("PLANILHA_2026");
       carregarOrcamentos();
     } catch (error) {
       setErro((error as Error).message);
@@ -655,6 +660,39 @@ export function OrcamentoAnualPanel() {
           </p>
         </div>
 
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            Faixas de peso do IEA
+          </legend>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Duas fontes oficiais documentam faixas/pesos de IEA diferentes — o sistema mantém as duas disponíveis,
+            nenhuma é descartada. Esta escolha só decide qual tabela enquadra o IEA no cálculo oficial deste ano.
+          </p>
+          <div className="flex flex-col gap-2">
+            {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => (
+              <label key={chave} className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="estrategiaFaixasIea"
+                  value={chave}
+                  checked={estrategiaFaixasIea === chave}
+                  onChange={() => setEstrategiaFaixasIea(chave)}
+                  disabled={salvando}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                    {ESTRATEGIA_FAIXAS_IEA_INFO[chave].label}
+                  </span>
+                  <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                    {ESTRATEGIA_FAIXAS_IEA_INFO[chave].descricao}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <button
           type="submit"
           disabled={salvando}
@@ -690,6 +728,8 @@ export function OrcamentoAnualPanel() {
                       {o.pisoMinimoCampusNovo ? (
                         <> · Piso Câmpus Novo: {formatoMoeda.format(o.pisoMinimoCampusNovo)}</>
                       ) : null}
+                      {" · Faixas IEA: "}
+                      {ESTRATEGIA_FAIXAS_IEA_INFO[o.estrategiaFaixasIea].label}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       Atualizado em {formatoData.format(new Date(o.updatedAt))}
