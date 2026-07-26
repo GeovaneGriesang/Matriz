@@ -3,15 +3,23 @@ import type { RapInstituicaoResult, RapInput } from "../../types/qualidadeEficie
 import { bucketizeRap, weightRap } from "./bucketizeRap";
 
 /**
- * Soma Matrículas RAP e Professor Equivalente de todos os câmpus de cada instituição, calcula a
- * razão docente/aluno institucional UMA ÚNICA VEZ a partir dessas somas — nunca por câmpus — e só
- * então enquadra esse valor único em faixa/peso. A Matriz CONIF só apura RAP em nível
- * institucional (fórmula da Figura 9 do livro da Matriz); a razão de duas somas não é igual à
- * combinação de razões já calculadas por câmpus.
+ * Soma matrículas presenciais e Professor Equivalente de todos os câmpus de cada instituição,
+ * calcula a razão docente/aluno institucional UMA ÚNICA VEZ a partir dessas somas — nunca por
+ * câmpus — e só então enquadra esse valor único em faixa/peso. A Matriz CONIF só apura RAP em
+ * nível institucional (fórmula da Figura 9 do livro da Matriz); a razão de duas somas não é igual
+ * à combinação de razões já calculadas por câmpus.
  *
- * RAP = Σ Matrículas RAP ÷ Σ Professor Equivalente (Portaria SETEC/MEC nº 51/2018, Art. 5º — ver
- * seção 3.2 de docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md). Ainda usa Matrículas RAP
- * de todas as modalidades (o filtro para RAP Presencial fica para um próximo passo).
+ * RAP Presencial = Σ matrículas presenciais ÷ Σ Professor Equivalente (Portaria SETEC/MEC nº
+ * 51/2018, Art. 5º — ver seção 3.2 de docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
+ *
+ * APROXIMAÇÃO: o numerador oficial é a Matrícula-equivalente presencial (ponderada por Fator de
+ * Esforço de Curso, seção 3.2.1 da metodologia); como essa granularidade não está disponível hoje,
+ * usamos a matrícula bruta presencial de `TaxaEvasao.csv` (filtrada por
+ * ModalidadeEnsino = "Educação Presencial") como aproximação. Erro esperado entre +0,9% e +53%
+ * dependendo da instituição, testado em golden_values_indicadores.csv. Ver seção 9 de
+ * Metodologia_Matriz_Orcamentaria_CONIF.md. O denominador (Professor Equivalente) já está correto
+ * e não precisa de ajuste. Não usar fatores de esforço de curso aqui para "melhorar" a
+ * aproximação — isso é um próximo passo, não deste cálculo.
  *
  * `overridesPorInstituicao`, quando informado, substitui a razão calculada de uma instituição pelo
  * valor fornecido antes do enquadramento — usado pelo simulador ("e se o RAP desta instituição
@@ -37,22 +45,22 @@ export function calcularBlocoRap(
 
   const agregados = Array.from(instituicaoIds).map((instituicaoId) => {
     const porCampus = porInstituicao.get(instituicaoId) ?? [];
-    const matriculasRap = porCampus.reduce((total, c) => total + c.matriculasRap, 0);
+    const matriculasPresenciais = porCampus.reduce((total, c) => total + c.matriculasPresenciais, 0);
     const professorEquivalente = porCampus.reduce((total, c) => total + c.professorEquivalente, 0);
 
-    const razaoCalculada = professorEquivalente === 0 ? 0 : matriculasRap / professorEquivalente;
+    const razaoCalculada = professorEquivalente === 0 ? 0 : matriculasPresenciais / professorEquivalente;
     const razaoDocenteAluno = overridesPorInstituicao?.get(instituicaoId) ?? razaoCalculada;
     const band = bucketizeRap(razaoDocenteAluno);
     const peso = weightRap(band);
 
     return {
       instituicaoId,
-      porCampus: porCampus.map(({ campusId, matriculasRap, professorEquivalente }) => ({
+      porCampus: porCampus.map(({ campusId, matriculasPresenciais, professorEquivalente }) => ({
         campusId,
-        matriculasRap,
+        matriculasPresenciais,
         professorEquivalente,
       })),
-      matriculasRap,
+      matriculasPresenciais,
       professorEquivalente,
       razaoDocenteAluno,
       band,
