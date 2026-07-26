@@ -22,20 +22,63 @@ const formatoNumeroComSinal = new Intl.NumberFormat("pt-BR", {
   signDisplay: "exceptZero",
 });
 
-function somarBlocosRede(detalhe: CalculationRunDetail) {
+export interface SimulacaoReitoriaInstituicao {
+  reitoriaSimulada: number;
+  deltaReitoria: number;
+  pesoTotalMechda: number;
+}
+
+/**
+ * Congela a Reitoria do Ano Atual no mesmo valor do Ano Anterior (por instituição, id estável) — o
+ * excedente/déficit devolvido é redistribuído entre os câmpus dessa mesma instituição proporcionalmente
+ * ao peso MECHDA de cada um no Ano Atual. Instituição sem par no Ano Anterior não entra no mapa (nada a
+ * congelar). O total da instituição não muda (dinheiro só migra do bolso Reitoria para o bolso
+ * Funcionamento) — só a repartição entre Reitoria/Funcionamento e entre câmpus é afetada.
+ */
+export function calcularSimulacaoReitoria(
+  detalheAnterior: CalculationRunDetail,
+  detalheAtual: CalculationRunDetail,
+): Map<number, SimulacaoReitoriaInstituicao> {
+  const anterioresPorId = new Map(detalheAnterior.instituicoes.map((i) => [i.id, i]));
+  const mapa = new Map<number, SimulacaoReitoriaInstituicao>();
+  for (const atual of detalheAtual.instituicoes) {
+    const anterior = anterioresPorId.get(atual.id);
+    if (!anterior) continue;
+    const reitoriaSimulada = anterior.reitoriaValorReais;
+    const deltaReitoria = atual.reitoriaValorReais - reitoriaSimulada;
+    const pesoTotalMechda = atual.unidades.reduce(
+      (acc, u) => acc + (u.detalheFuncionamento?.matriculaPonderadaCampus ?? 0),
+      0,
+    );
+    mapa.set(atual.id, { reitoriaSimulada, deltaReitoria, pesoTotalMechda });
+  }
+  return mapa;
+}
+
+export function somarBlocosRede(detalhe: CalculationRunDetail, simulacao?: Map<number, SimulacaoReitoriaInstituicao>) {
   let funcionamento = 0;
   let reitoria = 0;
   let qualidadeEficiencia = 0;
   let assistenciaEstudantil = 0;
   for (const instituicao of detalhe.instituicoes) {
-    reitoria += instituicao.reitoriaValorReais;
+    const sim = simulacao?.get(instituicao.id);
+    reitoria += sim ? sim.reitoriaSimulada : instituicao.reitoriaValorReais;
     qualidadeEficiencia += instituicao.qualidadeEficienciaValorReais;
     for (const unidade of instituicao.unidades) {
-      funcionamento += unidade.funcionamentoValorReais;
+      const peso = unidade.detalheFuncionamento?.matriculaPonderadaCampus ?? 0;
+      const parcela = sim && sim.pesoTotalMechda > 0 ? (peso / sim.pesoTotalMechda) * sim.deltaReitoria : 0;
+      funcionamento += unidade.funcionamentoValorReais + parcela;
       assistenciaEstudantil += unidade.assistenciaEstudantilValorReais;
     }
   }
-  return { funcionamento, reitoria, qualidadeEficiencia, assistenciaEstudantil, total: detalhe.totalGeralReais };
+  return {
+    funcionamento,
+    reitoria,
+    qualidadeEficiencia,
+    assistenciaEstudantil,
+    acao20RL: funcionamento + reitoria + qualidadeEficiencia,
+    total: funcionamento + reitoria + qualidadeEficiencia + assistenciaEstudantil,
+  };
 }
 
 function CelulaValor({ valor }: { valor: number }) {
@@ -84,6 +127,7 @@ interface LinhaBloco {
   anterior: number;
   atual: number;
   destaque?: boolean;
+  simulado?: boolean;
 }
 
 function TabelaResumoBlocos({
@@ -91,28 +135,43 @@ function TabelaResumoBlocos({
   anoAtual,
   resumoAnterior,
   resumoAtual,
+  congelarReitoria,
 }: {
   anoAnterior: number;
   anoAtual: number;
   resumoAnterior: ReturnType<typeof somarBlocosRede>;
   resumoAtual: ReturnType<typeof somarBlocosRede>;
+  congelarReitoria: boolean;
 }) {
   const linhas: LinhaBloco[] = [
     {
       label: "Bloco Funcionamento (Matrículas/Campi)",
       anterior: resumoAnterior.funcionamento,
       atual: resumoAtual.funcionamento,
+      simulado: congelarReitoria,
     },
-    { label: "Bloco Reitorias", anterior: resumoAnterior.reitoria, atual: resumoAtual.reitoria },
+    {
+      label: "Bloco Reitorias",
+      anterior: resumoAnterior.reitoria,
+      atual: resumoAtual.reitoria,
+      simulado: congelarReitoria,
+    },
     {
       label: "Bloco Qualidade e Eficiência",
       anterior: resumoAnterior.qualidadeEficiencia,
       atual: resumoAtual.qualidadeEficiencia,
     },
     {
-      label: "Bloco Assistência Estudantil",
+      label: "Total Ação 20RL (Funcionamento + Reitoria + Qualidade)",
+      anterior: resumoAnterior.acao20RL,
+      atual: resumoAtual.acao20RL,
+      destaque: true,
+    },
+    {
+      label: "Total Ação 2994 (Assistência Estudantil)",
       anterior: resumoAnterior.assistenciaEstudantil,
       atual: resumoAtual.assistenciaEstudantil,
+      destaque: true,
     },
     { label: "Total Geral", anterior: resumoAnterior.total, atual: resumoAtual.total, destaque: true },
   ];
@@ -137,7 +196,14 @@ function TabelaResumoBlocos({
                 linha.destaque ? "font-semibold text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300"
               }`}
             >
-              <td className="py-2 pr-4">{linha.label}</td>
+              <td className="py-2 pr-4">
+                {linha.label}
+                {linha.simulado && (
+                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    ⚡ simulado
+                  </span>
+                )}
+              </td>
               <CelulaValor valor={linha.anterior} />
               <CelulaValor valor={linha.atual} />
               <CelulaVariacao anterior={linha.anterior} atual={linha.atual} />
@@ -149,28 +215,45 @@ function TabelaResumoBlocos({
   );
 }
 
-interface CampusMesclado {
+export interface CampusMesclado {
   id: number;
   nome: string;
+  funcionamentoAnterior: number | null;
+  funcionamentoAtual: number | null;
+  assistenciaAnterior: number | null;
+  assistenciaAtual: number | null;
   totalAnterior: number | null;
   totalAtual: number | null;
   mechdaAnterior: number | null;
   mechdaAtual: number | null;
 }
 
-interface InstituicaoMesclada {
+export interface InstituicaoMesclada {
   id: number;
   sigla: string;
   nome: string;
+  funcionamentoAnterior: number | null;
+  funcionamentoAtual: number | null;
+  assistenciaAnterior: number | null;
+  assistenciaAtual: number | null;
   totalAnterior: number | null;
   totalAtual: number | null;
+  reitoriaOficialAtual: number | null;
+  reitoriaSimuladaAtual: number | null;
   campi: CampusMesclado[];
 }
 
-/** Une as instituições/câmpus de dois runs por id (estável entre anos) — quem só aparece de um lado vira "novo"/"saiu". */
-function mesclarInstituicoes(
+/**
+ * Une as instituições/câmpus de dois runs por id (estável entre anos) — quem só aparece de um lado vira
+ * "novo"/"saiu". Quando `simulacao` é passada (switch "Congelar Reitoria" ativo), a Reitoria e o
+ * Funcionamento do Ano Atual são recalculados: Reitoria = mesma do Ano Anterior, e a diferença é
+ * redistribuída entre os câmpus da instituição proporcionalmente ao peso MECHDA de cada um no Ano
+ * Atual — o total da instituição não muda, só a repartição Reitoria/Funcionamento/câmpus.
+ */
+export function mesclarInstituicoes(
   anteriores: InstituicaoResultado[],
   atuais: InstituicaoResultado[],
+  simulacao?: Map<number, SimulacaoReitoriaInstituicao>,
 ): InstituicaoMesclada[] {
   const porId = new Map<
     number,
@@ -188,6 +271,10 @@ function mesclarInstituicoes(
 
   const resultado: InstituicaoMesclada[] = [];
   for (const [id, { sigla, nome, anterior, atual }] of porId) {
+    const sim = atual ? simulacao?.get(id) : undefined;
+    const reitoriaOficialAtual = atual ? atual.reitoriaValorReais : null;
+    const reitoriaSimuladaAtual = sim ? sim.reitoriaSimulada : null;
+
     const campiPorId = new Map<number, { nome: string; anterior?: UnidadeResultado; atual?: UnidadeResultado }>();
     for (const u of anterior?.unidades ?? []) campiPorId.set(u.id, { nome: u.nome, anterior: u });
     for (const u of atual?.unidades ?? []) {
@@ -197,22 +284,54 @@ function mesclarInstituicoes(
     }
 
     const campi: CampusMesclado[] = Array.from(campiPorId.entries())
-      .map(([campusId, c]) => ({
-        id: campusId,
-        nome: c.nome,
-        totalAnterior: c.anterior ? c.anterior.subtotalReais : null,
-        totalAtual: c.atual ? c.atual.subtotalReais : null,
-        mechdaAnterior: c.anterior?.detalheFuncionamento?.matriculaPonderadaCampus ?? null,
-        mechdaAtual: c.atual?.detalheFuncionamento?.matriculaPonderadaCampus ?? null,
-      }))
+      .map(([campusId, c]) => {
+        const pesoCampus = c.atual?.detalheFuncionamento?.matriculaPonderadaCampus ?? 0;
+        const parcelaReitoria =
+          sim && sim.pesoTotalMechda > 0 && c.atual ? (pesoCampus / sim.pesoTotalMechda) * sim.deltaReitoria : 0;
+        const funcionamentoAtual = c.atual ? c.atual.funcionamentoValorReais + parcelaReitoria : null;
+        const assistenciaAtual = c.atual ? c.atual.assistenciaEstudantilValorReais : null;
+        const totalAtual =
+          funcionamentoAtual !== null && assistenciaAtual !== null ? funcionamentoAtual + assistenciaAtual : null;
+        return {
+          id: campusId,
+          nome: c.nome,
+          funcionamentoAnterior: c.anterior ? c.anterior.funcionamentoValorReais : null,
+          funcionamentoAtual,
+          assistenciaAnterior: c.anterior ? c.anterior.assistenciaEstudantilValorReais : null,
+          assistenciaAtual,
+          totalAnterior: c.anterior ? c.anterior.subtotalReais : null,
+          totalAtual,
+          mechdaAnterior: c.anterior?.detalheFuncionamento?.matriculaPonderadaCampus ?? null,
+          mechdaAtual: c.atual?.detalheFuncionamento?.matriculaPonderadaCampus ?? null,
+        };
+      })
       .sort((x, y) => x.nome.localeCompare(y.nome));
+
+    const assistenciaInstAnterior = anterior
+      ? anterior.unidades.reduce((acc, u) => acc + u.assistenciaEstudantilValorReais, 0)
+      : null;
+    const assistenciaInstAtual = atual
+      ? atual.unidades.reduce((acc, u) => acc + u.assistenciaEstudantilValorReais, 0)
+      : null;
+    const totalInstAnterior = anterior ? anterior.subtotalReais : null;
+    const totalInstAtual = atual ? atual.subtotalReais : null;
+    const funcionamentoInstAnterior =
+      totalInstAnterior !== null && assistenciaInstAnterior !== null ? totalInstAnterior - assistenciaInstAnterior : null;
+    const funcionamentoInstAtual =
+      totalInstAtual !== null && assistenciaInstAtual !== null ? totalInstAtual - assistenciaInstAtual : null;
 
     resultado.push({
       id,
       sigla,
       nome,
-      totalAnterior: anterior ? anterior.subtotalReais : null,
-      totalAtual: atual ? atual.subtotalReais : null,
+      funcionamentoAnterior: funcionamentoInstAnterior,
+      funcionamentoAtual: funcionamentoInstAtual,
+      assistenciaAnterior: assistenciaInstAnterior,
+      assistenciaAtual: assistenciaInstAtual,
+      totalAnterior: totalInstAnterior,
+      totalAtual: totalInstAtual,
+      reitoriaOficialAtual,
+      reitoriaSimuladaAtual,
       campi,
     });
   }
@@ -236,6 +355,12 @@ function LinhaCampus({ campus }: { campus: CampusMesclado }) {
           )}
         </div>
       </td>
+      <CelulaValorOuTraco valor={campus.funcionamentoAnterior} />
+      <CelulaValorOuTraco valor={campus.funcionamentoAtual} />
+      <CelulaVariacao anterior={campus.funcionamentoAnterior} atual={campus.funcionamentoAtual} />
+      <CelulaValorOuTraco valor={campus.assistenciaAnterior} />
+      <CelulaValorOuTraco valor={campus.assistenciaAtual} />
+      <CelulaVariacao anterior={campus.assistenciaAnterior} atual={campus.assistenciaAtual} />
       <CelulaValorOuTraco valor={campus.totalAnterior} />
       <CelulaValorOuTraco valor={campus.totalAtual} />
       <CelulaVariacao anterior={campus.totalAnterior} atual={campus.totalAtual} />
@@ -262,6 +387,7 @@ export function TabelaComparativoInteranual({
   detalheAtual: CalculationRunDetail;
 }) {
   const [instituicoesExpandidas, setInstituicoesExpandidas] = useState<Set<number>>(new Set());
+  const [congelarReitoria, setCongelarReitoria] = useState(false);
 
   function alternar(id: number) {
     const novo = new Set(instituicoesExpandidas);
@@ -273,10 +399,12 @@ export function TabelaComparativoInteranual({
   const anoAnterior = detalheAnterior.run.anoOrcamento ?? detalheAnterior.run.ano ?? 0;
   const anoAtual = detalheAtual.run.anoOrcamento ?? detalheAtual.run.ano ?? 0;
 
-  const resumoAnterior = somarBlocosRede(detalheAnterior);
-  const resumoAtual = somarBlocosRede(detalheAtual);
+  const simulacaoReitoria = congelarReitoria ? calcularSimulacaoReitoria(detalheAnterior, detalheAtual) : undefined;
 
-  const instituicoes = mesclarInstituicoes(detalheAnterior.instituicoes, detalheAtual.instituicoes);
+  const resumoAnterior = somarBlocosRede(detalheAnterior);
+  const resumoAtual = somarBlocosRede(detalheAtual, simulacaoReitoria);
+
+  const instituicoes = mesclarInstituicoes(detalheAnterior.instituicoes, detalheAtual.instituicoes, simulacaoReitoria);
   const instituicoesComCampi = instituicoes.filter((i) => i.campi.length > 0);
   const todasExpandidas =
     instituicoesComCampi.length > 0 && instituicoesComCampi.every((i) => instituicoesExpandidas.has(i.id));
@@ -284,14 +412,34 @@ export function TabelaComparativoInteranual({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          Comparativo {anoAnterior} → {anoAtual}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            Comparativo {anoAnterior} → {anoAtual}
+          </h2>
+          <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={congelarReitoria}
+              onChange={(e) => setCongelarReitoria(e.target.checked)}
+            />
+            Simular mesmo valor de Reitoria nos dois anos
+          </label>
+        </div>
+        {congelarReitoria && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            A cota de Reitoria de cada instituição em {anoAtual} é fixada no mesmo valor de {anoAnterior}; a
+            diferença é devolvida ao Bloco Funcionamento e redistribuída entre os câmpus da instituição
+            proporcionalmente ao peso MECHDA de cada um em {anoAtual}. Isola a variação do custo administrativo da
+            Reitoria, para avaliar se a variação da cota de um câmpus veio de desempenho relativo (MECHDA/
+            indicadores) e não de uma Reitoria maior/menor.
+          </p>
+        )}
         <TabelaResumoBlocos
           anoAnterior={anoAnterior}
           anoAtual={anoAtual}
           resumoAnterior={resumoAnterior}
           resumoAtual={resumoAtual}
+          congelarReitoria={congelarReitoria}
         />
       </div>
 
@@ -321,19 +469,39 @@ export function TabelaComparativoInteranual({
                   Instituição / Câmpus
                 </th>
                 <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                  {anoAnterior}
+                  Funcionamento 20RL ({anoAnterior})
                 </th>
                 <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                  {anoAtual}
+                  Funcionamento 20RL ({anoAtual})
                 </th>
-                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ R$</th>
-                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ %</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ R$ Func.</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ % Func.</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Assist. 2994 ({anoAnterior})
+                </th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Assist. 2994 ({anoAtual})
+                </th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ R$ Assist.</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ % Assist.</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Total ({anoAnterior})
+                </th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Total ({anoAtual})
+                </th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ R$ Total</th>
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Δ % Total</th>
               </tr>
             </thead>
             <tbody>
               {instituicoes.map((instituicao) => {
                 const temCampi = instituicao.campi.length > 0;
                 const expandida = temCampi && instituicoesExpandidas.has(instituicao.id);
+                const reitoriaSimulada =
+                  instituicao.reitoriaSimuladaAtual !== null &&
+                  instituicao.reitoriaOficialAtual !== null &&
+                  Math.abs(instituicao.reitoriaSimuladaAtual - instituicao.reitoriaOficialAtual) >= 0.005;
                 return (
                   <Fragment key={`inst-comp-${instituicao.id}`}>
                     <tr className="group border-b border-neutral-100 font-medium text-neutral-900 even:bg-neutral-50 dark:border-neutral-900 dark:text-neutral-100 dark:even:bg-neutral-900/40">
@@ -355,11 +523,24 @@ export function TabelaComparativoInteranual({
                           ) : (
                             <span className="w-4 shrink-0" />
                           )}
-                          <span>
-                            {instituicao.sigla} — {instituicao.nome}
-                          </span>
+                          <div className="flex flex-col">
+                            <span>
+                              {instituicao.sigla} — {instituicao.nome}
+                            </span>
+                            {reitoriaSimulada && (
+                              <span className="w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                ⚡ Reitoria Simulada (Fixada em {formatoMoeda.format(instituicao.reitoriaSimuladaAtual as number)})
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
+                      <CelulaValorOuTraco valor={instituicao.funcionamentoAnterior} />
+                      <CelulaValorOuTraco valor={instituicao.funcionamentoAtual} />
+                      <CelulaVariacao anterior={instituicao.funcionamentoAnterior} atual={instituicao.funcionamentoAtual} />
+                      <CelulaValorOuTraco valor={instituicao.assistenciaAnterior} />
+                      <CelulaValorOuTraco valor={instituicao.assistenciaAtual} />
+                      <CelulaVariacao anterior={instituicao.assistenciaAnterior} atual={instituicao.assistenciaAtual} />
                       <CelulaValorOuTraco valor={instituicao.totalAnterior} />
                       <CelulaValorOuTraco valor={instituicao.totalAtual} />
                       <CelulaVariacao anterior={instituicao.totalAnterior} atual={instituicao.totalAtual} />
@@ -373,6 +554,12 @@ export function TabelaComparativoInteranual({
             <tfoot>
               <tr className="font-semibold text-neutral-900 dark:text-neutral-100">
                 <td className="pt-3 pr-4">Total geral</td>
+                <CelulaValor valor={resumoAnterior.funcionamento} />
+                <CelulaValor valor={resumoAtual.funcionamento} />
+                <CelulaVariacao anterior={resumoAnterior.funcionamento} atual={resumoAtual.funcionamento} />
+                <CelulaValor valor={resumoAnterior.assistenciaEstudantil} />
+                <CelulaValor valor={resumoAtual.assistenciaEstudantil} />
+                <CelulaVariacao anterior={resumoAnterior.assistenciaEstudantil} atual={resumoAtual.assistenciaEstudantil} />
                 <CelulaValor valor={resumoAnterior.total} />
                 <CelulaValor valor={resumoAtual.total} />
                 <CelulaVariacao anterior={resumoAnterior.total} atual={resumoAtual.total} />
