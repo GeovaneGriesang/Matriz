@@ -36,9 +36,11 @@ export function blocoQualidadeEficiencia(
   rapInputs: RapInput[],
   iaplInputs: IaplCampusInput[],
   orcamentoTotal: number,
+  overridesIeaPorInstituicao?: Map<number, number>,
+  overridesRapPorInstituicao?: Map<number, number>,
 ): QualidadeEficienciaInstituicaoResult[] {
-  const iea = calcularBlocoIea(ieaInputs, orcamentoTotal);
-  const rap = calcularBlocoRap(rapInputs, orcamentoTotal);
+  const iea = calcularBlocoIea(ieaInputs, orcamentoTotal, overridesIeaPorInstituicao);
+  const rap = calcularBlocoRap(rapInputs, orcamentoTotal, overridesRapPorInstituicao);
   const iapl = calcularBlocoIapl(iaplInputs, orcamentoTotal);
 
   const instituicaoIds = new Set<number>([

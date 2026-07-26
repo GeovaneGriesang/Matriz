@@ -12,10 +12,7 @@ import type {
   AssistenciaEstudantilRfpInput,
 } from "@/calculation-engine/types/assistenciaEstudantil.types";
 import { calcularBlocoIea } from "@/calculation-engine/qualidadeEficiencia/iea/calcularBlocoIea";
-import { bucketizeIea } from "@/calculation-engine/qualidadeEficiencia/iea/bucketizeIea";
-import { weightIea } from "@/calculation-engine/qualidadeEficiencia/iea/weightIea";
 import { calcularBlocoRap } from "@/calculation-engine/qualidadeEficiencia/rap/calcularBlocoRap";
-import { bucketizeRap, weightRap } from "@/calculation-engine/qualidadeEficiencia/rap/bucketizeRap";
 import { calcularBlocoIapl } from "@/calculation-engine/qualidadeEficiencia/iapl/calcularBlocoIapl";
 import * as qualidadeEficienciaConstants from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import { IAPL_SPLIT } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
@@ -98,14 +95,35 @@ export interface RunCalculationResult {
 
 const MEDIDA_MATRICULA_EQUIVALENTE_GERAL = "Matrícula Equivalente | Geral";
 const MEDIDA_NUMERO_MATRICULAS = "Número de Matrículas";
-const MEDIDA_INDICE_EFICIENCIA_ACADEMICA = "Eficiência Acadêmica | Índice de Eficiência Acadêmica %";
-const MEDIDA_RAP = "RAP | RAP";
 
 const IAPL_CAMPO_POR_MEDIDA = {
   "Matrícula Equivalente | Técnicos": "matriculasTecnicos",
   "Matrícula Equivalente | Formação de Professores": "matriculasFormacaoProfessores",
   "Matrícula Equivalente | Proeja": "matriculasProeja",
-} as const satisfies Record<string, keyof Omit<IaplCampusInput, "campusId">>;
+  "Matrícula Equivalente | Geral": "matriculasGeral",
+} as const satisfies Record<string, keyof Omit<IaplCampusInput, "campusId" | "instituicaoId">>;
+
+/**
+ * Campos brutos de EficienciaAcademica.csv necessários para calcular o IEA institucional (seção
+ * 3.1 da metodologia): nunca ler o "Índice de Eficiência Acadêmica %" já pronto por câmpus e
+ * agregá-lo — somar as contagens absolutas primeiro (ver calcularBlocoIea.ts).
+ */
+const EFICIENCIA_CAMPO_POR_MEDIDA = {
+  "Eficiência Acadêmica | Concluídos": "concluidos",
+  "Eficiência Acadêmica | Número de Evadidos": "evadidos",
+  "Eficiência Acadêmica | Retidos": "retidos",
+} as const satisfies Record<string, keyof Omit<IeaInput, "campusId" | "instituicaoId">>;
+
+/**
+ * Campos brutos de RelacaoAlunoProfessorRAP.csv necessários para calcular o RAP institucional
+ * (seção 3.2 da metodologia, Portaria SETEC/MEC nº 51/2018 Art. 5º): nunca ler o "RAP | RAP" já
+ * pronto por câmpus e agregá-lo — somar Matrículas RAP e Professor Equivalente primeiro, dividir
+ * uma única vez (ver calcularBlocoRap.ts).
+ */
+const RAP_CAMPO_POR_MEDIDA = {
+  "RAP | Matrículas RAP": "matriculasRap",
+  "RAP | Professor Equivalente": "professorEquivalente",
+} as const satisfies Record<string, keyof Omit<RapInput, "campusId" | "instituicaoId">>;
 
 function aplicarOverrideFuncionamento(
   inputs: FuncionamentoInput[],
@@ -123,40 +141,44 @@ function aplicarOverrideFuncionamento(
   return resultado;
 }
 
-function aplicarOverrideIea(
-  inputs: IeaInput[],
+/**
+ * IEA só existe em nível de instituição (ver calcularBlocoIea.ts), então um override de "IEA
+ * deste câmpus" na prática simula "IEA desta instituição inteira" — resolve o câmpus escolhido no
+ * simulador até sua instituição e devolve um mapa instituicaoId → valorIea (0–1) pronto para
+ * `calcularBlocoIea`.
+ */
+function construirOverridesIea(
   overrides: Record<number, CampusOverride>,
   instituicaoIdPorCampus: Map<number, number>,
-): IeaInput[] {
-  const resultado = [...inputs];
+): Map<number, number> {
+  const resultado = new Map<number, number>();
   for (const [unidadeIdStr, override] of Object.entries(overrides)) {
     if (override.valorIeaPercentual === undefined) continue;
     const unidadeId = Number(unidadeIdStr);
-    const index = resultado.findIndex((i) => i.campusId === unidadeId);
-    const instituicaoId = resultado[index]?.instituicaoId ?? instituicaoIdPorCampus.get(unidadeId);
+    const instituicaoId = instituicaoIdPorCampus.get(unidadeId);
     if (instituicaoId === undefined) continue;
-    const item: IeaInput = { campusId: unidadeId, instituicaoId, valorIea: override.valorIeaPercentual / 100 };
-    if (index === -1) resultado.push(item);
-    else resultado[index] = item;
+    resultado.set(instituicaoId, override.valorIeaPercentual / 100);
   }
   return resultado;
 }
 
-function aplicarOverrideRap(
-  inputs: RapInput[],
+/**
+ * RAP só existe em nível de instituição (ver calcularBlocoRap.ts), então um override de "RAP
+ * deste câmpus" na prática simula "RAP desta instituição inteira" — resolve o câmpus escolhido no
+ * simulador até sua instituição e devolve um mapa instituicaoId → razaoDocenteAluno pronto para
+ * `calcularBlocoRap`.
+ */
+function construirOverridesRap(
   overrides: Record<number, CampusOverride>,
   instituicaoIdPorCampus: Map<number, number>,
-): RapInput[] {
-  const resultado = [...inputs];
+): Map<number, number> {
+  const resultado = new Map<number, number>();
   for (const [unidadeIdStr, override] of Object.entries(overrides)) {
     if (override.razaoDocenteAluno === undefined) continue;
     const unidadeId = Number(unidadeIdStr);
-    const index = resultado.findIndex((i) => i.campusId === unidadeId);
-    const instituicaoId = resultado[index]?.instituicaoId ?? instituicaoIdPorCampus.get(unidadeId);
+    const instituicaoId = instituicaoIdPorCampus.get(unidadeId);
     if (instituicaoId === undefined) continue;
-    const item: RapInput = { campusId: unidadeId, instituicaoId, razaoDocenteAluno: override.razaoDocenteAluno };
-    if (index === -1) resultado.push(item);
-    else resultado[index] = item;
+    resultado.set(instituicaoId, override.razaoDocenteAluno);
   }
   return resultado;
 }
@@ -183,6 +205,7 @@ function aplicarOverrideIapl(
       matriculasTecnicos: override.matriculasTecnicos ?? atual?.matriculasTecnicos ?? 0,
       matriculasFormacaoProfessores: override.matriculasFormacaoProfessores ?? atual?.matriculasFormacaoProfessores ?? 0,
       matriculasProeja: override.matriculasProeja ?? atual?.matriculasProeja ?? 0,
+      matriculasGeral: atual?.matriculasGeral ?? 0,
     });
   }
   return resultado;
@@ -309,41 +332,57 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const ieaFatos = await prisma.fatoIndicador.findMany({
     where: {
       fileType: "EFICIENCIA_ACADEMICA",
-      medida: MEDIDA_INDICE_EFICIENCIA_ACADEMICA,
+      medida: { in: Object.keys(EFICIENCIA_CAMPO_POR_MEDIDA) },
       ano: input.ano,
       instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
-  // PNP entrega o IEA em escala 0-100%; bucketizeIea espera [0, 1].
-  const ieaInputs = aplicarOverrideIea(
-    ieaFatos.map((f) => ({
-      campusId: f.unidadeId as number,
-      instituicaoId: f.instituicaoId,
-      valorIea: Number(f.valor) / 100,
-    })),
-    overrides,
-    instituicaoIdPorCampus,
-  );
+  // Contagens absolutas por câmpus — a soma por instituição e o cálculo do IEA (uma vez, no nível
+  // da instituição) acontecem dentro de calcularBlocoIea.ts, nunca aqui.
+  let ieaPorUnidade = new Map<number, IeaInput>();
+  for (const fato of ieaFatos) {
+    const unidadeId = fato.unidadeId as number;
+    const atual = ieaPorUnidade.get(unidadeId) ?? {
+      campusId: unidadeId,
+      instituicaoId: fato.instituicaoId,
+      concluidos: 0,
+      evadidos: 0,
+      retidos: 0,
+    };
+    const campo = EFICIENCIA_CAMPO_POR_MEDIDA[fato.medida as keyof typeof EFICIENCIA_CAMPO_POR_MEDIDA];
+    atual[campo] += Number(fato.valor);
+    ieaPorUnidade.set(unidadeId, atual);
+  }
+  const ieaInputs = Array.from(ieaPorUnidade.values());
+  const ieaOverridesPorInstituicao = construirOverridesIea(overrides, instituicaoIdPorCampus);
 
   const rapFatos = await prisma.fatoIndicador.findMany({
     where: {
       fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
-      medida: MEDIDA_RAP,
+      medida: { in: Object.keys(RAP_CAMPO_POR_MEDIDA) },
       ano: input.ano,
       instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
-  const rapInputs = aplicarOverrideRap(
-    rapFatos.map((f) => ({
-      campusId: f.unidadeId as number,
-      instituicaoId: f.instituicaoId,
-      razaoDocenteAluno: Number(f.valor),
-    })),
-    overrides,
-    instituicaoIdPorCampus,
-  );
+  // Matrículas RAP e Professor Equivalente por câmpus — a soma por instituição e a divisão (RAP,
+  // uma vez, no nível da instituição) acontecem dentro de calcularBlocoRap.ts, nunca aqui.
+  let rapPorUnidade = new Map<number, RapInput>();
+  for (const fato of rapFatos) {
+    const unidadeId = fato.unidadeId as number;
+    const atual = rapPorUnidade.get(unidadeId) ?? {
+      campusId: unidadeId,
+      instituicaoId: fato.instituicaoId,
+      matriculasRap: 0,
+      professorEquivalente: 0,
+    };
+    const campo = RAP_CAMPO_POR_MEDIDA[fato.medida as keyof typeof RAP_CAMPO_POR_MEDIDA];
+    atual[campo] += Number(fato.valor);
+    rapPorUnidade.set(unidadeId, atual);
+  }
+  const rapInputs = Array.from(rapPorUnidade.values());
+  const rapOverridesPorInstituicao = construirOverridesRap(overrides, instituicaoIdPorCampus);
 
   const iaplFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -363,6 +402,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       matriculasTecnicos: 0,
       matriculasFormacaoProfessores: 0,
       matriculasProeja: 0,
+      matriculasGeral: 0,
     };
     const campo = IAPL_CAMPO_POR_MEDIDA[fato.medida as keyof typeof IAPL_CAMPO_POR_MEDIDA];
     atual[campo] += Number(fato.valor);
@@ -431,14 +471,6 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
 
   // ---- totais de rede usados só para a "memória de cálculo" (detalhe) ----
   const totalMatriculaPonderadaRede = funcionamentoInputs.reduce((s, i) => s + i.matriculaPonderada, 0);
-  const somaPonderadosIeaRede = ieaInputs.reduce((s, i) => s + i.valorIea * weightIea(bucketizeIea(i.valorIea)), 0);
-  const somaPonderadosRapRede = rapInputs.reduce(
-    (s, i) => s + i.razaoDocenteAluno * weightRap(bucketizeRap(i.razaoDocenteAluno)),
-    0,
-  );
-  const totalMatriculasTecnicosRede = iaplInputs.reduce((s, i) => s + i.matriculasTecnicos, 0);
-  const totalMatriculasFormacaoRede = iaplInputs.reduce((s, i) => s + i.matriculasFormacaoProfessores, 0);
-  const totalMatriculasProejaRede = iaplInputs.reduce((s, i) => s + i.matriculasProeja, 0);
 
   // Piso Mínimo por Câmpus Novo: só afeta o Bloco Funcionamento (Reitorias/Qualidade e
   // Eficiência continuam usando a Matrícula Ponderada crua, sem o piso — ver blocoReitorias.ts).
@@ -453,7 +485,14 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     input.pisoMinimoCampusNovo ?? 0,
   );
   const reitorias = blocoReitorias(reitoriaInputs, input.orcamentoTotal);
-  const qualidadeEficiencia = blocoQualidadeEficiencia(ieaInputs, rapInputs, iaplInputs, input.orcamentoTotal);
+  const qualidadeEficiencia = blocoQualidadeEficiencia(
+    ieaInputs,
+    rapInputs,
+    iaplInputs,
+    input.orcamentoTotal,
+    ieaOverridesPorInstituicao,
+    rapOverridesPorInstituicao,
+  );
   const assistenciaEstudantil = blocoAssistenciaEstudantil(
     rfpInputs,
     assistenciaEstudantilCampusInputs,
@@ -492,10 +531,10 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   // expõe esse detalhe, só o valor combinado. Agora por instituição, não por câmpus (ver
   // blocoQualidadeEficiencia.ts).
   const ieaDetalhePorInstituicao = new Map(
-    calcularBlocoIea(ieaInputs, input.orcamentoTotal).map((d) => [d.instituicaoId, d]),
+    calcularBlocoIea(ieaInputs, input.orcamentoTotal, ieaOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
   );
   const rapDetalhePorInstituicao = new Map(
-    calcularBlocoRap(rapInputs, input.orcamentoTotal).map((d) => [d.instituicaoId, d]),
+    calcularBlocoRap(rapInputs, input.orcamentoTotal, rapOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
   );
   const iaplDetalhePorInstituicao = new Map(
     calcularBlocoIapl(iaplInputs, input.orcamentoTotal).map((d) => [d.instituicaoId, d]),
@@ -576,8 +615,17 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           iea: ieaD
             ? {
                 porCampus: ieaD.porCampus,
-                ponderadoInstituicao: ieaD.ponderadoInstituicao,
-                somaPonderadosRede: somaPonderadosIeaRede,
+                concluidos: ieaD.concluidos,
+                evadidos: ieaD.evadidos,
+                retidos: ieaD.retidos,
+                cCiclo: ieaD.cCiclo,
+                evCiclo: ieaD.evCiclo,
+                rCiclo: ieaD.rCiclo,
+                valorIea: ieaD.valorIea,
+                band: ieaD.band,
+                peso: ieaD.peso,
+                ponderadoInstituicao: ieaD.ponderado,
+                somaPonderadosRede: ieaD.somaPonderadosRede,
                 share: ieaD.share,
                 pesoSubBloco: PESO_IEA_SUBBLOCO,
                 valorSubBlocoRede: PESO_IEA_SUBBLOCO * input.orcamentoTotal,
@@ -587,8 +635,13 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           rap: rapD
             ? {
                 porCampus: rapD.porCampus,
-                ponderadoInstituicao: rapD.ponderadoInstituicao,
-                somaPonderadosRede: somaPonderadosRapRede,
+                matriculasRap: rapD.matriculasRap,
+                professorEquivalente: rapD.professorEquivalente,
+                razaoDocenteAluno: rapD.razaoDocenteAluno,
+                band: rapD.band,
+                peso: rapD.peso,
+                ponderadoInstituicao: rapD.ponderado,
+                somaPonderadosRede: rapD.somaPonderadosRede,
                 share: rapD.share,
                 pesoSubBloco: PESO_RAP_SUBBLOCO,
                 valorSubBlocoRede: PESO_RAP_SUBBLOCO * input.orcamentoTotal,
@@ -598,29 +651,37 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           iapl: iaplD
             ? {
                 tecnicos: {
-                  matriculasInstituicao: iaplD.matriculasTecnicos,
-                  totalMatriculasRede: totalMatriculasTecnicosRede,
-                  share:
-                    totalMatriculasTecnicosRede === 0 ? 0 : iaplD.matriculasTecnicos / totalMatriculasTecnicosRede,
+                  matriculas: iaplD.tecnicos.matriculas,
+                  matriculasGeral: iaplD.tecnicos.matriculasGeral,
+                  percentualMe: iaplD.tecnicos.percentualMe,
+                  peso: iaplD.tecnicos.peso,
+                  ponderado: iaplD.tecnicos.ponderado,
+                  somaPonderadosRede: iaplD.tecnicos.somaPonderadosRede,
+                  share: iaplD.tecnicos.share,
                   valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.CURSOS_TECNICOS,
-                  valorReais: iaplD.valorTecnicos,
+                  valorReais: iaplD.tecnicos.valorReais,
                 },
                 formacaoProfessores: {
-                  matriculasInstituicao: iaplD.matriculasFormacaoProfessores,
-                  totalMatriculasRede: totalMatriculasFormacaoRede,
-                  share:
-                    totalMatriculasFormacaoRede === 0
-                      ? 0
-                      : iaplD.matriculasFormacaoProfessores / totalMatriculasFormacaoRede,
+                  matriculas: iaplD.formacaoProfessores.matriculas,
+                  matriculasGeral: iaplD.formacaoProfessores.matriculasGeral,
+                  percentualMe: iaplD.formacaoProfessores.percentualMe,
+                  peso: iaplD.formacaoProfessores.peso,
+                  ponderado: iaplD.formacaoProfessores.ponderado,
+                  somaPonderadosRede: iaplD.formacaoProfessores.somaPonderadosRede,
+                  share: iaplD.formacaoProfessores.share,
                   valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.FORMACAO_PROFESSORES,
-                  valorReais: iaplD.valorFormacaoProfessores,
+                  valorReais: iaplD.formacaoProfessores.valorReais,
                 },
                 proeja: {
-                  matriculasInstituicao: iaplD.matriculasProeja,
-                  totalMatriculasRede: totalMatriculasProejaRede,
-                  share: totalMatriculasProejaRede === 0 ? 0 : iaplD.matriculasProeja / totalMatriculasProejaRede,
+                  matriculas: iaplD.proeja.matriculas,
+                  matriculasGeral: iaplD.proeja.matriculasGeral,
+                  percentualMe: iaplD.proeja.percentualMe,
+                  peso: iaplD.proeja.peso,
+                  ponderado: iaplD.proeja.ponderado,
+                  somaPonderadosRede: iaplD.proeja.somaPonderadosRede,
+                  share: iaplD.proeja.share,
                   valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.PROEJA,
-                  valorReais: iaplD.valorProeja,
+                  valorReais: iaplD.proeja.valorReais,
                 },
                 pesoSubBloco: PESO_IAPL_SUBBLOCO,
                 valorSubBlocoRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal,

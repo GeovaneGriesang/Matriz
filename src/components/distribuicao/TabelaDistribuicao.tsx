@@ -19,7 +19,17 @@ interface DetalheFuncionamento {
 }
 
 interface DetalheIea {
-  /** IEA/RAP/IAPL só são apurados por instituição na Matriz CONIF — este é o ponderado somado dos câmpus. */
+  /** Somas das contagens absolutas (Concluídos/Evadidos/Retidos) de todos os câmpus da instituição. */
+  concluidos: number;
+  evadidos: number;
+  retidos: number;
+  /** C_ciclo/Ev_ciclo/R_ciclo institucionais, calculados sobre a soma acima. */
+  cCiclo: number;
+  evCiclo: number;
+  rCiclo: number;
+  /** IEA institucional, calculado uma única vez a partir das somas (nunca por câmpus). */
+  valorIea: number;
+  /** IEA × peso da faixa da instituição (Figura 7 do livro da Matriz). */
   ponderadoInstituicao: number;
   somaPonderadosRede: number;
   share: number;
@@ -29,6 +39,12 @@ interface DetalheIea {
 }
 
 interface DetalheRap {
+  /** Somas de Matrículas RAP e Professor Equivalente de todos os câmpus da instituição. */
+  matriculasRap: number;
+  professorEquivalente: number;
+  /** RAP institucional = matriculasRap ÷ professorEquivalente, calculado uma única vez. */
+  razaoDocenteAluno: number;
+  /** RAP × peso da faixa da instituição (Figura 9 do livro da Matriz). */
   ponderadoInstituicao: number;
   somaPonderadosRede: number;
   share: number;
@@ -38,8 +54,14 @@ interface DetalheRap {
 }
 
 interface DetalheIaplCategoria {
-  matriculasInstituicao: number;
-  totalMatriculasRede: number;
+  matriculas: number;
+  matriculasGeral: number;
+  /** %ME = matriculas ÷ matriculasGeral, enquadrado na tabela de faixas/pesos da categoria. */
+  percentualMe: number;
+  peso: number;
+  /** Ponderado = %ME × peso — base do rateio entre instituições. */
+  ponderado: number;
+  somaPonderadosRede: number;
   share: number;
   valorCategoriaRede: number;
   valorReais: number;
@@ -205,8 +227,19 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        IEA Ponderado (soma dos câmpus da instituição, IEA × peso da faixa de cada um):{" "}
-        <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
+        Concluídos {formatoNumero.format(detalhe.concluidos)} + Evadidos {formatoNumero.format(detalhe.evadidos)} +
+        Retidos {formatoNumero.format(detalhe.retidos)} (soma de todos os câmpus da instituição) → C_ciclo{" "}
+        <strong>{formatoPercentual.format(detalhe.cCiclo)}</strong>, Ev_ciclo{" "}
+        <strong>{formatoPercentual.format(detalhe.evCiclo)}</strong>, R_ciclo{" "}
+        <strong>{formatoPercentual.format(detalhe.rCiclo)}</strong>
+      </ItemMemoria>
+      <ItemMemoria>
+        IEA = C_ciclo + R_ciclo × (C_ciclo ÷ (C_ciclo + Ev_ciclo)) ={" "}
+        <strong>{formatoPercentual.format(detalhe.valorIea)}</strong> — calculado uma única vez para a instituição
+        (nunca por câmpus)
+      </ItemMemoria>
+      <ItemMemoria>
+        IEA Ponderado = IEA × peso da faixa: <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
       </ItemMemoria>
       <ItemMemoria>
         IEA Equalizado = ponderado da instituição {formatoNumero.format(detalhe.ponderadoInstituicao)} ÷ soma de
@@ -229,8 +262,13 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        RAP Ponderado (soma dos câmpus da instituição, razão docente/aluno × peso da faixa de cada um):{" "}
-        <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
+        Matrículas RAP {formatoNumero.format(detalhe.matriculasRap)} ÷ Professor Equivalente{" "}
+        {formatoNumero.format(detalhe.professorEquivalente)} (somas de todos os câmpus da instituição) = RAP{" "}
+        <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — calculado uma única vez para a
+        instituição (nunca por câmpus)
+      </ItemMemoria>
+      <ItemMemoria>
+        RAP Ponderado = RAP × peso da faixa: <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
       </ItemMemoria>
       <ItemMemoria>
         RAP Equalizado = ponderado da instituição {formatoNumero.format(detalhe.ponderadoInstituicao)} ÷ soma de
@@ -252,9 +290,11 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
 function MemoriaIaplCategoria({ nome, detalhe }: { nome: string; detalhe: DetalheIaplCategoria }) {
   return (
     <ItemMemoria>
-      <strong>{nome}</strong>: matrículas da instituição {formatoNumero.format(detalhe.matriculasInstituicao)} ÷
-      total da rede {formatoNumero.format(detalhe.totalMatriculasRede)} = {formatoPercentual.format(detalhe.share)} ×{" "}
-      {formatoMoeda.format(detalhe.valorCategoriaRede)} ={" "}
+      <strong>{nome}</strong>: matrículas {formatoNumero.format(detalhe.matriculas)} ÷ matrícula geral{" "}
+      {formatoNumero.format(detalhe.matriculasGeral)} = %ME <strong>{formatoPercentual.format(detalhe.percentualMe)}</strong>{" "}
+      → peso da faixa {formatoNumero.format(detalhe.peso)} → ponderado {formatoNumero.format(detalhe.ponderado)} ÷
+      soma da rede {formatoNumero.format(detalhe.somaPonderadosRede)} = participação{" "}
+      {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorCategoriaRede)} ={" "}
       <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
     </ItemMemoria>
   );
