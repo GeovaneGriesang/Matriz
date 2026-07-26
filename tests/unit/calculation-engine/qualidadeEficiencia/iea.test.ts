@@ -4,7 +4,24 @@ import { weightIea } from "@/calculation-engine/qualidadeEficiencia/iea/weightIe
 import { calcularBlocoIea } from "@/calculation-engine/qualidadeEficiencia/iea/calcularBlocoIea";
 import { PESO_IEA_SUBBLOCO } from "@/calculation-engine/constants/blocos.constants";
 
-describe("bucketizeIea", () => {
+describe("bucketizeIea — PLANILHA_2026 (padrão, sem passar estratégia)", () => {
+  it.each([
+    [0.1, "MUITO_BAIXO"],
+    [0.4149, "MUITO_BAIXO"], // limite inclusivo
+    [0.45, "BAIXO"],
+    [0.461, "BAIXO"], // limite inclusivo
+    [0.48, "MEDIO"],
+    [0.5071, "MEDIO"], // limite inclusivo
+    [0.52, "ALTO"],
+    [0.5532, "ALTO"], // limite inclusivo
+    [0.6, "MUITO_ALTO"],
+    [0.9, "MUITO_ALTO"],
+  ] as const)("classifica IEA %f como %s", (valor, esperado) => {
+    expect(bucketizeIea(valor)).toBe(esperado);
+  });
+});
+
+describe("bucketizeIea — FORPLAN_2025 (explícito)", () => {
   it.each([
     [0.1, "MUITO_BAIXO"],
     [0.3, "MUITO_BAIXO"],
@@ -16,7 +33,14 @@ describe("bucketizeIea", () => {
     [0.6, "MUITO_ALTO"],
     [0.9, "MUITO_ALTO"],
   ] as const)("classifica IEA %f como %s", (valor, esperado) => {
-    expect(bucketizeIea(valor)).toBe(esperado);
+    expect(bucketizeIea(valor, "FORPLAN_2025")).toBe(esperado);
+  });
+});
+
+describe("bucketizeIea — as duas estratégias divergem para o mesmo valor", () => {
+  it("0.45 é BAIXO na planilha_2026 mas MUITO_BAIXO no forplan_2025", () => {
+    expect(bucketizeIea(0.45)).toBe("BAIXO");
+    expect(bucketizeIea(0.45, "FORPLAN_2025")).toBe("MUITO_BAIXO");
   });
 });
 
@@ -27,8 +51,9 @@ describe("weightIea", () => {
     ["MEDIO", 1.5],
     ["ALTO", 2.0],
     ["MUITO_ALTO", 2.5],
-  ] as const)("mapeia a faixa %s para o peso %f", (band, esperado) => {
+  ] as const)("mapeia a faixa %s para o peso %f (mesmo valor nas duas estratégias)", (band, esperado) => {
     expect(weightIea(band)).toBe(esperado);
+    expect(weightIea(band, "FORPLAN_2025")).toBe(esperado);
   });
 });
 
@@ -99,6 +124,37 @@ describe("calcularBlocoIea", () => {
     expect(inst10.valorIea).toBeCloseTo(inst20.valorIea, 9);
     expect(inst10.valorReais).toBeCloseTo(inst20.valorReais, 6);
     expect(inst10.porCampus).toHaveLength(2);
+  });
+
+  it("expõe qual estratégia foi usada no resultado, para a memória de cálculo indicar sempre a origem da faixa", () => {
+    const resultadoPadrao = calcularBlocoIea(
+      [{ campusId: 1, instituicaoId: 10, concluidos: 45, evadidos: 55, retidos: 0 }], // IEA 0.45
+      1_000_000,
+    );
+    expect(resultadoPadrao[0]!.estrategia).toBe("PLANILHA_2026");
+
+    const resultadoForplan = calcularBlocoIea(
+      [{ campusId: 1, instituicaoId: 10, concluidos: 45, evadidos: 55, retidos: 0 }],
+      1_000_000,
+      undefined,
+      "FORPLAN_2025",
+    );
+    expect(resultadoForplan[0]!.estrategia).toBe("FORPLAN_2025");
+  });
+
+  it("as duas estratégias podem produzir banda/peso/valor diferentes para o mesmo IEA calculado (0.45)", () => {
+    const inputs = [{ campusId: 1, instituicaoId: 10, concluidos: 45, evadidos: 55, retidos: 0 }];
+    const padrao = calcularBlocoIea(inputs, 1_000_000)[0]!; // PLANILHA_2026 -> BAIXO -> peso 1.0
+    const forplan = calcularBlocoIea(inputs, 1_000_000, undefined, "FORPLAN_2025")[0]!; // MUITO_BAIXO -> peso 0.5
+
+    expect(padrao.band).toBe("BAIXO");
+    expect(padrao.peso).toBe(1.0);
+    expect(forplan.band).toBe("MUITO_BAIXO");
+    expect(forplan.peso).toBe(0.5);
+    // Mesmo IEA calculado, faixa diferente -> valor distribuído diferente (única instituição, share sempre 1.0,
+    // mas o valor em si não depende do peso quando há só uma instituição — a diferença aparece no ponderado).
+    expect(padrao.ponderado).toBeCloseTo(0.45 * 1.0, 9);
+    expect(forplan.ponderado).toBeCloseTo(0.45 * 0.5, 9);
   });
 
   it("override por instituição substitui o IEA calculado (simulador)", () => {

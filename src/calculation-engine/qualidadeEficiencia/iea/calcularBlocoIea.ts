@@ -1,5 +1,6 @@
 import { PESO_IEA_SUBBLOCO } from "../../constants/blocos.constants";
-import type { IeaInstituicaoResult, IeaInput } from "../../types/qualidadeEficiencia.types";
+import { ESTRATEGIA_FAIXAS_IEA_PADRAO } from "../../constants/qualidadeEficiencia.constants";
+import type { EstrategiaFaixasIea, IeaInstituicaoResult, IeaInput } from "../../types/qualidadeEficiencia.types";
 import { bucketizeIea } from "./bucketizeIea";
 import { weightIea } from "./weightIea";
 
@@ -15,6 +16,11 @@ import { weightIea } from "./weightIea";
  * Referência Metodológica da PNP — ver seção 3.1 de
  * docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
  *
+ * `estrategia` escolhe qual das duas tabelas de faixas/pesos enquadra o IEA calculado (ver
+ * qualidadeEficiencia.constants.ts) — as duas ficam sempre disponíveis, nenhuma é descartada;
+ * "PLANILHA_2026" é o padrão quando omitido. O valor escolhido vai junto no resultado
+ * (`estrategia`), para a memória de cálculo sempre indicar de onde veio o enquadramento.
+ *
  * `overridesPorInstituicao`, quando informado, substitui o IEA calculado de uma instituição pelo
  * valor fornecido (0–1) antes do enquadramento — usado pelo simulador ("e se o IEA desta
  * instituição fosse X?"). Como IEA só existe em nível de instituição, o override é por
@@ -24,6 +30,7 @@ export function calcularBlocoIea(
   campiInputs: IeaInput[],
   orcamentoTotal: number,
   overridesPorInstituicao?: Map<number, number>,
+  estrategia: EstrategiaFaixasIea = ESTRATEGIA_FAIXAS_IEA_PADRAO,
 ): IeaInstituicaoResult[] {
   const porInstituicao = new Map<number, IeaInput[]>();
   for (const input of campiInputs) {
@@ -50,8 +57,8 @@ export function calcularBlocoIea(
     const valorIeaCalculado = cCiclo + rCiclo * (cCiclo + evCiclo === 0 ? 0 : cCiclo / (cCiclo + evCiclo));
 
     const valorIea = overridesPorInstituicao?.get(instituicaoId) ?? valorIeaCalculado;
-    const band = bucketizeIea(valorIea);
-    const peso = weightIea(band);
+    const band = bucketizeIea(valorIea, estrategia);
+    const peso = weightIea(band, estrategia);
 
     return {
       instituicaoId,
@@ -68,6 +75,7 @@ export function calcularBlocoIea(
       evCiclo,
       rCiclo,
       valorIea,
+      estrategia,
       band,
       peso,
       ponderado: valorIea * peso,

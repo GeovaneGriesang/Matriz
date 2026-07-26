@@ -12,6 +12,15 @@
 
 export type IeaBand = "MUITO_BAIXO" | "BAIXO" | "MEDIO" | "ALTO" | "MUITO_ALTO";
 
+/**
+ * Duas fontes oficiais documentam faixas/pesos de IEA diferentes (ver
+ * qualidadeEficiencia.constants.ts) — o sistema mantém as duas disponíveis (nunca escolhe uma e
+ * descarta a outra) e deixa o usuário escolher qual usar em cada cálculo:
+ * - "PLANILHA_2026" (padrão): faixas da planilha-modelo oficial do ciclo orçamentário de 2026.
+ * - "FORPLAN_2025": faixas do livro "A Matriz Orçamentária da Rede Federal de EPCT" (CONIF/Forplan, 2025).
+ */
+export type EstrategiaFaixasIea = "PLANILHA_2026" | "FORPLAN_2025";
+
 /** Contagens absolutas de um câmpus, insumo bruto (nunca já enquadrado em faixa). */
 export interface IeaInput {
   campusId: number;
@@ -42,6 +51,8 @@ export interface IeaInstituicaoResult {
   rCiclo: number;
   /** IEA = C_ciclo + R_ciclo × (C_ciclo / (C_ciclo + Ev_ciclo)), calculado uma única vez por instituição. */
   valorIea: number;
+  /** Qual tabela de faixas/pesos foi usada para enquadrar `valorIea` — sempre exposto na memória de cálculo. */
+  estrategia: EstrategiaFaixasIea;
   band: IeaBand;
   peso: number;
   /** IEA Ponderado = valorIea × peso (Figura 7 do livro da Matriz). */
