@@ -11,6 +11,18 @@ import type {
  * três passos aqui porque a PNP só entrega a faixa de RFP (Renda Familiar Per Capita)
  * por instituição, não por câmpus:
  *
+ * NÃO VALIDADO CONTRA A PLANILHA OFICIAL: `faixaRfp` vem da dimensão "RendaFamiliar" de
+ * `ClassificacaoRacialRendaSexo.csv` — os rótulos batem exatamente com as 6 faixas de RFP da
+ * seção 2 da metodologia ("0<RFP<=0,5" ... "RFP>3,5", "Não declarada", "S/I"; confirmado
+ * consultando os dados ingeridos), então não é um cruzamento de nome de campo coincidente. Mas
+ * a metodologia (seção 4.4) diz que o "VR" da planilha oficial vem de uma "pesquisa de renda per
+ * capita dos estudantes" tratada como fonte externa à PNP — e a seção 8/9 da mesma metodologia
+ * chega a listar esse CSV como não usado na matriz e a faixa de RFP como dado inexistente nos 17
+ * CSVs (desatualizado; foi escrito antes desta implementação, ver Ação 2994 no histórico do
+ * projeto). Não existe hoje nenhum teste ou comparação numérica que confirme que o VR calculado
+ * aqui bate com o VR (coluna AK) da planilha oficial — só a categoria de renda foi conferida, não
+ * o valor final. Ver docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md, seções 2, 4.4, 8 e 9.
+ *
  * 1) VR (RF Ponderada) = Σ (% de matrículas da instituição em cada faixa de RFP × peso
  *    da faixa) — índice de vulnerabilidade (0 a 2,5), independente do tamanho da instituição.
  * 2) O porte da instituição entra aqui: Participação ∝ MECHDA × VR, onde MECHDA = Σ Matrícula

@@ -5,6 +5,11 @@
  * (maior renda / não declarada). As faixas vêm como dimensão categórica
  * `rendaFamiliar` do arquivo ClassificacaoRacialRendaSexo.csv da PNP —
  * dado só existe por instituição, não por câmpus (ver blocoAssistenciaEstudantil.ts).
+ *
+ * As strings-chave abaixo foram conferidas contra os dados ingeridos e batem exatamente com os
+ * valores reais de `rendaFamiliar` no CSV — não é um mapeamento por suposição. O que NÃO foi
+ * conferido é se o VR calculado a partir dessas faixas bate com o VR (coluna AK) da planilha
+ * oficial: não há teste nem confirmação de CONIF/SETEC disso ainda.
  */
 export const RFP_FAIXA_PESOS: Record<string, number> = {
   "0<RFP<=0,5": 2.5,

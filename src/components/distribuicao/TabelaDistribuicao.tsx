@@ -354,6 +354,11 @@ function MemoriaAssistenciaEstudantil({ detalhe }: { detalhe: DetalheAssistencia
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
+        <strong>Não validado:</strong> a faixa de RFP vem de ClassificacaoRacialRendaSexo.csv — os rótulos
+        batem exatamente com as faixas oficiais, mas o VR calculado nunca foi conferido contra a planilha
+        oficial nem confirmado com CONIF/SETEC.
+      </ItemMemoria>
+      <ItemMemoria>
         Passo 1 — VR (RF Ponderada) da instituição (Σ % de matrículas em cada faixa de RFP × peso da faixa):{" "}
         <strong>{formatoNumero.format(detalhe.vrInstituicao)}</strong>
       </ItemMemoria>
