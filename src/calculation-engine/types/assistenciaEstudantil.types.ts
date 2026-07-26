@@ -1,4 +1,11 @@
-/** Uma linha (instituição, faixa de RFP) com o número de matrículas naquela faixa — dado só existe por instituição, não por câmpus. */
+/**
+ * Uma linha (instituição, faixa de RFP) com o número de matrículas naquela faixa — dado só
+ * existe por instituição, não por câmpus.
+ *
+ * NÃO VALIDADO CONTRA A PLANILHA OFICIAL: `faixaRfp` vem de `ClassificacaoRacialRendaSexo.csv`
+ * (dimensão "RendaFamiliar") — os rótulos batem exatamente com as faixas oficiais, mas o valor
+ * final (VR) nunca foi comparado com a planilha/CONIF-SETEC. Ver blocoAssistenciaEstudantil.ts.
+ */
 export interface AssistenciaEstudantilRfpInput {
   instituicaoId: number;
   faixaRfp: string;
