@@ -65,28 +65,35 @@ export interface IeaInstituicaoResult {
 // ---------- RAP (Relação Aluno-Professor) ----------
 //
 // RAP só é apurado em nível de INSTITUIÇÃO na Matriz CONIF (mesmo caso do
-// IEA, ver acima). A Portaria SETEC/MEC nº 51/2018, Art. 5º, define
-// RAP = Matrículas RAP ÷ Professor Equivalente — não há dado de docentes por
-// regime de trabalho nos exports reais para recalcular esses dois valores,
-// então eles são lidos prontos por câmpus de `RelacaoAlunoProfessorRAP.csv`
-// (medidas "RAP | Matrículas RAP" e "RAP | Professor Equivalente"), somados
-// por instituição, e SÓ ENTÃO divididos — nunca ler o "RAP | RAP" já pronto
-// por câmpus e combinar razões já calculadas (não é equivalente).
+// IEA, ver acima). A Portaria SETEC/MEC nº 51/2018, Art. 5º, define oficialmente
+// RAP Presencial = Matrícula-equivalente presencial ÷ Professor Equivalente.
+//
+// APROXIMAÇÃO: RAP Presencial calculado com matrícula bruta presencial (TaxaEvasao.csv,
+// medida "Número de Matrículas" filtrada por ModalidadeEnsino = "Educação Presencial"), não com
+// Matrícula-equivalente presencial oficial (Portaria 51/2018, que pondera por Fator de Esforço de
+// Curso — seção 3.2.1 da metodologia, deixado para um próximo passo). Erro esperado entre +0,9% e
+// +53% dependendo da instituição, testado em golden_values_indicadores.csv. Ver seção 9 de
+// Metodologia_Matriz_Orcamentaria_CONIF.md. O denominador (Professor Equivalente, de
+// `RelacaoAlunoProfessorRAP.csv`) já está correto e não precisa de ajuste.
+//
+// Os dois insumos (matrículas presenciais e professor equivalente) são somados por instituição
+// e SÓ ENTÃO divididos — nunca ler o "RAP | RAP" já pronto por câmpus e combinar razões já
+// calculadas (não é equivalente).
 
 export type RapBand = "MUITO_BAIXA" | "BAIXA" | "MEDIA" | "ALTA" | "MUITO_ALTA";
 
-/** Matrículas RAP e Professor Equivalente de um câmpus, insumo bruto (nunca já dividido). */
+/** Matrículas presenciais (aproximação do numerador oficial) e Professor Equivalente de um câmpus, insumo bruto (nunca já dividido). */
 export interface RapInput {
   campusId: number;
   instituicaoId: number;
-  matriculasRap: number;
+  matriculasPresenciais: number;
   professorEquivalente: number;
 }
 
 /** Contribuição bruta de um câmpus à soma da instituição — só para memória de cálculo. */
 export interface RapCampusContribuicao {
   campusId: number;
-  matriculasRap: number;
+  matriculasPresenciais: number;
   professorEquivalente: number;
 }
 
@@ -94,9 +101,12 @@ export interface RapInstituicaoResult {
   instituicaoId: number;
   porCampus: RapCampusContribuicao[];
   /** Somas das contagens absolutas de todos os câmpus da instituição. */
-  matriculasRap: number;
+  matriculasPresenciais: number;
   professorEquivalente: number;
-  /** RAP = Matrículas RAP ÷ Professor Equivalente, calculado uma única vez por instituição. */
+  /**
+   * RAP Presencial (aproximado) = matriculasPresenciais ÷ professorEquivalente, calculado uma
+   * única vez por instituição. Ver nota de APROXIMAÇÃO acima.
+   */
   razaoDocenteAluno: number;
   band: RapBand;
   peso: number;

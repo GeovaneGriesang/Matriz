@@ -124,16 +124,8 @@ const EFICIENCIA_CAMPO_POR_MEDIDA = {
   "Eficiência Acadêmica | Retidos": "retidos",
 } as const satisfies Record<string, keyof Omit<IeaInput, "campusId" | "instituicaoId">>;
 
-/**
- * Campos brutos de RelacaoAlunoProfessorRAP.csv necessários para calcular o RAP institucional
- * (seção 3.2 da metodologia, Portaria SETEC/MEC nº 51/2018 Art. 5º): nunca ler o "RAP | RAP" já
- * pronto por câmpus e agregá-lo — somar Matrículas RAP e Professor Equivalente primeiro, dividir
- * uma única vez (ver calcularBlocoRap.ts).
- */
-const RAP_CAMPO_POR_MEDIDA = {
-  "RAP | Matrículas RAP": "matriculasRap",
-  "RAP | Professor Equivalente": "professorEquivalente",
-} as const satisfies Record<string, keyof Omit<RapInput, "campusId" | "instituicaoId">>;
+const MEDIDA_PROFESSOR_EQUIVALENTE = "RAP | Professor Equivalente";
+const MODALIDADE_PRESENCIAL = "Educação Presencial";
 
 function aplicarOverrideFuncionamento(
   inputs: FuncionamentoInput[],
@@ -368,28 +360,57 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const ieaInputs = Array.from(ieaPorUnidade.values());
   const ieaOverridesPorInstituicao = construirOverridesIea(overrides, instituicaoIdPorCampus);
 
-  const rapFatos = await prisma.fatoIndicador.findMany({
+  const professorEquivalenteFatos = await prisma.fatoIndicador.findMany({
     where: {
       fileType: "RELACAO_ALUNO_PROFESSOR_RAP",
-      medida: { in: Object.keys(RAP_CAMPO_POR_MEDIDA) },
+      medida: MEDIDA_PROFESSOR_EQUIVALENTE,
       ano: input.ano,
       instituicaoId: { in: input.instituicaoIds },
       unidadeId: { not: null },
     },
   });
-  // Matrículas RAP e Professor Equivalente por câmpus — a soma por instituição e a divisão (RAP,
-  // uma vez, no nível da instituição) acontecem dentro de calcularBlocoRap.ts, nunca aqui.
+  // APROXIMAÇÃO: o numerador oficial do RAP Presencial (Portaria SETEC/MEC nº 51/2018, Art. 5º) é
+  // a Matrícula-equivalente presencial — granularidade não disponível hoje. Usamos a matrícula
+  // bruta presencial de TaxaEvasao.csv (único CSV com ModalidadeEnsino por curso) como
+  // aproximação; erro esperado entre +0,9% e +53% por instituição (ver calcularBlocoRap.ts para o
+  // detalhe da validação). O denominador (Professor Equivalente, acima) já está correto.
+  const matriculasPresenciaisFatos = await prisma.fatoIndicador.findMany({
+    where: {
+      fileType: "TAXA_EVASAO",
+      medida: MEDIDA_NUMERO_MATRICULAS,
+      ano: input.ano,
+      instituicaoId: { in: input.instituicaoIds },
+      unidadeId: { not: null },
+    },
+    select: { unidadeId: true, instituicaoId: true, valor: true, dimensoesExtra: true },
+  });
+
+  // Matrículas presenciais e Professor Equivalente por câmpus — a soma por instituição e a
+  // divisão (RAP, uma vez, no nível da instituição) acontecem dentro de calcularBlocoRap.ts, nunca
+  // aqui.
   let rapPorUnidade = new Map<number, RapInput>();
-  for (const fato of rapFatos) {
+  for (const fato of professorEquivalenteFatos) {
     const unidadeId = fato.unidadeId as number;
     const atual = rapPorUnidade.get(unidadeId) ?? {
       campusId: unidadeId,
       instituicaoId: fato.instituicaoId,
-      matriculasRap: 0,
+      matriculasPresenciais: 0,
       professorEquivalente: 0,
     };
-    const campo = RAP_CAMPO_POR_MEDIDA[fato.medida as keyof typeof RAP_CAMPO_POR_MEDIDA];
-    atual[campo] += Number(fato.valor);
+    atual.professorEquivalente += Number(fato.valor);
+    rapPorUnidade.set(unidadeId, atual);
+  }
+  for (const fato of matriculasPresenciaisFatos) {
+    const modalidade = (fato.dimensoesExtra as { modalidadeEnsino?: string } | null)?.modalidadeEnsino;
+    if (modalidade !== MODALIDADE_PRESENCIAL) continue;
+    const unidadeId = fato.unidadeId as number;
+    const atual = rapPorUnidade.get(unidadeId) ?? {
+      campusId: unidadeId,
+      instituicaoId: fato.instituicaoId,
+      matriculasPresenciais: 0,
+      professorEquivalente: 0,
+    };
+    atual.matriculasPresenciais += Number(fato.valor);
     rapPorUnidade.set(unidadeId, atual);
   }
   const rapInputs = Array.from(rapPorUnidade.values());
@@ -652,7 +673,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           rap: rapD
             ? {
                 porCampus: rapD.porCampus,
-                matriculasRap: rapD.matriculasRap,
+                matriculasPresenciais: rapD.matriculasPresenciais,
                 professorEquivalente: rapD.professorEquivalente,
                 razaoDocenteAluno: rapD.razaoDocenteAluno,
                 band: rapD.band,

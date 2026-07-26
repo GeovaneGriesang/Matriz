@@ -645,7 +645,9 @@ export function SimuladorPanel() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">RAP</label>
+                  <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                    RAP Presencial (aprox.)
+                  </label>
                   <input
                     type="number"
                     step="any"

@@ -43,10 +43,10 @@ interface DetalheIea {
 }
 
 interface DetalheRap {
-  /** Somas de Matrículas RAP e Professor Equivalente de todos os câmpus da instituição. */
-  matriculasRap: number;
+  /** Somas de matrículas presenciais (aproximação, ver MemoriaRap) e Professor Equivalente de todos os câmpus da instituição. */
+  matriculasPresenciais: number;
   professorEquivalente: number;
-  /** RAP institucional = matriculasRap ÷ professorEquivalente, calculado uma única vez. */
+  /** RAP Presencial institucional (aproximado) = matriculasPresenciais ÷ professorEquivalente, calculado uma única vez. */
   razaoDocenteAluno: number;
   /** RAP × peso da faixa da instituição (Figura 9 do livro da Matriz). */
   ponderadoInstituicao: number;
@@ -273,10 +273,15 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        Matrículas RAP {formatoNumero.format(detalhe.matriculasRap)} ÷ Professor Equivalente{" "}
-        {formatoNumero.format(detalhe.professorEquivalente)} (somas de todos os câmpus da instituição) = RAP{" "}
-        <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — calculado uma única vez para a
-        instituição (nunca por câmpus)
+        <strong>Aproximação:</strong> RAP Presencial calculado com matrícula bruta presencial
+        (TaxaEvasao.csv), não com Matrícula-equivalente presencial oficial (Portaria SETEC/MEC nº
+        51/2018). Erro esperado entre +0,9% e +53% dependendo da instituição.
+      </ItemMemoria>
+      <ItemMemoria>
+        Matrículas Presenciais {formatoNumero.format(detalhe.matriculasPresenciais)} ÷ Professor Equivalente{" "}
+        {formatoNumero.format(detalhe.professorEquivalente)} (somas de todos os câmpus da instituição) = RAP
+        Presencial <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — calculado uma única vez
+        para a instituição (nunca por câmpus)
       </ItemMemoria>
       <ItemMemoria>
         RAP Ponderado = RAP × peso da faixa: <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
