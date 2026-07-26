@@ -227,7 +227,28 @@ function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
   );
 }
 
+/**
+ * `detalhe` é um snapshot JSON persistido em `CalculationResult.detalhe` — não tem validação de
+ * schema em tempo de execução, então execuções antigas (calculadas por uma versão anterior do
+ * motor de cálculo) podem chegar aqui sem os campos que a interface promete. Renderizar direto
+ * quebra a página (visto ao rodar o sistema: execuções oficiais #219–#221 travavam a tela de
+ * Consulta com "Cannot read properties of undefined"). Em vez de mostrar números incompletos
+ * (NaN), avisamos que a memória de cálculo detalhada não está disponível para essa execução.
+ */
+function MemoriaIndisponivel({ valorReais }: { valorReais: number }) {
+  return (
+    <p className="text-neutral-500 dark:text-neutral-400">
+      Esta execução foi calculada por uma versão anterior do motor de cálculo e não guardou os
+      dados necessários para a memória de cálculo detalhada deste sub-bloco. Valor distribuído:{" "}
+      <strong>{formatoMoeda.format(valorReais)}</strong>. Recalcule para ver o detalhe completo.
+    </p>
+  );
+}
+
 function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
+  if (detalhe.estrategia === undefined) {
+    return <MemoriaIndisponivel valorReais={detalhe.valorReais} />;
+  }
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
@@ -270,6 +291,9 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
 }
 
 function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
+  if (detalhe.razaoDocenteAluno === undefined) {
+    return <MemoriaIndisponivel valorReais={detalhe.valorReais} />;
+  }
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
@@ -304,6 +328,14 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
 }
 
 function MemoriaIaplCategoria({ nome, detalhe }: { nome: string; detalhe: DetalheIaplCategoria }) {
+  if (detalhe.percentualMe === undefined) {
+    return (
+      <ItemMemoria>
+        <strong>{nome}</strong>: execução antiga, sem dado detalhado — valor distribuído:{" "}
+        <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>.
+      </ItemMemoria>
+    );
+  }
   return (
     <ItemMemoria>
       <strong>{nome}</strong>: matrículas {formatoNumero.format(detalhe.matriculas)} ÷ matrícula geral{" "}
