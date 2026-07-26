@@ -249,6 +249,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const overrides = input.overridesPorUnidade ?? {};
   const estrategiaFaixasIea = input.estrategiaFaixasIea ?? ESTRATEGIA_FAIXAS_IEA_PADRAO;
 
+  // AVISO: o Bloco Funcionamento (maior componente da Matriz — "Valor da Matrícula") usa
+  // "Matrícula Equivalente | Geral" como placeholder da "Matrícula Total equalizada" oficial
+  // (colunas Q/AI de COMPLETO PROPOSTA). Não são a mesma coisa — a razão entre elas varia de
+  // 1,37x a 2,6x por câmpus — mas é o melhor dado disponível até a fórmula oficial ser confirmada
+  // com CONIF/SETEC (ver calcularMatriculaTotalEqualizada.ts e seção 9, item 2, de
+  // docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
+  console.warn(
+    "[runCalculation] Bloco Funcionamento usando Matrícula Equivalente | Geral como placeholder da Matrícula Total equalizada oficial — valor NÃO confirmado com CONIF/SETEC, ver docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md seção 9, item 2.",
+  );
+
   const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
     by: ["unidadeId", "instituicaoId"],
     where: {
