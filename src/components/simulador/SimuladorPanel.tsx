@@ -39,30 +39,49 @@ interface CampusOverrideCampos {
   matriculasProeja?: number;
 }
 
+/** Campos deste tipo continuam apurados e simulados por câmpus (Matrícula/Funcionamento e IAPL). */
+type CampoPorCampus = Exclude<keyof CampusOverrideCampos, "valorIeaPercentual" | "razaoDocenteAluno">;
+
 interface AjusteCampus {
   unidadeId: number;
   unidadeNome: string;
   instituicaoSigla: string;
-  campos: CampusOverrideCampos;
+  campos: Pick<CampusOverrideCampos, CampoPorCampus>;
+}
+
+/** IEA e RAP só são apurados em nível de instituição (Portaria SETEC/MEC nº 51/2018 e Guia de
+ * Referência Metodológica da PNP) — o ajuste é por instituição inteira, não por câmpus. */
+interface AjusteInstituicao {
+  instituicaoId: number;
+  instituicaoSigla: string;
+  /** Câmpus usado só como chave técnica para enviar o override ao backend — o efeito é sempre na instituição inteira. */
+  unidadeIdReferencia: number;
+  valorIeaPercentual?: number;
+  razaoDocenteAluno?: number;
 }
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
-const ROTULO_CAMPO: Record<keyof CampusOverrideCampos, string> = {
+const ROTULO_CAMPO_POR_CAMPUS: Record<CampoPorCampus, string> = {
   matriculaPonderada: "Matrícula Ponderada",
-  valorIeaPercentual: "IEA",
-  razaoDocenteAluno: "RAP",
   matriculasTecnicos: "Matrículas Técnicos",
   matriculasFormacaoProfessores: "Matrículas Formação Prof.",
   matriculasProeja: "Matrículas Proeja",
 };
 
 function resumirAjuste(ajuste: AjusteCampus): string {
-  const partes = (Object.keys(ajuste.campos) as (keyof CampusOverrideCampos)[]).map(
-    (campo) => `${ROTULO_CAMPO[campo]}=${ajuste.campos[campo]}`,
+  const partes = (Object.keys(ajuste.campos) as CampoPorCampus[]).map(
+    (campo) => `${ROTULO_CAMPO_POR_CAMPUS[campo]}=${ajuste.campos[campo]}`,
   );
   return `${ajuste.instituicaoSigla} — ${ajuste.unidadeNome}: ${partes.join(", ")}`;
+}
+
+function resumirAjusteInstituicao(ajuste: AjusteInstituicao): string {
+  const partes: string[] = [];
+  if (ajuste.valorIeaPercentual !== undefined) partes.push(`IEA=${ajuste.valorIeaPercentual}`);
+  if (ajuste.razaoDocenteAluno !== undefined) partes.push(`RAP=${ajuste.razaoDocenteAluno}`);
+  return `${ajuste.instituicaoSigla} (instituição inteira): ${partes.join(", ")}`;
 }
 
 export function SimuladorPanel() {
@@ -83,15 +102,19 @@ export function SimuladorPanel() {
   const [instituicaoAjusteSelecionada, setInstituicaoAjusteSelecionada] = useState("");
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [unidadeSelecionada, setUnidadeSelecionada] = useState("");
-  const [camposAjuste, setCamposAjuste] = useState<Record<keyof CampusOverrideCampos, string>>({
+  const [camposAjuste, setCamposAjuste] = useState<Record<CampoPorCampus, string>>({
     matriculaPonderada: "",
-    valorIeaPercentual: "",
-    razaoDocenteAluno: "",
     matriculasTecnicos: "",
     matriculasFormacaoProfessores: "",
     matriculasProeja: "",
   });
   const [ajustes, setAjustes] = useState<AjusteCampus[]>([]);
+
+  const [instituicaoQeESelecionada, setInstituicaoQeESelecionada] = useState("");
+  const [valorIeaPercentualQeE, setValorIeaPercentualQeE] = useState("");
+  const [razaoDocenteAlunoQeE, setRazaoDocenteAlunoQeE] = useState("");
+  const [ajustesInstituicao, setAjustesInstituicao] = useState<AjusteInstituicao[]>([]);
+  const [erroAjusteInstituicao, setErroAjusteInstituicao] = useState<string | null>(null);
 
   function carregarExecucoes() {
     fetch("/api/calculations")
@@ -152,8 +175,8 @@ export function SimuladorPanel() {
 
   function adicionarAjuste() {
     if (!unidadeSelecionada) return;
-    const campos: CampusOverrideCampos = {};
-    for (const chave of Object.keys(camposAjuste) as (keyof CampusOverrideCampos)[]) {
+    const campos: Pick<CampusOverrideCampos, CampoPorCampus> = {};
+    for (const chave of Object.keys(camposAjuste) as CampoPorCampus[]) {
       const valor = camposAjuste[chave];
       if (valor.trim() !== "" && Number.isFinite(Number(valor))) {
         campos[chave] = Number(valor);
@@ -175,8 +198,6 @@ export function SimuladorPanel() {
     setAjustes((atuais) => [...atuais.filter((a) => a.unidadeId !== unidade.id), novoAjuste]);
     setCamposAjuste({
       matriculaPonderada: "",
-      valorIeaPercentual: "",
-      razaoDocenteAluno: "",
       matriculasTecnicos: "",
       matriculasFormacaoProfessores: "",
       matriculasProeja: "",
@@ -187,6 +208,68 @@ export function SimuladorPanel() {
     setAjustes((atuais) => atuais.filter((a) => a.unidadeId !== unidadeId));
   }
 
+  async function adicionarAjusteInstituicao() {
+    setErroAjusteInstituicao(null);
+    if (!instituicaoQeESelecionada) return;
+
+    const campos: Pick<CampusOverrideCampos, "valorIeaPercentual" | "razaoDocenteAluno"> = {};
+    if (valorIeaPercentualQeE.trim() !== "" && Number.isFinite(Number(valorIeaPercentualQeE))) {
+      campos.valorIeaPercentual = Number(valorIeaPercentualQeE);
+    }
+    if (razaoDocenteAlunoQeE.trim() !== "" && Number.isFinite(Number(razaoDocenteAlunoQeE))) {
+      campos.razaoDocenteAluno = Number(razaoDocenteAlunoQeE);
+    }
+    if (Object.keys(campos).length === 0) return;
+
+    const instituicao = instituicoes.find((i) => String(i.id) === instituicaoQeESelecionada);
+    if (!instituicao) return;
+
+    // IEA/RAP são apurados por instituição (ver calcularBlocoIea.ts/calcularBlocoRap.ts), mas o
+    // backend ainda indexa CampusOverride por unidadeId (overridesPorUnidade: Record<number, ...>)
+    // — precisamos de ALGUM câmpus da instituição só como "chave de transporte" pra chegar até lá;
+    // o valor em si (unidadeIdReferencia) nunca é usado como câmpus real, só resolvido de volta pra
+    // instituicaoId no servidor (ver construirOverridesIea/construirOverridesRap em runCalculation.ts).
+    //
+    // Critério: o PRIMEIRO item de `/api/instituicoes/{id}/unidades`, que ordena por
+    // `nome: "asc"` (ver src/app/api/instituicoes/[id]/unidades/route.ts) — ou seja, o câmpus cujo
+    // nome vem primeiro em ordem alfabética. É determinístico: como `Unidade` tem nome único dentro
+    // da instituição (`@@unique([instituicaoId, nome])`), essa ordenação não tem empate, então a
+    // mesma instituição sempre resolve para o mesmo câmpus, independente de quando ou quantas vezes
+    // a simulação rodar — muda só se o roster de câmpus da instituição mudar (câmpus novo cujo nome
+    // vem antes na ordem alfabética, por exemplo), nunca por acaso.
+    try {
+      const response = await fetch(`/api/instituicoes/${instituicao.id}/unidades`);
+      const lista = response.ok ? ((await response.json()) as Unidade[]) : [];
+      const unidadeReferencia = lista[0];
+      if (!unidadeReferencia) {
+        // Instituição sem nenhum câmpus cadastrado (raro — só ocorre se ela nunca apareceu em
+        // nenhuma linha de nível-câmpus de nenhum arquivo já ingerido): não há como simular
+        // IEA/RAP para ela por falta de uma chave de transporte, então o ajuste não é adicionado
+        // e o erro fica visível pro usuário — nunca falha silenciosamente nem quebra a tela.
+        setErroAjusteInstituicao(`A instituição ${instituicao.sigla} não tem nenhum câmpus cadastrado.`);
+        return;
+      }
+      const novoAjuste: AjusteInstituicao = {
+        instituicaoId: instituicao.id,
+        instituicaoSigla: instituicao.sigla,
+        unidadeIdReferencia: unidadeReferencia.id,
+        ...campos,
+      };
+      setAjustesInstituicao((atuais) => [
+        ...atuais.filter((a) => a.instituicaoId !== instituicao.id),
+        novoAjuste,
+      ]);
+      setValorIeaPercentualQeE("");
+      setRazaoDocenteAlunoQeE("");
+    } catch {
+      setErroAjusteInstituicao("Não foi possível carregar os câmpus dessa instituição.");
+    }
+  }
+
+  function removerAjusteInstituicao(instituicaoId: number) {
+    setAjustesInstituicao((atuais) => atuais.filter((a) => a.instituicaoId !== instituicaoId));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro(null);
@@ -195,7 +278,11 @@ export function SimuladorPanel() {
 
     const overridesPorUnidade: Record<number, CampusOverrideCampos> = {};
     for (const ajuste of ajustes) {
-      overridesPorUnidade[ajuste.unidadeId] = ajuste.campos;
+      overridesPorUnidade[ajuste.unidadeId] = { ...overridesPorUnidade[ajuste.unidadeId], ...ajuste.campos };
+    }
+    for (const ajusteInstituicao of ajustesInstituicao) {
+      const { instituicaoId, instituicaoSigla, unidadeIdReferencia, ...campos } = ajusteInstituicao;
+      overridesPorUnidade[unidadeIdReferencia] = { ...overridesPorUnidade[unidadeIdReferencia], ...campos };
     }
 
     try {
@@ -396,7 +483,7 @@ export function SimuladorPanel() {
 
           <details className="rounded-md border border-neutral-200 dark:border-neutral-800">
             <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              Ajustes por câmpus (opcional) — teste "e se" mudando um indicador específico
+              Ajustes por câmpus (opcional) — teste "e se" mudando Matrícula ou IAPL de um câmpus específico
             </summary>
             <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 dark:border-neutral-800">
               <div className="flex flex-col gap-1">
@@ -435,10 +522,10 @@ export function SimuladorPanel() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {(Object.keys(ROTULO_CAMPO) as (keyof CampusOverrideCampos)[]).map((campo) => (
+                {(Object.keys(ROTULO_CAMPO_POR_CAMPUS) as CampoPorCampus[]).map((campo) => (
                   <div key={campo} className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">
-                      {ROTULO_CAMPO[campo]}
+                      {ROTULO_CAMPO_POR_CAMPUS[campo]}
                     </label>
                     <input
                       type="number"
@@ -471,6 +558,91 @@ export function SimuladorPanel() {
                       <button
                         type="button"
                         onClick={() => removerAjuste(ajuste.unidadeId)}
+                        className="font-medium text-red-600 hover:underline dark:text-red-400"
+                      >
+                        remover
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </details>
+
+          <details className="rounded-md border border-neutral-200 dark:border-neutral-800">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              Ajustes de IEA e RAP (opcional) — teste "e se" mudando um indicador de uma instituição inteira
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 dark:border-neutral-800">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                IEA e RAP são calculados oficialmente no nível da instituição (Portaria SETEC/MEC nº 51/2018 e Guia
+                de Referência Metodológica da PNP), não por câmpus — por isso a simulação abaixo afeta a instituição
+                inteira, não um câmpus isolado.
+              </p>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">Instituição</label>
+                <select
+                  value={instituicaoQeESelecionada}
+                  onChange={(e) => setInstituicaoQeESelecionada(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Selecione...</option>
+                  {instituicoes.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.sigla} — {i.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">IEA</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={valorIeaPercentualQeE}
+                    onChange={(e) => setValorIeaPercentualQeE(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-neutral-900 dark:text-neutral-100">RAP</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={razaoDocenteAlunoQeE}
+                    onChange={(e) => setRazaoDocenteAlunoQeE(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={adicionarAjusteInstituicao}
+                disabled={!instituicaoQeESelecionada}
+                className="w-fit rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              >
+                Adicionar ajuste
+              </button>
+
+              {erroAjusteInstituicao && (
+                <p className="text-xs text-red-600 dark:text-red-400">{erroAjusteInstituicao}</p>
+              )}
+
+              {ajustesInstituicao.length > 0 && (
+                <ul className="flex flex-col gap-1">
+                  {ajustesInstituicao.map((ajuste) => (
+                    <li
+                      key={ajuste.instituicaoId}
+                      className="flex items-center justify-between gap-2 rounded-md bg-neutral-100 px-3 py-1.5 text-xs dark:bg-neutral-800"
+                    >
+                      <span>{resumirAjusteInstituicao(ajuste)}</span>
+                      <button
+                        type="button"
+                        onClick={() => removerAjusteInstituicao(ajuste.instituicaoId)}
                         className="font-medium text-red-600 hover:underline dark:text-red-400"
                       >
                         remover
