@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { TabelaDistribuicao, type CalculationRunDetail } from "@/components/distribuicao/TabelaDistribuicao";
 import { ConsultaPanel } from "@/components/consulta/ConsultaPanel";
+import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
+import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
 type Escopo = "CONIF" | "TODAS";
 
@@ -89,6 +91,7 @@ export function SimuladorPanel() {
   const [orcamentoTotal, setOrcamentoTotal] = useState(0);
   const [orcamentoAssistenciaEstudantil, setOrcamentoAssistenciaEstudantil] = useState(0);
   const [percentualAnuidade, setPercentualAnuidade] = useState("0");
+  const [estrategiaFaixasIea, setEstrategiaFaixasIea] = useState<EstrategiaFaixasIea>("PLANILHA_2026");
   const [ano, setAno] = useState("");
   const [escopo, setEscopo] = useState<Escopo>("CONIF");
   const [instituicaoFiltro, setInstituicaoFiltro] = useState("");
@@ -295,6 +298,7 @@ export function SimuladorPanel() {
           orcamentoTotal,
           orcamentoAssistenciaEstudantil,
           percentualAnuidade: Number(percentualAnuidade) || 0,
+          estrategiaFaixasIea,
           ano: Number(ano),
           overridesPorUnidade,
         }),
@@ -443,6 +447,39 @@ export function SimuladorPanel() {
               que ela recebe. Deixe em 0% para não simular anuidade.
             </p>
           </div>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              Faixas de peso do IEA
+            </legend>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Duas fontes oficiais documentam faixas/pesos de IEA diferentes — o sistema mantém as duas
+              disponíveis, nenhuma é descartada. Compare os dois resultados simulando o mesmo cenário com cada
+              uma.
+            </p>
+            <div className="flex flex-col gap-2">
+              {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => (
+                <label key={chave} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="estrategiaFaixasIea"
+                    checked={estrategiaFaixasIea === chave}
+                    onChange={() => setEstrategiaFaixasIea(chave)}
+                    disabled={calculando}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                      {ESTRATEGIA_FAIXAS_IEA_INFO[chave].label}
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                      {ESTRATEGIA_FAIXAS_IEA_INFO[chave].descricao}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="flex flex-col gap-1">
             <label htmlFor="ano" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">

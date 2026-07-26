@@ -4,7 +4,7 @@ import {
   PESO_RAP_SUBBLOCO,
   PESO_IAPL_SUBBLOCO,
 } from "./constants/blocos.constants";
-import type { IeaInput, RapInput, IaplCampusInput } from "./types/qualidadeEficiencia.types";
+import type { EstrategiaFaixasIea, IeaInput, RapInput, IaplCampusInput } from "./types/qualidadeEficiencia.types";
 import { calcularBlocoIea } from "./qualidadeEficiencia/iea/calcularBlocoIea";
 import { calcularBlocoRap } from "./qualidadeEficiencia/rap/calcularBlocoRap";
 import { calcularBlocoIapl } from "./qualidadeEficiencia/iapl/calcularBlocoIapl";
@@ -38,8 +38,9 @@ export function blocoQualidadeEficiencia(
   orcamentoTotal: number,
   overridesIeaPorInstituicao?: Map<number, number>,
   overridesRapPorInstituicao?: Map<number, number>,
+  estrategiaFaixasIea?: EstrategiaFaixasIea,
 ): QualidadeEficienciaInstituicaoResult[] {
-  const iea = calcularBlocoIea(ieaInputs, orcamentoTotal, overridesIeaPorInstituicao);
+  const iea = calcularBlocoIea(ieaInputs, orcamentoTotal, overridesIeaPorInstituicao, estrategiaFaixasIea);
   const rap = calcularBlocoRap(rapInputs, orcamentoTotal, overridesRapPorInstituicao);
   const iapl = calcularBlocoIapl(iaplInputs, orcamentoTotal);
 

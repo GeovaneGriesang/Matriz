@@ -5,6 +5,11 @@ import { getAdminSession } from "@/server/auth/session";
 import { runCalculation } from "@/server/actions/runCalculation";
 import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
 import { listarInstituicoesDoEscopo, type EscopoDistribuicao } from "@/server/queries/escopoInstituicoes";
+import type { EstrategiaFaixasIea } from "@prisma/client";
+
+function parseEstrategiaFaixasIea(valor: FormDataEntryValue | null): EstrategiaFaixasIea {
+  return valor === "FORPLAN_2025" ? "FORPLAN_2025" : "PLANILHA_2026";
+}
 
 export interface SalvarOrcamentoAnualResult {
   ok: boolean;
@@ -26,6 +31,7 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   const pisoMinimoCampusNovoBruto = formData.get("pisoMinimoCampusNovo");
   const pisoMinimoCampusNovo =
     pisoMinimoCampusNovoBruto === null || pisoMinimoCampusNovoBruto === "" ? 0 : Number(pisoMinimoCampusNovoBruto);
+  const estrategiaFaixasIea = parseEstrategiaFaixasIea(formData.get("estrategiaFaixasIea"));
 
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };
@@ -45,8 +51,15 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
 
   await prisma.orcamentoAnual.upsert({
     where: { ano },
-    create: { ano, valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo },
-    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo },
+    create: {
+      ano,
+      valorTotal,
+      valorAssistenciaEstudantil,
+      percentualAnuidade,
+      pisoMinimoCampusNovo,
+      estrategiaFaixasIea,
+    },
+    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo, estrategiaFaixasIea },
   });
 
   return { ok: true };
@@ -97,6 +110,7 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     orcamentoAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
     percentualAnuidade: Number(orcamento.percentualAnuidade),
     pisoMinimoCampusNovo: Number(orcamento.pisoMinimoCampusNovo),
+    estrategiaFaixasIea: orcamento.estrategiaFaixasIea,
     origem: "OFICIAL",
     escopo,
   });
