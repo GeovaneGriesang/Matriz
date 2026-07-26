@@ -19,13 +19,13 @@ describe("bucketizeRap", () => {
 });
 
 describe("calcularBlocoRap", () => {
-  it("calcula RAP = Σ Matrículas RAP ÷ Σ Professor Equivalente uma única vez por instituição", () => {
+  it("calcula RAP Presencial (aproximado) = Σ matrículas presenciais ÷ Σ Professor Equivalente uma única vez por instituição", () => {
     // Câmpus A isolado teria RAP = 100/10 = 10 (MUITO_BAIXA); Câmpus B isolado teria RAP = 5/1 = 5 (MUITO_BAIXA).
     // Somando primeiro (correto): (100+5)/(10+1) = 105/11 ≈ 9,545 — resultado que não é a média das razões.
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, instituicaoId: 10, matriculasRap: 100, professorEquivalente: 10 },
-        { campusId: 2, instituicaoId: 10, matriculasRap: 5, professorEquivalente: 1 },
+        { campusId: 1, instituicaoId: 10, matriculasPresenciais: 100, professorEquivalente: 10 },
+        { campusId: 2, instituicaoId: 10, matriculasPresenciais: 5, professorEquivalente: 1 },
       ],
       1_000_000,
     );
@@ -37,8 +37,8 @@ describe("calcularBlocoRap", () => {
     const orcamentoTotal = 1_000_000;
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, instituicaoId: 10, matriculasRap: 410, professorEquivalente: 20 }, // RAP 20.5 -> MEDIA -> peso 2.0
-        { campusId: 2, instituicaoId: 20, matriculasRap: 380, professorEquivalente: 20 }, // RAP 19 -> BAIXA -> peso 1.0
+        { campusId: 1, instituicaoId: 10, matriculasPresenciais: 410, professorEquivalente: 20 }, // RAP 20.5 -> MEDIA -> peso 2.0
+        { campusId: 2, instituicaoId: 20, matriculasPresenciais: 380, professorEquivalente: 20 }, // RAP 19 -> BAIXA -> peso 1.0
       ],
       orcamentoTotal,
     );
@@ -50,12 +50,12 @@ describe("calcularBlocoRap", () => {
     expect(somaValores).toBeCloseTo(PESO_RAP_SUBBLOCO * orcamentoTotal, 6);
   });
 
-  it("soma Matrículas RAP e Professor Equivalente de todos os câmpus da mesma instituição no resultado", () => {
+  it("soma matrículas presenciais e Professor Equivalente de todos os câmpus da mesma instituição no resultado", () => {
     const resultado = calcularBlocoRap(
       [
-        { campusId: 1, instituicaoId: 10, matriculasRap: 220, professorEquivalente: 10 },
-        { campusId: 2, instituicaoId: 10, matriculasRap: 220, professorEquivalente: 10 },
-        { campusId: 3, instituicaoId: 20, matriculasRap: 220, professorEquivalente: 10 },
+        { campusId: 1, instituicaoId: 10, matriculasPresenciais: 220, professorEquivalente: 10 },
+        { campusId: 2, instituicaoId: 10, matriculasPresenciais: 220, professorEquivalente: 10 },
+        { campusId: 3, instituicaoId: 20, matriculasPresenciais: 220, professorEquivalente: 10 },
       ],
       1_000_000,
     );
@@ -67,13 +67,13 @@ describe("calcularBlocoRap", () => {
     expect(inst10.razaoDocenteAluno).toBeCloseTo(inst20.razaoDocenteAluno, 9);
     expect(inst10.valorReais).toBeCloseTo(inst20.valorReais, 6);
     expect(inst10.porCampus).toHaveLength(2);
-    expect(inst10.matriculasRap).toBe(440);
+    expect(inst10.matriculasPresenciais).toBe(440);
     expect(inst10.professorEquivalente).toBe(20);
   });
 
   it("override por instituição substitui a razão calculada (simulador)", () => {
     const resultado = calcularBlocoRap(
-      [{ campusId: 1, instituicaoId: 10, matriculasRap: 440, professorEquivalente: 20 }], // RAP real 22
+      [{ campusId: 1, instituicaoId: 10, matriculasPresenciais: 440, professorEquivalente: 20 }], // RAP real 22
       1_000_000,
       new Map([[10, 15]]), // simula RAP 15 para a instituição 10
     );
