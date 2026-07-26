@@ -25,18 +25,20 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currenc
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const formatoPercentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 });
 
-type TipoOrigem = "digitado" | "totalizador" | "calculo";
+type TipoOrigem = "digitado" | "totalizador" | "calculo" | "normativo";
 
 const ORIGEM_ESTILO: Record<TipoOrigem, string> = {
   digitado: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
   totalizador: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
   calculo: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+  normativo: "bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-300",
 };
 
 const ORIGEM_LABEL: Record<TipoOrigem, string> = {
   digitado: "Digitado",
   totalizador: "Totalizador",
   calculo: "Cálculo",
+  normativo: "Normativo",
 };
 
 function TagOrigem({ tipo }: { tipo: TipoOrigem }) {
@@ -77,6 +79,110 @@ function LinhaMemoria({
 }
 
 /**
+ * Tabela oficial de pesos da Matrícula Equalizada por Carga Horária e Dias Ativos (MECHDA),
+ * metodologia da PNP citada na Portaria/livro de referência — exibida aqui como parâmetro
+ * normativo fixo (não recalculado por este sistema). A "Matrícula / Campi" acima já entra no
+ * cálculo com o valor de "Matrícula Equivalente" que a própria PNP publica por câmpus/curso —
+ * já com esses pesos aplicados na origem. Ver o detalhamento Bruta → Equivalente por câmpus,
+ * com os números reais ingeridos, em /consulta.
+ */
+function NotaMechda() {
+  return (
+    <div className="mt-2 flex flex-col gap-2 rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="flex items-center gap-2">
+        <TagOrigem tipo="normativo" />
+        <span className="font-medium text-neutral-900 dark:text-neutral-100">
+          MECHDA — pesos oficiais aplicados pela PNP na origem
+        </span>
+      </div>
+      <p className="text-neutral-500 dark:text-neutral-400">
+        A "Matrícula Equivalente" usada acima já vem calculada pela Plataforma Nilo Peçanha com a
+        metodologia oficial abaixo — este sistema consome o valor final por câmpus/curso e não
+        reaplica esses pesos, para não contá-los em dobro.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-max border-collapse text-left">
+          <thead>
+            <tr className="text-neutral-500 dark:text-neutral-400">
+              <th className="py-1 pr-4">Critério</th>
+              <th className="py-1 pr-4">Faixa</th>
+              <th className="py-1">Peso oficial</th>
+            </tr>
+          </thead>
+          <tbody className="text-neutral-700 dark:text-neutral-300">
+            <tr>
+              <td className="py-1 pr-4">Modalidade</td>
+              <td className="py-1 pr-4">Presencial</td>
+              <td className="py-1 font-mono">1,00</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Modalidade</td>
+              <td className="py-1 pr-4">EaD — Recurso Próprio</td>
+              <td className="py-1 font-mono">0,80</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Modalidade</td>
+              <td className="py-1 pr-4">EaD — Fomento Externo (UAB / Novos Caminhos)</td>
+              <td className="py-1 font-mono">0,25</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Laboratórios (CNCT/CST)</td>
+              <td className="py-1 pr-4">1 laboratório</td>
+              <td className="py-1 font-mono">1,00</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Laboratórios (CNCT/CST)</td>
+              <td className="py-1 pr-4">2 laboratórios</td>
+              <td className="py-1 font-mono">1,50</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Laboratórios (CNCT/CST)</td>
+              <td className="py-1 pr-4">3 laboratórios</td>
+              <td className="py-1 font-mono">2,00</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Laboratórios (CNCT/CST)</td>
+              <td className="py-1 pr-4">4 ou mais laboratórios</td>
+              <td className="py-1 font-mono">2,50</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Técnico Integrado</td>
+              <td className="py-1 pr-4">Piso mínimo, independe dos laboratórios</td>
+              <td className="py-1 font-mono">1,50</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Área/Eixo Agrícola-Pecuária</td>
+              <td className="py-1 pr-4">Bonificação</td>
+              <td className="py-1 font-mono">+50%</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Pós-Graduação Stricto Sensu</td>
+              <td className="py-1 pr-4">Peso base 2,50 + bônus 50%</td>
+              <td className="py-1 font-mono">3,75</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Retenção</td>
+              <td className="py-1 pr-4">Até 1.095 dias (3 anos)</td>
+              <td className="py-1 font-mono">parcial/proporcional</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Retenção</td>
+              <td className="py-1 pr-4">Acima de 1.095 dias</td>
+              <td className="py-1 font-mono">0,00 (excluído)</td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4">Carga Horária</td>
+              <td className="py-1 pr-4">Teto</td>
+              <td className="py-1 font-mono">limitada ao CNCT</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Memória de cálculo do topo da árvore (rede inteira, a partir dos valores digitados no
  * orçamento do ano) — mostra como a Ação 20RL Bruta se reparte em Bloco 1 (Funcionamento
  * 80% + Reitoria 10% = 90%) e Bloco 2 (Qualidade e Eficiência 10%), isola o Bloco 3
@@ -103,6 +209,8 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
         <span className="text-neutral-500 dark:text-neutral-400">totalizadores</span>
         <TagOrigem tipo="calculo" />
         <span className="text-neutral-500 dark:text-neutral-400">cálculos / fórmulas</span>
+        <TagOrigem tipo="normativo" />
+        <span className="text-neutral-500 dark:text-neutral-400">parâmetro fixo do livro/Portaria</span>
       </div>
 
       <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -141,6 +249,7 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
         <LinhaMemoria label="Matrículas / Campi" formula="80% × 20RL Bruto" valor={formatoMoeda.format(bloco1Matriculas)} tipo="calculo" />
         <LinhaMemoria label="Reitoria" formula="10% × 20RL Bruto" valor={formatoMoeda.format(bloco1Reitoria)} tipo="calculo" />
         <LinhaMemoria label="Subtotal Bloco 1" valor={formatoMoeda.format(bloco1Subtotal)} tipo="totalizador" destaque />
+        <NotaMechda />
       </div>
 
       <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">

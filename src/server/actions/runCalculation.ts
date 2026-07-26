@@ -97,6 +97,7 @@ export interface RunCalculationResult {
 }
 
 const MEDIDA_MATRICULA_EQUIVALENTE_GERAL = "Matrícula Equivalente | Geral";
+const MEDIDA_NUMERO_MATRICULAS = "Número de Matrículas";
 const MEDIDA_INDICE_EFICIENCIA_ACADEMICA = "Eficiência Acadêmica | Índice de Eficiência Acadêmica %";
 const MEDIDA_RAP = "RAP | RAP";
 
@@ -253,6 +254,29 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       select: { id: true, instituicaoId: true },
     });
   }
+
+  // Matrículas brutas (antes da equalização MECHDA da PNP) — só para exibição na memória de
+  // cálculo (mostrar a conversão Bruta → Equivalente), nunca usadas no rateio em si: a PNP já
+  // aplica sua própria metodologia de pesos (modalidade, laboratórios, retenção etc.) para chegar
+  // na Matrícula Equivalente, e reaplicá-los aqui contaria os pesos em dobro.
+  const matriculasBrutasPorUnidade = await prisma.fatoIndicador.groupBy({
+    by: ["unidadeId"],
+    where: {
+      fileType: "DADOS_GERAIS",
+      medida: MEDIDA_NUMERO_MATRICULAS,
+      ano: input.ano,
+      instituicaoId: { in: input.instituicaoIds },
+      unidadeId: { not: null },
+    },
+    _sum: { valor: true },
+  });
+  const matriculasBrutasPorCampus = new Map(
+    matriculasBrutasPorUnidade.map((f) => [f.unidadeId as number, Number(f._sum.valor ?? 0)]),
+  );
+  const totalMatriculasBrutasRede = matriculasBrutasPorUnidade.reduce(
+    (s, f) => s + Number(f._sum.valor ?? 0),
+    0,
+  );
 
   const funcionamentoInputs = aplicarOverrideFuncionamento(
     [
@@ -510,6 +534,8 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       detalhe: {
         matriculaPonderadaCampus: f.totalMatriculaPonderada,
         totalMatriculaPonderadaRede,
+        matriculasBrutasCampus: matriculasBrutasPorCampus.get(f.campusId) ?? 0,
+        totalMatriculasBrutasRede,
         share: f.share,
         pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
         valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * input.orcamentoTotal,
