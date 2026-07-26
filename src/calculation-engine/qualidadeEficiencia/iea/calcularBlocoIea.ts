@@ -25,6 +25,13 @@ import { weightIea } from "./weightIea";
  * valor fornecido (0–1) antes do enquadramento — usado pelo simulador ("e se o IEA desta
  * instituição fosse X?"). Como IEA só existe em nível de instituição, o override é por
  * instituição, não por câmpus.
+ *
+ * ATENÇÃO: a agregação de IEA por instituição diverge fortemente do valor oficial para redes com
+ * muitos câmpus (erro observado de até ~53pp em IFSUL/IFRS/IFMG/IFSULDEMINAS, contra
+ * golden_values_indicadores.csv); validado com confiança só para instituições pequenas como IFAC.
+ * Não usar para decisões reais de alocação de recursos sem confirmação da fonte com
+ * CONIF/SETEC/PNP. Ver seção 3.1 (atualizada) de Metodologia_Matriz_Orcamentaria_CONIF.md e
+ * tests/integration/goldenDataset.test.ts.
  */
 export function calcularBlocoIea(
   campiInputs: IeaInput[],
