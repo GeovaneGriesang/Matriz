@@ -117,6 +117,16 @@ model FatoIndicador {
   @@index([ingestionBatchId])
 }
 
+/// Marca correções pontuais de dados já aplicadas em `FatoIndicador` (ex.: bug de escala 100x em
+/// PercentuaisLegais.csv) para que a migration correspondente seja idempotente — não é possível
+/// detectar "já corrigido" só pelo valor (faixas de valor corrigido e ainda-inflado se sobrepõem),
+/// então cada correção grava aqui sua chave antes de terminar; a migration confere esta tabela
+/// antes de aplicar o UPDATE de novo.
+model DataFixLog {
+  id        String   @id
+  appliedAt DateTime @default(now())
+}
+
 // ---------- Calculation run outputs ----------
 
 enum RunStatus {
