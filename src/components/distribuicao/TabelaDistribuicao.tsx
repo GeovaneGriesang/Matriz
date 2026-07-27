@@ -40,6 +40,12 @@ interface DetalheFuncionamento {
 }
 
 interface DetalheIea {
+  /**
+   * "oficial" = Eficiência Acadêmica informada pela CONIF (EficienciaAcademicaAnual); "aproximado" =
+   * calculado agregando Concluídos/Evadidos/Retidos de EficienciaAcademica.csv por instituição (ver
+   * MemoriaIea). Ausente em execuções anteriores a essa distinção — sempre eram "aproximado".
+   */
+  fonte?: "oficial" | "aproximado";
   /** Somas das contagens absolutas (Concluídos/Evadidos/Retidos) de todos os câmpus da instituição. */
   concluidos: number;
   evadidos: number;
@@ -326,20 +332,38 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
   if (detalhe.estrategia === undefined) {
     return <MemoriaIndisponivel valorReais={detalhe.valorReais} />;
   }
+  const fonte = detalhe.fonte ?? "aproximado";
   return (
     <ul className="list-disc space-y-1 pl-5">
-      <ItemMemoria>
-        Concluídos {formatoNumero.format(detalhe.concluidos)} + Evadidos {formatoNumero.format(detalhe.evadidos)} +
-        Retidos {formatoNumero.format(detalhe.retidos)} (soma de todos os câmpus da instituição) → C_ciclo{" "}
-        <strong>{formatoPercentual.format(detalhe.cCiclo)}</strong>, Ev_ciclo{" "}
-        <strong>{formatoPercentual.format(detalhe.evCiclo)}</strong>, R_ciclo{" "}
-        <strong>{formatoPercentual.format(detalhe.rCiclo)}</strong>
-      </ItemMemoria>
-      <ItemMemoria>
-        IEA = C_ciclo + R_ciclo × (C_ciclo ÷ (C_ciclo + Ev_ciclo)) ={" "}
-        <strong>{formatoPercentual.format(detalhe.valorIea)}</strong> — calculado uma única vez para a instituição
-        (nunca por câmpus)
-      </ItemMemoria>
+      {fonte === "oficial" ? (
+        <ItemMemoria>
+          <strong>Eficiência Acadêmica oficial (informada pela CONIF):</strong>{" "}
+          <strong>{formatoPercentual.format(detalhe.valorIea)}</strong> — cadastrada em /admin/dados-anuais,
+          substitui integralmente a agregação aproximada de EficienciaAcademica.csv para esta instituição/ano.
+        </ItemMemoria>
+      ) : (
+        <>
+          <ItemMemoria>
+            <strong>Eficiência Acadêmica aproximada (agregação de EficienciaAcademica.csv):</strong> a Portaria
+            SETEC/MEC 646/2022 exclui cursos FIC do &quot;ciclo&quot;, mas o CSV da PNP não distingue tipo de
+            curso — a agregação diverge do valor oficial em redes com muitos câmpus (erro observado de até
+            ~53pp/392% em IFSUL/IFRS/IFMG/IFSULDEMINAS). Usado só porque não há Eficiência Acadêmica oficial
+            cadastrada em /admin/dados-anuais para esta instituição/ano. Ver Metodologia seção 3.1.
+          </ItemMemoria>
+          <ItemMemoria>
+            Concluídos {formatoNumero.format(detalhe.concluidos)} + Evadidos {formatoNumero.format(detalhe.evadidos)} +
+            Retidos {formatoNumero.format(detalhe.retidos)} (soma de todos os câmpus da instituição) → C_ciclo{" "}
+            <strong>{formatoPercentual.format(detalhe.cCiclo)}</strong>, Ev_ciclo{" "}
+            <strong>{formatoPercentual.format(detalhe.evCiclo)}</strong>, R_ciclo{" "}
+            <strong>{formatoPercentual.format(detalhe.rCiclo)}</strong>
+          </ItemMemoria>
+          <ItemMemoria>
+            IEA = C_ciclo + R_ciclo × (C_ciclo ÷ (C_ciclo + Ev_ciclo)) ={" "}
+            <strong>{formatoPercentual.format(detalhe.valorIea)}</strong> — calculado uma única vez para a
+            instituição (nunca por câmpus)
+          </ItemMemoria>
+        </>
+      )}
       <ItemMemoria>
         Faixas usadas para enquadrar o IEA:{" "}
         <strong>{ESTRATEGIA_FAIXAS_IEA_INFO[detalhe.estrategia].label}</strong>

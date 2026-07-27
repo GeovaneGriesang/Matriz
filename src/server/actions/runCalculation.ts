@@ -491,7 +491,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     ieaPorUnidade.set(unidadeId, atual);
   }
   const ieaInputs = Array.from(ieaPorUnidade.values());
-  const ieaOverridesPorInstituicao = construirOverridesIea(overrides, instituicaoIdPorCampus);
+  const ieaOverridesSimulador = construirOverridesIea(overrides, instituicaoIdPorCampus);
 
   const professorEquivalenteFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -566,6 +566,26 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     input.instituicaoIds.map((id) => [id, rappOficialPorInstituicao.has(id) ? "oficial" : "aproximado"]),
   );
   const rapOverridesPorInstituicao = new Map([...rappOficialPorInstituicao, ...rapOverridesSimulador]);
+
+  // Eficiência Acadêmica oficial (Conclusão/Evasão/Retenção de Ciclo, INDICADORES!G:J) — cadastrada
+  // por instituição/ano-base em /admin/dados-anuais (ver EficienciaAcademicaAnual). Quando existe
+  // para `anoOficial`, substitui integralmente a agregação aproximada de
+  // Concluídos/Evadidos/Retidos acima (mesmo mecanismo de override que o simulador já tinha, ver
+  // calcularBlocoIea.ts) — pula a agregação por completo para essa instituição. Quando NÃO existe, a
+  // instituição continua na agregação aproximada (`ieaInputs` acima, com o erro de agregação já
+  // documentado — ver tests/integration/goldenDataset.test.ts). Um override explícito do simulador
+  // sempre tem prioridade sobre o valor oficial (é um cenário hipotético deliberado).
+  const eficienciaOficialPorInstituicao = new Map<number, number>(
+    (
+      await prisma.eficienciaAcademicaAnual.findMany({
+        where: { ano: anoOficial, instituicaoId: { in: input.instituicaoIds } },
+      })
+    ).map((r) => [r.instituicaoId, Number(r.eficienciaAcademica)]),
+  );
+  const fonteIeaPorInstituicao = new Map<number, "oficial" | "aproximado">(
+    input.instituicaoIds.map((id) => [id, eficienciaOficialPorInstituicao.has(id) ? "oficial" : "aproximado"]),
+  );
+  const ieaOverridesPorInstituicao = new Map([...eficienciaOficialPorInstituicao, ...ieaOverridesSimulador]);
 
   const iaplFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -822,6 +842,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         detalhe: {
           iea: ieaD
             ? {
+                fonte: fonteIeaPorInstituicao.get(q.instituicaoId) ?? "aproximado",
                 porCampus: ieaD.porCampus,
                 concluidos: ieaD.concluidos,
                 evadidos: ieaD.evadidos,
