@@ -3,6 +3,7 @@ import { calcularBlocosRede, simularCongelamentoReitoria, type OrcamentoAnual } 
 
 function orcamento(overrides: Partial<OrcamentoAnual> & Pick<OrcamentoAnual, "ano" | "valorTotal" | "valorAssistenciaEstudantil">): OrcamentoAnual {
   return {
+    ajuste: 0,
     percentualAnuidade: 0.15,
     pisoMinimoCampusNovo: 0,
     estrategiaFaixasIea: "PLANILHA_2026",
@@ -24,6 +25,18 @@ describe("calcularBlocosRede", () => {
     expect(blocos.bloco3).toBe(10_000_000);
     expect(blocos.totalGeral).toBe(blocos.acao20RL + blocos.bloco3);
     expect(blocos.totalGeral).toBe(110_000_000);
+  });
+
+  it("deduz o Ajuste do Custeio Bruto ANTES de aplicar os pesos 80/10/10 (Prompt 10)", () => {
+    const o = orcamento({ ano: 2026, valorTotal: 100_000_000, ajuste: 20_000_000, valorAssistenciaEstudantil: 10_000_000 });
+    const blocos = calcularBlocosRede(o);
+
+    expect(blocos.baseCalculoPercentuais).toBe(80_000_000);
+    expect(blocos.bloco1Matriculas).toBe(64_000_000);
+    expect(blocos.bloco1Reitoria).toBe(8_000_000);
+    expect(blocos.bloco2).toBe(8_000_000);
+    // Ação 2994 (Assistência) permanece isolada — não é afetada pelo Ajuste do Custeio 20RL.
+    expect(blocos.bloco3).toBe(10_000_000);
   });
 });
 

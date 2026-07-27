@@ -18,6 +18,7 @@ type Escopo = "CONIF" | "TODAS";
 export interface OrcamentoAnual {
   ano: number;
   valorTotal: number;
+  ajuste: number;
   valorAssistenciaEstudantil: number;
   percentualAnuidade: number;
   pisoMinimoCampusNovo: number;
@@ -40,16 +41,23 @@ const formatoPercentualComSinal = new Intl.NumberFormat("pt-BR", {
   signDisplay: "exceptZero",
 });
 
-/** Blocos calculados no nível da rede a partir de um `OrcamentoAnual` — usado na memória de cálculo e no comparativo. */
+/**
+ * Blocos calculados no nível da rede a partir de um `OrcamentoAnual` — usado na memória de cálculo
+ * e no comparativo. Funcionamento/Reitorias/Qualidade e Eficiência (80/10/10) são divididos sobre
+ * `valorTotal - ajuste` (base real), nunca sobre o Custeio Bruto puro — mesma regra de
+ * `runCalculation.ts` (ver `baseCalculoPercentuais`), validada no Prompt 10 batendo o RAP oficial a
+ * 0% para as 41 instituições CONIF em 2026.
+ */
 export function calcularBlocosRede(o: OrcamentoAnual) {
-  const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * o.valorTotal;
-  const bloco1Reitoria = PESO_BLOCO_REITORIAS * o.valorTotal;
+  const baseCalculoPercentuais = o.valorTotal - o.ajuste;
+  const bloco1Matriculas = PESO_BLOCO_FUNCIONAMENTO * baseCalculoPercentuais;
+  const bloco1Reitoria = PESO_BLOCO_REITORIAS * baseCalculoPercentuais;
   const bloco1Subtotal = bloco1Matriculas + bloco1Reitoria;
-  const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * o.valorTotal;
+  const bloco2 = PESO_BLOCO_QUALIDADE_EFICIENCIA * baseCalculoPercentuais;
   const bloco3 = o.valorAssistenciaEstudantil;
   const acao20RL = bloco1Subtotal + bloco2;
   const totalGeral = acao20RL + bloco3;
-  return { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2, bloco3, acao20RL, totalGeral };
+  return { baseCalculoPercentuais, bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2, bloco3, acao20RL, totalGeral };
 }
 
 /**
@@ -236,7 +244,7 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
   const totalGeral = o.valorTotal + o.valorAssistenciaEstudantil;
   const anuidadeValor = (o.percentualAnuidade / 100) * o.valorTotal;
   const totalMenosAnuidade = o.valorTotal - anuidadeValor;
-  const { bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2 } = calcularBlocosRede(o);
+  const { baseCalculoPercentuais, bloco1Matriculas, bloco1Reitoria, bloco1Subtotal, bloco2 } = calcularBlocosRede(o);
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-900/40">
@@ -254,6 +262,18 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
 
       <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
         <LinhaMemoria label="Ação 20RL (Custeio Bruto)" valor={formatoMoeda.format(o.valorTotal)} tipo="digitado" destaque />
+        <LinhaMemoria
+          label="Ajuste (deduzido antes do rateio 80/10/10)"
+          valor={formatoMoeda.format(o.ajuste)}
+          tipo="digitado"
+        />
+        <LinhaMemoria
+          label="Base de cálculo do rateio 80/10/10"
+          formula="20RL Bruto − Ajuste"
+          valor={formatoMoeda.format(baseCalculoPercentuais)}
+          tipo="calculo"
+          destaque
+        />
         <LinhaMemoria
           label="Ação 2994 (Assistência Estudantil)"
           valor={formatoMoeda.format(o.valorAssistenciaEstudantil)}
@@ -283,19 +303,19 @@ function MemoriaCalculoGeracao({ o }: { o: OrcamentoAnual }) {
 
       <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
         <p className="font-medium text-neutral-900 dark:text-neutral-100">
-          Bloco 1 — Funcionamento (90% do 20RL Bruto)
+          Bloco 1 — Funcionamento (90% da Base de cálculo)
         </p>
-        <LinhaMemoria label="Matrículas / Campi" formula="80% × 20RL Bruto" valor={formatoMoeda.format(bloco1Matriculas)} tipo="calculo" />
-        <LinhaMemoria label="Reitoria" formula="10% × 20RL Bruto" valor={formatoMoeda.format(bloco1Reitoria)} tipo="calculo" />
+        <LinhaMemoria label="Matrículas / Campi" formula="80% × Base de cálculo" valor={formatoMoeda.format(bloco1Matriculas)} tipo="calculo" />
+        <LinhaMemoria label="Reitoria" formula="10% × Base de cálculo" valor={formatoMoeda.format(bloco1Reitoria)} tipo="calculo" />
         <LinhaMemoria label="Subtotal Bloco 1" valor={formatoMoeda.format(bloco1Subtotal)} tipo="totalizador" destaque />
         <NotaMechda />
       </div>
 
       <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
         <p className="font-medium text-neutral-900 dark:text-neutral-100">
-          Bloco 2 — Qualidade e Eficiência (10% do 20RL Bruto)
+          Bloco 2 — Qualidade e Eficiência (10% da Base de cálculo)
         </p>
-        <LinhaMemoria label="IEA + RAP + IAPL" formula="10% × 20RL Bruto" valor={formatoMoeda.format(bloco2)} tipo="calculo" destaque />
+        <LinhaMemoria label="IEA + RAP + IAPL" formula="10% × Base de cálculo" valor={formatoMoeda.format(bloco2)} tipo="calculo" destaque />
       </div>
 
       <div className="flex flex-col gap-1 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
@@ -415,6 +435,7 @@ export function OrcamentoAnualPanel() {
   const [orcamentos, setOrcamentos] = useState<OrcamentoAnual[]>([]);
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [valorTotal, setValorTotal] = useState(0);
+  const [ajuste, setAjuste] = useState(0);
   const [valorAssistenciaEstudantil, setValorAssistenciaEstudantil] = useState(0);
   const [percentualAnuidade, setPercentualAnuidade] = useState("0.15");
   const [pisoMinimoCampusNovo, setPisoMinimoCampusNovo] = useState(0);
@@ -467,6 +488,7 @@ export function OrcamentoAnualPanel() {
         throw new Error(resultado.errorMessage ?? "Não foi possível salvar o orçamento.");
       }
       setValorTotal(0);
+      setAjuste(0);
       setValorAssistenciaEstudantil(0);
       setPercentualAnuidade("0.15");
       setPisoMinimoCampusNovo(0);
@@ -584,6 +606,27 @@ export function OrcamentoAnualPanel() {
             sistema separa automaticamente 10% para Reitorias, 10% para Indicadores de Qualidade/Eficiência (IEA,
             RAP e IAPL calculados via CSV) e 80% para Funcionamento dos Câmpus. A Ação 2994 (Assistência
             Estudantil) é calculada de forma independente.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="ajuste" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            Ajuste [R$]
+          </label>
+          <CurrencyInput
+            id="ajuste"
+            name="ajuste"
+            value={ajuste}
+            onChange={setAjuste}
+            disabled={salvando}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Dedução aplicada sobre o Custeio Bruto acima ANTES de separar em 80/10/10 (Funcionamento/Reitorias/
+            Qualidade e Eficiência) — corresponde ao "Ajuste" da planilha-modelo CONIF, já resolvido contra os
+            valores reais deste sistema (não copie o valor bruto da planilha sem recalcular contra a Assistência
+            Estudantil informada acima — os dois usam bases diferentes). Deixe em R$ 0,00 para não aplicar
+            nenhum ajuste.
           </p>
         </div>
 
@@ -722,8 +765,9 @@ export function OrcamentoAnualPanel() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                      {o.ano} — Custeio (20RL): {formatoMoeda.format(o.valorTotal)} · Assist. Estudantil (2994):{" "}
-                      {formatoMoeda.format(o.valorAssistenciaEstudantil)}
+                      {o.ano} — Custeio (20RL): {formatoMoeda.format(o.valorTotal)}
+                      {o.ajuste ? <> · Ajuste: −{formatoMoeda.format(o.ajuste)}</> : null} · Assist. Estudantil
+                      (2994): {formatoMoeda.format(o.valorAssistenciaEstudantil)}
                       {o.percentualAnuidade ? <> · Anuidade CONIF: {o.percentualAnuidade}%</> : null}
                       {o.pisoMinimoCampusNovo ? (
                         <> · Piso Câmpus Novo: {formatoMoeda.format(o.pisoMinimoCampusNovo)}</>

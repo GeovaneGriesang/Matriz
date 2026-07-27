@@ -24,6 +24,8 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
 
   const ano = Number(formData.get("ano"));
   const valorTotal = Number(formData.get("valorTotal"));
+  const ajusteBruto = formData.get("ajuste");
+  const ajuste = ajusteBruto === null || ajusteBruto === "" ? 0 : Number(ajusteBruto);
   const valorAssistenciaEstudantil = Number(formData.get("valorAssistenciaEstudantil"));
   const percentualAnuidadeBruto = formData.get("percentualAnuidade");
   const percentualAnuidade =
@@ -38,6 +40,12 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   }
   if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     return { ok: false, errorMessage: "O valor deve ser maior que R$ 0,00." };
+  }
+  if (!Number.isFinite(ajuste) || ajuste < 0) {
+    return { ok: false, errorMessage: "O Ajuste não pode ser negativo." };
+  }
+  if (ajuste >= valorTotal) {
+    return { ok: false, errorMessage: "O Ajuste não pode ser maior ou igual ao Custeio Bruto." };
   }
   if (!Number.isFinite(valorAssistenciaEstudantil) || valorAssistenciaEstudantil <= 0) {
     return { ok: false, errorMessage: "O valor deve ser maior que R$ 0,00." };
@@ -54,12 +62,20 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
     create: {
       ano,
       valorTotal,
+      ajuste,
       valorAssistenciaEstudantil,
       percentualAnuidade,
       pisoMinimoCampusNovo,
       estrategiaFaixasIea,
     },
-    update: { valorTotal, valorAssistenciaEstudantil, percentualAnuidade, pisoMinimoCampusNovo, estrategiaFaixasIea },
+    update: {
+      valorTotal,
+      ajuste,
+      valorAssistenciaEstudantil,
+      percentualAnuidade,
+      pisoMinimoCampusNovo,
+      estrategiaFaixasIea,
+    },
   });
 
   return { ok: true };
@@ -107,6 +123,7 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
     ano: anoReferenciaPnp,
     anoOrcamento: ano,
     orcamentoTotal: Number(orcamento.valorTotal),
+    ajuste: Number(orcamento.ajuste),
     orcamentoAssistenciaEstudantil: Number(orcamento.valorAssistenciaEstudantil),
     percentualAnuidade: Number(orcamento.percentualAnuidade),
     pisoMinimoCampusNovo: Number(orcamento.pisoMinimoCampusNovo),

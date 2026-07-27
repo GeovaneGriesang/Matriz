@@ -200,6 +200,14 @@ model OrcamentoAnual {
   id                         Int      @id @default(autoincrement())
   ano                        Int      @unique
   valorTotal                 Decimal  @db.Decimal(18, 2)
+  /// Dedução aplicada sobre `valorTotal` (Custeio 20RL Bruto) ANTES de dividir em Funcionamento
+  /// 80% / Reitorias 10% / Qualidade e Eficiência 10% — corresponde ao "Ajuste" de DADOS BASE!M26
+  /// da planilha-modelo CONIF, calibrado ali contra uma Assistência estimada por IPCA (diferente da
+  /// Assistência real negociada em `valorAssistenciaEstudantil`, já usada corretamente pelo sistema
+  /// — ver aba VALOR SPO da planilha). Guardar aqui o valor já resolvido contra os números reais do
+  /// sistema (não o valor bruto de DADOS BASE!M26), para não descontar a Assistência em dobro —
+  /// validado no Prompt 10 batendo o RAP oficial a 0% para as 41 instituições CONIF em 2026.
+  ajuste                     Decimal  @default(0) @db.Decimal(18, 2)
   /// Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do ano — isolado do Custeio 20RL,
   /// distribuído pelo Bloco de Assistência Estudantil (ver blocoAssistenciaEstudantil.ts).
   valorAssistenciaEstudantil Decimal  @default(0) @db.Decimal(18, 2)
