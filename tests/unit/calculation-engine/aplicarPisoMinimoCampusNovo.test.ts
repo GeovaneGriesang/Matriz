@@ -3,7 +3,7 @@ import { aplicarPisoMinimoCampusNovo } from "@/calculation-engine/aplicarPisoMin
 import type { FuncionamentoResult } from "@/calculation-engine/blocoFuncionamento";
 
 function resultado(campusId: number, valorReais: number): FuncionamentoResult {
-  return { campusId, totalMatriculaPonderada: 0, share: 0, valorReais };
+  return { campusId, totalMatriculaPonderada: 0, share: 0, mtp: 0, valorMoocAdicional: 0, valorReais };
 }
 
 describe("aplicarPisoMinimoCampusNovo", () => {

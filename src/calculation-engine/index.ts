@@ -16,8 +16,11 @@ export { splitLegal } from "./qualidadeEficiencia/iapl/splitLegal";
 export { blocoFuncionamento } from "./blocoFuncionamento";
 export type { FuncionamentoInput, FuncionamentoResult } from "./blocoFuncionamento";
 
-export { calcularMatriculaTotalEqualizada } from "./matriculaTotalEqualizada";
-export type { MatriculaTotalEqualizadaRegistro } from "./matriculaTotalEqualizada";
+export { calcularMatriculaTotalEqualizadaPonderada } from "./matriculaTotalEqualizada";
+export type {
+  MatriculaTotalEqualizadaRegistro,
+  MatriculaTotalEqualizadaPonderada,
+} from "./matriculaTotalEqualizada";
 
 export { aplicarPisoMinimoCampusNovo } from "./aplicarPisoMinimoCampusNovo";
 export type { PisoMinimoCampusNovoResult } from "./aplicarPisoMinimoCampusNovo";

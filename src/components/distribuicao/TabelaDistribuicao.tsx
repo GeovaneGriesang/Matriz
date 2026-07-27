@@ -24,6 +24,14 @@ interface DetalheFuncionamento {
   share: number;
   pesoBloco: number;
   valorBlocoRede: number;
+  /**
+   * Taxa (MTP, R$ por ponto ponderado) e o adicional de EAD MOOC — pago à mesma MTP, mas somado
+   * depois de calculada (não dilui a taxa dos demais câmpus da rede). `share`/`valorBlocoRede` acima
+   * já refletem só Presencial/EAD/EAD FP (pesos 1/0,25/0,8); EAD MOOC (peso 0,8) entra separado
+   * aqui. Ausentes em execuções anteriores aos pesos por modalidade.
+   */
+  mtp?: number;
+  valorMoocAdicional?: number;
   /** Piso Mínimo do Bloco Funcionamento para câmpus criados a partir de 2018 (0 = regra desativada). */
   pisoMinimoCampusNovo: number;
   pisoAplicado: boolean;
@@ -209,18 +217,30 @@ function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
   const fonteMatricula = detalhe.fonteMatricula ?? "placeholder";
   const temMatriculasBrutas =
     fonteMatricula !== "oficial" && detalhe.matriculasBrutasCampus !== undefined && detalhe.matriculasBrutasCampus > 0;
+  const temPesosPorModalidade = fonteMatricula === "oficial" && detalhe.mtp !== undefined;
   return (
     <div className="flex flex-col gap-2">
       <ul className="list-disc space-y-1 pl-5">
         {fonteMatricula === "oficial" ? (
-          <ItemMemoria>
-            <strong>Matrícula Total equalizada oficial (informada pela CONIF):</strong> Presencial{" "}
-            {formatoNumero.format(detalhe.matriculaOficialPresencial ?? 0)} + EaD{" "}
-            {formatoNumero.format(detalhe.matriculaOficialEad ?? 0)} + EaD MOOC{" "}
-            {formatoNumero.format(detalhe.matriculaOficialEadMooc ?? 0)} + EaD FP{" "}
-            {formatoNumero.format(detalhe.matriculaOficialEadFp ?? 0)} ={" "}
-            <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong>
-          </ItemMemoria>
+          temPesosPorModalidade ? (
+            <ItemMemoria>
+              <strong>Matrícula Total equalizada oficial (informada pela CONIF), pesos por modalidade:</strong>{" "}
+              Presencial {formatoNumero.format(detalhe.matriculaOficialPresencial ?? 0)} × 1,0 + EaD{" "}
+              {formatoNumero.format(detalhe.matriculaOficialEad ?? 0)} × 0,25 + EaD FP{" "}
+              {formatoNumero.format(detalhe.matriculaOficialEadFp ?? 0)} × 0,8 ={" "}
+              <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong> (EaD MOOC entra à parte, ver
+              abaixo — não dilui a taxa dos demais câmpus)
+            </ItemMemoria>
+          ) : (
+            <ItemMemoria>
+              <strong>Matrícula Total equalizada oficial (informada pela CONIF):</strong> Presencial{" "}
+              {formatoNumero.format(detalhe.matriculaOficialPresencial ?? 0)} + EaD{" "}
+              {formatoNumero.format(detalhe.matriculaOficialEad ?? 0)} + EaD MOOC{" "}
+              {formatoNumero.format(detalhe.matriculaOficialEadMooc ?? 0)} + EaD FP{" "}
+              {formatoNumero.format(detalhe.matriculaOficialEadFp ?? 0)} ={" "}
+              <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong>
+            </ItemMemoria>
+          )
         ) : (
           <ItemMemoria>
             <strong>Aproximação:</strong> Matrícula Total equalizada oficial ainda não cadastrada para este
@@ -243,11 +263,31 @@ function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
           <strong>{formatoPercentual.format(detalhe.share)}</strong>
         </ItemMemoria>
         <ItemMemoria>
-          Bloco Funcionamento: {formatoPercentual.format(detalhe.pesoBloco)} × orçamento total ={" "}
+          Bloco Funcionamento: {formatoPercentual.format(detalhe.pesoBloco)} × Base de cálculo ={" "}
           {formatoMoeda.format(detalhe.valorBlocoRede)}
+          {temPesosPorModalidade && (
+            <> (Taxa/MTP = {formatoMoeda.format(detalhe.valorBlocoRede)} ÷{" "}
+            {formatoNumero.format(detalhe.totalMatriculaPonderadaRede)} ={" "}
+            <strong>{formatoMoeda.format(detalhe.mtp as number)}</strong> por ponto ponderado)</>
+          )}
         </ItemMemoria>
         <ItemMemoria>
-          Valor do câmpus: {formatoPercentual.format(detalhe.share)} × {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
+          Valor do câmpus (Presencial/EaD/EaD FP): {formatoPercentual.format(detalhe.share)} ×{" "}
+          {formatoMoeda.format(detalhe.valorBlocoRede)} ={" "}
+          <strong>
+            {formatoMoeda.format(detalhe.share * detalhe.valorBlocoRede)}
+          </strong>
+        </ItemMemoria>
+        {temPesosPorModalidade && (detalhe.valorMoocAdicional ?? 0) > 0 && (
+          <ItemMemoria>
+            Adicional EaD MOOC: {formatoNumero.format(detalhe.matriculaOficialEadMooc ?? 0)} × 0,8 ×{" "}
+            {formatoMoeda.format(detalhe.mtp as number)} ={" "}
+            <strong>{formatoMoeda.format(detalhe.valorMoocAdicional as number)}</strong> (mesma Taxa/MTP, somado
+            depois — não reduz a taxa dos demais câmpus)
+          </ItemMemoria>
+        )}
+        <ItemMemoria>
+          Total do câmpus:{" "}
           <strong>{formatoMoeda.format(detalhe.pisoAplicado ? detalhe.valorAntesDoPiso : detalhe.valorReais)}</strong>
         </ItemMemoria>
         {detalhe.pisoAplicado && (
@@ -316,7 +356,7 @@ function MemoriaIea({ detalhe }: { detalhe: DetalheIea }) {
         <strong>{formatoPercentual.format(detalhe.share)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        Sub-bloco IEA: {formatoPercentual.format(detalhe.pesoSubBloco)} × orçamento total ={" "}
+        Sub-bloco IEA: {formatoPercentual.format(detalhe.pesoSubBloco)} × Base de cálculo ={" "}
         {formatoMoeda.format(detalhe.valorSubBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
@@ -366,7 +406,7 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
         <strong>{formatoPercentual.format(detalhe.share)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        Sub-bloco RAP: {formatoPercentual.format(detalhe.pesoSubBloco)} × orçamento total ={" "}
+        Sub-bloco RAP: {formatoPercentual.format(detalhe.pesoSubBloco)} × Base de cálculo ={" "}
         {formatoMoeda.format(detalhe.valorSubBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
@@ -402,7 +442,7 @@ function MemoriaIapl({ detalhe }: { detalhe: DetalheIapl }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
       <ItemMemoria>
-        Sub-bloco IAPL: {formatoPercentual.format(detalhe.pesoSubBloco)} × orçamento total ={" "}
+        Sub-bloco IAPL: {formatoPercentual.format(detalhe.pesoSubBloco)} × Base de cálculo ={" "}
         {formatoMoeda.format(detalhe.valorSubBlocoRede)}, dividido nas 3 metas legais (Técnicos 70% / Formação de
         Professores 20% / Proeja 10%)
       </ItemMemoria>
@@ -501,13 +541,14 @@ function MemoriaReitoria({ detalhe }: { detalhe: DetalheReitoria }) {
         </ItemMemoria>
       )}
       <ItemMemoria>
-        Matrícula Ponderada da instituição (mesma base do Bloco Funcionamento):{" "}
+        Matrícula Ponderada da instituição (mesma base do Bloco Funcionamento, agregada por instituição — mas aqui
+        EaD MOOC entra normalmente com peso 0,8, diferente do Bloco Funcionamento, que trata EaD MOOC à parte):{" "}
         <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> ÷ total da rede{" "}
         <strong>{formatoNumero.format(detalhe.totalMatriculaPonderadaRede)}</strong> = participação{" "}
         <strong>{formatoPercentual.format(detalhe.share)}</strong>
       </ItemMemoria>
       <ItemMemoria>
-        Bloco Reitorias: {formatoPercentual.format(detalhe.pesoBloco)} × orçamento total ={" "}
+        Bloco Reitorias: {formatoPercentual.format(detalhe.pesoBloco)} × Base de cálculo ={" "}
         {formatoMoeda.format(detalhe.valorBlocoRede)}
       </ItemMemoria>
       <ItemMemoria>
