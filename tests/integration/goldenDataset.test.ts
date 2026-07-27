@@ -89,6 +89,7 @@ const golden = carregarGoldenDataset();
 describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL", () => {
   let instituicaoIdPorSigla: Map<string, number>;
   let iea: Map<number, ReturnType<typeof calcularBlocoIea>[number]>;
+  let ieaComFonteOficial: Map<number, ReturnType<typeof calcularBlocoIea>[number]>;
   let rap: Map<number, ReturnType<typeof calcularBlocoRap>[number]>;
   let iapl: Map<number, IaplInstituicaoResult>;
 
@@ -135,6 +136,25 @@ describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL",
       ieaPorUnidade.set(unidadeId, atual);
     }
     iea = new Map(calcularBlocoIea(Array.from(ieaPorUnidade.values()), 1).map((r) => [r.instituicaoId, r]));
+
+    // Não existe EficienciaAcademicaAnual para ano=2024 no banco (só ano=2026 foi importado até
+    // agora — ver docs/pnp-matriz/EficienciaAcademica_2026.csv). Para confirmar que o mecanismo de
+    // override de runCalculation.ts/calcularBlocoIea.ts funciona (pula a agregação, usa o valor
+    // oficial diretamente), usamos aqui o próprio valor `eficienciaAcademica` do golden dataset
+    // como um override sintético — o golden já é extraído de INDICADORES!G:J, a mesma fonte que
+    // alimentaria EficienciaAcademicaAnual num import real. Isso prova a integração da fonte
+    // oficial; não é (nem substitui) um import real de EficienciaAcademica_2024.csv.
+    const overridesOficiaisDoGolden = new Map<number, number>();
+    for (const linha of golden) {
+      const instituicaoId = resolverInstituicaoId(linha.sigla);
+      if (instituicaoId !== undefined) overridesOficiaisDoGolden.set(instituicaoId, linha.eficienciaAcademica);
+    }
+    ieaComFonteOficial = new Map(
+      calcularBlocoIea(Array.from(ieaPorUnidade.values()), 1, overridesOficiaisDoGolden).map((r) => [
+        r.instituicaoId,
+        r,
+      ]),
+    );
 
     // ---- RAP Presencial (aproximado): mesma query de runCalculation.ts pós-fix do Prompt 3 ----
     const professorEquivalenteFatos = await prisma.fatoIndicador.findMany({
@@ -265,6 +285,24 @@ describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL",
       const erroPP = Math.abs(calculado! - linha.eficienciaAcademica) * 100;
       expect(erroPP).toBeLessThanOrEqual(80);
     });
+  });
+
+  describe("IEA quando a fonte é oficial (EficienciaAcademicaAnual) — deve bater exatamente, 0pp de erro", () => {
+    // Prova a integração feita em runCalculation.ts: quando existe um valor oficial para a
+    // instituição/ano, calcularBlocoIea usa esse valor diretamente (via overridesPorInstituicao) e
+    // pula por completo a agregação de Concluídos/Evadidos/Retidos — o erro de agregação do bloco
+    // acima deixa de existir. Usa o próprio golden dataset como override sintético (ver comentário
+    // no beforeAll) já que ainda não há EficienciaAcademicaAnual para ano=2024 no banco.
+    it.each(golden.map((l): [string] => [l.sigla]))(
+      "%s: valorIea com fonte oficial bate exatamente com o golden (0pp)",
+      (sigla) => {
+        const instituicaoId = resolverInstituicaoId(sigla)!;
+        const linha = golden.find((l) => l.sigla === sigla)!;
+        const resultado = ieaComFonteOficial.get(instituicaoId);
+        expect(resultado).toBeDefined();
+        expect(resultado!.valorIea).toBeCloseTo(linha.eficienciaAcademica, 10);
+      },
+    );
   });
 
   describe("RAP Presencial (RAP_Presencial) — sem critério rígido, só falha se o erro passar de 60%", () => {
