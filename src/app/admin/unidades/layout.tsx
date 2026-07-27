@@ -8,7 +8,7 @@ export default async function UnidadesLayout({ children }: { children: ReactNode
 
   return (
     <div>
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-6 pt-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-4">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/orcamento"
