@@ -52,11 +52,19 @@ export interface RunCalculationInput {
   /** Instituições (autarquias) incluídas neste cálculo — escopa todas as consultas de fatos. */
   instituicaoIds: number[];
   /**
-   * `orcamentoTotal` é o Custeio (Ação 20RL) do escopo inteiro (todas as instituições em
-   * `instituicaoIds` juntas) — dividido entre elas e seus câmpus pela metodologia dos blocos, não
-   * copiado integralmente para cada uma.
+   * `orcamentoTotal` é o Custeio (Ação 20RL) BRUTO do escopo inteiro (todas as instituições em
+   * `instituicaoIds` juntas) — a base real dividida em Funcionamento 80% / Reitorias 10% /
+   * Qualidade e Eficiência 10% é `orcamentoTotal - ajuste` (ver `ajuste` abaixo).
    */
   orcamentoTotal: number;
+  /**
+   * Dedução sobre `orcamentoTotal` ANTES de aplicar os pesos 80/10/10 — corresponde ao "Ajuste" da
+   * planilha-modelo CONIF (DADOS BASE!M26), calibrado ali contra uma Assistência estimada por IPCA
+   * diferente da Assistência real já usada em `orcamentoAssistenciaEstudantil` (ver
+   * OrcamentoAnual.ajuste no schema para o valor já resolvido contra os números reais do sistema).
+   * Padrão 0 (nenhum ajuste, comportamento anterior ao Prompt 10) quando omitido.
+   */
+  ajuste?: number;
   /**
    * Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do escopo inteiro — isolado do
    * Custeio 20RL (`orcamentoTotal`), não fatiado em 80/10/10 (ver blocoAssistenciaEstudantil.ts).
@@ -253,6 +261,9 @@ function aplicarOverrideIapl(
 export async function runCalculation(input: RunCalculationInput): Promise<RunCalculationResult> {
   const overrides = input.overridesPorUnidade ?? {};
   const estrategiaFaixasIea = input.estrategiaFaixasIea ?? ESTRATEGIA_FAIXAS_IEA_PADRAO;
+  // Base real dividida em Funcionamento 80% / Reitorias 10% / Qualidade e Eficiência 10% — nunca
+  // o Custeio Bruto puro (ver `ajuste` em RunCalculationInput e OrcamentoAnual.ajuste no schema).
+  const baseCalculoPercentuais = input.orcamentoTotal - (input.ajuste ?? 0);
 
   // MatriculaTotalEqualizadaAnual/RappAnual são cadastrados por ano-base do ciclo orçamentário
   // (ex.: 2026), não pelo ano de referência da PNP usado em FatoIndicador (`input.ano`, ex.: 2024).
@@ -632,16 +643,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   });
   const anoCriacaoPorCampus = new Map(unidadesAnoCriacao.map((u) => [u.id, u.anoCriacao]));
   const funcionamento = aplicarPisoMinimoCampusNovo(
-    blocoFuncionamento(funcionamentoInputs, input.orcamentoTotal),
+    blocoFuncionamento(funcionamentoInputs, baseCalculoPercentuais),
     anoCriacaoPorCampus,
     input.pisoMinimoCampusNovo ?? 0,
   );
-  const reitorias = blocoReitorias(reitoriaInputs, input.orcamentoTotal);
+  const reitorias = blocoReitorias(reitoriaInputs, baseCalculoPercentuais);
   const qualidadeEficiencia = blocoQualidadeEficiencia(
     ieaInputs,
     rapInputs,
     iaplInputs,
-    input.orcamentoTotal,
+    baseCalculoPercentuais,
     ieaOverridesPorInstituicao,
     rapOverridesPorInstituicao,
     estrategiaFaixasIea,
@@ -684,16 +695,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   // expõe esse detalhe, só o valor combinado. Agora por instituição, não por câmpus (ver
   // blocoQualidadeEficiencia.ts).
   const ieaDetalhePorInstituicao = new Map(
-    calcularBlocoIea(ieaInputs, input.orcamentoTotal, ieaOverridesPorInstituicao, estrategiaFaixasIea).map((d) => [
+    calcularBlocoIea(ieaInputs, baseCalculoPercentuais, ieaOverridesPorInstituicao, estrategiaFaixasIea).map((d) => [
       d.instituicaoId,
       d,
     ]),
   );
   const rapDetalhePorInstituicao = new Map(
-    calcularBlocoRap(rapInputs, input.orcamentoTotal, rapOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
+    calcularBlocoRap(rapInputs, baseCalculoPercentuais, rapOverridesPorInstituicao).map((d) => [d.instituicaoId, d]),
   );
   const iaplDetalhePorInstituicao = new Map(
-    calcularBlocoIapl(iaplInputs, input.orcamentoTotal).map((d) => [d.instituicaoId, d]),
+    calcularBlocoIapl(iaplInputs, baseCalculoPercentuais).map((d) => [d.instituicaoId, d]),
   );
 
   const parametersSnapshot = {
@@ -702,6 +713,8 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     ano: input.ano,
     anoOrcamento: input.anoOrcamento ?? null,
     orcamentoTotal: input.orcamentoTotal,
+    ajuste: input.ajuste ?? 0,
+    baseCalculoPercentuais,
     orcamentoAssistenciaEstudantil: input.orcamentoAssistenciaEstudantil ?? 0,
     percentualAnuidade: input.percentualAnuidade ?? 0,
     pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
@@ -742,7 +755,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           totalMatriculasBrutasRede,
           share: f.share,
           pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
-          valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * input.orcamentoTotal,
+          valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * baseCalculoPercentuais,
           pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
           pisoAplicado: f.pisoAplicado,
           valorAntesDoPiso: f.valorAntesDoPiso,
@@ -763,7 +776,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         totalMatriculaPonderadaRede,
         share: r.share,
         pesoBloco: PESO_BLOCO_REITORIAS,
-        valorBlocoRede: PESO_BLOCO_REITORIAS * input.orcamentoTotal,
+        valorBlocoRede: PESO_BLOCO_REITORIAS * baseCalculoPercentuais,
         valorReais: r.valorReais,
       },
     })),
@@ -796,7 +809,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                 somaPonderadosRede: ieaD.somaPonderadosRede,
                 share: ieaD.share,
                 pesoSubBloco: PESO_IEA_SUBBLOCO,
-                valorSubBlocoRede: PESO_IEA_SUBBLOCO * input.orcamentoTotal,
+                valorSubBlocoRede: PESO_IEA_SUBBLOCO * baseCalculoPercentuais,
                 valorReais: ieaD.valorReais,
               }
             : null,
@@ -813,7 +826,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                 somaPonderadosRede: rapD.somaPonderadosRede,
                 share: rapD.share,
                 pesoSubBloco: PESO_RAP_SUBBLOCO,
-                valorSubBlocoRede: PESO_RAP_SUBBLOCO * input.orcamentoTotal,
+                valorSubBlocoRede: PESO_RAP_SUBBLOCO * baseCalculoPercentuais,
                 valorReais: rapD.valorReais,
               }
             : null,
@@ -827,7 +840,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                   ponderado: iaplD.tecnicos.ponderado,
                   somaPonderadosRede: iaplD.tecnicos.somaPonderadosRede,
                   share: iaplD.tecnicos.share,
-                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.CURSOS_TECNICOS,
+                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * baseCalculoPercentuais * IAPL_SPLIT.CURSOS_TECNICOS,
                   valorReais: iaplD.tecnicos.valorReais,
                 },
                 formacaoProfessores: {
@@ -838,7 +851,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                   ponderado: iaplD.formacaoProfessores.ponderado,
                   somaPonderadosRede: iaplD.formacaoProfessores.somaPonderadosRede,
                   share: iaplD.formacaoProfessores.share,
-                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.FORMACAO_PROFESSORES,
+                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * baseCalculoPercentuais * IAPL_SPLIT.FORMACAO_PROFESSORES,
                   valorReais: iaplD.formacaoProfessores.valorReais,
                 },
                 proeja: {
@@ -849,11 +862,11 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
                   ponderado: iaplD.proeja.ponderado,
                   somaPonderadosRede: iaplD.proeja.somaPonderadosRede,
                   share: iaplD.proeja.share,
-                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal * IAPL_SPLIT.PROEJA,
+                  valorCategoriaRede: PESO_IAPL_SUBBLOCO * baseCalculoPercentuais * IAPL_SPLIT.PROEJA,
                   valorReais: iaplD.proeja.valorReais,
                 },
                 pesoSubBloco: PESO_IAPL_SUBBLOCO,
-                valorSubBlocoRede: PESO_IAPL_SUBBLOCO * input.orcamentoTotal,
+                valorSubBlocoRede: PESO_IAPL_SUBBLOCO * baseCalculoPercentuais,
                 valorTotal: iaplD.valorTotal,
               }
             : null,

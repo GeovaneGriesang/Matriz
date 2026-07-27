@@ -9,6 +9,7 @@ export async function GET() {
     orcamentos.map((o) => ({
       ano: o.ano,
       valorTotal: Number(o.valorTotal),
+      ajuste: Number(o.ajuste),
       valorAssistenciaEstudantil: Number(o.valorAssistenciaEstudantil),
       percentualAnuidade: Number(o.percentualAnuidade),
       pisoMinimoCampusNovo: Number(o.pisoMinimoCampusNovo),
