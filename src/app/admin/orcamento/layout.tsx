@@ -8,7 +8,7 @@ export default async function OrcamentoLayout({ children }: { children: ReactNod
 
   return (
     <div>
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-6 pt-4">
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 pt-4">
         <div className="flex items-center gap-4">
           <Link
             href="/upload"

@@ -8,7 +8,7 @@ export default async function UploadLayout({ children }: { children: ReactNode }
 
   return (
     <div>
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-6 pt-4">
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 pt-4">
         <Link
           href="/admin/orcamento"
           className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
