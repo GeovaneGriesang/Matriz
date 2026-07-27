@@ -13,32 +13,33 @@ generator client {
 // de câmpus/curso nos exports reais) — ver Instituicao.sigla/Unidade.nome.
 
 model Instituicao {
-  id                   Int                             @id @default(autoincrement())
-  sigla                String                          @unique
-  nome                 String
-  organizacaoAcademica String
-  regiao               String
-  uf                   String
-  estado               String
-  unidades             Unidade[]
-  fatos                FatoIndicador[]
-  rappAnual            RappAnual[]
-  createdAt            DateTime                        @default(now())
-  updatedAt            DateTime                        @updatedAt
+  id                       Int                        @id @default(autoincrement())
+  sigla                    String                     @unique
+  nome                     String
+  organizacaoAcademica     String
+  regiao                   String
+  uf                       String
+  estado                   String
+  unidades                 Unidade[]
+  fatos                    FatoIndicador[]
+  rappAnual                RappAnual[]
+  eficienciaAcademicaAnual EficienciaAcademicaAnual[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
 }
 
 model Unidade {
-  id                          Int                             @id @default(autoincrement())
-  nome                        String
-  instituicaoId               Int
-  instituicao                 Instituicao                     @relation(fields: [instituicaoId], references: [id])
+  id                         Int                             @id @default(autoincrement())
+  nome                       String
+  instituicaoId              Int
+  instituicao                Instituicao                     @relation(fields: [instituicaoId], references: [id])
   /// Ano de criação do câmpus — cadastro manual (não existe em nenhum arquivo PNP ingerido),
   /// usado só para o Piso Mínimo por Câmpus Novo (ver aplicarPisoMinimoCampusNovo.ts).
-  anoCriacao                  Int?
-  fatos                       FatoIndicador[]
-  matriculasTotalEqualizadas  MatriculaTotalEqualizadaAnual[]
-  createdAt                   DateTime                        @default(now())
-  updatedAt                   DateTime                        @updatedAt
+  anoCriacao                 Int?
+  fatos                      FatoIndicador[]
+  matriculasTotalEqualizadas MatriculaTotalEqualizadaAnual[]
+  createdAt                  DateTime                        @default(now())
+  updatedAt                  DateTime                        @updatedAt
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -197,9 +198,9 @@ model CalculationResult {
 /// Orçamento total oficial de um ano — definido pelo administrador, usado como Custeio (Ação 20RL)
 /// no cálculo de todas as instituições com dados PNP disponíveis (ver CalculationRun.origem).
 model OrcamentoAnual {
-  id                         Int      @id @default(autoincrement())
-  ano                        Int      @unique
-  valorTotal                 Decimal  @db.Decimal(18, 2)
+  id                         Int                 @id @default(autoincrement())
+  ano                        Int                 @unique
+  valorTotal                 Decimal             @db.Decimal(18, 2)
   /// Dedução aplicada sobre `valorTotal` (Custeio 20RL Bruto) ANTES de dividir em Funcionamento
   /// 80% / Reitorias 10% / Qualidade e Eficiência 10% — corresponde ao "Ajuste" de DADOS BASE!M26
   /// da planilha-modelo CONIF, calibrado ali contra uma Assistência estimada por IPCA (diferente da
@@ -207,21 +208,21 @@ model OrcamentoAnual {
   /// — ver aba VALOR SPO da planilha). Guardar aqui o valor já resolvido contra os números reais do
   /// sistema (não o valor bruto de DADOS BASE!M26), para não descontar a Assistência em dobro —
   /// validado no Prompt 10 batendo o RAP oficial a 0% para as 41 instituições CONIF em 2026.
-  ajuste                     Decimal  @default(0) @db.Decimal(18, 2)
+  ajuste                     Decimal             @default(0) @db.Decimal(18, 2)
   /// Orçamento da Ação 2994 (Assistência Estudantil / PNAES) do ano — isolado do Custeio 20RL,
   /// distribuído pelo Bloco de Assistência Estudantil (ver blocoAssistenciaEstudantil.ts).
-  valorAssistenciaEstudantil Decimal  @default(0) @db.Decimal(18, 2)
+  valorAssistenciaEstudantil Decimal             @default(0) @db.Decimal(18, 2)
   /// Percentual (0-100) da anuidade CONIF, calculado sobre o Custeio (20RL) já distribuído de cada
   /// instituição — informativo, não deduzido do valor que a instituição recebe (ver anuidadeConif.ts).
-  percentualAnuidade         Decimal  @default(0) @db.Decimal(7, 4)
+  percentualAnuidade         Decimal             @default(0) @db.Decimal(7, 4)
   /// Piso mínimo em R$ do Bloco Funcionamento para câmpus novos (criados a partir de 2018), já com o
   /// IPCA do ano aplicado externamente (não calculado pelo sistema) — 0 desativa a regra. Ver
   /// aplicarPisoMinimoCampusNovo.ts e Unidade.anoCriacao.
-  pisoMinimoCampusNovo       Decimal  @default(0) @db.Decimal(18, 2)
+  pisoMinimoCampusNovo       Decimal             @default(0) @db.Decimal(18, 2)
   /// Qual tabela de faixas/pesos de IEA usar no cálculo oficial deste ano — nenhuma das duas é
   /// descartada, esta escolha só decide qual delas enquadra o IEA (ver calcularBlocoIea.ts).
   estrategiaFaixasIea        EstrategiaFaixasIea @default(PLANILHA_2026)
-  updatedAt                  DateTime @updatedAt
+  updatedAt                  DateTime            @updatedAt
 }
 
 /// Matrícula Total equalizada por câmpus/ano (colunas Q/R/S/T de "COMPLETO PROPOSTA" na planilha
@@ -230,16 +231,16 @@ model OrcamentoAnual {
 /// por ano-base: ao contrário de Unidade.anoCriacao, muda a cada ciclo orçamentário. Ainda NÃO usado
 /// no cálculo (isolado até a confirmação de origem externa ser feita — ver Prompt 9).
 model MatriculaTotalEqualizadaAnual {
-  id                                  Int      @id @default(autoincrement())
-  unidadeId                           Int
-  unidade                             Unidade  @relation(fields: [unidadeId], references: [id])
-  ano                                 Int
-  matriculaTotalPresencialEqualizada  Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadEqualizada         Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadMoocEqualizada     Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadFpEqualizada       Decimal  @db.Decimal(18, 5)
-  createdAt                           DateTime @default(now())
-  updatedAt                           DateTime @updatedAt
+  id                                 Int      @id @default(autoincrement())
+  unidadeId                          Int
+  unidade                            Unidade  @relation(fields: [unidadeId], references: [id])
+  ano                                Int
+  matriculaTotalPresencialEqualizada Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadEqualizada        Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadMoocEqualizada    Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadFpEqualizada      Decimal  @db.Decimal(18, 5)
+  createdAt                          DateTime @default(now())
+  updatedAt                          DateTime @updatedAt
 
   @@unique([unidadeId, ano])
   @@index([ano])
@@ -257,6 +258,30 @@ model RappAnual {
   rapp          Decimal     @db.Decimal(18, 6)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  @@unique([instituicaoId, ano])
+  @@index([ano])
+}
+
+/// Conclusão/Evasão/Retenção de Ciclo e Eficiência Acadêmica (INDICADORES!G:J) por instituição —
+/// publicado pela CONIF, mesma situação de MatriculaTotalEqualizadaAnual/RappAnual: não é
+/// deriveável somando Concluídos/Evadidos/Retidos de EficienciaAcademica.csv por instituição (a
+/// Portaria SETEC/MEC 646/2022 exclui cursos FIC do "ciclo", mas o CSV da PNP não distingue tipo de
+/// curso — testado, confirma divergência real contra INDICADORES!G:J, não é bug de fórmula
+/// corrigível com os dados que a PNP disponibiliza). Cadastro manual/importado por ano-base. Ainda
+/// NÃO usado no cálculo — ver calcularBlocoIea.ts (que continua na agregação aproximada) até a
+/// ligação ser feita em um próximo prompt.
+model EficienciaAcademicaAnual {
+  id                  Int         @id @default(autoincrement())
+  instituicaoId       Int
+  instituicao         Instituicao @relation(fields: [instituicaoId], references: [id])
+  ano                 Int
+  conclusaoCiclo      Decimal     @db.Decimal(18, 6)
+  evasaoCiclo         Decimal     @db.Decimal(18, 6)
+  retencaoCiclo       Decimal     @db.Decimal(18, 6)
+  eficienciaAcademica Decimal     @db.Decimal(18, 6)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])
