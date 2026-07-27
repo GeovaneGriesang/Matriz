@@ -134,6 +134,38 @@ A `DADOS BASE` usa várias variáveis que não vêm de `DadosGerais`, `Eficienci
 
 Essas variáveis precisam continuar vindo de planilhas/fontes separadas; não há como derivá-las dos 4 CSVs da PNP.
 
+## 6. Reconciliação sistemática 2024 — todas as 41 instituições / 633 câmpus (26/07/2026)
+
+Os achados 1-11 acima foram feitos com 1-4 exemplos (IFAC principalmente). Refiz a análise para **todas** as instituições e câmpus, ano-base 2024, para confirmar se os padrões se sustentam em escala e não são só uma particularidade do IFAC.
+
+### 6.1 IEA, RAP e %ME — confirma os achados anteriores, em escala
+
+Recalculando os três indicadores a partir dos CSVs (mesma metodologia dos achados 1/3/4) para as 41 instituições e comparando contra `golden_values_indicadores.csv`:
+
+| Indicador | Erro médio absoluto | Mediana | Pior caso |
+|---|---|---|---|
+| IEA (pontos percentuais) | 9,26pp | 5,28pp | IFSUL: 53,49pp |
+| RAP Presencial (aproximação via TaxaEvasao.csv) | 5,6% | 4,5% | CEFET-MG: 24,6% |
+| %ME Técnicos (pontos percentuais) | ~0,00002pp | — | CEFET-MG/CEFET-RJ/CPII: erro grande, mas é o golden que tem 0 (particularidade da fórmula original, não erro de dado) |
+
+Confirma exatamente o que já vínhamos rastreando: %ME está essencialmente perfeito, RAP tem erro moderado e sistemático (aproximação conhecida), e o IEA tem uma cauda de erro grande concentrada em redes com muitos câmpus (IFSUL, IFMG, IFRS, IFES) — nenhuma surpresa nova aqui, mas agora com a população completa confirmando que não é ruído de amostra pequena.
+
+### 6.2 Matrícula Total equalizada (Q) — achado novo: a planilha usa VALORES COLADOS, não fórmulas
+
+Abrindo o arquivo `.xlsx` com as fórmulas visíveis (não só os valores calculados), ficou confirmado que **as colunas Q/R/S/T ("Matrículas Totais equalizadas") e AI ("MECHDA") de `COMPLETO PROPOSTA`, por câmpus, são valores fixos colados — não fórmulas**. Exemplo (célula `Q17`, Campus Cruzeiro do Sul/IFAC): `3249.16479`, sem fórmula nenhuma por trás. Já as colunas que dependem delas (`V16 = "=Q16*'DADOS BASE'!$I$29"`, `H16 = "=IF(E16>=2018,MAX(...),J16)"`, o total da instituição `Q14 = "=SUM(Q15:Q21)"`) são fórmulas reais — mas operam em cima de números que vieram de fora da planilha. Isso vale para as 633 linhas de câmpus verificadas, não é exceção do IFAC.
+
+Isolando o "fator extra" dessa equalização (comparando com `Matrícula Equivalente | Geral` de `DadosGerais.csv`, que já aplica corretamente a fórmula oficial de Mateq = Mat × fech × fec — confirmado porque a razão `Matrícula Equivalente (CSV) / matrícula bruta` fica entre 0,05 e 1,67, mediana ~1,03, compatível com o fech/fec oficiais):
+
+| Razão | Média | Mediana | Faixa |
+|---|---|---|---|
+| Matrículas CSV / L (contagem bruta da planilha) | 1,011 | 1,003 | 1,00 – 1,52 (bate quase perfeito) |
+| Matrícula Equivalente CSV / L (fator FEC/FECH oficial) | 0,983 | 1,027 | 0,05 – 1,67 |
+| **Q (planilha) / Matrícula Equivalente CSV (fator restante, não explicado)** | **1,669** | **1,570** | **0,39 – 4,66** |
+
+Ou seja: a contagem bruta bate quase perfeito, e o CSV já calcula corretamente a Matrícula-equivalente oficial (pode ser usada direto, sem precisar aplicar a tabela FEC manualmente) — mas por cima disso ainda existe, em toda a rede, um fator adicional de ~1,57× (mediana) que os 17 CSVs não explicam. Testei correlação desse fator residual com o mix de tipo de curso por câmpus (% Técnico, % Tecnologia, % FIC, etc., via `TaxaEvasao.csv`): a correlação mais forte foi com % de matrícula em cursos Técnicos (+0,25) e % em Qualificação Profissional/FIC (−0,26) — direção plausível (cursos técnicos mais longos puxam o fator pra cima, FIC/cursos curtos puxam pra baixo), mas fraca demais pra ser a fórmula completa. **Conclusão**: o fator existe e tem alguma relação com duração/tipo de curso, mas não é derivável com precisão dos dados públicos disponíveis — precisa mesmo da fonte oficial (CONIF/SETEC ou páginas 65-104 do Guia de Referência Metodológica da PNP, não acessadas).
+
+**Implicação prática mais importante desta reconciliação inteira**: o Bloco Funcionamento (80% do orçamento) e o Bloco Reitorias (10%, mesma base) juntos somam ~90% do valor final de cada instituição, e ambos dependem inteiramente dessa Matrícula Total equalizada (Q) que não é derivável dos CSVs. Isso significa que, mesmo com IEA/RAP/IAPL/EAD perfeitos, o sistema não vai bater com os valores finais da planilha 5ª Fase para a grande maioria do orçamento — o gargalo real está aqui, não nos indicadores de Qualidade e Eficiência (que somados são só 10% do total).
+
 ## Recomendação
 
 Antes de confiar no sistema atual, sugiro: (1) para o RAP, usar `TaxaEvasao.csv` para isolar matrículas presenciais em vez de somar `RelacaoAlunoProfessorRAP.csv` cru (reduz o erro de +157%/+52%/+42% para +53%/+2%/+0,9% nos casos testados), mas idealmente obter o indicador oficial "RAP Presencial (5.6B)" direto da PNP; (2) confirmar com a PNP/CONIF qual é a fórmula exata de equalização de matrículas totais (Q/AI) e obter a tabela de pesos por curso — nenhum dos 17 CSVs disponíveis traz essa informação; (3) confirmar se o IEA usado na matriz é baseado em coorte/ciclo (e não no ano isolado) — `SituacaoMatricula.csv` confirma que não é possível reproduzir esse número com os dados disponíveis; (4) usar `PercentuaisLegais.csv` normalmente para os **percentuais** (%ME), mas **dividir por 100 qualquer valor absoluto de "Matrícula Equivalente"** lido diretamente desse arquivo; (5) `RelacaoAlunoProfessorRAP.csv` está correto para "Professor Equivalente" — não precisa de correção nesse campo.
