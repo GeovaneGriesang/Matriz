@@ -2,7 +2,12 @@
 
 import { prisma } from "@/server/db/prisma";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
+import {
+  calcularMatriculaTotalEqualizada,
+  type MatriculaTotalEqualizadaRegistro,
+} from "@/calculation-engine/matriculaTotalEqualizada";
 import { aplicarPisoMinimoCampusNovo } from "@/calculation-engine/aplicarPisoMinimoCampusNovo";
+import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
 import { blocoAssistenciaEstudantil } from "@/calculation-engine/blocoAssistenciaEstudantil";
@@ -249,15 +254,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   const overrides = input.overridesPorUnidade ?? {};
   const estrategiaFaixasIea = input.estrategiaFaixasIea ?? ESTRATEGIA_FAIXAS_IEA_PADRAO;
 
-  // AVISO: o Bloco Funcionamento (maior componente da Matriz — "Valor da Matrícula") usa
-  // "Matrícula Equivalente | Geral" como placeholder da "Matrícula Total equalizada" oficial
-  // (colunas Q/AI de COMPLETO PROPOSTA). Não são a mesma coisa — a razão entre elas varia de
-  // 1,37x a 2,6x por câmpus — mas é o melhor dado disponível até a fórmula oficial ser confirmada
-  // com CONIF/SETEC (ver calcularMatriculaTotalEqualizada.ts e seção 9, item 2, de
-  // docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
-  console.warn(
-    "[runCalculation] Bloco Funcionamento usando Matrícula Equivalente | Geral como placeholder da Matrícula Total equalizada oficial — valor NÃO confirmado com CONIF/SETEC, ver docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md seção 9, item 2.",
-  );
+  // MatriculaTotalEqualizadaAnual/RappAnual são cadastrados por ano-base do ciclo orçamentário
+  // (ex.: 2026), não pelo ano de referência da PNP usado em FatoIndicador (`input.ano`, ex.: 2024).
+  // Runs OFICIAIS sempre definem `anoOrcamento` explicitamente (ver calcularDistribuicaoOficialAction)
+  // — usamos direto. O Simulador NÃO tem esse campo (só escolhe "ano de referência" da PNP), mas a
+  // relação entre os dois anos é fixa e já conhecida do resto do sistema (DEFASAGEM_ANOS_REFERENCIA_PNP
+  // = 2), então derivamos `anoOficial = input.ano + 2` em vez de usar `input.ano` cru: usar o ano de
+  // referência da PNP diretamente como se fosse ano-base seria um erro sistemático (são conceitos
+  // diferentes) que nunca acertaria por coincidência — a derivação abaixo é a única forma do
+  // fallback ter chance real de achar dado oficial numa simulação.
+  const anoOficial = input.anoOrcamento ?? input.ano + DEFASAGEM_ANOS_REFERENCIA_PNP;
 
   const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
     by: ["unidadeId", "instituicaoId"],
@@ -291,6 +297,51 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     });
   }
 
+  // Matrícula Total equalizada oficial (colunas Q/R/S/T de "COMPLETO PROPOSTA") — cadastrada por
+  // câmpus/ano-base em /admin/dados-anuais (ver MatriculaTotalEqualizadaAnual). Busca por TODO o
+  // escopo de instituições, não só pelos câmpus já conhecidos via PNP/piso acima: existem câmpus
+  // (ex.: "Centro de Referência X") com Matrícula Total equalizada oficial importada mas sem
+  // nenhuma linha de "Matrícula Equivalente | Geral" da PNP para `input.ano` e sem `anoCriacao`
+  // cadastrado (então não são elegíveis ao piso) — sem essa busca à parte, esses câmpus nunca
+  // apareceriam em `mateqPorUnidade` nem em `campusElegiveisSemMatricula` e ficariam de fora do
+  // Bloco Funcionamento por completo, mesmo tendo dado oficial disponível. Câmpus sem nenhum
+  // registro oficial para `anoOficial` (câmpus novo, ano ainda não importado) caem no placeholder
+  // abaixo — ver calcularMatriculaTotalEqualizada.ts, que nunca inventa um valor para o ausente.
+  const matriculaOficialRows = await prisma.matriculaTotalEqualizadaAnual.findMany({
+    where: { ano: anoOficial, unidade: { instituicaoId: { in: input.instituicaoIds } } },
+    select: {
+      unidadeId: true,
+      matriculaTotalPresencialEqualizada: true,
+      matriculaTotalEadEqualizada: true,
+      matriculaTotalEadMoocEqualizada: true,
+      matriculaTotalEadFpEqualizada: true,
+      unidade: { select: { instituicaoId: true } },
+    },
+  });
+  const matriculaOficialPorUnidade = new Map<number, MatriculaTotalEqualizadaRegistro>(
+    matriculaOficialRows.map((m) => [
+      m.unidadeId,
+      {
+        matriculaTotalPresencialEqualizada: Number(m.matriculaTotalPresencialEqualizada),
+        matriculaTotalEadEqualizada: Number(m.matriculaTotalEadEqualizada),
+        matriculaTotalEadMoocEqualizada: Number(m.matriculaTotalEadMoocEqualizada),
+        matriculaTotalEadFpEqualizada: Number(m.matriculaTotalEadFpEqualizada),
+      },
+    ]),
+  );
+  const idsJaConhecidosViaPnp = new Set([
+    ...mateqPorUnidade.filter((f) => f.unidadeId !== null).map((f) => f.unidadeId as number),
+    ...campusElegiveisSemMatricula.map((u) => u.id),
+  ]);
+  // Câmpus com dado oficial mas sem PNP nem elegibilidade ao piso — só entram no Bloco
+  // Funcionamento/Reitorias por causa do dado oficial (ver uso abaixo).
+  const campusSoComOficial = matriculaOficialRows
+    .filter((m) => !idsJaConhecidosViaPnp.has(m.unidadeId))
+    .map((m) => ({ id: m.unidadeId, instituicaoId: m.unidade.instituicaoId }));
+  // Rastreado à parte (não dá pra embutir em FuncionamentoInput, que é o tipo público de
+  // blocoFuncionamento.ts) só para a memória de cálculo mostrar qual fonte foi usada por câmpus.
+  const fontePorCampus = new Map<number, "oficial" | "placeholder">();
+
   // Matrículas brutas (antes da equalização MECHDA da PNP) — só para exibição na memória de
   // cálculo (mostrar a conversão Bruta → Equivalente), nunca usadas no rateio em si: a PNP já
   // aplica sua própria metodologia de pesos (modalidade, laboratórios, retenção etc.) para chegar
@@ -314,18 +365,45 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     0,
   );
 
+  function resolverMatriculaPonderada(campusId: number, valorPlaceholder: number): number {
+    const registroOficial = matriculaOficialPorUnidade.get(campusId);
+    if (registroOficial !== undefined) {
+      fontePorCampus.set(campusId, "oficial");
+      return calcularMatriculaTotalEqualizada(registroOficial);
+    }
+    fontePorCampus.set(campusId, "placeholder");
+    return valorPlaceholder;
+  }
+
   const funcionamentoInputs = aplicarOverrideFuncionamento(
     [
       ...mateqPorUnidade
         .filter((f) => f.unidadeId !== null)
         .map((f) => ({
           campusId: f.unidadeId as number,
-          matriculaPonderada: Number(f._sum.valor ?? 0),
+          matriculaPonderada: resolverMatriculaPonderada(f.unidadeId as number, Number(f._sum.valor ?? 0)),
         })),
-      ...campusElegiveisSemMatricula.map((u) => ({ campusId: u.id, matriculaPonderada: 0 })),
+      ...campusElegiveisSemMatricula.map((u) => ({
+        campusId: u.id,
+        matriculaPonderada: resolverMatriculaPonderada(u.id, 0),
+      })),
+      ...campusSoComOficial.map((u) => ({
+        campusId: u.id,
+        matriculaPonderada: resolverMatriculaPonderada(u.id, 0),
+      })),
     ],
     overrides,
   );
+
+  // Câmpus com valor sobrescrito pelo simulador não têm fonte real (não é oficial nem placeholder
+  // — é hipotético); tratamos como "placeholder" na memória de cálculo por não termos uma 3ª
+  // categoria pedida, e o valor sobrescrito já deixa isso implícito para quem está simulando.
+  const qtdCampusPlaceholder = Array.from(fontePorCampus.values()).filter((f) => f === "placeholder").length;
+  if (qtdCampusPlaceholder > 0) {
+    console.warn(
+      `[runCalculation] Bloco Funcionamento: ${qtdCampusPlaceholder} de ${fontePorCampus.size} câmpus sem Matrícula Total equalizada oficial para o ano-base ${anoOficial} — usando "Matrícula Equivalente | Geral" (PNP) como placeholder para esses câmpus (ver /admin/dados-anuais).`,
+    );
+  }
 
   // Bloco Reitorias usa a mesma base do Bloco Funcionamento (matrícula ponderada
   // pós-override), só que agregada por instituição — ver blocoReitorias.ts.
@@ -334,6 +412,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       .filter((f) => f.unidadeId !== null)
       .map((f): [number, number] => [f.unidadeId as number, f.instituicaoId]),
     ...campusElegiveisSemMatricula.map((u): [number, number] => [u.id, u.instituicaoId]),
+    ...campusSoComOficial.map((u): [number, number] => [u.id, u.instituicaoId]),
   ]);
   const reitoriaInputs = funcionamentoInputs
     .map((f) => {
@@ -341,6 +420,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       return instituicaoId !== undefined ? { instituicaoId, matriculaPonderada: f.matriculaPonderada } : null;
     })
     .filter((r): r is { instituicaoId: number; matriculaPonderada: number } => r !== null);
+
+  // Fonte agregada por instituição (para a memória de cálculo do Bloco Reitorias) — "oficial" só
+  // quando TODOS os câmpus da instituição usaram o dado oficial, "mista" quando há mistura.
+  const fonteMatriculaPorInstituicao = new Map<number, "oficial" | "placeholder" | "mista">();
+  for (const [campusId, instituicaoId] of instituicaoIdPorCampus) {
+    const fonteCampus = fontePorCampus.get(campusId) ?? "placeholder";
+    const atual = fonteMatriculaPorInstituicao.get(instituicaoId);
+    if (atual === undefined) fonteMatriculaPorInstituicao.set(instituicaoId, fonteCampus);
+    else if (atual !== fonteCampus) fonteMatriculaPorInstituicao.set(instituicaoId, "mista");
+  }
 
   const ieaFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -424,7 +513,25 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     rapPorUnidade.set(unidadeId, atual);
   }
   const rapInputs = Array.from(rapPorUnidade.values());
-  const rapOverridesPorInstituicao = construirOverridesRap(overrides, instituicaoIdPorCampus);
+  const rapOverridesSimulador = construirOverridesRap(overrides, instituicaoIdPorCampus);
+
+  // RAP Presencial oficial (RAPP) — cadastrado por instituição/ano-base em /admin/dados-anuais (ver
+  // RappAnual). Quando existe para `anoOficial`, substitui a razão docente/aluno aproximada acima
+  // (mesmo mecanismo de override já usado pelo simulador, ver calcularBlocoRap.ts) — pula a
+  // aproximação via TaxaEvasao.csv por completo para essa instituição. Quando NÃO existe, a
+  // instituição continua na aproximação (`rapInputs` acima). Um override explícito do simulador
+  // sempre tem prioridade sobre o valor oficial (é um cenário hipotético deliberado).
+  const rappOficialPorInstituicao = new Map<number, number>(
+    (
+      await prisma.rappAnual.findMany({
+        where: { ano: anoOficial, instituicaoId: { in: input.instituicaoIds } },
+      })
+    ).map((r) => [r.instituicaoId, Number(r.rapp)]),
+  );
+  const fonteRapPorInstituicao = new Map<number, "oficial" | "aproximado">(
+    input.instituicaoIds.map((id) => [id, rappOficialPorInstituicao.has(id) ? "oficial" : "aproximado"]),
+  );
+  const rapOverridesPorInstituicao = new Map([...rappOficialPorInstituicao, ...rapOverridesSimulador]);
 
   const iaplFatos = await prisma.fatoIndicador.findMany({
     where: {
@@ -614,26 +721,35 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   });
 
   const resultados = [
-    ...funcionamento.map((f) => ({
-      runId: run.id,
-      campusId: f.campusId,
-      bloco: "FUNCIONAMENTO" as const,
-      metrica: "valorReais",
-      valor: f.valorReais,
-      detalhe: {
-        matriculaPonderadaCampus: f.totalMatriculaPonderada,
-        totalMatriculaPonderadaRede,
-        matriculasBrutasCampus: matriculasBrutasPorCampus.get(f.campusId) ?? 0,
-        totalMatriculasBrutasRede,
-        share: f.share,
-        pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
-        valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * input.orcamentoTotal,
-        pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
-        pisoAplicado: f.pisoAplicado,
-        valorAntesDoPiso: f.valorAntesDoPiso,
-        valorReais: f.valorReais,
-      },
-    })),
+    ...funcionamento.map((f) => {
+      const fonteMatricula = fontePorCampus.get(f.campusId) ?? "placeholder";
+      const registroOficial = matriculaOficialPorUnidade.get(f.campusId);
+      return {
+        runId: run.id,
+        campusId: f.campusId,
+        bloco: "FUNCIONAMENTO" as const,
+        metrica: "valorReais",
+        valor: f.valorReais,
+        detalhe: {
+          fonteMatricula,
+          matriculaOficialPresencial: registroOficial?.matriculaTotalPresencialEqualizada,
+          matriculaOficialEad: registroOficial?.matriculaTotalEadEqualizada,
+          matriculaOficialEadMooc: registroOficial?.matriculaTotalEadMoocEqualizada,
+          matriculaOficialEadFp: registroOficial?.matriculaTotalEadFpEqualizada,
+          matriculaPonderadaCampus: f.totalMatriculaPonderada,
+          totalMatriculaPonderadaRede,
+          matriculasBrutasCampus: matriculasBrutasPorCampus.get(f.campusId) ?? 0,
+          totalMatriculasBrutasRede,
+          share: f.share,
+          pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
+          valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * input.orcamentoTotal,
+          pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
+          pisoAplicado: f.pisoAplicado,
+          valorAntesDoPiso: f.valorAntesDoPiso,
+          valorReais: f.valorReais,
+        },
+      };
+    }),
     ...reitorias.map((r) => ({
       runId: run.id,
       campusId: null,
@@ -641,6 +757,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
       metrica: `valorReais_autarquia_${r.autarquiaId}`,
       valor: r.valorReais,
       detalhe: {
+        fonteMatricula: fonteMatriculaPorInstituicao.get(r.autarquiaId) ?? "placeholder",
         numeroInstituicoes: input.instituicaoIds.length,
         matriculaPonderadaInstituicao: r.totalMatriculaPonderada,
         totalMatriculaPonderadaRede,
@@ -685,6 +802,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
             : null,
           rap: rapD
             ? {
+                fonte: fonteRapPorInstituicao.get(q.instituicaoId) ?? "aproximado",
                 porCampus: rapD.porCampus,
                 matriculasPresenciais: rapD.matriculasPresenciais,
                 professorEquivalente: rapD.professorEquivalente,

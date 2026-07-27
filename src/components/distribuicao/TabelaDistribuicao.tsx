@@ -5,6 +5,17 @@ import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/quali
 import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
 interface DetalheFuncionamento {
+  /**
+   * "oficial" = Matrícula Total equalizada da CONIF (MatriculaTotalEqualizadaAnual); "placeholder" =
+   * "Matrícula Equivalente | Geral" da PNP, usada só quando não há dado oficial para o câmpus/ano.
+   * Ausente em execuções anteriores a essa distinção — sempre eram "placeholder".
+   */
+  fonteMatricula?: "oficial" | "placeholder" | "mista";
+  /** Presentes só quando fonteMatricula é "oficial". */
+  matriculaOficialPresencial?: number;
+  matriculaOficialEad?: number;
+  matriculaOficialEadMooc?: number;
+  matriculaOficialEadFp?: number;
   matriculaPonderadaCampus: number;
   totalMatriculaPonderadaRede: number;
   /** Matrículas antes da equalização MECHDA da PNP — ausente em execuções anteriores a essa exibição. */
@@ -43,6 +54,12 @@ interface DetalheIea {
 }
 
 interface DetalheRap {
+  /**
+   * "oficial" = RAPP (RAP Presencial) informado pela CONIF (RappAnual); "aproximado" = calculado com
+   * matrícula bruta presencial de TaxaEvasao.csv (ver MemoriaRap). Ausente em execuções anteriores
+   * a essa distinção — sempre eram "aproximado".
+   */
+  fonte?: "oficial" | "aproximado";
   /** Somas de matrículas presenciais (aproximação, ver MemoriaRap) e Professor Equivalente de todos os câmpus da instituição. */
   matriculasPresenciais: number;
   professorEquivalente: number;
@@ -103,6 +120,8 @@ interface DetalheAssistenciaEstudantil {
 }
 
 interface DetalheReitoria {
+  /** Mesma fonte usada no Bloco Funcionamento (ver DetalheFuncionamento), agregada por instituição. */
+  fonteMatricula?: "oficial" | "placeholder" | "mista";
   numeroInstituicoes: number;
   matriculaPonderadaInstituicao: number;
   totalMatriculaPonderadaRede: number;
@@ -187,10 +206,28 @@ function NotaNormativaMechda() {
 }
 
 function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
-  const temMatriculasBrutas = detalhe.matriculasBrutasCampus !== undefined && detalhe.matriculasBrutasCampus > 0;
+  const fonteMatricula = detalhe.fonteMatricula ?? "placeholder";
+  const temMatriculasBrutas =
+    fonteMatricula !== "oficial" && detalhe.matriculasBrutasCampus !== undefined && detalhe.matriculasBrutasCampus > 0;
   return (
     <div className="flex flex-col gap-2">
       <ul className="list-disc space-y-1 pl-5">
+        {fonteMatricula === "oficial" ? (
+          <ItemMemoria>
+            <strong>Matrícula Total equalizada oficial (informada pela CONIF):</strong> Presencial{" "}
+            {formatoNumero.format(detalhe.matriculaOficialPresencial ?? 0)} + EaD{" "}
+            {formatoNumero.format(detalhe.matriculaOficialEad ?? 0)} + EaD MOOC{" "}
+            {formatoNumero.format(detalhe.matriculaOficialEadMooc ?? 0)} + EaD FP{" "}
+            {formatoNumero.format(detalhe.matriculaOficialEadFp ?? 0)} ={" "}
+            <strong>{formatoNumero.format(detalhe.matriculaPonderadaCampus)}</strong>
+          </ItemMemoria>
+        ) : (
+          <ItemMemoria>
+            <strong>Aproximação:</strong> Matrícula Total equalizada oficial ainda não cadastrada para este
+            câmpus/ano — usando &quot;Matrícula Equivalente | Geral&quot; (PNP) como placeholder (ver
+            /admin/dados-anuais).
+          </ItemMemoria>
+        )}
         {temMatriculasBrutas && (
           <ItemMemoria>
             Matrículas brutas do câmpus (antes da equalização MECHDA):{" "}
@@ -294,19 +331,32 @@ function MemoriaRap({ detalhe }: { detalhe: DetalheRap }) {
   if (detalhe.razaoDocenteAluno === undefined) {
     return <MemoriaIndisponivel valorReais={detalhe.valorReais} />;
   }
+  const fonte = detalhe.fonte ?? "aproximado";
   return (
     <ul className="list-disc space-y-1 pl-5">
-      <ItemMemoria>
-        <strong>Aproximação:</strong> RAP Presencial calculado com matrícula bruta presencial
-        (TaxaEvasao.csv), não com Matrícula-equivalente presencial oficial (Portaria SETEC/MEC nº
-        51/2018). Erro esperado entre +0,9% e +53% dependendo da instituição.
-      </ItemMemoria>
-      <ItemMemoria>
-        Matrículas Presenciais {formatoNumero.format(detalhe.matriculasPresenciais)} ÷ Professor Equivalente{" "}
-        {formatoNumero.format(detalhe.professorEquivalente)} (somas de todos os câmpus da instituição) = RAP
-        Presencial <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — calculado uma única vez
-        para a instituição (nunca por câmpus)
-      </ItemMemoria>
+      {fonte === "oficial" ? (
+        <ItemMemoria>
+          <strong>RAP Presencial oficial (informado pela CONIF):</strong>{" "}
+          <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — cadastrado em
+          /admin/dados-anuais, substitui integralmente a aproximação via TaxaEvasao.csv para esta
+          instituição/ano.
+        </ItemMemoria>
+      ) : (
+        <>
+          <ItemMemoria>
+            <strong>RAP Presencial aproximado (TaxaEvasao.csv):</strong> calculado com matrícula bruta
+            presencial, não com Matrícula-equivalente presencial oficial (Portaria SETEC/MEC nº
+            51/2018). Erro esperado entre +0,9% e +53% dependendo da instituição — usado só porque não
+            há RAPP oficial cadastrado em /admin/dados-anuais para esta instituição/ano.
+          </ItemMemoria>
+          <ItemMemoria>
+            Matrículas Presenciais {formatoNumero.format(detalhe.matriculasPresenciais)} ÷ Professor Equivalente{" "}
+            {formatoNumero.format(detalhe.professorEquivalente)} (somas de todos os câmpus da instituição) = RAP
+            Presencial <strong>{formatoNumero.format(detalhe.razaoDocenteAluno)}</strong> — calculado uma única vez
+            para a instituição (nunca por câmpus)
+          </ItemMemoria>
+        </>
+      )}
       <ItemMemoria>
         RAP Ponderado = RAP × peso da faixa: <strong>{formatoNumero.format(detalhe.ponderadoInstituicao)}</strong>
       </ItemMemoria>
@@ -439,8 +489,17 @@ function NotaMetodologicaAssistenciaEstudantil() {
 }
 
 function MemoriaReitoria({ detalhe }: { detalhe: DetalheReitoria }) {
+  const fonteMatricula = detalhe.fonteMatricula ?? "placeholder";
   return (
     <ul className="list-disc space-y-1 pl-5">
+      {fonteMatricula !== "oficial" && (
+        <ItemMemoria>
+          <strong>{fonteMatricula === "mista" ? "Fonte mista:" : "Aproximação:"}</strong>{" "}
+          {fonteMatricula === "mista"
+            ? "parte dos câmpus desta instituição já tem Matrícula Total equalizada oficial (CONIF), parte ainda usa o placeholder (\"Matrícula Equivalente | Geral\" da PNP) por falta de dado oficial para aquele câmpus/ano."
+            : "nenhum câmpus desta instituição tem Matrícula Total equalizada oficial cadastrada para este ano — usando o placeholder (\"Matrícula Equivalente | Geral\" da PNP)."}
+        </ItemMemoria>
+      )}
       <ItemMemoria>
         Matrícula Ponderada da instituição (mesma base do Bloco Funcionamento):{" "}
         <strong>{formatoNumero.format(detalhe.matriculaPonderadaInstituicao)}</strong> ÷ total da rede{" "}
