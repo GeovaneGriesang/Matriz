@@ -2,7 +2,7 @@ import { ConsultaPanel } from "@/components/consulta/ConsultaPanel";
 
 export default function ConsultaPage() {
   return (
-    <main className="flex flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-16">
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
           Consulta da distribuição oficial

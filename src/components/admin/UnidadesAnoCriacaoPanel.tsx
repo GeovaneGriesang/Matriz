@@ -77,9 +77,9 @@ export function UnidadesAnoCriacaoPanel() {
         {ANO_MINIMO_CAMPUS_NOVO} são elegíveis ao Piso Mínimo do Bloco Funcionamento.
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+          <thead className="sticky top-0 bg-neutral-50 text-left dark:bg-neutral-900">
             <tr>
               <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">Instituição</th>
               <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">Câmpus</th>
@@ -115,7 +115,7 @@ export function UnidadesAnoCriacaoPanel() {
                       onBlur={() => {
                         if (valorAtual !== (u.anoCriacao === null ? "" : String(u.anoCriacao))) salvar(u.id);
                       }}
-                      className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                      className="w-full min-w-28 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                     />
                   </td>
                   <td className="px-3 py-2 text-xs">
