@@ -3,12 +3,12 @@ import Link from "next/link";
 import { requireAdminOrRedirect } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
 
-export default async function UnidadesLayout({ children }: { children: ReactNode }) {
-  await requireAdminOrRedirect("/admin/unidades");
+export default async function DadosAnuaisLayout({ children }: { children: ReactNode }) {
+  await requireAdminOrRedirect("/admin/dados-anuais");
 
   return (
     <div>
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-6 pt-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-4">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/orcamento"
@@ -17,10 +17,10 @@ export default async function UnidadesLayout({ children }: { children: ReactNode
             Orçamento anual
           </Link>
           <Link
-            href="/admin/dados-anuais"
+            href="/admin/unidades"
             className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
-            Dados anuais
+            Câmpus
           </Link>
         </div>
         <form action={logoutAction}>
