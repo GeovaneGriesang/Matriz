@@ -1,23 +1,35 @@
 import type { EstrategiaFaixasIea, IeaBand, RapBand } from "../types/qualidadeEficiencia.types";
 
 /**
- * Duas fontes oficiais documentam faixas/pesos de IEA diferentes — nenhuma é descartada, o sistema
- * mantém as duas disponíveis e deixa o usuário escolher (ver EstrategiaFaixasIea). `valorIea`
- * chega em [0, 1] (a PNP entrega em escala 0-100%, convertido antes das faixas) em ambos os casos.
+ * As duas tabelas NÃO são metodologias concorrentes: são o mesmo cálculo normativo (Portaria
+ * MEC/SETEC 646/2022 — faixas relativas à média de IEA da rede naquele ciclo: <0,90×, 0,90-1,00×,
+ * 1,00-1,10×, 1,10-1,20×, ≥1,20× da média), só "congeladas" com a média de anos-base diferentes.
+ * Confirmado célula a célula contra `DADOS BASE!Q76:V81` da planilha-modelo 2026 (média de rede
+ * 46,1% → limiares 41,49%/46,1%/50,71%/55,32%, EXATAMENTE 0,90×/1,00×/1,10×/1,20× de 0,461).
+ * Por isso só a tabela do ciclo vigente pode ser usada no cálculo: aplicar a média congelada de
+ * outro ano-base a este ciclo não é uma escolha metodológica válida, é comparar IEA com o limiar
+ * errado. FORPLAN_2025 é mantida no código só como referência histórica (nunca descartada, nunca
+ * selecionável para o ano corrente) — ver ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL.
  */
 export const ESTRATEGIA_FAIXAS_IEA_PADRAO: EstrategiaFaixasIea = "PLANILHA_2026";
 
-/** Texto exibido em qualquer tela onde a estratégia possa ser escolhida — fonte única para não divergir entre telas. */
+/** Quais estratégias podem ser escolhidas para calcular o ciclo vigente — FORPLAN_2025 é só histórico. */
+export const ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL: Record<EstrategiaFaixasIea, boolean> = {
+  PLANILHA_2026: true,
+  FORPLAN_2025: false,
+};
+
+/** Texto exibido em qualquer tela que mostre a estratégia — fonte única para não divergir entre telas. */
 export const ESTRATEGIA_FAIXAS_IEA_INFO: Record<EstrategiaFaixasIea, { label: string; descricao: string }> = {
   PLANILHA_2026: {
-    label: "Faixas da planilha-modelo 2026 (padrão)",
+    label: "Faixas da planilha-modelo 2026 (único valor ativo)",
     descricao:
-      "Usa os limites de IEA definidos na planilha oficial do ciclo orçamentário de 2026.",
+      "Limiares de IEA relativos à média de rede do ciclo 2026 (46,1%), extraídos de DADOS BASE!Q76:V81 da planilha oficial. Única tabela usada no cálculo do ciclo vigente.",
   },
   FORPLAN_2025: {
-    label: "Faixas do livro Forplan/2025",
+    label: "Faixas do ciclo 2025 (Forplan) — histórico, não usar no cálculo de 2026",
     descricao:
-      "Usa os limites publicados no livro \"A Matriz Orçamentária da Rede Federal de EPCT\" (CONIF/Forplan, 2025) — pode divergir da planilha-modelo do ciclo vigente.",
+      "Mesma metodologia (Portaria MEC/SETEC 646/2022), só que congelada com a média de rede do ciclo 2025 — publicada no livro \"A Matriz Orçamentária da Rede Federal de EPCT\" (CONIF/Forplan, 2025). Mantida apenas como referência histórica; aplicar esses limiares a 2026 compararia o IEA com o ano-base errado.",
   },
 };
 
