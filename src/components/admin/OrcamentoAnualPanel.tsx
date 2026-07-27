@@ -10,10 +10,12 @@ import {
   PESO_BLOCO_REITORIAS,
   PESO_BLOCO_QUALIDADE_EFICIENCIA,
 } from "@/calculation-engine/constants/blocos.constants";
-import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
+import {
+  ESTRATEGIA_FAIXAS_IEA_INFO,
+  ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL,
+} from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
 
-type Escopo = "CONIF" | "TODAS";
 
 export interface OrcamentoAnual {
   ano: number;
@@ -442,7 +444,6 @@ export function OrcamentoAnualPanel() {
   const [estrategiaFaixasIea, setEstrategiaFaixasIea] = useState<EstrategiaFaixasIea>("PLANILHA_2026");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [escopoPorAno, setEscopoPorAno] = useState<Record<number, Escopo>>({});
   const [calculandoAno, setCalculandoAno] = useState<number | null>(null);
   const [segundosDecorridos, setSegundosDecorridos] = useState(0);
   const [mensagemPorAno, setMensagemPorAno] = useState<Record<number, string>>({});
@@ -502,7 +503,6 @@ export function OrcamentoAnualPanel() {
   }
 
   async function handleCalcular(anoAlvo: number) {
-    const escopo = escopoPorAno[anoAlvo] ?? "CONIF";
     setCalculandoAno(anoAlvo);
     setMensagemPorAno((atual) => ({ ...atual, [anoAlvo]: "" }));
     setSegundosDecorridos(0);
@@ -511,7 +511,7 @@ export function OrcamentoAnualPanel() {
     try {
       const formData = new FormData();
       formData.set("ano", String(anoAlvo));
-      formData.set("escopo", escopo);
+      formData.set("escopo", "CONIF");
       const resultado = await calcularDistribuicaoOficialAction(formData);
       if (!resultado.ok) {
         throw new Error(resultado.errorMessage ?? "Não foi possível calcular a distribuição oficial.");
@@ -557,8 +557,7 @@ export function OrcamentoAnualPanel() {
         </p>
         <p className="mt-2">
           <strong>CONIF</strong>: 38 Institutos Federais + CEFET-MG + CEFET-RJ + Colégio Pedro II (41
-          instituições). <strong>Todas as instituições federais</strong>: CONIF + 23 escolas técnicas
-          vinculadas a universidades federais (64 instituições).
+          instituições) — único escopo usado para o cálculo oficial da distribuição.
         </p>
       </div>
 
@@ -708,31 +707,39 @@ export function OrcamentoAnualPanel() {
             Faixas de peso do IEA
           </legend>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Duas fontes oficiais documentam faixas/pesos de IEA diferentes — o sistema mantém as duas disponíveis,
-            nenhuma é descartada. Esta escolha só decide qual tabela enquadra o IEA no cálculo oficial deste ano.
+            As duas tabelas abaixo não são metodologias concorrentes — são o mesmo cálculo normativo (Portaria
+            MEC/SETEC 646/2022: faixas relativas à média de IEA da rede), só &quot;congeladas&quot; com a média de
+            anos-base diferentes. Por isso apenas a tabela do ciclo vigente pode ser usada no cálculo; a do ciclo
+            2025 fica disponível só como referência histórica.
           </p>
           <div className="flex flex-col gap-2">
-            {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => (
-              <label key={chave} className="flex items-start gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="estrategiaFaixasIea"
-                  value={chave}
-                  checked={estrategiaFaixasIea === chave}
-                  onChange={() => setEstrategiaFaixasIea(chave)}
-                  disabled={salvando}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                    {ESTRATEGIA_FAIXAS_IEA_INFO[chave].label}
+            {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => {
+              const selecionavel = ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL[chave];
+              return (
+                <label
+                  key={chave}
+                  className={`flex items-start gap-2 text-sm ${selecionavel ? "" : "opacity-60"}`}
+                >
+                  <input
+                    type="radio"
+                    name="estrategiaFaixasIea"
+                    value={chave}
+                    checked={estrategiaFaixasIea === chave}
+                    onChange={() => setEstrategiaFaixasIea(chave)}
+                    disabled={salvando || !selecionavel}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                      {ESTRATEGIA_FAIXAS_IEA_INFO[chave].label}
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                      {ESTRATEGIA_FAIXAS_IEA_INFO[chave].descricao}
+                    </span>
                   </span>
-                  <span className="block text-xs text-neutral-500 dark:text-neutral-400">
-                    {ESTRATEGIA_FAIXAS_IEA_INFO[chave].descricao}
-                  </span>
-                </span>
-              </label>
-            ))}
+                </label>
+              );
+            })}
           </div>
         </fieldset>
 
@@ -756,7 +763,6 @@ export function OrcamentoAnualPanel() {
         ) : (
           <ul className="flex flex-col gap-3">
             {orcamentos.map((o) => {
-              const escopoAtual = escopoPorAno[o.ano] ?? "CONIF";
               const calculandoEsteAno = calculandoAno === o.ano;
               return (
                 <li
@@ -782,32 +788,6 @@ export function OrcamentoAnualPanel() {
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
                     Referência PNP: dados de {o.ano - 2}
                   </p>
-
-                  <div className="flex flex-wrap items-center gap-4">
-                    <fieldset className="flex items-center gap-3 text-xs">
-                      <legend className="sr-only">Escopo de {o.ano}</legend>
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name={`escopo-${o.ano}`}
-                          checked={escopoAtual === "CONIF"}
-                          onChange={() => setEscopoPorAno((atual) => ({ ...atual, [o.ano]: "CONIF" }))}
-                          disabled={calculandoAno !== null}
-                        />
-                        CONIF (41 instituições)
-                      </label>
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name={`escopo-${o.ano}`}
-                          checked={escopoAtual === "TODAS"}
-                          onChange={() => setEscopoPorAno((atual) => ({ ...atual, [o.ano]: "TODAS" }))}
-                          disabled={calculandoAno !== null}
-                        />
-                        Todas as instituições federais (64)
-                      </label>
-                    </fieldset>
-                  </div>
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button
