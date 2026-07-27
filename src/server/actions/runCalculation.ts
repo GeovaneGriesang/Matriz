@@ -3,8 +3,9 @@
 import { prisma } from "@/server/db/prisma";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
 import {
-  calcularMatriculaTotalEqualizada,
+  calcularMatriculaTotalEqualizadaPonderada,
   type MatriculaTotalEqualizadaRegistro,
+  type MatriculaTotalEqualizadaPonderada,
 } from "@/calculation-engine/matriculaTotalEqualizada";
 import { aplicarPisoMinimoCampusNovo } from "@/calculation-engine/aplicarPisoMinimoCampusNovo";
 import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
@@ -376,32 +377,48 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     0,
   );
 
-  function resolverMatriculaPonderada(campusId: number, valorPlaceholder: number): number {
+  // Fonte placeholder não tem quebra de modalidade disponível (a "Matrícula Equivalente | Geral"
+  // da PNP já vem blendada) — tratada como já-blendada: vai inteira no denominador do Funcionamento,
+  // sem adicional de EAD MOOC (mesma convenção usada por overrides do simulador, que também só
+  // fornecem um número único).
+  function resolverMatriculaPonderada(campusId: number, valorPlaceholder: number): MatriculaTotalEqualizadaPonderada {
     const registroOficial = matriculaOficialPorUnidade.get(campusId);
     if (registroOficial !== undefined) {
       fontePorCampus.set(campusId, "oficial");
-      return calcularMatriculaTotalEqualizada(registroOficial);
+      return calcularMatriculaTotalEqualizadaPonderada(registroOficial);
     }
     fontePorCampus.set(campusId, "placeholder");
-    return valorPlaceholder;
+    return { denominadorFuncionamento: valorPlaceholder, moocAdicionalFuncionamento: 0, pesoReitorias: valorPlaceholder };
   }
 
   const funcionamentoInputs = aplicarOverrideFuncionamento(
     [
       ...mateqPorUnidade
         .filter((f) => f.unidadeId !== null)
-        .map((f) => ({
-          campusId: f.unidadeId as number,
-          matriculaPonderada: resolverMatriculaPonderada(f.unidadeId as number, Number(f._sum.valor ?? 0)),
-        })),
-      ...campusElegiveisSemMatricula.map((u) => ({
-        campusId: u.id,
-        matriculaPonderada: resolverMatriculaPonderada(u.id, 0),
-      })),
-      ...campusSoComOficial.map((u) => ({
-        campusId: u.id,
-        matriculaPonderada: resolverMatriculaPonderada(u.id, 0),
-      })),
+        .map((f) => {
+          const ponderada = resolverMatriculaPonderada(f.unidadeId as number, Number(f._sum.valor ?? 0));
+          return {
+            campusId: f.unidadeId as number,
+            matriculaPonderada: ponderada.denominadorFuncionamento,
+            matriculaMoocAdicional: ponderada.moocAdicionalFuncionamento,
+          };
+        }),
+      ...campusElegiveisSemMatricula.map((u) => {
+        const ponderada = resolverMatriculaPonderada(u.id, 0);
+        return {
+          campusId: u.id,
+          matriculaPonderada: ponderada.denominadorFuncionamento,
+          matriculaMoocAdicional: ponderada.moocAdicionalFuncionamento,
+        };
+      }),
+      ...campusSoComOficial.map((u) => {
+        const ponderada = resolverMatriculaPonderada(u.id, 0);
+        return {
+          campusId: u.id,
+          matriculaPonderada: ponderada.denominadorFuncionamento,
+          matriculaMoocAdicional: ponderada.moocAdicionalFuncionamento,
+        };
+      }),
     ],
     overrides,
   );
@@ -425,10 +442,16 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     ...campusElegiveisSemMatricula.map((u): [number, number] => [u.id, u.instituicaoId]),
     ...campusSoComOficial.map((u): [number, number] => [u.id, u.instituicaoId]),
   ]);
+  // O Bloco Reitorias trata EAD MOOC normalmente (peso 0,8, sem o tratamento aditivo/não-diluidor
+  // do Funcionamento) — por isso soma matriculaPonderada + matriculaMoocAdicional aqui, e não só
+  // matriculaPonderada (confirmado contra a planilha: bate exato com essa soma, ver
+  // matriculaTotalEqualizada.ts § pesoReitorias).
   const reitoriaInputs = funcionamentoInputs
     .map((f) => {
       const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
-      return instituicaoId !== undefined ? { instituicaoId, matriculaPonderada: f.matriculaPonderada } : null;
+      return instituicaoId !== undefined
+        ? { instituicaoId, matriculaPonderada: f.matriculaPonderada + (f.matriculaMoocAdicional ?? 0) }
+        : null;
     })
     .filter((r): r is { instituicaoId: number; matriculaPonderada: number } => r !== null);
 
@@ -756,6 +779,11 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           share: f.share,
           pesoBloco: PESO_BLOCO_FUNCIONAMENTO,
           valorBlocoRede: PESO_BLOCO_FUNCIONAMENTO * baseCalculoPercentuais,
+          // Taxa (MTP, R$/ponto ponderado) e o adicional de EAD MOOC — pago à mesma MTP, mas somado
+          // depois de calculada (não dilui a taxa dos demais câmpus da rede). Ver
+          // matriculaTotalEqualizada.ts / blocoFuncionamento.ts.
+          mtp: f.mtp,
+          valorMoocAdicional: f.valorMoocAdicional,
           pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
           pisoAplicado: f.pisoAplicado,
           valorAntesDoPiso: f.valorAntesDoPiso,
