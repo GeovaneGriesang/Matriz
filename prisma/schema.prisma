@@ -13,8 +13,8 @@ generator client {
 // de câmpus/curso nos exports reais) — ver Instituicao.sigla/Unidade.nome.
 
 model Instituicao {
-  id                   Int             @id @default(autoincrement())
-  sigla                String          @unique
+  id                   Int                             @id @default(autoincrement())
+  sigla                String                          @unique
   nome                 String
   organizacaoAcademica String
   regiao               String
@@ -22,21 +22,23 @@ model Instituicao {
   estado               String
   unidades             Unidade[]
   fatos                FatoIndicador[]
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  rappAnual            RappAnual[]
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
 }
 
 model Unidade {
-  id            Int             @id @default(autoincrement())
-  nome          String
-  instituicaoId Int
-  instituicao   Instituicao     @relation(fields: [instituicaoId], references: [id])
+  id                          Int                             @id @default(autoincrement())
+  nome                        String
+  instituicaoId               Int
+  instituicao                 Instituicao                     @relation(fields: [instituicaoId], references: [id])
   /// Ano de criação do câmpus — cadastro manual (não existe em nenhum arquivo PNP ingerido),
   /// usado só para o Piso Mínimo por Câmpus Novo (ver aplicarPisoMinimoCampusNovo.ts).
-  anoCriacao    Int?
-  fatos         FatoIndicador[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  anoCriacao                  Int?
+  fatos                       FatoIndicador[]
+  matriculasTotalEqualizadas  MatriculaTotalEqualizadaAnual[]
+  createdAt                   DateTime                        @default(now())
+  updatedAt                   DateTime                        @updatedAt
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -212,4 +214,42 @@ model OrcamentoAnual {
   /// descartada, esta escolha só decide qual delas enquadra o IEA (ver calcularBlocoIea.ts).
   estrategiaFaixasIea        EstrategiaFaixasIea @default(PLANILHA_2026)
   updatedAt                  DateTime @updatedAt
+}
+
+/// Matrícula Total equalizada por câmpus/ano (colunas Q/R/S/T de "COMPLETO PROPOSTA" na planilha
+/// oficial da CONIF) — publicada pela CONIF, confirmado que NÃO é deriveável dos CSVs públicos da
+/// PNP (ver src/calculation-engine/pendentes/matriculaTotalEqualizada.ts). Cadastro manual/importado
+/// por ano-base: ao contrário de Unidade.anoCriacao, muda a cada ciclo orçamentário. Ainda NÃO usado
+/// no cálculo (isolado até a confirmação de origem externa ser feita — ver Prompt 9).
+model MatriculaTotalEqualizadaAnual {
+  id                                  Int      @id @default(autoincrement())
+  unidadeId                           Int
+  unidade                             Unidade  @relation(fields: [unidadeId], references: [id])
+  ano                                 Int
+  matriculaTotalPresencialEqualizada  Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadEqualizada         Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadMoocEqualizada     Decimal  @db.Decimal(18, 5)
+  matriculaTotalEadFpEqualizada       Decimal  @db.Decimal(18, 5)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
+
+  @@unique([unidadeId, ano])
+  @@index([ano])
+}
+
+/// RAP Presencial oficial (RAPP, coluna N de "INDICADORES") por instituição/ano — publicado pela
+/// CONIF, também confirmado não-deriveável da PNP. NÃO confundir com o RAP geral já calculado em
+/// calcularBlocoRap.ts (esse usa TaxaEvasao.csv como aproximação documentada, ver seu próprio aviso
+/// "Aproximação"). Cadastro manual/importado por ano-base. Ainda NÃO usado no cálculo (Prompt 9).
+model RappAnual {
+  id            Int         @id @default(autoincrement())
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  ano           Int
+  rapp          Decimal     @db.Decimal(18, 6)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([instituicaoId, ano])
+  @@index([ano])
 }
