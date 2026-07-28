@@ -639,6 +639,13 @@ export function TabelaDistribuicao({
   const [instituicoesAbertas, setInstituicoesAbertas] = useState<Set<number>>(new Set());
   const [unidadesAbertas, setUnidadesAbertas] = useState<Set<number>>(new Set());
   const [instituicoesExpandidas, setInstituicoesExpandidas] = useState<Set<number>>(new Set());
+  const [filtroBloco, setFiltroBloco] = useState<"TUDO" | "20RL" | "2994">("TUDO");
+
+  // Colunas de Reitoria/Funcionamento/Qualidade e Eficiência/Anuidade vêm do orçamento de Custeio
+  // (20RL); Assistência Estudantil vem de um orçamento à parte (2994) — ver Metodologia seção 5.
+  const mostrar20RL = filtroBloco !== "2994";
+  const mostrar2994 = filtroBloco !== "20RL";
+  const numeroColunas = 3 + (mostrar20RL ? 4 : 0) + (mostrar2994 ? 1 : 0);
 
   function alternar(conjunto: Set<number>, setConjunto: (s: Set<number>) => void, id: number) {
     const novo = new Set(conjunto);
@@ -650,6 +657,16 @@ export function TabelaDistribuicao({
   const instituicoesComCampi = detalhe.instituicoes.filter((i) => i.unidades.length > 0);
   const todasExpandidas =
     instituicoesComCampi.length > 0 && instituicoesComCampi.every((i) => instituicoesExpandidas.has(i.id));
+
+  const todasUnidades = detalhe.instituicoes.flatMap((i) => i.unidades);
+  const totalReitoriaRede = detalhe.instituicoes.reduce((soma, i) => soma + i.reitoriaValorReais, 0);
+  const totalFuncionamentoRede = todasUnidades.reduce((soma, u) => soma + u.funcionamentoValorReais, 0);
+  const totalQualidadeEficienciaRede = detalhe.instituicoes.reduce(
+    (soma, i) => soma + i.qualidadeEficienciaValorReais,
+    0,
+  );
+  const totalAssistenciaEstudantilRede = todasUnidades.reduce((soma, u) => soma + u.assistenciaEstudantilValorReais, 0);
+  const totalAnuidadeConifRede = detalhe.instituicoes.reduce((soma, i) => soma + i.anuidadeConifValorReais, 0);
 
   function alternarTodasInstituicoes() {
     setInstituicoesExpandidas(todasExpandidas ? new Set() : new Set(instituicoesComCampi.map((i) => i.id)));
@@ -688,15 +705,40 @@ export function TabelaDistribuicao({
 
       {Boolean(detalhe.run.orcamentoAssistenciaEstudantil) && <NotaMetodologicaAssistenciaEstudantil />}
 
-      {instituicoesComCampi.length > 0 && (
-        <button
-          type="button"
-          onClick={alternarTodasInstituicoes}
-          className="w-fit rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-        >
-          {todasExpandidas ? "Recolher todos os câmpus" : "Expandir todos os câmpus"}
-        </button>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {instituicoesComCampi.length > 0 && (
+          <button
+            type="button"
+            onClick={alternarTodasInstituicoes}
+            className="w-fit rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            {todasExpandidas ? "Recolher todos os câmpus" : "Expandir todos os câmpus"}
+          </button>
+        )}
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-neutral-500 dark:text-neutral-400">Mostrar:</span>
+          {(
+            [
+              { valor: "TUDO", label: "Tudo" },
+              { valor: "20RL", label: "Custeio (20RL)" },
+              { valor: "2994", label: "Assist. Estudantil (2994)" },
+            ] as const
+          ).map((opcao) => (
+            <button
+              key={opcao.valor}
+              type="button"
+              onClick={() => setFiltroBloco(opcao.valor)}
+              className={`rounded-md border px-2.5 py-1 font-medium ${
+                filtroBloco === opcao.valor
+                  ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
+                  : "border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {opcao.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="max-h-[75vh] overflow-auto rounded-md">
         <table className="w-full min-w-max border-collapse text-sm">
@@ -706,21 +748,31 @@ export function TabelaDistribuicao({
                 Instituição / Câmpus
               </th>
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                Total distribuído
+                Total distribuído (20RL + 2994)
               </th>
-              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">Reitoria</th>
-              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                Funcionamento
-              </th>
-              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                Qualidade e Eficiência
-              </th>
-              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                Assistência Estudantil
-              </th>
-              <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
-                Anuidade CONIF
-              </th>
+              {mostrar20RL && (
+                <>
+                  <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                    Reitoria
+                  </th>
+                  <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                    Funcionamento
+                  </th>
+                  <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                    Qualidade e Eficiência
+                  </th>
+                </>
+              )}
+              {mostrar2994 && (
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Assistência Estudantil
+                </th>
+              )}
+              {mostrar20RL && (
+                <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 text-right dark:bg-neutral-950">
+                  Anuidade CONIF
+                </th>
+              )}
               <th className="sticky top-0 z-20 bg-neutral-50 py-2 pr-4 dark:bg-neutral-950" />
             </tr>
           </thead>
@@ -756,15 +808,21 @@ export function TabelaDistribuicao({
                       </div>
                     </td>
                     <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.subtotalReais)}</td>
-                    <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.reitoriaValorReais)}</td>
-                    <td className="py-2 pr-4 text-right">—</td>
-                    <td className="py-2 pr-4 text-right">
-                      {formatoMoeda.format(instituicao.qualidadeEficienciaValorReais)}
-                    </td>
-                    <td className="py-2 pr-4 text-right">—</td>
-                    <td className="py-2 pr-4 text-right">
-                      {formatoMoeda.format(instituicao.anuidadeConifValorReais)}
-                    </td>
+                    {mostrar20RL && (
+                      <>
+                        <td className="py-2 pr-4 text-right">{formatoMoeda.format(instituicao.reitoriaValorReais)}</td>
+                        <td className="py-2 pr-4 text-right">—</td>
+                        <td className="py-2 pr-4 text-right">
+                          {formatoMoeda.format(instituicao.qualidadeEficienciaValorReais)}
+                        </td>
+                      </>
+                    )}
+                    {mostrar2994 && <td className="py-2 pr-4 text-right">—</td>}
+                    {mostrar20RL && (
+                      <td className="py-2 pr-4 text-right">
+                        {formatoMoeda.format(instituicao.anuidadeConifValorReais)}
+                      </td>
+                    )}
                     <td className="py-2 pr-4 text-right">
                       {(instituicao.detalheReitoria ||
                         instituicao.detalheQualidadeEficiencia ||
@@ -781,7 +839,7 @@ export function TabelaDistribuicao({
                       instituicao.detalheQualidadeEficiencia ||
                       instituicao.detalheAnuidadeConif) && (
                     <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                      <td colSpan={8} className="px-4 py-3">
+                      <td colSpan={numeroColunas} className="px-4 py-3">
                         <div className="flex flex-col gap-4">
                           {instituicao.detalheReitoria && (
                             <div>
@@ -817,15 +875,21 @@ export function TabelaDistribuicao({
                               {unidade.nome}
                             </td>
                             <td className="py-1.5 pr-4 text-right">{formatoMoeda.format(unidade.subtotalReais)}</td>
-                            <td className="py-1.5 pr-4 text-right">—</td>
-                            <td className="py-1.5 pr-4 text-right">
-                              {formatoMoeda.format(unidade.funcionamentoValorReais)}
-                            </td>
-                            <td className="py-1.5 pr-4 text-right">—</td>
-                            <td className="py-1.5 pr-4 text-right">
-                              {formatoMoeda.format(unidade.assistenciaEstudantilValorReais)}
-                            </td>
-                            <td className="py-1.5 pr-4 text-right">—</td>
+                            {mostrar20RL && (
+                              <>
+                                <td className="py-1.5 pr-4 text-right">—</td>
+                                <td className="py-1.5 pr-4 text-right">
+                                  {formatoMoeda.format(unidade.funcionamentoValorReais)}
+                                </td>
+                                <td className="py-1.5 pr-4 text-right">—</td>
+                              </>
+                            )}
+                            {mostrar2994 && (
+                              <td className="py-1.5 pr-4 text-right">
+                                {formatoMoeda.format(unidade.assistenciaEstudantilValorReais)}
+                              </td>
+                            )}
+                            {mostrar20RL && <td className="py-1.5 pr-4 text-right">—</td>}
                             <td className="py-1.5 pr-4 text-right">
                               {(unidade.detalheFuncionamento || unidade.detalheAssistenciaEstudantil) && (
                                 <BotaoMemoria
@@ -837,7 +901,7 @@ export function TabelaDistribuicao({
                           </tr>
                           {unidadeAberta && (
                             <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
-                              <td colSpan={8} className="px-4 py-3">
+                              <td colSpan={numeroColunas} className="px-4 py-3">
                                 <div className="flex flex-col gap-4">
                                   {unidade.detalheFuncionamento && (
                                     <div>
@@ -866,16 +930,36 @@ export function TabelaDistribuicao({
               );
             })}
           </tbody>
-          <tfoot>
-            <tr className="font-semibold text-neutral-900 dark:text-neutral-100">
-              <td className="pt-3 pr-4">Total geral</td>
-              <td className="pt-3 pr-4 text-right">{formatoMoeda.format(detalhe.totalGeralReais)}</td>
-              <td className="pt-3 pr-4" />
-              <td className="pt-3 pr-4" />
-              <td className="pt-3 pr-4" />
-              <td className="pt-3 pr-4" />
-              <td className="pt-3 pr-4" />
-              <td className="pt-3 pr-4" />
+          <tfoot className="sticky bottom-0 z-20 bg-neutral-50 dark:bg-neutral-950">
+            {mostrar20RL && (
+              <tr className="border-t-2 border-neutral-300 font-medium text-neutral-800 dark:border-neutral-700 dark:text-neutral-200">
+                <td className="pt-3 pr-4">Subtotal — Reitorias / Direção-Geral (rede)</td>
+                <td className="pt-3 pr-4 text-right">{formatoMoeda.format(totalReitoriaRede)}</td>
+                <td className="pt-3 pr-4 text-right">{formatoMoeda.format(totalReitoriaRede)}</td>
+                <td className="pt-3 pr-4 text-right">—</td>
+                <td className="pt-3 pr-4 text-right">—</td>
+                {mostrar2994 && <td className="pt-3 pr-4 text-right">—</td>}
+                <td className="pt-3 pr-4 text-right">—</td>
+                <td className="pt-3 pr-4" />
+              </tr>
+            )}
+            <tr className="border-t border-neutral-200 font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100">
+              <td className="py-3 pr-4">Total geral (rede)</td>
+              <td className="py-3 pr-4 text-right">{formatoMoeda.format(detalhe.totalGeralReais)}</td>
+              {mostrar20RL && (
+                <>
+                  <td className="py-3 pr-4 text-right">{formatoMoeda.format(totalReitoriaRede)}</td>
+                  <td className="py-3 pr-4 text-right">{formatoMoeda.format(totalFuncionamentoRede)}</td>
+                  <td className="py-3 pr-4 text-right">{formatoMoeda.format(totalQualidadeEficienciaRede)}</td>
+                </>
+              )}
+              {mostrar2994 && (
+                <td className="py-3 pr-4 text-right">{formatoMoeda.format(totalAssistenciaEstudantilRede)}</td>
+              )}
+              {mostrar20RL && (
+                <td className="py-3 pr-4 text-right">{formatoMoeda.format(totalAnuidadeConifRede)}</td>
+              )}
+              <td className="py-3 pr-4" />
             </tr>
           </tfoot>
         </table>
