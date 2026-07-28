@@ -57,6 +57,34 @@ const CAMPO_EFICIENCIA_ACADEMICA = [
 
 const formatoNumero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 5 });
 
+function baixarModeloCsv(colunas: readonly string[], nomeArquivo: string) {
+  const blob = new Blob([colunas.join(";") + "\n"], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function ExplicacaoImportacaoCsv({ colunas, nomeArquivo }: { colunas: readonly string[]; nomeArquivo: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+      <p>
+        Colunas esperadas (delimitador <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">;</code>):{" "}
+        <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">{colunas.join(";")}</code>
+      </p>
+      <button
+        type="button"
+        onClick={() => baixarModeloCsv(colunas, nomeArquivo)}
+        className="w-fit shrink-0 rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+      >
+        Baixar modelo
+      </button>
+    </div>
+  );
+}
+
 function ResultadoImport({
   resultado,
 }: {
@@ -208,6 +236,18 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
           />
         </label>
       </div>
+      <ExplicacaoImportacaoCsv
+        colunas={[
+          "Instituicao",
+          "UF",
+          "Campus",
+          "MatriculaTotalPresencialEqualizada",
+          "MatriculaTotalEadEqualizada",
+          "MatriculaTotalEadMoocEqualizada",
+          "MatriculaTotalEadFpEqualizada",
+        ]}
+        nomeArquivo="modelo_matricula_total_equalizada.csv"
+      />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {linhasFiltradas.length} de {linhas.length} câmpus — ano-base {ano}.
@@ -379,6 +419,7 @@ function RappAnualTabela({ ano }: { ano: number }) {
           />
         </label>
       </div>
+      <ExplicacaoImportacaoCsv colunas={["Sigla", "Instituicao", "UF", "RAPP"]} nomeArquivo="modelo_rapp_anual.csv" />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
@@ -548,6 +589,10 @@ function EficienciaAcademicaAnualTabela({ ano }: { ano: number }) {
           />
         </label>
       </div>
+      <ExplicacaoImportacaoCsv
+        colunas={["Sigla", "Instituicao", "UF", "ConclusaoCiclo", "EvasaoCiclo", "RetencaoCiclo", "EficienciaAcademica"]}
+        nomeArquivo="modelo_eficiencia_academica_anual.csv"
+      />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
