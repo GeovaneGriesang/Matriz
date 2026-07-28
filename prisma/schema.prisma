@@ -13,19 +13,21 @@ generator client {
 // de câmpus/curso nos exports reais) — ver Instituicao.sigla/Unidade.nome.
 
 model Instituicao {
-  id                       Int                        @id @default(autoincrement())
-  sigla                    String                     @unique
-  nome                     String
-  organizacaoAcademica     String
-  regiao                   String
-  uf                       String
-  estado                   String
-  unidades                 Unidade[]
-  fatos                    FatoIndicador[]
-  rappAnual                RappAnual[]
-  eficienciaAcademicaAnual EficienciaAcademicaAnual[]
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime                   @updatedAt
+  id                            Int                             @id @default(autoincrement())
+  sigla                         String                          @unique
+  nome                          String
+  organizacaoAcademica          String
+  regiao                        String
+  uf                            String
+  estado                        String
+  unidades                      Unidade[]
+  fatos                         FatoIndicador[]
+  rappAnual                     RappAnual[]
+  eficienciaAcademicaAnual      EficienciaAcademicaAnual[]
+  custeioDistribuidoOficial     CusteioDistribuidoOficial[]
+  assistenciaDistribuidoOficial AssistenciaDistribuidoOficial[]
+  createdAt                     DateTime                        @default(now())
+  updatedAt                     DateTime                        @updatedAt
 }
 
 model Unidade {
@@ -156,6 +158,8 @@ enum BlocoTipo {
   QUALIDADE_EFICIENCIA
   ASSISTENCIA_ESTUDANTIL
   ANUIDADE_CONIF
+  CUSTEIO_OFICIAL
+  ASSISTENCIA_OFICIAL
 }
 
 enum CalculationOrigem {
@@ -282,6 +286,48 @@ model EficienciaAcademicaAnual {
   eficienciaAcademica Decimal     @db.Decimal(18, 6)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
+
+  @@unique([instituicaoId, ano])
+  @@index([ano])
+}
+
+/// Custeio (Funcionamento+Reitoria+Qualidade e Eficiência) FINAL distribuído por instituição,
+/// publicado pela CONIF em `VALOR SPO` — já vem com o complemento da trava de não-decréscimo
+/// embutido (Art. 7º Portaria SETEC/MEC nº 51/2018: nenhuma instituição pode receber menos que no
+/// exercício anterior). Este sistema NÃO reimplementa o algoritmo da trava — importa o valor final
+/// diretamente enquanto houver planilha oficial publicada para o ano (ver calcularDistribuicaoOficialAction).
+model CusteioDistribuidoOficial {
+  id                 Int         @id @default(autoincrement())
+  instituicaoId      Int
+  instituicao        Instituicao @relation(fields: [instituicaoId], references: [id])
+  ano                Int
+  custeioOficial     Decimal     @db.Decimal(18, 6)
+  /// Custeio calculado pela CONIF ANTES da trava de não-decréscimo (aba COMPARATIVO, coluna AF) —
+  /// permite calcular o complemento REAL (custeioOficial - custeioBaseOficial) direto da planilha,
+  /// sem depender do nosso próprio cálculo por fórmula. Opcional: nem todo import necessariamente traz
+  /// essa coluna (ver importarOrcamentoDistribuidoOficialAction).
+  custeioBaseOficial Decimal?    @db.Decimal(18, 6)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([instituicaoId, ano])
+  @@index([ano])
+}
+
+/// Assistência Estudantil (Ação 2994) FINAL distribuída por instituição, publicado pela CONIF em
+/// `VALOR SPO` — mesma situação de CusteioDistribuidoOficial (já com o complemento da trava
+/// embutido, importado diretamente, não recalculado).
+model AssistenciaDistribuidoOficial {
+  id                     Int         @id @default(autoincrement())
+  instituicaoId          Int
+  instituicao            Instituicao @relation(fields: [instituicaoId], references: [id])
+  ano                    Int
+  assistenciaOficial     Decimal     @db.Decimal(18, 6)
+  /// Assistência calculada pela CONIF ANTES da trava de não-decréscimo (aba COMPARATIVO, coluna AK)
+  /// — mesma finalidade de CusteioDistribuidoOficial.custeioBaseOficial.
+  assistenciaBaseOficial Decimal?    @db.Decimal(18, 6)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])

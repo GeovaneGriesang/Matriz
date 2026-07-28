@@ -331,6 +331,14 @@ export function SimuladorPanel() {
             Teste um orçamento, escopo e ano diferentes. O resultado é só uma simulação — não altera nem aparece na
             tela de Consulta, que mostra apenas o que o administrador calculou oficialmente.
           </p>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            A simulação sempre calcula o Custeio e a Assistência Estudantil por fórmula, mesmo para anos com
+            planilha oficial publicada e com Custeio/Assistência oficiais cadastrados em /admin/dados-anuais —
+            nunca substitui o total da instituição pelo valor oficial com a trava de não-decréscimo (Art. 7º
+            Portaria SETEC/MEC nº 51/2018). Por isso o número da simulação pode diferir do número oficial em
+            /consulta mesmo usando o mesmo ano/orçamento — a distribuição oficial usa o valor oficial quando
+            existe, a simulação nunca usa.
+          </p>
         </div>
 
         <form

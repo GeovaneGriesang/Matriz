@@ -8,6 +8,7 @@ import {
   type MatriculaTotalEqualizadaPonderada,
 } from "@/calculation-engine/matriculaTotalEqualizada";
 import { aplicarPisoMinimoCampusNovo } from "@/calculation-engine/aplicarPisoMinimoCampusNovo";
+import { aplicarCusteioOficial, aplicarAssistenciaOficial } from "@/calculation-engine/aplicarCusteioAssistenciaOficial";
 import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
 import { blocoReitorias } from "@/calculation-engine/blocoReitorias";
 import { blocoQualidadeEficiencia } from "@/calculation-engine/blocoQualidadeEficiencia";
@@ -705,13 +706,67 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     assistenciaEstudantilCampusInputs,
     input.orcamentoAssistenciaEstudantil ?? 0,
   );
-  const assistenciaEstudantilPorCampus = new Map(assistenciaEstudantil.map((a) => [a.campusId, a]));
+  // Custeio/Assistência FINAIS distribuídos por instituição (VALOR SPO, colunas J/K) — já com o
+  // complemento da trava de não-decréscimo embutido (Art. 7º Portaria SETEC/MEC nº 51/2018). Este
+  // sistema não reimplementa o algoritmo da trava (ver Metodologia seção 6): quando existe planilha
+  // oficial publicada/importada para o ano, usa o valor final diretamente no lugar do cálculo por
+  // fórmula. Só em runs OFICIAIS — o Simulador mantém sempre o cálculo puro por fórmula, mesmo
+  // quando há valor oficial disponível para o ano/instituição simulados (mesma regra de "só o
+  // administrador trava a distribuição oficial" já aplicada ao resto do sistema).
+  const custeioDistribuidoOficialRows =
+    input.origem === "OFICIAL"
+      ? await prisma.custeioDistribuidoOficial.findMany({
+          where: { ano: anoOficial, instituicaoId: { in: input.instituicaoIds } },
+        })
+      : [];
+  const assistenciaDistribuidoOficialRows =
+    input.origem === "OFICIAL"
+      ? await prisma.assistenciaDistribuidoOficial.findMany({
+          where: { ano: anoOficial, instituicaoId: { in: input.instituicaoIds } },
+        })
+      : [];
+  const custeioOficialPorInstituicao = new Map<number, number>(
+    custeioDistribuidoOficialRows.map((r) => [r.instituicaoId, Number(r.custeioOficial)]),
+  );
+  const assistenciaOficialPorInstituicao = new Map<number, number>(
+    assistenciaDistribuidoOficialRows.map((r) => [r.instituicaoId, Number(r.assistenciaOficial)]),
+  );
+  // Base pré-trava (aba COMPARATIVO, colunas AF/AK) — opcional, só para separar na memória de
+  // cálculo o complemento REAL da trava (ground truth da planilha) da diferença entre nosso cálculo
+  // e essa base (imprecisão do nosso modelo, não trava) — ver aplicarCusteioAssistenciaOficial.ts.
+  const custeioBaseOficialPorInstituicao = new Map<number, number>(
+    custeioDistribuidoOficialRows
+      .filter((r) => r.custeioBaseOficial !== null)
+      .map((r) => [r.instituicaoId, Number(r.custeioBaseOficial)]),
+  );
+  const assistenciaBaseOficialPorInstituicao = new Map<number, number>(
+    assistenciaDistribuidoOficialRows
+      .filter((r) => r.assistenciaBaseOficial !== null)
+      .map((r) => [r.instituicaoId, Number(r.assistenciaBaseOficial)]),
+  );
+
+  const reitoriaPorInstituicaoCalculado = new Map(reitorias.map((r) => [r.autarquiaId, r.valorReais]));
+  const qualidadeEficienciaPorInstituicaoCalculado = new Map(qualidadeEficiencia.map((q) => [q.instituicaoId, q.valorTotal]));
+
+  const { funcionamento: funcionamentoFinal, resumoPorInstituicao: resumoCusteioOficial } = aplicarCusteioOficial(
+    funcionamento,
+    instituicaoIdPorCampus,
+    reitoriaPorInstituicaoCalculado,
+    qualidadeEficienciaPorInstituicaoCalculado,
+    custeioOficialPorInstituicao,
+    custeioBaseOficialPorInstituicao,
+  );
+  const { assistencia: assistenciaEstudantilFinal, resumoPorInstituicao: resumoAssistenciaOficial } =
+    aplicarAssistenciaOficial(assistenciaEstudantil, assistenciaOficialPorInstituicao, assistenciaBaseOficialPorInstituicao);
+  const assistenciaEstudantilPorCampus = new Map(assistenciaEstudantilFinal.map((a) => [a.campusId, a]));
 
   // Anuidade CONIF: percentual sobre o Custeio (20RL) já distribuído de cada instituição
   // (Funcionamento agregado por instituição + Reitorias + Qualidade e Eficiência) — informativo,
-  // não deduzido do valor distribuído (ver calcularAnuidadeConif).
+  // não deduzido do valor distribuído (ver calcularAnuidadeConif). Usa o Funcionamento FINAL (já
+  // com a substituição pelo Custeio oficial, quando existir) — coerente com "VALOR SPO", cuja
+  // Anuidade final também incide sobre o Custeio 2026 já com o complemento da trava.
   const custeioPorInstituicao = new Map<number, number>();
-  for (const f of funcionamento) {
+  for (const f of funcionamentoFinal) {
     const instituicaoId = instituicaoIdPorCampus.get(f.campusId);
     if (instituicaoId === undefined) continue;
     custeioPorInstituicao.set(instituicaoId, (custeioPorInstituicao.get(instituicaoId) ?? 0) + f.valorReais);
@@ -777,7 +832,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   });
 
   const resultados = [
-    ...funcionamento.map((f) => {
+    ...funcionamentoFinal.map((f) => {
       const fonteMatricula = fontePorCampus.get(f.campusId) ?? "placeholder";
       const registroOficial = matriculaOficialPorUnidade.get(f.campusId);
       return {
@@ -807,6 +862,11 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
           pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
           pisoAplicado: f.pisoAplicado,
           valorAntesDoPiso: f.valorAntesDoPiso,
+          // Presente só quando a instituição tem Custeio oficial cadastrado (CusteioDistribuidoOficial)
+          // — escala proporcionalmente este câmpus para que o Custeio da instituição bata com o valor
+          // final publicado pela CONIF (ver aplicarCusteioAssistenciaOficial.ts).
+          custeioOficialAplicado: f.custeioOficialAplicado,
+          valorAntesDoCusteioOficial: f.valorAntesDoCusteioOficial,
           valorReais: f.valorReais,
         },
       };
@@ -940,6 +1000,11 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         matriculaPonderadaCampus: a.matriculaPonderadaCampus,
         matriculaPonderadaInstituicao: a.matriculaPonderadaInstituicao,
         shareDentroInstituicao: a.shareDentroInstituicao,
+        // Presente só quando a instituição tem Assistência oficial cadastrada
+        // (AssistenciaDistribuidoOficial) — escala proporcionalmente este câmpus para bater com o
+        // valor final publicado pela CONIF (ver aplicarCusteioAssistenciaOficial.ts).
+        assistenciaOficialAplicada: a.assistenciaOficialAplicada,
+        valorAntesDaAssistenciaOficial: a.valorAntesDaAssistenciaOficial,
         valorReais: a.valorReais,
       },
     })),
@@ -953,6 +1018,42 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
         custeioInstituicao: a.custeioInstituicao,
         percentualAnuidade: a.percentualAnuidade,
         valorReais: a.valorReais,
+      },
+    })),
+    // Só existe uma linha aqui para instituições com Custeio/Assistência oficial cadastrados
+    // (CusteioDistribuidoOficial/AssistenciaDistribuidoOficial) para `anoOficial` — quando não
+    // existe, a instituição segue 100% no cálculo por fórmula, sem nenhuma linha extra (ver
+    // aplicarCusteioAssistenciaOficial.ts e a memória de cálculo em TabelaDistribuicao.tsx).
+    ...Array.from(resumoCusteioOficial.values()).map((r) => ({
+      runId: run.id,
+      campusId: null,
+      bloco: "CUSTEIO_OFICIAL" as const,
+      metrica: `valorReais_autarquia_${r.instituicaoId}`,
+      valor: r.custeioOficial,
+      detalhe: {
+        ano: anoOficial,
+        custeioCalculado: r.custeioCalculado,
+        custeioOficial: r.custeioOficial,
+        custeioBaseOficial: r.custeioBaseOficial,
+        complementoReal: r.complementoReal,
+        diferencaCalculoBase: r.diferencaCalculoBase,
+        fatorEscala: r.fatorEscala,
+      },
+    })),
+    ...Array.from(resumoAssistenciaOficial.values()).map((r) => ({
+      runId: run.id,
+      campusId: null,
+      bloco: "ASSISTENCIA_OFICIAL" as const,
+      metrica: `valorReais_autarquia_${r.instituicaoId}`,
+      valor: r.assistenciaOficial,
+      detalhe: {
+        ano: anoOficial,
+        assistenciaCalculada: r.assistenciaCalculada,
+        assistenciaOficial: r.assistenciaOficial,
+        assistenciaBaseOficial: r.assistenciaBaseOficial,
+        complementoReal: r.complementoReal,
+        diferencaCalculoBase: r.diferencaCalculoBase,
+        fatorEscala: r.fatorEscala,
       },
     })),
   ];

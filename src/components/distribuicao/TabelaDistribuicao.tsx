@@ -36,6 +36,14 @@ interface DetalheFuncionamento {
   pisoMinimoCampusNovo: number;
   pisoAplicado: boolean;
   valorAntesDoPiso: number;
+  /**
+   * true quando a instituição deste câmpus tem Custeio oficial cadastrado (ver DetalheCusteioOficial
+   * na instituição) — o valor abaixo já foi escalado proporcionalmente a partir do calculado por
+   * fórmula (`valorAntesDoCusteioOficial`) para que o Custeio da instituição bata com o valor final
+   * publicado pela CONIF. Ausente em execuções anteriores a essa distinção.
+   */
+  custeioOficialAplicado?: boolean;
+  valorAntesDoCusteioOficial?: number;
   valorReais: number;
 }
 
@@ -130,6 +138,14 @@ interface DetalheAssistenciaEstudantil {
   matriculaPonderadaCampus: number;
   matriculaPonderadaInstituicao: number;
   shareDentroInstituicao: number;
+  /**
+   * true quando a instituição deste câmpus tem Assistência oficial cadastrada (ver
+   * DetalheAssistenciaOficial na instituição) — o valor abaixo já foi escalado proporcionalmente a
+   * partir do calculado por fórmula (`valorAntesDaAssistenciaOficial`). Ausente em execuções
+   * anteriores a essa distinção.
+   */
+  assistenciaOficialAplicada?: boolean;
+  valorAntesDaAssistenciaOficial?: number;
   valorReais: number;
 }
 
@@ -149,6 +165,42 @@ interface DetalheAnuidadeConif {
   custeioInstituicao: number;
   percentualAnuidade: number;
   valorReais: number;
+}
+
+/**
+ * Presente só quando existe Custeio oficial cadastrado para a instituição/ano (ver
+ * CusteioDistribuidoOficial) — o valor final publicado pela CONIF (VALOR SPO) já vem com o
+ * complemento da trava de não-decréscimo (Art. 7º Portaria SETEC/MEC nº 51/2018) embutido. Este
+ * sistema não recalcula a trava — só importa o valor final e mostra os números lado a lado.
+ *
+ * `custeioBaseOficial` (aba COMPARATIVO, coluna AF) é opcional — quando presente, permite separar
+ * `complementoReal` (ground truth da planilha: quanto a CONIF de fato aplicou pela trava) de
+ * `diferencaCalculoBase` (o quanto NOSSO cálculo por fórmula diverge da base da CONIF — imprecisão
+ * de modelo, nunca chamada de "complemento" ou "trava"). Sem `custeioBaseOficial`, as duas ficam
+ * `null` — só dá pra comparar calculado vs. oficial final, sem saber quanto é trava de verdade.
+ */
+interface DetalheCusteioOficial {
+  ano: number;
+  /** O que o Funcionamento + Reitoria + Qualidade e Eficiência calcularia por fórmula, sem a trava. */
+  custeioCalculado: number;
+  custeioOficial: number;
+  custeioBaseOficial: number | null;
+  /** custeioOficial - custeioBaseOficial — ground truth da planilha (Art. 7º). */
+  complementoReal: number | null;
+  /** custeioCalculado - custeioBaseOficial — imprecisão do nosso modelo, NÃO é trava/complemento. */
+  diferencaCalculoBase: number | null;
+  fatorEscala: number;
+}
+
+/** Idem DetalheCusteioOficial, para a Assistência Estudantil (ver AssistenciaDistribuidoOficial). */
+interface DetalheAssistenciaOficial {
+  ano: number;
+  assistenciaCalculada: number;
+  assistenciaOficial: number;
+  assistenciaBaseOficial: number | null;
+  complementoReal: number | null;
+  diferencaCalculoBase: number | null;
+  fatorEscala: number;
 }
 
 export interface UnidadeResultado {
@@ -174,6 +226,8 @@ export interface InstituicaoResultado {
   detalheReitoria: DetalheReitoria | null;
   detalheQualidadeEficiencia: DetalheQualidadeEficiencia | null;
   detalheAnuidadeConif: DetalheAnuidadeConif | null;
+  detalheCusteioOficial: DetalheCusteioOficial | null;
+  detalheAssistenciaOficial: DetalheAssistenciaOficial | null;
 }
 
 export interface CalculationRunDetail {
@@ -302,6 +356,16 @@ function MemoriaFuncionamento({ detalhe }: { detalhe: DetalheFuncionamento }) {
             {formatoMoeda.format(detalhe.valorAntesDoPiso)} ficou abaixo do piso de{" "}
             {formatoMoeda.format(detalhe.pisoMinimoCampusNovo)} — usado o piso.{" "}
             <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+          </ItemMemoria>
+        )}
+        {detalhe.custeioOficialAplicado && (
+          <ItemMemoria>
+            <strong>Aproximado — escalado a partir do Custeio oficial da instituição:</strong> este câmpus
+            calcularia {formatoMoeda.format(detalhe.valorAntesDoCusteioOficial ?? 0)} por fórmula, mas o Custeio
+            da instituição foi substituído pelo valor oficial (ver &quot;Custeio (com trava de
+            não-decréscimo)&quot; abaixo) — a planilha oficial não detalha o complemento por câmpus, então este
+            valor foi escalado proporcionalmente para que a soma dos câmpus bata com o total oficial da
+            instituição: <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
           </ItemMemoria>
         )}
       </ul>
@@ -531,8 +595,20 @@ function MemoriaAssistenciaEstudantil({ detalhe }: { detalhe: DetalheAssistencia
       </ItemMemoria>
       <ItemMemoria>
         Valor do câmpus: {formatoPercentual.format(detalhe.shareDentroInstituicao)} ×{" "}
-        {formatoMoeda.format(detalhe.valorInstituicao)} = <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+        {formatoMoeda.format(detalhe.valorInstituicao)} ={" "}
+        <strong>
+          {formatoMoeda.format(detalhe.assistenciaOficialAplicada ? detalhe.valorAntesDaAssistenciaOficial ?? 0 : detalhe.valorReais)}
+        </strong>
       </ItemMemoria>
+      {detalhe.assistenciaOficialAplicada && (
+        <ItemMemoria>
+          <strong>Aproximado — escalado a partir da Assistência oficial da instituição:</strong> a Assistência
+          Estudantil da instituição foi substituída pelo valor oficial (ver &quot;Assistência Estudantil (com
+          trava de não-decréscimo)&quot; abaixo) — a planilha oficial não detalha o complemento por câmpus,
+          então este valor foi escalado proporcionalmente para que a soma dos câmpus bata com o total oficial da
+          instituição: <strong>{formatoMoeda.format(detalhe.valorReais)}</strong>
+        </ItemMemoria>
+      )}
     </ul>
   );
 }
@@ -597,6 +673,123 @@ function MemoriaAnuidadeConif({ detalhe }: { detalhe: DetalheAnuidadeConif }) {
       </ItemMemoria>
       <ItemMemoria>
         Valor informativo — não é deduzido do Custeio distribuído acima nem do total geral desta tela.
+      </ItemMemoria>
+    </ul>
+  );
+}
+
+/** Diferença abaixo de 1 centavo é tratada como "sem complemento" (arredondamento). */
+const TOLERANCIA_COMPLEMENTO_REAIS = 0.01;
+
+/** Texto do complemento real (ground truth da planilha) — compartilhado entre Custeio e Assistência. */
+function ItemComplementoReal({ complementoReal }: { complementoReal: number }) {
+  return (
+    <ItemMemoria>
+      <strong>Complemento real aplicado pela CONIF: {formatoMoeda.format(complementoReal)}.</strong> A CONIF
+      aplica o Art. 7º da Portaria SETEC/MEC nº 51/2018 (trava de não-decréscimo), que garante à instituição
+      um valor não inferior ao praticado no exercício anterior. Esse número vem direto da planilha oficial
+      (valor final − base pré-trava) — não depende do cálculo deste sistema.
+    </ItemMemoria>
+  );
+}
+
+function MemoriaCusteioOficial({ detalhe }: { detalhe: DetalheCusteioOficial }) {
+  const temComplementoReal =
+    detalhe.complementoReal !== null && Math.abs(detalhe.complementoReal) >= TOLERANCIA_COMPLEMENTO_REAIS;
+  const temDiferencaModelo =
+    detalhe.diferencaCalculoBase !== null && Math.abs(detalhe.diferencaCalculoBase) >= TOLERANCIA_COMPLEMENTO_REAIS;
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      <ItemMemoria>
+        O que a fórmula calcularia (Funcionamento + Reitoria + Qualidade e Eficiência, ano-base{" "}
+        {detalhe.ano}): <strong>{formatoMoeda.format(detalhe.custeioCalculado)}</strong>
+      </ItemMemoria>
+      {detalhe.custeioBaseOficial !== null && (
+        <ItemMemoria>
+          Base calculada pela CONIF antes da trava (aba COMPARATIVO):{" "}
+          <strong>{formatoMoeda.format(detalhe.custeioBaseOficial)}</strong>
+        </ItemMemoria>
+      )}
+      <ItemMemoria>
+        Valor oficial efetivamente usado (VALOR SPO, CONIF): <strong>{formatoMoeda.format(detalhe.custeioOficial)}</strong>
+      </ItemMemoria>
+      {temComplementoReal ? (
+        <ItemComplementoReal complementoReal={detalhe.complementoReal as number} />
+      ) : detalhe.complementoReal !== null ? (
+        <ItemMemoria>
+          Neste caso o valor final da CONIF coincide com a base pré-trava — a instituição não precisou de
+          complemento real (Art. 7º).
+        </ItemMemoria>
+      ) : (
+        <ItemMemoria>
+          A base pré-trava desta instituição ainda não foi cadastrada — não dá pra confirmar, direto da
+          planilha, se houve complemento real (Art. 7º) aqui.
+        </ItemMemoria>
+      )}
+      {temDiferencaModelo && (
+        <ItemMemoria>
+          <strong>Diferença entre nosso cálculo e a base oficial pré-trava:</strong> o cálculo por fórmula
+          deste sistema ficou {(detalhe.diferencaCalculoBase as number) > 0 ? "acima" : "abaixo"} da base da
+          CONIF em {formatoMoeda.format(Math.abs(detalhe.diferencaCalculoBase as number))}. Isso não é trava
+          nem complemento — é imprecisão conhecida do nosso modelo (ex.: Assistência Estudantil ainda não
+          validada contra a planilha oficial, Piso Mínimo por Câmpus Novo com comportamento diferente do
+          calculado pela CONIF para esta base/ano).
+        </ItemMemoria>
+      )}
+      <ItemMemoria>
+        Essa substituição vale só para {detalhe.ano} (ano com planilha oficial publicada) e não é o
+        comportamento geral do sistema — em anos sem planilha oficial, o Custeio volta a ser 100% calculado
+        por fórmula.
+      </ItemMemoria>
+    </ul>
+  );
+}
+
+function MemoriaAssistenciaOficial({ detalhe }: { detalhe: DetalheAssistenciaOficial }) {
+  const temComplementoReal =
+    detalhe.complementoReal !== null && Math.abs(detalhe.complementoReal) >= TOLERANCIA_COMPLEMENTO_REAIS;
+  const temDiferencaModelo =
+    detalhe.diferencaCalculoBase !== null && Math.abs(detalhe.diferencaCalculoBase) >= TOLERANCIA_COMPLEMENTO_REAIS;
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      <ItemMemoria>
+        O que a fórmula calcularia (ano-base {detalhe.ano}): <strong>{formatoMoeda.format(detalhe.assistenciaCalculada)}</strong>
+      </ItemMemoria>
+      {detalhe.assistenciaBaseOficial !== null && (
+        <ItemMemoria>
+          Base calculada pela CONIF antes da trava (aba COMPARATIVO):{" "}
+          <strong>{formatoMoeda.format(detalhe.assistenciaBaseOficial)}</strong>
+        </ItemMemoria>
+      )}
+      <ItemMemoria>
+        Valor oficial efetivamente usado (VALOR SPO, CONIF): <strong>{formatoMoeda.format(detalhe.assistenciaOficial)}</strong>
+      </ItemMemoria>
+      {temComplementoReal ? (
+        <ItemComplementoReal complementoReal={detalhe.complementoReal as number} />
+      ) : detalhe.complementoReal !== null ? (
+        <ItemMemoria>
+          Neste caso o valor final da CONIF coincide com a base pré-trava — a instituição não precisou de
+          complemento real (Art. 7º).
+        </ItemMemoria>
+      ) : (
+        <ItemMemoria>
+          A base pré-trava desta instituição ainda não foi cadastrada — não dá pra confirmar, direto da
+          planilha, se houve complemento real (Art. 7º) aqui.
+        </ItemMemoria>
+      )}
+      {temDiferencaModelo && (
+        <ItemMemoria>
+          <strong>Diferença entre nosso cálculo e a base oficial pré-trava:</strong> o cálculo por fórmula
+          deste sistema ficou {(detalhe.diferencaCalculoBase as number) > 0 ? "acima" : "abaixo"} da base da
+          CONIF em {formatoMoeda.format(Math.abs(detalhe.diferencaCalculoBase as number))}. Isso não é trava
+          nem complemento — é imprecisão conhecida do nosso modelo (Assistência Estudantil ainda não validada
+          contra a planilha oficial).
+        </ItemMemoria>
+      )}
+      <ItemMemoria>
+        Essa substituição vale só para {detalhe.ano} (ano com planilha oficial publicada) e não é o
+        comportamento geral do sistema — em anos sem planilha oficial, a Assistência Estudantil volta a ser
+        100% calculada por fórmula.
       </ItemMemoria>
     </ul>
   );
@@ -826,7 +1019,9 @@ export function TabelaDistribuicao({
                     <td className="py-2 pr-4 text-right">
                       {(instituicao.detalheReitoria ||
                         instituicao.detalheQualidadeEficiencia ||
-                        instituicao.detalheAnuidadeConif) && (
+                        instituicao.detalheAnuidadeConif ||
+                        instituicao.detalheCusteioOficial ||
+                        instituicao.detalheAssistenciaOficial) && (
                         <BotaoMemoria
                           aberto={instituicaoAberta}
                           onClick={() => alternar(instituicoesAbertas, setInstituicoesAbertas, instituicao.id)}
@@ -837,7 +1032,9 @@ export function TabelaDistribuicao({
                   {instituicaoAberta &&
                     (instituicao.detalheReitoria ||
                       instituicao.detalheQualidadeEficiencia ||
-                      instituicao.detalheAnuidadeConif) && (
+                      instituicao.detalheAnuidadeConif ||
+                      instituicao.detalheCusteioOficial ||
+                      instituicao.detalheAssistenciaOficial) && (
                     <tr className="border-b border-neutral-100 bg-neutral-100 dark:border-neutral-900 dark:bg-neutral-900">
                       <td colSpan={numeroColunas} className="px-4 py-3">
                         <div className="flex flex-col gap-4">
@@ -859,6 +1056,22 @@ export function TabelaDistribuicao({
                             <div>
                               <p className="font-medium text-neutral-900 dark:text-neutral-100">Anuidade CONIF</p>
                               <MemoriaAnuidadeConif detalhe={instituicao.detalheAnuidadeConif} />
+                            </div>
+                          )}
+                          {instituicao.detalheCusteioOficial && (
+                            <div>
+                              <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                                Custeio (com trava de não-decréscimo)
+                              </p>
+                              <MemoriaCusteioOficial detalhe={instituicao.detalheCusteioOficial} />
+                            </div>
+                          )}
+                          {instituicao.detalheAssistenciaOficial && (
+                            <div>
+                              <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                                Assistência Estudantil (com trava de não-decréscimo)
+                              </p>
+                              <MemoriaAssistenciaOficial detalhe={instituicao.detalheAssistenciaOficial} />
                             </div>
                           )}
                         </div>
