@@ -12,6 +12,11 @@ import {
   salvarEficienciaAcademicaAnualAction,
   type LinhaEficienciaAcademicaNaoImportada,
 } from "@/server/actions/eficienciaAcademicaAnual";
+import {
+  importarOrcamentoDistribuidoOficialAction,
+  salvarOrcamentoDistribuidoOficialAction,
+  type LinhaOrcamentoDistribuidoOficialNaoImportada,
+} from "@/server/actions/orcamentoDistribuidoOficial";
 
 interface MatriculaResumo {
   unidadeId: number;
@@ -40,6 +45,23 @@ interface EficienciaAcademicaResumo {
   retencaoCiclo: number;
   eficienciaAcademica: number;
 }
+
+interface OrcamentoDistribuidoOficialResumo {
+  instituicaoId: number;
+  instituicaoSigla: string;
+  instituicaoNome: string;
+  custeioOficial: number;
+  assistenciaOficial: number;
+  custeioBaseOficial: number;
+  assistenciaBaseOficial: number;
+}
+
+const CAMPO_ORCAMENTO_OFICIAL = [
+  { chave: "custeioOficial", label: "Custeio oficial (20RL, com trava)" },
+  { chave: "assistenciaOficial", label: "Assistência oficial (2994, com trava)" },
+  { chave: "custeioBaseOficial", label: "Custeio base (antes da trava)" },
+  { chave: "assistenciaBaseOficial", label: "Assistência base (antes da trava)" },
+] as const;
 
 const CAMPO_MATRICULA = [
   { chave: "matriculaTotalPresencialEqualizada", label: "Presencial" },
@@ -659,6 +681,210 @@ function EficienciaAcademicaAnualTabela({ ano }: { ano: number }) {
   );
 }
 
+function OrcamentoDistribuidoOficialTabela({ ano }: { ano: number }) {
+  const [linhas, setLinhas] = useState<OrcamentoDistribuidoOficialResumo[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [busca, setBusca] = useState("");
+  const [valores, setValores] = useState<Record<number, Record<string, string>>>({});
+  const [estadoPorId, setEstadoPorId] = useState<Record<number, "idle" | "salvando" | "erro">>({});
+  const [importando, setImportando] = useState(false);
+  const [resultadoImport, setResultadoImport] = useState<{
+    importadas: number;
+    atualizadas: number;
+    naoImportadas: { linha: number; motivo: string; detalhe: string }[];
+  } | null>(null);
+  const inputArquivoRef = useRef<HTMLInputElement | null>(null);
+
+  function carregar() {
+    setCarregando(true);
+    fetch(`/api/orcamento-distribuido-oficial?ano=${ano}`)
+      .then((r) => (r.ok ? (r.json() as Promise<OrcamentoDistribuidoOficialResumo[]>) : []))
+      .then((lista) => {
+        setLinhas(lista);
+        setValores(
+          Object.fromEntries(
+            lista.map((l) => [
+              l.instituicaoId,
+              Object.fromEntries(CAMPO_ORCAMENTO_OFICIAL.map((c) => [c.chave, String(l[c.chave])])),
+            ]),
+          ),
+        );
+      })
+      .catch(() => {
+        // Falha pontual ao listar não deve travar a tela.
+      })
+      .finally(() => setCarregando(false));
+  }
+
+  useEffect(carregar, [ano]);
+
+  const linhasFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return linhas;
+    return linhas.filter(
+      (l) => l.instituicaoNome.toLowerCase().includes(termo) || l.instituicaoSigla.toLowerCase().includes(termo),
+    );
+  }, [linhas, busca]);
+
+  async function salvarLinha(instituicaoId: number) {
+    setEstadoPorId((atual) => ({ ...atual, [instituicaoId]: "salvando" }));
+    try {
+      const formData = new FormData();
+      formData.set("instituicaoId", String(instituicaoId));
+      formData.set("ano", String(ano));
+      for (const campo of CAMPO_ORCAMENTO_OFICIAL) {
+        formData.set(campo.chave, valores[instituicaoId]?.[campo.chave] ?? "0");
+      }
+      const resultado = await salvarOrcamentoDistribuidoOficialAction(formData);
+      if (!resultado.ok) throw new Error(resultado.errorMessage ?? "Não foi possível salvar.");
+      setEstadoPorId((atual) => ({ ...atual, [instituicaoId]: "idle" }));
+    } catch {
+      setEstadoPorId((atual) => ({ ...atual, [instituicaoId]: "erro" }));
+    }
+  }
+
+  async function importarArquivo(arquivo: File) {
+    setImportando(true);
+    setResultadoImport(null);
+    try {
+      const formData = new FormData();
+      formData.set("ano", String(ano));
+      formData.set("arquivo", arquivo);
+      const resultado = await importarOrcamentoDistribuidoOficialAction(formData);
+      if (!resultado.ok) throw new Error(resultado.errorMessage ?? "Falha ao importar.");
+      setResultadoImport({
+        importadas: resultado.importadas ?? 0,
+        atualizadas: resultado.atualizadas ?? 0,
+        naoImportadas: (resultado.naoImportadas ?? []).map((n: LinhaOrcamentoDistribuidoOficialNaoImportada) => ({
+          linha: n.linha,
+          motivo: n.motivo,
+          detalhe: n.instituicao + (n.candidatos ? ` — candidatos: ${n.candidatos.map((c) => `#${c.id} ${c.nome}`).join(", ")}` : ""),
+        })),
+      });
+      carregar();
+    } catch (error) {
+      setResultadoImport({ importadas: 0, atualizadas: 0, naoImportadas: [{ linha: 0, motivo: "erro", detalhe: (error as Error).message }] });
+    } finally {
+      setImportando(false);
+      if (inputArquivoRef.current) inputArquivoRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          placeholder="Filtrar por instituição ou sigla..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          className="min-w-64 flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        />
+        <label className="cursor-pointer rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
+          {importando ? "Importando..." : "Importar CSV"}
+          <input
+            ref={inputArquivoRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            disabled={importando}
+            onChange={(e) => {
+              const arquivo = e.target.files?.[0];
+              if (arquivo) importarArquivo(arquivo);
+            }}
+          />
+        </label>
+      </div>
+      <ExplicacaoImportacaoCsv
+        colunas={[
+          "Instituicao",
+          "UF",
+          `Custeio${ano}Oficial`,
+          `Assistencia${ano}Oficial`,
+          `Total${ano}Oficial`,
+          `Custeio${ano}BaseOficial`,
+          `Assistencia${ano}BaseOficial`,
+        ]}
+        nomeArquivo={`modelo_orcamento_distribuido_oficial_${ano}.csv`}
+      />
+      <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        As duas últimas colunas (Custeio/Assistência BASE, antes da trava) são opcionais — ver aba
+        COMPARATIVO (colunas AF/AK) da planilha oficial. Quando presentes, permitem calcular o
+        complemento REAL da trava direto da planilha, sem depender do cálculo por fórmula deste
+        sistema (ver memória de cálculo em /consulta).
+      </p>
+      <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        Valor FINAL publicado pela CONIF (aba VALOR SPO), já com o complemento da trava de
+        não-decréscimo embutido (Art. 7º Portaria SETEC/MEC nº 51/2018). Quando cadastrado, este
+        sistema usa esse valor no lugar do cálculo por fórmula para o total da instituição — a
+        trava em si não é recalculada aqui, só importada (ver memória de cálculo em /consulta).
+      </p>
+      {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
+      </p>
+
+      {carregando ? (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Carregando...</p>
+      ) : (
+        <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-neutral-50 text-left dark:bg-neutral-900">
+              <tr>
+                <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">Sigla</th>
+                <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">Instituição</th>
+                {CAMPO_ORCAMENTO_OFICIAL.map((c) => (
+                  <th key={c.chave} className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhasFiltradas.map((l) => {
+                const estado = estadoPorId[l.instituicaoId] ?? "idle";
+                return (
+                  <tr key={l.instituicaoId} className="border-t border-neutral-200 dark:border-neutral-800">
+                    <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{l.instituicaoSigla}</td>
+                    <td className="px-3 py-2 text-neutral-900 dark:text-neutral-100">{l.instituicaoNome}</td>
+                    {CAMPO_ORCAMENTO_OFICIAL.map((c) => {
+                      const valorAtual = valores[l.instituicaoId]?.[c.chave] ?? "0";
+                      return (
+                        <td key={c.chave} className="px-3 py-2">
+                          <input
+                            type="number"
+                            step="0.000001"
+                            value={valorAtual}
+                            onChange={(e) =>
+                              setValores((atual) => ({
+                                ...atual,
+                                [l.instituicaoId]: { ...atual[l.instituicaoId], [c.chave]: e.target.value },
+                              }))
+                            }
+                            onBlur={() => {
+                              if (valorAtual !== String(l[c.chave])) salvarLinha(l.instituicaoId);
+                            }}
+                            className="w-full min-w-32 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                          />
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 text-xs">
+                      {estado === "salvando" && <span className="text-neutral-500 dark:text-neutral-400">Salvando...</span>}
+                      {estado === "erro" && <span className="text-red-600 dark:text-red-400">Erro ao salvar</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DadosAnuaisPanel() {
   const [anosOrcamento, setAnosOrcamento] = useState<number[]>([]);
   const [ano, setAno] = useState<number | null>(null);
@@ -715,6 +941,13 @@ export function DadosAnuaisPanel() {
           Eficiência Acadêmica oficial (Conclusão/Evasão/Retenção de Ciclo)
         </h2>
         <EficienciaAcademicaAnualTabela key={ano} ano={ano} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+          Custeio e Assistência Estudantil oficiais (com trava de não-decréscimo)
+        </h2>
+        <OrcamentoDistribuidoOficialTabela key={ano} ano={ano} />
       </section>
     </div>
   );

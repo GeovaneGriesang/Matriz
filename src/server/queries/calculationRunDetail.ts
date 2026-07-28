@@ -30,6 +30,12 @@ export interface InstituicaoResultado {
   detalheQualidadeEficiencia: unknown;
   /** "Memória de cálculo" da Anuidade CONIF para esta instituição. */
   detalheAnuidadeConif: unknown;
+  /** "Memória de cálculo" da substituição pelo Custeio oficial (com complemento da trava de
+   *  não-decréscimo, Art. 7º Portaria 51/2018) — presente só quando há valor oficial cadastrado
+   *  para a instituição/ano (ver CusteioDistribuidoOficial). */
+  detalheCusteioOficial: unknown;
+  /** Idem, para a Assistência Estudantil (ver AssistenciaDistribuidoOficial). */
+  detalheAssistenciaOficial: unknown;
 }
 
 export interface CalculationRunDetail {
@@ -75,9 +81,23 @@ async function montarInstituicoes(
   const detalheQualidadeEficienciaPorInstituicao = new Map<number, unknown>();
   const anuidadeConifPorInstituicao = new Map<number, number>();
   const detalheAnuidadeConifPorInstituicao = new Map<number, unknown>();
+  const detalheCusteioOficialPorInstituicao = new Map<number, unknown>();
+  const detalheAssistenciaOficialPorInstituicao = new Map<number, unknown>();
 
   for (const resultado of results) {
     const valor = Number(resultado.valor);
+
+    if (resultado.bloco === "CUSTEIO_OFICIAL" || resultado.bloco === "ASSISTENCIA_OFICIAL") {
+      const match = resultado.metrica.match(REGEX_AUTARQUIA);
+      if (!match) continue;
+      const instituicaoId = Number(match[1]);
+      if (resultado.bloco === "CUSTEIO_OFICIAL") {
+        detalheCusteioOficialPorInstituicao.set(instituicaoId, resultado.detalhe);
+      } else {
+        detalheAssistenciaOficialPorInstituicao.set(instituicaoId, resultado.detalhe);
+      }
+      continue;
+    }
 
     if (
       resultado.bloco === "REITORIAS" ||
@@ -130,6 +150,8 @@ async function montarInstituicoes(
     ...reitoriaPorInstituicao.keys(),
     ...qualidadeEficienciaPorInstituicao.keys(),
     ...anuidadeConifPorInstituicao.keys(),
+    ...detalheCusteioOficialPorInstituicao.keys(),
+    ...detalheAssistenciaOficialPorInstituicao.keys(),
   ]);
   const instituicoesComSoInstituicaoSemUnidade = Array.from(idsComSoInstituicao).filter(
     (id) => !unidades.some((u) => u.instituicaoId === id),
@@ -155,6 +177,8 @@ async function montarInstituicoes(
       detalheReitoria: detalheReitoriaPorInstituicao.get(id) ?? null,
       detalheQualidadeEficiencia: detalheQualidadeEficienciaPorInstituicao.get(id) ?? null,
       detalheAnuidadeConif: detalheAnuidadeConifPorInstituicao.get(id) ?? null,
+      detalheCusteioOficial: detalheCusteioOficialPorInstituicao.get(id) ?? null,
+      detalheAssistenciaOficial: detalheAssistenciaOficialPorInstituicao.get(id) ?? null,
     };
     instituicoesPorId.set(id, nova);
     return nova;

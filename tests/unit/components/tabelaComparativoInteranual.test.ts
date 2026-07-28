@@ -53,6 +53,8 @@ function instituicao(overrides: {
     detalheReitoria: null,
     detalheQualidadeEficiencia: null,
     detalheAnuidadeConif: null,
+    detalheCusteioOficial: null,
+    detalheAssistenciaOficial: null,
   };
 }
 
