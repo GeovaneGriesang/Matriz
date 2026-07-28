@@ -137,23 +137,18 @@ describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL",
     }
     iea = new Map(calcularBlocoIea(Array.from(ieaPorUnidade.values()), 1).map((r) => [r.instituicaoId, r]));
 
-    // Não existe EficienciaAcademicaAnual para ano=2024 no banco (só ano=2026 foi importado até
-    // agora — ver docs/pnp-matriz/EficienciaAcademica_2026.csv). Para confirmar que o mecanismo de
-    // override de runCalculation.ts/calcularBlocoIea.ts funciona (pula a agregação, usa o valor
-    // oficial diretamente), usamos aqui o próprio valor `eficienciaAcademica` do golden dataset
-    // como um override sintético — o golden já é extraído de INDICADORES!G:J, a mesma fonte que
-    // alimentaria EficienciaAcademicaAnual num import real. Isso prova a integração da fonte
-    // oficial; não é (nem substitui) um import real de EficienciaAcademica_2024.csv.
-    const overridesOficiaisDoGolden = new Map<number, number>();
-    for (const linha of golden) {
-      const instituicaoId = resolverInstituicaoId(linha.sigla);
-      if (instituicaoId !== undefined) overridesOficiaisDoGolden.set(instituicaoId, linha.eficienciaAcademica);
-    }
-    ieaComFonteOficial = new Map(
-      calcularBlocoIea(Array.from(ieaPorUnidade.values()), 1, overridesOficiaisDoGolden).map((r) => [
+    // EficienciaAcademicaAnual para ano=2024 (docs/pnp-matriz/EficienciaAcademica_2024.csv, derivado
+    // do próprio golden_values_indicadores.csv e importado via /admin/dados-anuais — mesmo caminho
+    // real de um admin) — mesma query que runCalculation.ts faz para montar o override oficial do
+    // IEA. Prova a integração pelo caminho real de banco, não um override sintético em memória.
+    const eficienciaOficialReal = new Map<number, number>(
+      (await prisma.eficienciaAcademicaAnual.findMany({ where: { ano: ANO } })).map((r) => [
         r.instituicaoId,
-        r,
+        Number(r.eficienciaAcademica),
       ]),
+    );
+    ieaComFonteOficial = new Map(
+      calcularBlocoIea(Array.from(ieaPorUnidade.values()), 1, eficienciaOficialReal).map((r) => [r.instituicaoId, r]),
     );
 
     // ---- RAP Presencial (aproximado): mesma query de runCalculation.ts pós-fix do Prompt 3 ----
@@ -288,11 +283,10 @@ describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL",
   });
 
   describe("IEA quando a fonte é oficial (EficienciaAcademicaAnual) — deve bater exatamente, 0pp de erro", () => {
-    // Prova a integração feita em runCalculation.ts: quando existe um valor oficial para a
-    // instituição/ano, calcularBlocoIea usa esse valor diretamente (via overridesPorInstituicao) e
-    // pula por completo a agregação de Concluídos/Evadidos/Retidos — o erro de agregação do bloco
-    // acima deixa de existir. Usa o próprio golden dataset como override sintético (ver comentário
-    // no beforeAll) já que ainda não há EficienciaAcademicaAnual para ano=2024 no banco.
+    // Prova a integração feita em runCalculation.ts pelo caminho real de banco (EficienciaAcademicaAnual
+    // ano=2024, ver beforeAll): quando existe um valor oficial para a instituição/ano, calcularBlocoIea
+    // usa esse valor diretamente (via overridesPorInstituicao) e pula por completo a agregação de
+    // Concluídos/Evadidos/Retidos — o erro de agregação do bloco acima deixa de existir.
     it.each(golden.map((l): [string] => [l.sigla]))(
       "%s: valorIea com fonte oficial bate exatamente com o golden (0pp)",
       (sigla) => {
@@ -300,7 +294,10 @@ describe("golden dataset (ano-base 2024) — IEA, RAP Presencial e %ME do IAPL",
         const linha = golden.find((l) => l.sigla === sigla)!;
         const resultado = ieaComFonteOficial.get(instituicaoId);
         expect(resultado).toBeDefined();
-        expect(resultado!.valorIea).toBeCloseTo(linha.eficienciaAcademica, 10);
+        // Precisão de 5 casas decimais (não mais exata) porque o valor passou por uma coluna real
+        // `Decimal(18,6)` no banco — a 6ª casa do golden é truncada/arredondada no round-trip via
+        // EficienciaAcademicaAnual, não é mais um override sintético em memória de ponto flutuante.
+        expect(resultado!.valorIea).toBeCloseTo(linha.eficienciaAcademica, 5);
       },
     );
   });
