@@ -75,7 +75,7 @@ export async function persistIngestionBatch(
       // usar o índice dedicado (`@@index([fileType])`), reduzindo a exclusão de escanear a tabela
       // inteira para só as linhas do fileType em questão.
       const deletedFactCount = await tx.$executeRaw`
-        DELETE FROM FatoIndicador FORCE INDEX (FatoIndicador_fileType_idx) WHERE fileType = ${input.fileType}
+        DELETE FatoIndicador FROM FatoIndicador FORCE INDEX (FatoIndicador_fileType_idx) WHERE fileType = ${input.fileType}
       `;
 
       const mapping = MAPPING_BY_FILE_TYPE[input.fileType];
@@ -100,6 +100,10 @@ export async function persistIngestionBatch(
         tabelasAfetadas: { deletedFactCount, insertedFactCount, instituicaoCount, unidadeCount },
       };
     },
-    { timeout: 600_000 },
+    // Apagar os fatos antigos de um fileType já importado (mais de 500 mil linhas em tabelas
+    // maiores) leva minutos de verdade mesmo usando o índice certo, por causa da manutenção dos
+    // outros índices por linha excluída — 600s (10min) não é folga suficiente somado ao tempo de
+    // inserir os dados novos depois. Ver persistIngestionBatch.ts:72 (comentário sobre o índice).
+    { timeout: 1_800_000 },
   );
 }
