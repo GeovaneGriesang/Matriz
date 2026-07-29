@@ -129,6 +129,7 @@ model FatoIndicador {
   createdAt        DateTime       @default(now())
 
   @@index([fileType, medida, ano])
+  @@index([fileType])
   @@index([unidadeId])
   @@index([instituicaoId])
   @@index([ingestionBatchId])

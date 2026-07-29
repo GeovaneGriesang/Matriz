@@ -69,9 +69,14 @@ export async function persistIngestionBatch(
         return { ingestionBatchId: batch.id, status: "FAILED_VALIDATION" };
       }
 
-      const { count: deletedFactCount } = await tx.fatoIndicador.deleteMany({
-        where: { fileType: input.fileType },
-      });
+      // `deleteMany` puro faz o otimizador do MySQL ignorar os índices em `fileType` e escanear a
+      // tabela inteira (testado: `EXPLAIN` mostra `type: ALL` mesmo com o índice disponível) — numa
+      // tabela com mais de 1,8 milhão de linhas isso trava por minutos. `FORCE INDEX` faz o MySQL
+      // usar o índice dedicado (`@@index([fileType])`), reduzindo a exclusão de escanear a tabela
+      // inteira para só as linhas do fileType em questão.
+      const deletedFactCount = await tx.$executeRaw`
+        DELETE FROM FatoIndicador FORCE INDEX (FatoIndicador_fileType_idx) WHERE fileType = ${input.fileType}
+      `;
 
       const mapping = MAPPING_BY_FILE_TYPE[input.fileType];
       const { insertedFactCount, instituicaoCount, unidadeCount } = await persistFatoIndicador(
