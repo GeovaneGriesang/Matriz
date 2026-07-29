@@ -6,7 +6,7 @@
  * pipeline de ingestão a cada linha processada. Vive só no processo Node do
  * servidor — suficiente para o uso local/single-instance deste sistema.
  */
-export type IngestionStatus = "parsing" | "persisting" | "done" | "error" | "cancelled";
+export type IngestionStatus = "parsing" | "deleting" | "persisting" | "done" | "error" | "cancelled";
 
 export interface IngestionProgressState {
   total: number;
