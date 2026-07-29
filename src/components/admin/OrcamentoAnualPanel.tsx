@@ -15,6 +15,7 @@ import {
   ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL,
 } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
+import { apiUrl } from "@/lib/basePath";
 
 
 export interface OrcamentoAnual {
@@ -467,7 +468,7 @@ export function OrcamentoAnualPanel() {
   }, [compararAtivo, orcamentos, anoComparacaoAnterior, anoComparacaoAtual]);
 
   function carregarOrcamentos() {
-    fetch("/api/orcamentos-anuais")
+    fetch(apiUrl("/api/orcamentos-anuais"))
       .then((response) => (response.ok ? (response.json() as Promise<OrcamentoAnual[]>) : []))
       .then(setOrcamentos)
       .catch(() => {
