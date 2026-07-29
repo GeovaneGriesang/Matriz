@@ -25,7 +25,7 @@ interface UploadResponse {
 interface ProgressoServidor {
   total: number;
   processed: number;
-  status: "parsing" | "persisting" | "done" | "error" | "cancelled";
+  status: "parsing" | "deleting" | "persisting" | "done" | "error" | "cancelled";
 }
 
 interface UltimoUploadPorTipo {
@@ -359,9 +359,11 @@ export function CsvUploadForm() {
               <span>
                 {progressoUpload < 100
                   ? `Enviando arquivo... ${progressoUpload}%`
-                  : progressoServidor && progressoServidor.total > 0
-                    ? `Importando registros: ${progressoServidor.processed}/${progressoServidor.total}`
-                    : "Processando no servidor..."}
+                  : progressoServidor?.status === "deleting"
+                    ? "Removendo dados antigos desse tipo de arquivo... (pode levar alguns minutos em arquivos grandes — a barra fica parada nessa fase, é esperado)"
+                    : progressoServidor && progressoServidor.total > 0
+                      ? `Importando registros: ${progressoServidor.processed}/${progressoServidor.total}`
+                      : "Processando no servidor..."}
               </span>
               <span>{formatarTempo(segundosDecorridos)}</span>
             </div>

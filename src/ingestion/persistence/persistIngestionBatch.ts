@@ -5,6 +5,7 @@ import { MAPPING_BY_FILE_TYPE } from "../config/fileMetadata";
 import type { ValidationReport } from "../validation/ValidationReport";
 import { hasErrors } from "../validation/ValidationReport";
 import { persistFatoIndicador } from "./persistFatoIndicador";
+import { atualizarProgresso } from "../../server/ingestionProgress";
 
 export interface PersistIngestionBatchInput {
   fileType: PnpFileType;
@@ -73,10 +74,15 @@ export async function persistIngestionBatch(
       // tabela inteira (testado: `EXPLAIN` mostra `type: ALL` mesmo com o índice disponível) — numa
       // tabela com mais de 1,8 milhão de linhas isso trava por minutos. `FORCE INDEX` faz o MySQL
       // usar o índice dedicado (`@@index([fileType])`), reduzindo a exclusão de escanear a tabela
-      // inteira para só as linhas do fileType em questão.
+      // inteira para só as linhas do fileType em questão. Mesmo assim, apagar centenas de milhares
+      // de linhas de um fileType já importado antes leva minutos reais (manutenção dos outros
+      // índices por linha excluída) — sem um status próprio aqui, a tela de upload fica parada em
+      // "0/N" esse tempo todo e parece travada.
+      if (input.uploadId) atualizarProgresso(input.uploadId, { status: "deleting" });
       const deletedFactCount = await tx.$executeRaw`
         DELETE FatoIndicador FROM FatoIndicador FORCE INDEX (FatoIndicador_fileType_idx) WHERE fileType = ${input.fileType}
       `;
+      if (input.uploadId) atualizarProgresso(input.uploadId, { status: "persisting" });
 
       const mapping = MAPPING_BY_FILE_TYPE[input.fileType];
       const { insertedFactCount, instituicaoCount, unidadeCount } = await persistFatoIndicador(
