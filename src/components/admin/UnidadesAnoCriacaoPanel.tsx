@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ANO_MINIMO_CAMPUS_NOVO } from "@/calculation-engine";
 import { salvarAnoCriacaoUnidadeAction } from "@/server/actions/unidade";
+import { apiUrl } from "@/lib/basePath";
 
 interface UnidadeResumo {
   id: number;
@@ -22,7 +23,7 @@ export function UnidadesAnoCriacaoPanel() {
   const [estadoPorId, setEstadoPorId] = useState<Record<number, EstadoLinha>>({});
 
   useEffect(() => {
-    fetch("/api/unidades")
+    fetch(apiUrl("/api/unidades"))
       .then((response) => (response.ok ? (response.json() as Promise<UnidadeResumo[]>) : []))
       .then((lista) => {
         setUnidades(lista);

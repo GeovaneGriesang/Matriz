@@ -17,6 +17,7 @@ import {
   salvarOrcamentoDistribuidoOficialAction,
   type LinhaOrcamentoDistribuidoOficialNaoImportada,
 } from "@/server/actions/orcamentoDistribuidoOficial";
+import { apiUrl } from "@/lib/basePath";
 
 interface MatriculaResumo {
   unidadeId: number;
@@ -158,7 +159,7 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
 
   function carregar() {
     setCarregando(true);
-    fetch(`/api/matricula-total-equalizada?ano=${ano}`)
+    fetch(apiUrl(`/api/matricula-total-equalizada?ano=${ano}`))
       .then((r) => (r.ok ? (r.json() as Promise<MatriculaResumo[]>) : []))
       .then((lista) => {
         setLinhas(lista);
@@ -352,7 +353,7 @@ function RappAnualTabela({ ano }: { ano: number }) {
 
   function carregar() {
     setCarregando(true);
-    fetch(`/api/rapp-anual?ano=${ano}`)
+    fetch(apiUrl(`/api/rapp-anual?ano=${ano}`))
       .then((r) => (r.ok ? (r.json() as Promise<RappResumo[]>) : []))
       .then((lista) => {
         setLinhas(lista);
@@ -513,7 +514,7 @@ function EficienciaAcademicaAnualTabela({ ano }: { ano: number }) {
 
   function carregar() {
     setCarregando(true);
-    fetch(`/api/eficiencia-academica-anual?ano=${ano}`)
+    fetch(apiUrl(`/api/eficiencia-academica-anual?ano=${ano}`))
       .then((r) => (r.ok ? (r.json() as Promise<EficienciaAcademicaResumo[]>) : []))
       .then((lista) => {
         setLinhas(lista);
@@ -697,7 +698,7 @@ function OrcamentoDistribuidoOficialTabela({ ano }: { ano: number }) {
 
   function carregar() {
     setCarregando(true);
-    fetch(`/api/orcamento-distribuido-oficial?ano=${ano}`)
+    fetch(apiUrl(`/api/orcamento-distribuido-oficial?ano=${ano}`))
       .then((r) => (r.ok ? (r.json() as Promise<OrcamentoDistribuidoOficialResumo[]>) : []))
       .then((lista) => {
         setLinhas(lista);
@@ -890,7 +891,7 @@ export function DadosAnuaisPanel() {
   const [ano, setAno] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/orcamentos-anuais")
+    fetch(apiUrl("/api/orcamentos-anuais"))
       .then((r) => (r.ok ? (r.json() as Promise<{ ano: number }[]>) : []))
       .then((lista) => {
         const anos = lista.map((o) => o.ano);

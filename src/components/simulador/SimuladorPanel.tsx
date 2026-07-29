@@ -6,6 +6,7 @@ import { TabelaDistribuicao, type CalculationRunDetail } from "@/components/dist
 import { ConsultaPanel } from "@/components/consulta/ConsultaPanel";
 import { ESTRATEGIA_FAIXAS_IEA_INFO } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import type { EstrategiaFaixasIea } from "@/calculation-engine/types/qualidadeEficiencia.types";
+import { apiUrl } from "@/lib/basePath";
 
 type Escopo = "CONIF" | "TODAS";
 
@@ -120,7 +121,7 @@ export function SimuladorPanel() {
   const [erroAjusteInstituicao, setErroAjusteInstituicao] = useState<string | null>(null);
 
   function carregarExecucoes() {
-    fetch("/api/calculations")
+    fetch(apiUrl("/api/calculations"))
       .then((response) => (response.ok ? (response.json() as Promise<CalculationRunSummary[]>) : []))
       .then((lista) => setExecucoes(lista.filter((e) => e.origem === "SIMULACAO")))
       .catch(() => {
@@ -129,7 +130,7 @@ export function SimuladorPanel() {
   }
 
   useEffect(() => {
-    fetch("/api/fatos/anos")
+    fetch(apiUrl("/api/fatos/anos"))
       .then((response) => (response.ok ? (response.json() as Promise<number[]>) : []))
       .then((anos) => {
         setAnosDisponiveis(anos);
@@ -138,7 +139,7 @@ export function SimuladorPanel() {
       .catch(() => {
         // Sem anos disponíveis, o campo cai para entrada manual.
       });
-    fetch("/api/instituicoes")
+    fetch(apiUrl("/api/instituicoes"))
       .then((response) => (response.ok ? (response.json() as Promise<Instituicao[]>) : []))
       .then(setInstituicoes)
       .catch(() => {
@@ -153,7 +154,7 @@ export function SimuladorPanel() {
       setUnidadeSelecionada("");
       return;
     }
-    fetch(`/api/instituicoes/${instituicaoAjusteSelecionada}/unidades`)
+    fetch(apiUrl(`/api/instituicoes/${instituicaoAjusteSelecionada}/unidades`))
       .then((response) => (response.ok ? (response.json() as Promise<Unidade[]>) : []))
       .then(setUnidades)
       .catch(() => setUnidades([]));
@@ -163,7 +164,7 @@ export function SimuladorPanel() {
     setCarregandoExecucao(id);
     setErro(null);
     try {
-      const response = await fetch(`/api/calculations/${id}`);
+      const response = await fetch(apiUrl(`/api/calculations/${id}`));
       if (!response.ok) {
         const corpo = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(corpo?.error ?? "Não foi possível carregar essa execução.");
@@ -241,7 +242,7 @@ export function SimuladorPanel() {
     // a simulação rodar — muda só se o roster de câmpus da instituição mudar (câmpus novo cujo nome
     // vem antes na ordem alfabética, por exemplo), nunca por acaso.
     try {
-      const response = await fetch(`/api/instituicoes/${instituicao.id}/unidades`);
+      const response = await fetch(apiUrl(`/api/instituicoes/${instituicao.id}/unidades`));
       const lista = response.ok ? ((await response.json()) as Unidade[]) : [];
       const unidadeReferencia = lista[0];
       if (!unidadeReferencia) {
@@ -289,7 +290,7 @@ export function SimuladorPanel() {
     }
 
     try {
-      const response = await fetch("/api/calculations/run", {
+      const response = await fetch(apiUrl("/api/calculations/run"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

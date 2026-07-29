@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PNP_FILE_TYPES, type PnpFileType } from "@/ingestion/config/fileTypes";
 import { ALL_FILE_TYPE_METADATA, getFileTypeMetadata } from "@/ingestion/config/fileMetadata";
+import { apiUrl } from "@/lib/basePath";
 
 interface UploadResponse {
   ok: boolean;
@@ -46,7 +47,7 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeS
 function enviarComProgresso(formData: FormData, onProgress: (percentual: number) => void): Promise<UploadResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/uploads");
+    xhr.open("POST", apiUrl("/api/uploads"));
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         onProgress(Math.round((event.loaded / event.total) * 100));
@@ -126,7 +127,7 @@ export function CsvUploadForm() {
   useEffect(() => () => pararAcompanhamento(), []);
 
   function carregarUltimosUploads() {
-    fetch("/api/ingestion-batches")
+    fetch(apiUrl("/api/ingestion-batches"))
       .then((response) => (response.ok ? (response.json() as Promise<UltimoUploadPorTipo[]>) : []))
       .then((lista) => setUltimosUploads(new Map(lista.map((item) => [item.fileType, item]))))
       .catch(() => {
@@ -155,7 +156,7 @@ export function CsvUploadForm() {
 
     timerRef.current = setInterval(() => setSegundosDecorridos((s) => s + 1), 1000);
     pollRef.current = setInterval(() => {
-      fetch(`/api/uploads/progress?id=${uploadId}`)
+      fetch(apiUrl(`/api/uploads/progress?id=${uploadId}`))
         .then((response) => (response.ok ? (response.json() as Promise<ProgressoServidor>) : null))
         .then((dados) => {
           if (dados) setProgressoServidor(dados);
@@ -185,7 +186,7 @@ export function CsvUploadForm() {
     if (!uploadIdRef.current) return;
     setCancelando(true);
     try {
-      await fetch("/api/uploads/cancel", {
+      await fetch(apiUrl("/api/uploads/cancel"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: uploadIdRef.current }),

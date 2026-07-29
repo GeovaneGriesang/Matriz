@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { TabelaDistribuicao, type CalculationRunDetail } from "@/components/distribuicao/TabelaDistribuicao";
 import { TabelaComparativoInteranual } from "@/components/distribuicao/TabelaComparativoInteranual";
+import { apiUrl } from "@/lib/basePath";
 
 interface DistribuicaoOficialResumo {
   ano: number;
@@ -22,7 +23,7 @@ const ROTULO_ESCOPO: Record<"CONIF" | "TODAS", string> = {
 };
 
 async function buscarCalculationRunDetail(runId: number): Promise<CalculationRunDetail> {
-  const response = await fetch(`/api/calculations/${runId}`);
+  const response = await fetch(apiUrl(`/api/calculations/${runId}`));
   if (!response.ok) {
     const corpo = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(corpo?.error ?? "Não foi possível carregar a distribuição deste ano.");
@@ -47,7 +48,7 @@ export function ConsultaPanel() {
   const [erroComparativo, setErroComparativo] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/distribuicao-oficial")
+    fetch(apiUrl("/api/distribuicao-oficial"))
       .then((response) => (response.ok ? (response.json() as Promise<DistribuicaoOficialResumo[]>) : []))
       .then(setAnos)
       .catch(() => setAnos([]));
