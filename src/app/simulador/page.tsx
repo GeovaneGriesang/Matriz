@@ -1,8 +1,9 @@
 import { SimuladorPanel } from "@/components/simulador/SimuladorPanel";
+import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
 export default function SimuladorPage() {
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-16">
+    <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-16 lg:px-12`}>
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
           Simulador da Matriz Orçamentária
