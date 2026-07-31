@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireAdminOrRedirect } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
+import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
 export default async function DadosAnuaisLayout({ children }: { children: ReactNode }) {
   await requireAdminOrRedirect("/admin/dados-anuais");
 
   return (
     <div>
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-4">
+      <div className={`mx-auto flex ${TABLE_MAX_WIDTH} items-center justify-between px-6 pt-4 lg:px-12`}>
         <div className="flex items-center gap-4">
           <Link
             href="/admin/orcamento"
@@ -21,6 +22,12 @@ export default async function DadosAnuaisLayout({ children }: { children: ReactN
             className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             Câmpus
+          </Link>
+          <Link
+            href="/admin/fatos-importados"
+            className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Dados importados
           </Link>
         </div>
         <form action={logoutAction}>

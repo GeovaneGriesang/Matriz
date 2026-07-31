@@ -61,17 +61,19 @@ export async function uploadCsvAction(formData: FormData): Promise<UploadCsvActi
       errorMessage: falhouValidacao
         ? `Falha na validação do arquivo: ${resultado.validationReport.issues.length} problema(s) encontrado(s).`
         : undefined,
-      issues: falhouValidacao
-        ? resultado.validationReport.issues
-            .filter((issue) => issue.severity === "ERROR")
-            .slice(0, 20)
-            .map((issue) => ({
+      // Antes só ERROR era enviado ao cliente (e só quando a validação falhava) — WARNINGs
+      // (ex.: coluna nova não reconhecida, ver UNEXPECTED_COLUMN em mapRows.ts) ficavam contados
+      // em `issueCount` mas nunca apareciam com a mensagem, mesmo numa importação bem-sucedida.
+      // Agora sempre inclui todos os issues (de qualquer severidade), sucesso ou falha.
+      issues:
+        resultado.validationReport.issues.length > 0
+          ? resultado.validationReport.issues.slice(0, 20).map((issue) => ({
               severity: issue.severity,
               message: issue.message,
               field: issue.field,
               rowIndex: issue.rowIndex,
             }))
-        : undefined,
+          : undefined,
       tabelasAfetadas: resultado.tabelasAfetadas,
     };
   } catch (error) {
