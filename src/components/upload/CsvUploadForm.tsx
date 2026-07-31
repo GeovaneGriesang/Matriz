@@ -407,6 +407,16 @@ export function CsvUploadForm() {
                 <p>
                   {resultado.rowCount} linha(s) processada(s), {resultado.issueCount} alerta(s) de validação.
                 </p>
+                {resultado.issues && resultado.issues.length > 0 && (
+                  <ul className="mt-1 list-disc space-y-1 border-t border-green-200 pl-5 pt-1 dark:border-green-800">
+                    {resultado.issues.map((issue, i) => (
+                      <li key={i}>
+                        {issue.rowIndex !== undefined && <>Linha {issue.rowIndex + 2}: </>}
+                        {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {resultado.tabelasAfetadas && (
                   <p className="mt-1 border-t border-green-200 pt-1 dark:border-green-800">
                     Tabela <code>FatoIndicador</code>: {resultado.tabelasAfetadas.deletedFactCount}{" "}

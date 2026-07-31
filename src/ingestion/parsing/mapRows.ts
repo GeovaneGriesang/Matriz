@@ -59,6 +59,24 @@ export function mapRows<T extends Record<string, unknown>>(
     }
   }
 
+  // Colunas do arquivo que não correspondem a nenhum campo do mapeamento — não bloqueia a
+  // importação (só um aviso), mas sinaliza uma coluna nova/renomeada que a PNP pode ter
+  // adicionado e que hoje é silenciosamente ignorada.
+  const indicesUsados = new Set<number>();
+  for (const idx of indexByField.values()) {
+    if (idx !== undefined) indicesUsados.add(idx);
+  }
+  headers.forEach((header, idx) => {
+    if (header.trim() !== "" && !indicesUsados.has(idx)) {
+      issues.push({
+        severity: "WARNING",
+        code: "UNEXPECTED_COLUMN",
+        message: `Coluna "${header}" do arquivo não corresponde a nenhum campo esperado para este tipo de importação — será ignorada. Se a PNP adicionou essa coluna recentemente, o mapeamento de importação pode precisar ser atualizado.`,
+        field: header,
+      });
+    }
+  });
+
   const temColunaObrigatoriaFaltando = fieldNames.some(
     (field) => mapping.columns[field].required && indexByField.get(field) === undefined,
   );

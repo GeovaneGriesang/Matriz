@@ -20,8 +20,13 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-/** Campos de dimensão que viram coluna própria (FK/escalar) em vez de entrar em `dimensoesExtra`. */
-const CORE_DIMENSION_FIELDS = new Set([
+/**
+ * Campos de dimensão que viram coluna própria (FK/escalar) em vez de entrar em `dimensoesExtra`.
+ * Exportado porque `scripts/generatePnpViews.ts` precisa do mesmo critério para saber quais campos
+ * de cada mapeamento vêm de `dimensoesExtra` (JSON) ao gerar as views SQL — nunca duplicar esta
+ * lista lá, importar daqui.
+ */
+export const CORE_DIMENSION_FIELDS = new Set([
   "ano",
   "regiao",
   "uf",

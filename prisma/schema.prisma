@@ -232,9 +232,11 @@ model OrcamentoAnual {
 
 /// Matrícula Total equalizada por câmpus/ano (colunas Q/R/S/T de "COMPLETO PROPOSTA" na planilha
 /// oficial da CONIF) — publicada pela CONIF, confirmado que NÃO é deriveável dos CSVs públicos da
-/// PNP (ver src/calculation-engine/pendentes/matriculaTotalEqualizada.ts). Cadastro manual/importado
-/// por ano-base: ao contrário de Unidade.anoCriacao, muda a cada ciclo orçamentário. Ainda NÃO usado
-/// no cálculo (isolado até a confirmação de origem externa ser feita — ver Prompt 9).
+/// PNP (ver src/calculation-engine/matriculaTotalEqualizada.ts). Cadastro manual/importado por
+/// ano-base: ao contrário de Unidade.anoCriacao, muda a cada ciclo orçamentário. JÁ USADO no cálculo
+/// (runCalculation.ts, resolverMatriculaPonderada): quando existe registro para o câmpus/anoOficial,
+/// substitui o placeholder ("Matrícula Equivalente | Geral" da PNP) no Bloco Funcionamento/Reitorias;
+/// sem registro, o câmpus continua no placeholder (ver fonteMatricula em TabelaDistribuicao.tsx).
 model MatriculaTotalEqualizadaAnual {
   id                                 Int      @id @default(autoincrement())
   unidadeId                          Int
@@ -252,9 +254,10 @@ model MatriculaTotalEqualizadaAnual {
 }
 
 /// RAP Presencial oficial (RAPP, coluna N de "INDICADORES") por instituição/ano — publicado pela
-/// CONIF, também confirmado não-deriveável da PNP. NÃO confundir com o RAP geral já calculado em
-/// calcularBlocoRap.ts (esse usa TaxaEvasao.csv como aproximação documentada, ver seu próprio aviso
-/// "Aproximação"). Cadastro manual/importado por ano-base. Ainda NÃO usado no cálculo (Prompt 9).
+/// CONIF, também confirmado não-deriveável da PNP. Cadastro manual/importado por ano-base. JÁ USADO
+/// no cálculo (runCalculation.ts): quando existe registro para a instituição/anoOficial, substitui a
+/// aproximação via TaxaEvasao.csv em calcularBlocoRap.ts (prioridade: override do simulador > este
+/// valor oficial > aproximação); ver campo `fonte` em TabelaDistribuicao.tsx para qual foi usada.
 model RappAnual {
   id            Int         @id @default(autoincrement())
   instituicaoId Int
@@ -273,9 +276,10 @@ model RappAnual {
 /// deriveável somando Concluídos/Evadidos/Retidos de EficienciaAcademica.csv por instituição (a
 /// Portaria SETEC/MEC 646/2022 exclui cursos FIC do "ciclo", mas o CSV da PNP não distingue tipo de
 /// curso — testado, confirma divergência real contra INDICADORES!G:J, não é bug de fórmula
-/// corrigível com os dados que a PNP disponibiliza). Cadastro manual/importado por ano-base. Ainda
-/// NÃO usado no cálculo — ver calcularBlocoIea.ts (que continua na agregação aproximada) até a
-/// ligação ser feita em um próximo prompt.
+/// corrigível com os dados que a PNP disponibiliza). Cadastro manual/importado por ano-base. JÁ
+/// USADO no cálculo (runCalculation.ts): quando existe registro para a instituição/anoOficial,
+/// substitui por completo a agregação aproximada em calcularBlocoIea.ts (prioridade: override do
+/// simulador > este valor oficial > agregação aproximada, com o erro de até ~53pp já documentado).
 model EficienciaAcademicaAnual {
   id                  Int         @id @default(autoincrement())
   instituicaoId       Int
