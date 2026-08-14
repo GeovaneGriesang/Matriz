@@ -31,7 +31,7 @@ function parseIntParam(value: string | null): number | undefined {
 /**
  * Navegador genérico de `FatoIndicador` filtrado por tipo de arquivo PNP (obrigatório, é o que
  * define o significado de `medida`) e, opcionalmente, ano/instituição/câmpus/medida — usado pela
- * tela /admin/fatos-importados ("ver o que foi importado").
+ * tela /dados-importados ("ver o que foi importado").
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;

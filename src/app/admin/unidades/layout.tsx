@@ -24,7 +24,7 @@ export default async function UnidadesLayout({ children }: { children: ReactNode
             Dados anuais
           </Link>
           <Link
-            href="/admin/fatos-importados"
+            href="/dados-importados"
             className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             Dados importados
