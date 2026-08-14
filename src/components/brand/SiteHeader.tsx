@@ -26,6 +26,12 @@ export function SiteHeader() {
           >
             Simulador
           </Link>
+          <Link
+            href="/dados-importados"
+            className="text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Dados importados
+          </Link>
         </nav>
         <ThemeToggle />
       </div>

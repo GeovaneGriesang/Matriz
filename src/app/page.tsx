@@ -26,6 +26,12 @@ export default function HomePage() {
         >
           Enviar extrato da PNP
         </Link>
+        <Link
+          href="/dados-importados"
+          className="w-fit rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        >
+          Ver dados importados
+        </Link>
       </div>
     </main>
   );

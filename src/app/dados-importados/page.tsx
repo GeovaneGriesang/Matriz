@@ -1,4 +1,4 @@
-import { FatosImportadosPanel } from "@/components/admin/FatosImportadosPanel";
+import { FatosImportadosPanel } from "@/components/dadosImportados/FatosImportadosPanel";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
 export default function FatosImportadosPage() {
