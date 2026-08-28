@@ -103,6 +103,7 @@ model IngestionBatch {
   createdAt        DateTime        @default(now())
   completedAt      DateTime?
   fatos            FatoIndicador[]
+  yearDigests      IngestionYearDigest[]
 
   @@index([fileType, status])
   @@index([checksum])
@@ -130,8 +131,40 @@ model FatoIndicador {
 
   @@index([fileType, medida, ano])
   @@index([fileType])
+  // Necessário para a importação incremental apagar um ano isolado
+  // (`WHERE fileType = ? AND ano = ?`). O índice `[fileType, medida, ano]` acima NÃO serve para
+  // isso: com `medida` no meio, filtrar por fileType+ano pula a coluna do meio e o MySQL cai em
+  // varredura completa (medido: `type: ALL`, 1,2 milhão de linhas).
+  @@index([fileType, ano])
   @@index([unidadeId])
   @@index([instituicaoId])
+  @@index([ingestionBatchId])
+}
+
+/// Impressão digital do conteúdo de cada (tipo de arquivo, ano) já importado, para a importação
+/// incremental: os exports da PNP são cumulativos (o arquivo de um ano traz também todos os
+/// anteriores — auditado em 2026-08-28: os 18 tipos cobrem de 7 a 13 anos cada), então reimportar o
+/// arquivo inteiro reescreve ~87% de dados idênticos. Guardando o digest de cada ano, o sistema
+/// compara antes de gravar e só reescreve os anos que realmente mudaram.
+///
+/// O digest é sobre o conteúdo, não sobre "qual é o ano mais novo": se a PNP reprocessar e corrigir
+/// um ano antigo, o digest daquele ano muda e ele é reimportado sozinho. Assumir "só importa o ano
+/// novo" deixaria uma revisão histórica passar despercebida.
+model IngestionYearDigest {
+  id               Int            @id @default(autoincrement())
+  fileType         PnpFileType
+  ano              Int
+  /// SHA-256 das linhas daquele ano, já mapeadas (independe de encoding e da ordem das colunas).
+  digest           String         @db.Char(64)
+  /// Linhas do CSV e fatos gravados naquele ano — exibidos na tela de upload.
+  rowCount         Int
+  factCount        Int
+  /// Última importação que gravou este ano, para auditoria.
+  ingestionBatchId Int
+  ingestionBatch   IngestionBatch @relation(fields: [ingestionBatchId], references: [id])
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([fileType, ano])
   @@index([ingestionBatchId])
 }
 

@@ -15,6 +15,8 @@ export interface IngestionProgressState {
   cancelRequested: boolean;
   startedAt: number;
   errorMessage?: string;
+  /** Ano-base sendo gravado agora — a importação é incremental, um ano por vez. */
+  anoAtual?: number;
 }
 
 const TTL_MS = 5 * 60 * 1000;

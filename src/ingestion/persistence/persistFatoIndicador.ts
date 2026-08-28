@@ -18,6 +18,17 @@ const CHUNK_SIZE = 5_000;
  * de cada mapeamento vêm de `dimensoesExtra` (JSON) ao gerar as views SQL — nunca duplicar esta
  * lista lá, importar daqui.
  */
+/**
+ * Caches de Instituição/Unidade já resolvidas, compartilháveis entre chamadas. Na importação
+ * incremental esta função é chamada uma vez por ano, cada uma em sua própria transação; sem
+ * compartilhar os caches, os mesmos ~64 institutos e ~669 câmpus seriam resolvidos de novo a cada
+ * ano. Os IDs continuam válidos entre transações porque já foram commitados.
+ */
+export interface CachesDeDimensao {
+  instituicaoIdBySigla: Map<string, number>;
+  unidadeIdByKey: Map<string, number>;
+}
+
 export const CORE_DIMENSION_FIELDS = new Set([
   "ano",
   "regiao",
@@ -42,9 +53,11 @@ export async function persistFatoIndicador(
   mapping: ColumnMapping<Record<string, unknown>>,
   rows: Record<string, unknown>[],
   uploadId?: string,
+  caches?: CachesDeDimensao,
+  progressoOffset = 0,
 ): Promise<{ insertedFactCount: number; instituicaoCount: number; unidadeCount: number }> {
-  const instituicaoIdBySigla = new Map<string, number>();
-  const unidadeIdByKey = new Map<string, number>();
+  const instituicaoIdBySigla = caches?.instituicaoIdBySigla ?? new Map<string, number>();
+  const unidadeIdByKey = caches?.unidadeIdByKey ?? new Map<string, number>();
 
   const dimensionFields = Object.entries(mapping.columns).filter(([, def]) => def.kind === "dimension");
   const extraDimensionFields = dimensionFields.filter(([field]) => !CORE_DIMENSION_FIELDS.has(field));
@@ -52,10 +65,10 @@ export async function persistFatoIndicador(
 
   // Buffer de no máximo CHUNK_SIZE fatos: cada vez que enche, é gravado e esvaziado. Antes este
   // array acumulava TODOS os fatos do arquivo antes do primeiro INSERT — num DadosGerais.csv real
-  // são 521 mil fatos e ~93 MB só do JSON de `dimensoesExtra`, o que além do pico de memória
-  // deixava a conexão parada durante toda a montagem (e o socket ocioso acabava derrubado por
-  // proxy, ver comentário em persistIngestionBatch.ts). Gravando enquanto lê, o uso de memória
-  // fica constante e a conexão nunca fica muito tempo sem tráfego.
+  // são 521 mil fatos e ~93 MB só do JSON de `dimensoesExtra`. Gravando enquanto lê, o uso de
+  // memória do Node fica constante (pico medido de 198 MB numa importação completa), o que importa
+  // porque a VM de produção divide 7,8 GB entre todos os serviços e já teve o MySQL morto pelo OOM
+  // killer durante uma importação — ver o comentário em persistIngestionBatch.ts.
   let buffer: Prisma.FatoIndicadorCreateManyInput[] = [];
   let insertedFactCount = 0;
 
@@ -148,7 +161,7 @@ export async function persistFatoIndicador(
 
     linhasProcessadas += 1;
     if (uploadId) {
-      atualizarProgresso(uploadId, { processed: linhasProcessadas });
+      atualizarProgresso(uploadId, { processed: progressoOffset + linhasProcessadas });
       if (cancelamentoFoiSolicitado(uploadId)) {
         throw new IngestionCancelledError();
       }
