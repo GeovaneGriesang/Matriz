@@ -1,10 +1,10 @@
 "use server";
 
-import { parse } from "csv-parse/sync";
 import type { CategoriaRepasse } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { normalizarCategoriaRepasse, normalizarPesoRepasse } from "@/server/composicaoRepasse/normalizacao";
+import { lerPlanilhaComposicao } from "@/server/composicaoRepasse/lerPlanilhaComposicao";
 
 export interface LinhaComposicaoNaoImportada {
   linha: number;
@@ -25,13 +25,6 @@ export interface ImportarComposicaoRepasseResult {
   pesosPorCategoria?: { categoria: CategoriaRepasse; peso: number; linhas: number }[];
   /** Categorias em que as linhas não concordam no peso — cadastro suspeito, exibido como alerta. */
   categoriasInconsistentes?: string[];
-}
-
-interface LinhaCsv {
-  Modalidade?: string;
-  FonteFinanciamento?: string;
-  Repasse?: string;
-  Porcentagem?: string;
 }
 
 /**
@@ -64,20 +57,11 @@ export async function importarComposicaoRepasseAction(
     return { ok: false, errorMessage: "Nenhum arquivo enviado." };
   }
 
-  let linhas: LinhaCsv[];
-  try {
-    const texto = await arquivo.text();
-    linhas = parse(texto, {
-      delimiter: ";",
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      bom: true,
-      relax_column_count: true,
-    }) as LinhaCsv[];
-  } catch (error) {
-    return { ok: false, errorMessage: `CSV inválido: ${error instanceof Error ? error.message : String(error)}` };
+  const leitura = await lerPlanilhaComposicao(arquivo.name, await arquivo.arrayBuffer());
+  if (!leitura.ok) {
+    return { ok: false, errorMessage: leitura.erro };
   }
+  const linhas = leitura.linhas;
 
   const naoImportadas: LinhaComposicaoNaoImportada[] = [];
   const paraGravar: {
@@ -87,12 +71,9 @@ export async function importarComposicaoRepasseAction(
     peso: number;
   }[] = [];
 
-  linhas.forEach((linha, indice) => {
-    const numeroLinha = indice + 2; // +1 do cabeçalho, +1 para começar em 1
-    const modalidade = (linha.Modalidade ?? "").trim();
-    const fonte = (linha.FonteFinanciamento ?? "").trim();
-    const repasse = (linha.Repasse ?? "").trim();
-    const porcentagem = (linha.Porcentagem ?? "").trim();
+  linhas.forEach((linha) => {
+    const numeroLinha = linha.linha;
+    const { modalidade, fonte, repasse, porcentagem } = linha;
 
     if (modalidade === "" || fonte === "") {
       if (modalidade !== "" || fonte !== "" || repasse !== "" || porcentagem !== "") {

@@ -11,10 +11,10 @@ export interface MatriculaTotalEqualizadaRegistro {
  * Pesos que convertem as 4 colunas de Matrícula Total equalizada em R$ nos Blocos
  * Funcionamento/Reitorias.
  *
- * **Estes pesos mudam entre ciclos orçamentários** — o EAD MOOC valia 0,8 em 2026 e passou a valer
- * 0,08 em 2027 (dez vezes menos), conforme a planilha "Composição de Repasse" da CONIF. Por isso o
- * cálculo não usa mais constantes fixas: os pesos vigentes de cada ano ficam em
- * `ComposicaoRepasseAnual` (cadastrados em /admin/composicao-repasse) e chegam aqui por parâmetro.
+ * Os pesos vigentes de cada ciclo ficam em `ComposicaoRepasseAnual` (cadastrados em
+ * /admin/composicao-repasse a partir da planilha "Composição de Repasse" da CONIF) e chegam aqui por
+ * parâmetro — a CONIF republica essa tabela a cada ciclo, então o cálculo não deve depender de
+ * constante fixa no código.
  */
 export interface PesosModalidade {
   presencial: number;
@@ -24,18 +24,23 @@ export interface PesosModalidade {
 }
 
 /**
- * Pesos do ciclo 2026, confirmados célula a célula contra "COMPLETO PROPOSTA" da planilha-modelo
- * (taxa idêntica em toda a rede, R$/ponto Presencial ÷ 4 = R$/ponto EAD, R$/ponto Presencial × 0,8 =
- * R$/ponto EAD MOOC = R$/ponto EAD FP).
+ * Pesos padrão da CONIF, usados quando o ano calculado ainda não tem Composição de Repasse
+ * cadastrada. Conferidos em 2026-08-28 contra `DADOS BASE!K29/K33/K37/K41` das planilhas oficiais de
+ * **2026 e 2027** (idênticos nos dois ciclos) e contra as planilhas "Composição de Repasse" dos dois
+ * anos.
  *
- * Usados como fallback quando o ano calculado ainda não tem Composição de Repasse cadastrada. O
- * fallback é sinalizado na memória de cálculo — para um ciclo novo, cadastrar os pesos daquele ano é
- * obrigatório, porque aplicar os de 2026 a 2027 daria EAD MOOC dez vezes maior que o correto.
+ * ATENÇÃO ao EAD MOOC: é **0,08**, não 0,8. Até 2026-08-28 esta constante estava em 0,8 — valor que
+ * vinha da seção "X = S_campus * (MTP * 0,8)" da metodologia, onde já constava a ressalva "[ver
+ * nuance MOOC na planilha original]". A ressalva estava certa e o valor errado: as quatro fontes
+ * oficiais disponíveis (planilha 2026, planilha 2027, composição 2026, composição 2027) trazem 0,08,
+ * e na planilha 2027 a conta fecha exatamente (IFSUL: 2.338,3 pontos de MOOC × R$ 96,12 = R$
+ * 224.751,38, com R$ 96,12 = MTP 1.201,47 × 0,08). O 0,8 é o peso do EAD FP, provavelmente copiado
+ * por engano. O erro inflava em ~1,15% o Bloco Funcionamento dos 60 câmpus com MOOC no ciclo 2026.
  */
-export const PESOS_MODALIDADE_2026: PesosModalidade = {
+export const PESOS_MODALIDADE_PADRAO: PesosModalidade = {
   presencial: 1,
   ead: 0.25,
-  eadMooc: 0.8,
+  eadMooc: 0.08,
   eadFp: 0.8,
 };
 
@@ -48,16 +53,16 @@ export interface MatriculaTotalEqualizadaPonderada {
    */
   denominadorFuncionamento: number;
   /**
-   * EAD MOOC×0,8 — pago à MESMA Taxa (MTP) do Bloco Funcionamento, mas somado DEPOIS de calcular a
-   * MTP a partir do denominador acima (sem EAD MOOC): dinheiro adicional para o câmpus que oferece
-   * EAD MOOC, sem diluir a taxa dos demais câmpus da rede.
+   * EAD MOOC × seu peso (0,08 nos ciclos 2026 e 2027) — pago à MESMA Taxa (MTP) do Bloco
+   * Funcionamento, mas somado DEPOIS de calcular a MTP a partir do denominador acima (sem EAD MOOC):
+   * dinheiro adicional para o câmpus que oferece EAD MOOC, sem diluir a taxa dos demais câmpus.
    */
   moocAdicionalFuncionamento: number;
   /**
    * `denominadorFuncionamento + moocAdicionalFuncionamento` — base usada pelo Bloco Reitorias
    * (blocoReitorias.ts), agregada por instituição. Diferente do Bloco Funcionamento, aqui o EAD
-   * MOOC entra normalmente (peso 0,8, mesmo tratamento de EAD FP) — confirmado contra a planilha
-   * (IFRS: reitoria oficial bate exatamente usando esta soma, não bate usando só o denominador).
+   * MOOC entra no total normalmente — confirmado contra a planilha (IFRS: reitoria oficial bate
+   * exatamente usando esta soma, não bate usando só o denominador).
    */
   pesoReitorias: number;
 }
@@ -82,7 +87,7 @@ export interface MatriculaTotalEqualizadaPonderada {
  */
 export function calcularMatriculaTotalEqualizadaPonderada(
   registro: MatriculaTotalEqualizadaRegistro | undefined,
-  pesos: PesosModalidade = PESOS_MODALIDADE_2026,
+  pesos: PesosModalidade = PESOS_MODALIDADE_PADRAO,
 ): MatriculaTotalEqualizadaPonderada {
   if (registro === undefined) {
     throw new NotImplementedError(

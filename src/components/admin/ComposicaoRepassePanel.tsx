@@ -111,13 +111,13 @@ export function ComposicaoRepassePanel() {
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="arquivo" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              CSV da Composição de Repasse
+              Planilha da Composição de Repasse (.xlsx ou .csv)
             </label>
             <input
               id="arquivo"
               name="arquivo"
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx"
               required
               disabled={enviando}
               className="text-sm text-neutral-700 dark:text-neutral-300"
@@ -131,14 +131,18 @@ export function ComposicaoRepassePanel() {
             {enviando ? "Importando..." : "Importar"}
           </button>
         </div>
-        <p className="text-xs text-neutral-600 dark:text-neutral-400">
-          Colunas esperadas, separadas por ponto-e-vírgula:{" "}
-          <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">
-            Modalidade;FonteFinanciamento;Repasse;Porcentagem
-          </code>
-          . A coluna <em>Porcentagem</em> aceita fração (0,25), percentual (25%) ou número inteiro (25) — todos
-          são convertidos para o mesmo peso. A importação <strong>substitui</strong> a composição daquele ano.
-        </p>
+        <div className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
+          <p>
+            Envie o <strong>.xlsx da CONIF direto</strong>, sem converter nada — ou um .csv, se preferir. As
+            quatro colunas necessárias são <em>Modalidade</em>, <em>Fonte de Financiamento</em>,{" "}
+            <em>Repasse</em> e <em>Porcentagem</em>; o sistema as localiza pelo nome, então a ordem das colunas
+            e uma eventual linha de título antes do cabeçalho não atrapalham.
+          </p>
+          <p>
+            A coluna <em>Porcentagem</em> aceita fração (0,25), percentual (25%) ou número inteiro (25) — todos
+            viram o mesmo peso. A importação <strong>substitui</strong> a composição daquele ano.
+          </p>
+        </div>
       </form>
 
       {resultado && (
@@ -187,17 +191,10 @@ export function ComposicaoRepassePanel() {
           <p className="text-sm text-neutral-600 dark:text-neutral-400">Carregando…</p>
         ) : !temCadastro ? (
           <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            Nenhuma composição cadastrada para {ano}. Um cálculo deste ano usará os pesos do ciclo 2026
-            (Presencial 1 · EAD 0,25 · EAD MOOC <strong>0,8</strong> · EAD FP 0,8)
-            {ano === 2026 ? (
-              <> — que são os corretos para 2026, conferidos contra a planilha-modelo.</>
-            ) : (
-              <>
-                {" "}
-                e <strong>avisará na memória de cálculo</strong>. A partir do ciclo 2027 o EAD MOOC correto é{" "}
-                <strong>0,08</strong>, então importe o arquivo deste ano antes de usar o resultado.
-              </>
-            )}
+            Nenhuma composição cadastrada para {ano}. Um cálculo deste ano usará os pesos padrão da CONIF
+            (Presencial 1 · EAD 0,25 · EAD MOOC <strong>0,08</strong> · EAD FP 0,8) e{" "}
+            <strong>avisará na memória de cálculo</strong>. Esses pesos são os mesmos nos ciclos 2026 e 2027,
+            então há boa chance de estarem certos — mas só o arquivo daquele ano confirma.
           </p>
         ) : (
           <>

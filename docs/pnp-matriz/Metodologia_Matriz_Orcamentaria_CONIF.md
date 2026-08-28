@@ -203,8 +203,8 @@ Valor da Matrícula Total Financiamento Próprio (80% do MTP) = MTP * 0,8
 
 V (Valor Matriz Presencial do campus) = Q_campus * MTP
 W (Valor Matriz EAD do campus)        = R_campus * (MTP * 0,25)
-X (Valor Matriz EAD MOOC do campus)   = S_campus * (MTP * 0,8)   [ver nuance MOOC na planilha original]
-Y (Valor Matriz EAD FP do campus)     = T_campus * MTP
+X (Valor Matriz EAD MOOC do campus)   = S_campus * (MTP * 0,08)
+Y (Valor Matriz EAD FP do campus)     = T_campus * (MTP * 0,8)
 
 H (Valor Matrículas Totais, com piso) =
     SE ano_criação_campus >= 2018:
@@ -213,6 +213,17 @@ H (Valor Matrículas Totais, com piso) =
         J_campus
     onde J_campus = V+W+X+Y (soma dos 4 valores de matriz do campus)
 ```
+
+> **Correção (28/08/2026) — peso do EAD MOOC.** Este trecho trazia `MTP * 0,8` para o EAD MOOC, com a
+> ressalva "[ver nuance MOOC na planilha original]". A ressalva estava certa e o valor errado: o peso
+> é **0,08**, não 0,8 (0,8 é o peso do EAD FP, aparentemente copiado por engano). Conferido em quatro
+> fontes oficiais — `DADOS BASE!K41` das planilhas de 2026 e 2027 (0,08 nas duas) e as planilhas
+> "Composição de Repasse" dos dois ciclos. Na planilha 2027 a conta fecha exatamente: IFSUL tem
+> 2.338,3 pontos de MOOC e recebe R$ 224.751,38, ou seja R$ 96,12 por ponto = MTP (R$ 1.201,47) ×
+> 0,08. O erro inflava em ~1,15% o Bloco Funcionamento dos 60 câmpus com MOOC no ciclo 2026. A
+> constante foi corrigida em `matriculaTotalEqualizada.ts` e os pesos passaram a ser cadastrados por
+> ano em `ComposicaoRepasseAnual` (tela /admin/composicao-repasse).
+
 
 O "Valor da Matriz Rede líquido de Assistência" é o valor total anual da matriz (corrigido pelo IPCA, ver `DADOS BASE!I27`) **menos** o valor total da Assistência Estudantil do ano (`DADOS BASE!W42`), e menos a parcela reservada às Reitorias.
 
