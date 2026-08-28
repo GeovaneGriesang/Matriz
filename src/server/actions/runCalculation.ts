@@ -2,6 +2,7 @@
 
 import { prisma } from "@/server/db/prisma";
 import { blocoFuncionamento, type FuncionamentoInput } from "@/calculation-engine/blocoFuncionamento";
+import { resolverPesosModalidade } from "@/server/composicaoRepasse/resolverPesosModalidade";
 import {
   calcularMatriculaTotalEqualizadaPonderada,
   type MatriculaTotalEqualizadaRegistro,
@@ -278,6 +279,15 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
   // fallback ter chance real de achar dado oficial numa simulação.
   const anoOficial = input.anoOrcamento ?? input.ano + DEFASAGEM_ANOS_REFERENCIA_PNP;
 
+  // Pesos por modalidade do ciclo sendo calculado (Presencial/EAD/EAD MOOC/EAD FP). Mudam entre
+  // ciclos — o EAD MOOC caiu de 0,8 (2026) para 0,08 (2027) — então são lidos por ano de
+  // `ComposicaoRepasseAnual` em vez de constantes fixas. Sem cadastro, cai nos pesos de 2026 e o
+  // aviso vai para a memória de cálculo.
+  const pesosModalidade = await resolverPesosModalidade(anoOficial);
+  if (pesosModalidade.aviso) {
+    console.warn(`[runCalculation] Composição de Repasse: ${pesosModalidade.aviso}`);
+  }
+
   const mateqPorUnidade = await prisma.fatoIndicador.groupBy({
     by: ["unidadeId", "instituicaoId"],
     where: {
@@ -386,7 +396,7 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     const registroOficial = matriculaOficialPorUnidade.get(campusId);
     if (registroOficial !== undefined) {
       fontePorCampus.set(campusId, "oficial");
-      return calcularMatriculaTotalEqualizadaPonderada(registroOficial);
+      return calcularMatriculaTotalEqualizadaPonderada(registroOficial, pesosModalidade.pesos);
     }
     fontePorCampus.set(campusId, "placeholder");
     return { denominadorFuncionamento: valorPlaceholder, moocAdicionalFuncionamento: 0, pesoReitorias: valorPlaceholder };
@@ -817,6 +827,12 @@ export async function runCalculation(input: RunCalculationInput): Promise<RunCal
     percentualAnuidade: input.percentualAnuidade ?? 0,
     pisoMinimoCampusNovo: input.pisoMinimoCampusNovo ?? 0,
     estrategiaFaixasIea,
+    pesosModalidade: {
+      ...pesosModalidade.pesos,
+      origem: pesosModalidade.origem,
+      anoUsado: pesosModalidade.anoUsado,
+      aviso: pesosModalidade.aviso ?? null,
+    },
     overridesPorUnidade: overrides,
     qualidadeEficiencia: qualidadeEficienciaConstants,
     blocos: blocosConstants,

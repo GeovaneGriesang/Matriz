@@ -370,3 +370,45 @@ model AssistenciaDistribuidoOficial {
   @@unique([instituicaoId, ano])
   @@index([ano])
 }
+
+/// Em qual dos quatro "baldes" de repasse uma matrícula entra. A PNP só distingue duas modalidades
+/// (Presencial e a Distância); é a fonte de financiamento/programa que separa a Distância em três,
+/// com pesos bem diferentes — ver ComposicaoRepasseAnual.
+enum CategoriaRepasse {
+  PRESENCIAL
+  EAD
+  EAD_MOOC
+  EAD_FP
+}
+
+/// Regra oficial que classifica cada par (Modalidade de Ensino × Fonte de Financiamento) da PNP numa
+/// categoria de repasse e define o peso daquela categoria — publicada pela CONIF a cada ciclo, na
+/// planilha "Composição de Repasse".
+///
+/// Existe porque **os pesos mudam entre ciclos**: em 2026 o EAD MOOC valia 0,8 e em 2027 passou a
+/// valer 0,08 (dez vezes menos). Antes estes quatro números eram constantes no código
+/// (`matriculaTotalEqualizada.ts`), o que obrigava a alterar código a cada ciclo e tornava
+/// irreproduzível recalcular um ano anterior. Guardados por ano, cada cálculo usa os pesos vigentes
+/// no seu próprio ciclo.
+///
+/// A classificação (qual programa cai em qual categoria) é guardada junto com o peso porque é ela
+/// que explica o resultado — notadamente "Sem Programa Associado" em EAD, que vai para EAD FP (0,8)
+/// e não para EAD (0,25). A chave de junção com os dados da PNP é `nomeFonteFinanciamento`, presente
+/// em TaxaEvasao.csv (conferido: os valores batem um a um).
+model ComposicaoRepasseAnual {
+  id                 Int              @id @default(autoincrement())
+  ano                Int
+  /// Como vem da planilha: "ENSINO PRESENCIAL" ou "ENSINO A DISTANCIA".
+  modalidadeEnsino   String           @db.VarChar(60)
+  /// Programa/fonte, ex.: "MOOC - Aprenda Mais", "UAB (Universidade Aberta do Brasil)".
+  fonteFinanciamento String           @db.VarChar(120)
+  categoriaRepasse   CategoriaRepasse
+  /// Multiplicador aplicado à matrícula desta categoria (1 / 0,8 / 0,25 / 0,08).
+  peso               Decimal          @db.Decimal(6, 4)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // `map` explícito: o nome que o Prisma geraria sozinho passa dos 64 caracteres que o MySQL aceita.
+  @@unique([ano, modalidadeEnsino, fonteFinanciamento], map: "ComposicaoRepasseAnual_ano_modalidade_fonte_key")
+  @@index([ano])
+}
