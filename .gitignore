@@ -26,6 +26,3 @@ next-env.d.ts
 
 # docker
 mysql-data/
-
-# claude code — local/pessoal, não compartilhar (settings.json e skills/ continuam versionados)
-.claude/settings.local.json
