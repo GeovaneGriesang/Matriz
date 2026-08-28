@@ -29,6 +29,12 @@ export default async function OrcamentoLayout({ children }: { children: ReactNod
             Dados anuais
           </Link>
           <Link
+            href="/admin/composicao-repasse"
+            className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            Composição de Repasse
+          </Link>
+          <Link
             href="/dados-importados"
             className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
           >

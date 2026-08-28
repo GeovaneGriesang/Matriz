@@ -4,8 +4,8 @@ import { requireAdminOrRedirect } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
-export default async function DadosAnuaisLayout({ children }: { children: ReactNode }) {
-  await requireAdminOrRedirect("/admin/dados-anuais");
+export default async function ComposicaoRepasseLayout({ children }: { children: ReactNode }) {
+  await requireAdminOrRedirect("/admin/composicao-repasse");
 
   return (
     <div>
@@ -24,10 +24,10 @@ export default async function DadosAnuaisLayout({ children }: { children: ReactN
             Câmpus
           </Link>
           <Link
-            href="/admin/composicao-repasse"
+            href="/admin/dados-anuais"
             className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
-            Composição de Repasse
+            Dados anuais
           </Link>
           <Link
             href="/dados-importados"

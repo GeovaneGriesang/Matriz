@@ -8,15 +8,36 @@ export interface MatriculaTotalEqualizadaRegistro {
 }
 
 /**
- * Pesos oficiais da planilha-modelo CONIF (Prompt 10, confirmados célula a célula contra
- * "COMPLETO PROPOSTA": taxa idêntica em toda a rede, R$/ponto Presencial ÷ 4 = R$/ponto EAD,
- * R$/ponto Presencial × 0,8 = R$/ponto EAD MOOC = R$/ponto EAD FP) para converter as 4 colunas de
- * Matrícula Total equalizada em R$ no Bloco Funcionamento/Reitorias.
+ * Pesos que convertem as 4 colunas de Matrícula Total equalizada em R$ nos Blocos
+ * Funcionamento/Reitorias.
+ *
+ * **Estes pesos mudam entre ciclos orçamentários** — o EAD MOOC valia 0,8 em 2026 e passou a valer
+ * 0,08 em 2027 (dez vezes menos), conforme a planilha "Composição de Repasse" da CONIF. Por isso o
+ * cálculo não usa mais constantes fixas: os pesos vigentes de cada ano ficam em
+ * `ComposicaoRepasseAnual` (cadastrados em /admin/composicao-repasse) e chegam aqui por parâmetro.
  */
-export const PESO_MTE_PRESENCIAL = 1;
-export const PESO_MTE_EAD = 0.25;
-export const PESO_MTE_EAD_MOOC = 0.8;
-export const PESO_MTE_EAD_FP = 0.8;
+export interface PesosModalidade {
+  presencial: number;
+  ead: number;
+  eadMooc: number;
+  eadFp: number;
+}
+
+/**
+ * Pesos do ciclo 2026, confirmados célula a célula contra "COMPLETO PROPOSTA" da planilha-modelo
+ * (taxa idêntica em toda a rede, R$/ponto Presencial ÷ 4 = R$/ponto EAD, R$/ponto Presencial × 0,8 =
+ * R$/ponto EAD MOOC = R$/ponto EAD FP).
+ *
+ * Usados como fallback quando o ano calculado ainda não tem Composição de Repasse cadastrada. O
+ * fallback é sinalizado na memória de cálculo — para um ciclo novo, cadastrar os pesos daquele ano é
+ * obrigatório, porque aplicar os de 2026 a 2027 daria EAD MOOC dez vezes maior que o correto.
+ */
+export const PESOS_MODALIDADE_2026: PesosModalidade = {
+  presencial: 1,
+  ead: 0.25,
+  eadMooc: 0.8,
+  eadFp: 0.8,
+};
 
 export interface MatriculaTotalEqualizadaPonderada {
   /**
@@ -61,6 +82,7 @@ export interface MatriculaTotalEqualizadaPonderada {
  */
 export function calcularMatriculaTotalEqualizadaPonderada(
   registro: MatriculaTotalEqualizadaRegistro | undefined,
+  pesos: PesosModalidade = PESOS_MODALIDADE_2026,
 ): MatriculaTotalEqualizadaPonderada {
   if (registro === undefined) {
     throw new NotImplementedError(
@@ -68,10 +90,10 @@ export function calcularMatriculaTotalEqualizadaPonderada(
     );
   }
   const denominadorFuncionamento =
-    registro.matriculaTotalPresencialEqualizada * PESO_MTE_PRESENCIAL +
-    registro.matriculaTotalEadEqualizada * PESO_MTE_EAD +
-    registro.matriculaTotalEadFpEqualizada * PESO_MTE_EAD_FP;
-  const moocAdicionalFuncionamento = registro.matriculaTotalEadMoocEqualizada * PESO_MTE_EAD_MOOC;
+    registro.matriculaTotalPresencialEqualizada * pesos.presencial +
+    registro.matriculaTotalEadEqualizada * pesos.ead +
+    registro.matriculaTotalEadFpEqualizada * pesos.eadFp;
+  const moocAdicionalFuncionamento = registro.matriculaTotalEadMoocEqualizada * pesos.eadMooc;
   return {
     denominadorFuncionamento,
     moocAdicionalFuncionamento,
