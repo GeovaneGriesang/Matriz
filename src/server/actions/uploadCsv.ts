@@ -21,7 +21,17 @@ export interface UploadCsvActionResult {
     insertedFactCount: number;
     instituicaoCount: number;
     unidadeCount: number;
+    anosInalterados: number;
+    anosGravados: number;
   };
+  /** Detalhe por ano-base: a importação é incremental e só regrava os anos cujo conteúdo mudou. */
+  anos?: {
+    ano: number;
+    resultado: "INSERIDO" | "ATUALIZADO" | "INALTERADO" | "REMOVIDO";
+    rowCount: number;
+    deletedFactCount: number;
+    insertedFactCount: number;
+  }[];
 }
 
 /** Server Action que recebe um upload de CSV da PNP e dispara o pipeline de ingestão. */
@@ -75,6 +85,7 @@ export async function uploadCsvAction(formData: FormData): Promise<UploadCsvActi
             }))
           : undefined,
       tabelasAfetadas: resultado.tabelasAfetadas,
+      anos: resultado.anos,
     };
   } catch (error) {
     if (error instanceof IngestionCancelledError) {

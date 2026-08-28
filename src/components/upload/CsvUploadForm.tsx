@@ -19,13 +19,51 @@ interface UploadResponse {
     insertedFactCount: number;
     instituicaoCount: number;
     unidadeCount: number;
+    anosInalterados: number;
+    anosGravados: number;
   };
+  anos?: ResumoAnoCliente[];
 }
+
+type ResultadoAno = "INSERIDO" | "ATUALIZADO" | "INALTERADO" | "REMOVIDO";
+
+interface ResumoAnoCliente {
+  ano: number;
+  resultado: ResultadoAno;
+  rowCount: number;
+  deletedFactCount: number;
+  insertedFactCount: number;
+}
+
+/** Rótulo, explicação e cor de cada situação possível de um ano — fonte única para a legenda e a tabela. */
+const SITUACAO_ANO: Record<ResultadoAno, { rotulo: string; explicacao: string; classe: string }> = {
+  INALTERADO: {
+    rotulo: "Inalterado",
+    explicacao: "o conteúdo deste ano é idêntico ao da última importação, então nada foi tocado no banco",
+    classe: "bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200",
+  },
+  INSERIDO: {
+    rotulo: "Inserido",
+    explicacao: "ano que ainda não existia no banco — foi gravado agora pela primeira vez",
+    classe: "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-100",
+  },
+  ATUALIZADO: {
+    rotulo: "Atualizado",
+    explicacao: "o conteúdo deste ano mudou em relação à última importação — os dados antigos foram substituídos",
+    classe: "bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100",
+  },
+  REMOVIDO: {
+    rotulo: "Removido",
+    explicacao: "o ano existia no banco mas não veio neste arquivo — foi apagado para o arquivo seguir sendo a fonte da verdade",
+    classe: "bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100",
+  },
+};
 
 interface ProgressoServidor {
   total: number;
   processed: number;
   status: "parsing" | "deleting" | "persisting" | "done" | "error" | "cancelled";
+  anoAtual?: number;
 }
 
 interface UltimoUploadPorTipo {
@@ -274,15 +312,36 @@ export function CsvUploadForm() {
             </p>
           )}
 
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            <strong>O que este envio vai alterar no banco:</strong> todos os registros já
-            importados do tipo <strong>{metadata.label}</strong> (tabela <code>FatoIndicador</code>)
-            serão apagados e substituídos pelos dados deste arquivo. As tabelas{" "}
-            <code>Instituicao</code> e <code>Unidade</code> são atualizadas (não apagadas), criando
-            ou ajustando os registros que aparecerem no CSV. Essa substituição vale para{" "}
-            <strong>qualquer tipo de arquivo</strong> enviado — e só é efetivada se a importação
-            for concluída com sucesso; se algo falhar, os dados antigos permanecem intactos.
-          </p>
+          <div className="flex flex-col gap-2 rounded-md bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            <p>
+              <strong>O que este envio vai alterar no banco:</strong> os registros do tipo{" "}
+              <strong>{metadata.label}</strong> (tabela <code>FatoIndicador</code>) são substituídos
+              pelos deste arquivo, <strong>ano a ano</strong>. As tabelas <code>Instituicao</code> e{" "}
+              <code>Unidade</code> são atualizadas (não apagadas), criando ou ajustando os registros
+              que aparecerem no CSV.
+            </p>
+            <p>
+              <strong>A importação é incremental.</strong> Os arquivos da PNP são cumulativos: o
+              arquivo publicado num ano traz também todos os anos anteriores. Reimportar tudo
+              reescreveria cerca de <strong>87% de dados idênticos</strong>. Para evitar isso, o
+              sistema guarda uma <em>impressão digital</em> (um código calculado a partir do
+              conteúdo) de cada ano já importado, compara com a do arquivo que você está enviando e{" "}
+              <strong>só regrava os anos que realmente mudaram</strong>. Ao final, a tela mostra
+              exatamente o que foi feito em cada ano.
+            </p>
+            <p>
+              A comparação é pelo <strong>conteúdo</strong>, não pela data: se a PNP reprocessar e
+              corrigir números de um ano antigo, aquele ano é detectado e reimportado sozinho. E se
+              um ano deixar de aparecer no arquivo, ele é apagado do banco — o arquivo enviado
+              continua sendo a fonte da verdade.
+            </p>
+            <p>
+              <strong>Se algo falhar no meio:</strong> cada ano é gravado por inteiro ou não é
+              gravado — nunca pela metade. Os anos concluídos antes da falha permanecem, e reenviar o
+              mesmo arquivo retoma de onde parou, porque os anos já gravados aparecerão como
+              inalterados.
+            </p>
+          </div>
 
           <div>
             <p className="mb-1 font-medium text-neutral-900 dark:text-neutral-100">Colunas esperadas:</p>
@@ -360,9 +419,13 @@ export function CsvUploadForm() {
                 {progressoUpload < 100
                   ? `Enviando arquivo... ${progressoUpload}%`
                   : progressoServidor?.status === "deleting"
-                    ? "Removendo dados antigos desse tipo de arquivo... (pode levar alguns minutos em arquivos grandes — a barra fica parada nessa fase, é esperado)"
+                    ? `Removendo os dados antigos${
+                        progressoServidor.anoAtual ? ` do ano ${progressoServidor.anoAtual}` : ""
+                      }... (a barra fica parada nessa fase, é esperado)`
                     : progressoServidor && progressoServidor.total > 0
-                      ? `Importando registros: ${progressoServidor.processed}/${progressoServidor.total}`
+                      ? `Importando registros${
+                          progressoServidor.anoAtual ? ` — ano ${progressoServidor.anoAtual}` : ""
+                        }: ${progressoServidor.processed}/${progressoServidor.total}`
                       : "Processando no servidor..."}
               </span>
               <span>{formatarTempo(segundosDecorridos)}</span>
@@ -425,6 +488,88 @@ export function CsvUploadForm() {
                     registro(s) tocado(s). Tabela <code>Unidade</code>: {resultado.tabelasAfetadas.unidadeCount}{" "}
                     registro(s) tocado(s).
                   </p>
+                )}
+
+                {resultado.anos && resultado.anos.length > 0 && (
+                  <div className="mt-2 border-t border-green-200 pt-2 dark:border-green-800">
+                    <p className="font-medium">O que a importação incremental fez em cada ano</p>
+                    {resultado.tabelasAfetadas && (
+                      <p className="mb-2">
+                        {resultado.tabelasAfetadas.anosInalterados > 0 ? (
+                          <>
+                            <strong>{resultado.tabelasAfetadas.anosInalterados} ano(s)</strong> tinham
+                            conteúdo idêntico ao que já estava no banco e{" "}
+                            <strong>não foram regravados</strong>
+                            {resultado.tabelasAfetadas.anosGravados > 0 ? (
+                              <>
+                                ; <strong>{resultado.tabelasAfetadas.anosGravados} ano(s)</strong> mudaram e
+                                foram gravados.
+                              </>
+                            ) : (
+                              <>. Nada precisou ser alterado no banco.</>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <strong>{resultado.tabelasAfetadas.anosGravados} ano(s)</strong> foram gravados —
+                            nenhum ano do arquivo já estava no banco com o mesmo conteúdo.
+                          </>
+                        )}
+                      </p>
+                    )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-green-200 dark:border-green-800">
+                            <th className="py-1 pr-3 font-medium">Ano</th>
+                            <th className="py-1 pr-3 font-medium">Situação</th>
+                            <th className="py-1 pr-3 text-right font-medium">Linhas no arquivo</th>
+                            <th className="py-1 pr-3 text-right font-medium">Removidos</th>
+                            <th className="py-1 text-right font-medium">Gravados</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {resultado.anos.map((item) => (
+                            <tr key={item.ano} className="border-b border-green-100 last:border-0 dark:border-green-900">
+                              <td className="py-1 pr-3 tabular-nums">{item.ano}</td>
+                              <td className="py-1 pr-3">
+                                <span className={`rounded px-1.5 py-0.5 ${SITUACAO_ANO[item.resultado].classe}`}>
+                                  {SITUACAO_ANO[item.resultado].rotulo}
+                                </span>
+                              </td>
+                              <td className="py-1 pr-3 text-right tabular-nums">
+                                {item.rowCount > 0 ? item.rowCount.toLocaleString("pt-BR") : "—"}
+                              </td>
+                              <td className="py-1 pr-3 text-right tabular-nums">
+                                {item.deletedFactCount > 0 ? item.deletedFactCount.toLocaleString("pt-BR") : "—"}
+                              </td>
+                              <td className="py-1 text-right tabular-nums">
+                                {item.insertedFactCount > 0 ? item.insertedFactCount.toLocaleString("pt-BR") : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <ul className="mt-2 space-y-0.5 text-xs">
+                      {(Object.keys(SITUACAO_ANO) as ResultadoAno[])
+                        .filter((chave) => resultado.anos?.some((item) => item.resultado === chave))
+                        .map((chave) => (
+                          <li key={chave}>
+                            <span className={`rounded px-1.5 py-0.5 ${SITUACAO_ANO[chave].classe}`}>
+                              {SITUACAO_ANO[chave].rotulo}
+                            </span>{" "}
+                            — {SITUACAO_ANO[chave].explicacao}.
+                          </li>
+                        ))}
+                    </ul>
+                    <p className="mt-2 text-xs">
+                      &quot;Linhas no arquivo&quot; conta as linhas do CSV daquele ano; &quot;removidos&quot; e
+                      &quot;gravados&quot; contam registros da tabela <code>FatoIndicador</code>, que guarda{" "}
+                      <strong>um registro por medida</strong> — por isso esses números são maiores que o de
+                      linhas.
+                    </p>
+                  </div>
                 )}
               </>
             ) : resultado.cancelled ? (
