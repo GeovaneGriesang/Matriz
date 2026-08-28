@@ -78,6 +78,13 @@ export async function persistIngestionBatch(
       // de linhas de um fileType já importado antes leva minutos reais (manutenção dos outros
       // índices por linha excluída) — sem um status próprio aqui, a tela de upload fica parada em
       // "0/N" esse tempo todo e parece travada.
+      //
+      // NÃO trocar por um loop de `DELETE ... LIMIT n`: medido, fica MUITO mais lento (73s por lote
+      // de 20 mil, contra ~14min o processo inteiro com o DELETE único). Como a transação segue
+      // aberta, as linhas já apagadas continuam no índice marcadas como deletadas (ainda não
+      // purgadas pelo MVCC), então cada lote precisa pular todas as anteriores antes de achar linha
+      // viva — o custo vira quadrático. `EXPLAIN` não mostra isso: ele reporta `type: range`
+      // normalmente para o primeiro lote.
       if (input.uploadId) atualizarProgresso(input.uploadId, { status: "deleting" });
       const deletedFactCount = await tx.$executeRaw`
         DELETE FatoIndicador FROM FatoIndicador FORCE INDEX (FatoIndicador_fileType_idx) WHERE fileType = ${input.fileType}

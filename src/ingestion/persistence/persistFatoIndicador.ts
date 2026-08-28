@@ -12,14 +12,6 @@ import { IngestionCancelledError } from "../errors";
  */
 const CHUNK_SIZE = 5_000;
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
 /**
  * Campos de dimensão que viram coluna própria (FK/escalar) em vez de entrar em `dimensoesExtra`.
  * Exportado porque `scripts/generatePnpViews.ts` precisa do mesmo critério para saber quais campos
@@ -58,7 +50,24 @@ export async function persistFatoIndicador(
   const extraDimensionFields = dimensionFields.filter(([field]) => !CORE_DIMENSION_FIELDS.has(field));
   const measureFields = Object.entries(mapping.columns).filter(([, def]) => def.kind === "measure");
 
-  const fatos: Prisma.FatoIndicadorCreateManyInput[] = [];
+  // Buffer de no máximo CHUNK_SIZE fatos: cada vez que enche, é gravado e esvaziado. Antes este
+  // array acumulava TODOS os fatos do arquivo antes do primeiro INSERT — num DadosGerais.csv real
+  // são 521 mil fatos e ~93 MB só do JSON de `dimensoesExtra`, o que além do pico de memória
+  // deixava a conexão parada durante toda a montagem (e o socket ocioso acabava derrubado por
+  // proxy, ver comentário em persistIngestionBatch.ts). Gravando enquanto lê, o uso de memória
+  // fica constante e a conexão nunca fica muito tempo sem tráfego.
+  let buffer: Prisma.FatoIndicadorCreateManyInput[] = [];
+  let insertedFactCount = 0;
+
+  const gravarBuffer = async () => {
+    if (buffer.length === 0) return;
+    if (uploadId && cancelamentoFoiSolicitado(uploadId)) {
+      throw new IngestionCancelledError();
+    }
+    await tx.fatoIndicador.createMany({ data: buffer });
+    insertedFactCount += buffer.length;
+    buffer = [];
+  };
 
   let linhasProcessadas = 0;
   for (const row of rows) {
@@ -118,7 +127,7 @@ export async function persistFatoIndicador(
       if (valor === null || valor === undefined) {
         continue;
       }
-      fatos.push({
+      buffer.push({
         ingestionBatchId,
         fileType,
         ano: row.ano as number,
@@ -130,6 +139,13 @@ export async function persistFatoIndicador(
       });
     }
 
+    // Grava assim que o lote enche. O corte cai entre linhas do CSV (nunca no meio das medidas de
+    // uma linha), então um lote pode passar um pouco de CHUNK_SIZE — irrelevante para o tamanho do
+    // pacote e mantém cada linha do arquivo atômica dentro de um mesmo INSERT.
+    if (buffer.length >= CHUNK_SIZE) {
+      await gravarBuffer();
+    }
+
     linhasProcessadas += 1;
     if (uploadId) {
       atualizarProgresso(uploadId, { processed: linhasProcessadas });
@@ -139,15 +155,10 @@ export async function persistFatoIndicador(
     }
   }
 
-  for (const parte of chunk(fatos, CHUNK_SIZE)) {
-    if (uploadId && cancelamentoFoiSolicitado(uploadId)) {
-      throw new IngestionCancelledError();
-    }
-    await tx.fatoIndicador.createMany({ data: parte });
-  }
+  await gravarBuffer();
 
   return {
-    insertedFactCount: fatos.length,
+    insertedFactCount,
     instituicaoCount: instituicaoIdBySigla.size,
     unidadeCount: unidadeIdByKey.size,
   };
