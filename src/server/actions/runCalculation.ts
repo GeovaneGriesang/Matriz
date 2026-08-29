@@ -89,9 +89,9 @@ export interface RunCalculationInput {
   /**
    * Qual tabela de faixas/pesos de IEA usar no enquadramento (ver qualidadeEficiencia.constants.ts)
    * — "PLANILHA_2026" (padrão) usa os limites da planilha-modelo oficial do ciclo 2026;
-   * "FORPLAN_2025" usa os limites do livro "A Matriz Orçamentária da Rede Federal de EPCT"
-   * (CONIF/Forplan, 2025). Nenhuma das duas é descartada; o sistema sempre mantém as duas
-   * disponíveis. Padrão "PLANILHA_2026" quando omitido.
+   * "PLANILHA_2027" usa os do ciclo 2027 (média de rede 49,0%, limiares mais altos). É a mesma
+   * metodologia normativa nas duas, congelada com a média do respectivo ciclo — escolher a do ciclo
+   * errado desloca a faixa de boa parte da rede. Padrão "PLANILHA_2026" quando omitido.
    */
   estrategiaFaixasIea?: EstrategiaFaixasIea;
   /** Ano de referência (ano da PNP) cujos fatos já ingeridos alimentam o cálculo. */

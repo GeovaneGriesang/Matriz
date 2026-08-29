@@ -85,9 +85,6 @@ enum EstrategiaFaixasIea {
   /// Padrão. Faixas da planilha-modelo oficial do ciclo orçamentário de 2026 (seção 2.1 de
   /// docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md).
   PLANILHA_2026
-  /// Faixas do livro "A Matriz Orçamentária da Rede Federal de EPCT" (CONIF/Forplan, 2025) — pode
-  /// divergir da planilha-modelo do ciclo vigente.
-  FORPLAN_2025
   /// Faixas da planilha-modelo do ciclo 2027 (média de rede 49,0%). Conferidas contra a planilha
   /// oficial: das 42 instituições, 16 caem em faixa diferente da tabela de 2026 e todas as 16 batem
   /// com esta — usar a de 2026 em 2027 classificaria errado mais de um terço da rede.
