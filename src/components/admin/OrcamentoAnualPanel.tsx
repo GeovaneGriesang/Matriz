@@ -451,6 +451,8 @@ export function OrcamentoAnualPanel() {
   const [percentualAnuidade, setPercentualAnuidade] = useState("0.15");
   const [pisoMinimoCampusNovo, setPisoMinimoCampusNovo] = useState(0);
   const [estrategiaFaixasIea, setEstrategiaFaixasIea] = useState<EstrategiaFaixasIea>("PLANILHA_2026");
+  /** Ano cujos valores foram carregados no formulário — some quando o usuário troca o ano à mão. */
+  const [anoEmEdicao, setAnoEmEdicao] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [calculandoAno, setCalculandoAno] = useState<number | null>(null);
@@ -485,6 +487,26 @@ export function OrcamentoAnualPanel() {
   }
 
   useEffect(carregarOrcamentos, []);
+
+  /**
+   * Carrega no formulário os valores de um ano já configurado, para editar sem redigitar tudo.
+   * Salvar sobrescreve aquele mesmo ano (a gravação é por ano, um upsert) — trocar o campo "Ano"
+   * antes de salvar cria/atualiza outro ano em vez deste.
+   */
+  function handleEditar(o: OrcamentoAnual) {
+    setAno(String(o.ano));
+    setValorTotal(o.valorTotal);
+    setAjuste(o.ajuste);
+    setValorAssistenciaEstudantil(o.valorAssistenciaEstudantil);
+    setPercentualAnuidade(String(o.percentualAnuidade));
+    setPisoMinimoCampusNovo(o.pisoMinimoCampusNovo);
+    setEstrategiaFaixasIea(o.estrategiaFaixasIea);
+    setAnoEmEdicao(o.ano);
+    setAnoConfirmandoExclusao(null);
+    if (typeof document !== "undefined") {
+      document.getElementById("form-orcamento-anual")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   async function handleExcluir(ano: number) {
     setExcluindoAno(ano);
@@ -597,9 +619,31 @@ export function OrcamentoAnualPanel() {
       </div>
 
       <form
+        id="form-orcamento-anual"
         onSubmit={handleSalvar}
         className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800"
       >
+        {anoEmEdicao !== null && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-200">
+            <span>
+              Editando os valores de <strong>{anoEmEdicao}</strong>. Salvar sobrescreve este ano.
+              {Number(ano) !== anoEmEdicao && (
+                <>
+                  {" "}
+                  Você mudou o campo Ano para <strong>{ano}</strong> — salvar agora vai gravar em {ano}, e{" "}
+                  {anoEmEdicao} fica como está. É assim que se copia a configuração de um ano para outro.
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAnoEmEdicao(null)}
+              className="rounded-md border border-blue-300 px-2 py-1 text-xs font-medium hover:bg-blue-100 dark:border-blue-800 dark:hover:bg-blue-900"
+            >
+              Dispensar aviso
+            </button>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor="ano" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
             Ano
@@ -867,6 +911,14 @@ export function OrcamentoAnualPanel() {
                   )}
 
                   <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleEditar(o)}
+                      disabled={calculandoAno !== null || excluindoAno !== null}
+                      className="w-fit rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                    >
+                      Editar valores
+                    </button>
                     <button
                       type="button"
                       onClick={() => setAnoConfirmandoExclusao(anoConfirmandoExclusao === o.ano ? null : o.ano)}
