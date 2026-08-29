@@ -19,7 +19,7 @@ export type IeaBand = "MUITO_BAIXO" | "BAIXO" | "MEDIO" | "ALTO" | "MUITO_ALTO";
  * - "PLANILHA_2026" (padrão): faixas da planilha-modelo oficial do ciclo orçamentário de 2026.
  * - "FORPLAN_2025": faixas do livro "A Matriz Orçamentária da Rede Federal de EPCT" (CONIF/Forplan, 2025).
  */
-export type EstrategiaFaixasIea = "PLANILHA_2026" | "FORPLAN_2025";
+export type EstrategiaFaixasIea = "PLANILHA_2026" | "PLANILHA_2027" | "FORPLAN_2025";
 
 /** Contagens absolutas de um câmpus, insumo bruto (nunca já enquadrado em faixa). */
 export interface IeaInput {

@@ -16,6 +16,7 @@ export const ESTRATEGIA_FAIXAS_IEA_PADRAO: EstrategiaFaixasIea = "PLANILHA_2026"
 /** Quais estratégias podem ser escolhidas para calcular o ciclo vigente — FORPLAN_2025 é só histórico. */
 export const ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL: Record<EstrategiaFaixasIea, boolean> = {
   PLANILHA_2026: true,
+  PLANILHA_2027: true,
   FORPLAN_2025: false,
 };
 
@@ -25,6 +26,11 @@ export const ESTRATEGIA_FAIXAS_IEA_INFO: Record<EstrategiaFaixasIea, { label: st
     label: "Faixas da planilha-modelo 2026 (único valor ativo)",
     descricao:
       "Limiares de IEA relativos à média de rede do ciclo 2026 (46,1%), extraídos de DADOS BASE!Q76:V81 da planilha oficial. Única tabela usada no cálculo do ciclo vigente.",
+  },
+  PLANILHA_2027: {
+    label: "Faixas da planilha-modelo 2027",
+    descricao:
+      "Limiares de IEA relativos à média de rede do ciclo 2027 (49,0%), extraídos de DADOS BASE!Q77:V81 da planilha oficial de 2027. Use esta tabela ao calcular o ciclo 2027: das 42 instituições, 16 caem em faixa diferente da tabela de 2026, e todas as 16 conferem com esta.",
   },
   FORPLAN_2025: {
     label: "Faixas do ciclo 2025 (Forplan) — histórico, não usar no cálculo de 2026",
@@ -75,13 +81,37 @@ export const IEA_BAND_WEIGHTS_FORPLAN_2025: Record<IeaBand, number> = {
   MUITO_ALTO: 2.5,
 };
 
+/**
+ * Faixas normativas do IEA — planilha-modelo oficial do ciclo 2027, `DADOS BASE!Q77:V81`. Mesma
+ * metodologia da tabela de 2026 (Portaria MEC/SETEC 646/2022: 0,90×/1,00×/1,10×/1,20× da média de
+ * rede), só que congelada com a média do ciclo 2027 — 49,0% em vez de 46,1%, o que desloca todos os
+ * limiares para cima.
+ *
+ * Conferida contra a planilha 2027 pelo peso efetivamente aplicado (IEA ponderado ÷ IEA): das 42
+ * instituições, 16 caem em faixa diferente da tabela de 2026, e as 16 batem com esta — nenhuma bate
+ * com a de 2026. Calcular o ciclo 2027 com a tabela de 2026 erraria a faixa de mais de um terço da
+ * rede.
+ */
+export const IEA_BAND_THRESHOLDS_PLANILHA_2027: { max: number; band: IeaBand }[] = [
+  { max: 0.441, band: "MUITO_BAIXO" }, // até 44,10% (0,90 × 49,0%)
+  { max: 0.49, band: "BAIXO" }, // 44,11% a 49,00% (a própria média da rede)
+  { max: 0.539, band: "MEDIO" }, // 49,01% a 53,90% (1,10 × 49,0%)
+  { max: 0.588, band: "ALTO" }, // 53,91% a 58,80% (1,20 × 49,0%)
+  { max: Infinity, band: "MUITO_ALTO" }, // acima de 58,80%
+];
+
+/** Os cinco degraus de peso são os mesmos de 2026 — o que muda entre os ciclos são os limiares. */
+export const IEA_BAND_WEIGHTS_PLANILHA_2027 = IEA_BAND_WEIGHTS_PLANILHA_2026;
+
 export const IEA_BAND_THRESHOLDS_POR_ESTRATEGIA: Record<EstrategiaFaixasIea, { max: number; band: IeaBand }[]> = {
   PLANILHA_2026: IEA_BAND_THRESHOLDS_PLANILHA_2026,
+  PLANILHA_2027: IEA_BAND_THRESHOLDS_PLANILHA_2027,
   FORPLAN_2025: IEA_BAND_THRESHOLDS_FORPLAN_2025,
 };
 
 export const IEA_BAND_WEIGHTS_POR_ESTRATEGIA: Record<EstrategiaFaixasIea, Record<IeaBand, number>> = {
   PLANILHA_2026: IEA_BAND_WEIGHTS_PLANILHA_2026,
+  PLANILHA_2027: IEA_BAND_WEIGHTS_PLANILHA_2027,
   FORPLAN_2025: IEA_BAND_WEIGHTS_FORPLAN_2025,
 };
 
