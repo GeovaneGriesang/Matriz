@@ -796,7 +796,7 @@ export function OrcamentoAnualPanel() {
             anos-base diferentes. <strong>Escolha a tabela do ciclo que está calculando</strong>: a média da rede
             subiu de 46,1% (2026) para 49,0% (2027), e isso desloca todos os limiares. Não é detalhe — conferindo
             a planilha oficial de 2027, 16 das 42 instituições caem em faixa diferente nas duas tabelas, e todas
-            as 16 batem com a de 2027. A tabela do ciclo 2025 fica só como referência histórica.
+            as 16 batem com a de 2027.
           </p>
           <div className="flex flex-col gap-2">
             {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => {

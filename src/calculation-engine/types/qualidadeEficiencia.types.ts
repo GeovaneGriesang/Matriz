@@ -13,13 +13,12 @@
 export type IeaBand = "MUITO_BAIXO" | "BAIXO" | "MEDIO" | "ALTO" | "MUITO_ALTO";
 
 /**
- * Duas fontes oficiais documentam faixas/pesos de IEA diferentes (ver
- * qualidadeEficiencia.constants.ts) — o sistema mantém as duas disponíveis (nunca escolhe uma e
- * descarta a outra) e deixa o usuário escolher qual usar em cada cálculo:
- * - "PLANILHA_2026" (padrão): faixas da planilha-modelo oficial do ciclo orçamentário de 2026.
- * - "FORPLAN_2025": faixas do livro "A Matriz Orçamentária da Rede Federal de EPCT" (CONIF/Forplan, 2025).
+ * Qual tabela de faixas/pesos de IEA enquadra o indicador (ver qualidadeEficiencia.constants.ts).
+ * É a mesma metodologia normativa em todas — 0,90x a 1,20x da média de IEA da rede, Portaria
+ * MEC/SETEC 646/2022 — congelada com a média do respectivo ciclo, que subiu de 46,1% (2026) para
+ * 49,0% (2027). Escolher a tabela do ciclo errado desloca a faixa de boa parte das instituições.
  */
-export type EstrategiaFaixasIea = "PLANILHA_2026" | "PLANILHA_2027" | "FORPLAN_2025";
+export type EstrategiaFaixasIea = "PLANILHA_2026" | "PLANILHA_2027";
 
 /** Contagens absolutas de um câmpus, insumo bruto (nunca já enquadrado em faixa). */
 export interface IeaInput {

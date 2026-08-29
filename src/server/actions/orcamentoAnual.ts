@@ -2,13 +2,27 @@
 
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
+import { ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL } from "@/calculation-engine/constants/qualidadeEficiencia.constants";
 import { runCalculation } from "@/server/actions/runCalculation";
 import { DEFASAGEM_ANOS_REFERENCIA_PNP } from "@/server/config/orcamentoAnual.constants";
 import { listarInstituicoesDoEscopo, type EscopoDistribuicao } from "@/server/queries/escopoInstituicoes";
 import type { EstrategiaFaixasIea } from "@prisma/client";
 
-function parseEstrategiaFaixasIea(valor: FormDataEntryValue | null): EstrategiaFaixasIea {
-  return valor === "FORPLAN_2025" ? "FORPLAN_2025" : "PLANILHA_2026";
+/**
+ * Valida a estratégia de faixas de IEA vinda do formulário.
+ *
+ * Antes esta função caía em `PLANILHA_2026` para qualquer valor que não fosse `FORPLAN_2025` —
+ * então, ao ser criada a tabela do ciclo 2027, escolhê-la na tela gravava 2026 **em silêncio**: o
+ * salvamento dizia "sucesso" e o ano ficava com a tabela errada. Um valor desconhecido agora é
+ * recusado com mensagem, em vez de virar outro valor sem avisar.
+ */
+function parseEstrategiaFaixasIea(valor: FormDataEntryValue | null): EstrategiaFaixasIea | null {
+  const texto = typeof valor === "string" ? valor : "";
+  const conhecida = (Object.keys(ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL) as EstrategiaFaixasIea[]).find(
+    (chave) => chave === texto,
+  );
+  if (conhecida === undefined) return null;
+  return ESTRATEGIA_FAIXAS_IEA_SELECIONAVEL[conhecida] ? conhecida : null;
 }
 
 export interface SalvarOrcamentoAnualResult {
@@ -34,6 +48,9 @@ export async function salvarOrcamentoAnualAction(formData: FormData): Promise<Sa
   const pisoMinimoCampusNovo =
     pisoMinimoCampusNovoBruto === null || pisoMinimoCampusNovoBruto === "" ? 0 : Number(pisoMinimoCampusNovoBruto);
   const estrategiaFaixasIea = parseEstrategiaFaixasIea(formData.get("estrategiaFaixasIea"));
+  if (estrategiaFaixasIea === null) {
+    return { ok: false, errorMessage: "Selecione uma tabela de faixas de IEA válida." };
+  }
 
   if (!Number.isInteger(ano) || ano <= 0) {
     return { ok: false, errorMessage: "Ano inválido." };

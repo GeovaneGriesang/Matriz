@@ -53,7 +53,8 @@ export async function POST(request: Request) {
     pisoMinimoCampusNovoBruto === undefined || pisoMinimoCampusNovoBruto === null
       ? 0
       : Number(pisoMinimoCampusNovoBruto);
-  const estrategiaFaixasIea: EstrategiaFaixasIea = body?.estrategiaFaixasIea === "FORPLAN_2025" ? "FORPLAN_2025" : "PLANILHA_2026";
+  const estrategiaFaixasIea: EstrategiaFaixasIea =
+    body?.estrategiaFaixasIea === "PLANILHA_2027" ? "PLANILHA_2027" : "PLANILHA_2026";
 
   if (!Number.isFinite(orcamentoTotal) || orcamentoTotal <= 0) {
     return NextResponse.json({ error: "O valor deve ser maior que R$ 0,00." }, { status: 400 });
