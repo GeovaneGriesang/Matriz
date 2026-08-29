@@ -28,13 +28,16 @@ export interface ImportarComposicaoRepasseResult {
 }
 
 /**
- * Server Action (admin) que importa a Composição de Repasse de um ano-base a partir do CSV
- * exportado da planilha da CONIF (colunas Modalidade;FonteFinanciamento;Repasse;Porcentagem).
+ * Server Action (admin) que importa a Composição de Repasse de um ano-base a partir da planilha da
+ * CONIF — **.xlsx direto ou .csv** (ver `lerPlanilhaComposicao`, que localiza o cabeçalho por
+ * conteúdo e tolera variação no nome das colunas).
  *
- * Essa tabela define os pesos por modalidade usados nos Blocos Funcionamento e Reitorias, e eles
- * **mudam entre ciclos**: o EAD MOOC valia 0,8 em 2026 e passou a 0,08 em 2027. Antes eram
- * constantes no código; agora cada ano tem os seus, e recalcular um ano antigo continua
- * reproduzindo o resultado publicado na época.
+ * Essa tabela define os pesos por modalidade usados nos Blocos Funcionamento e Reitorias. Nos ciclos
+ * 2026 e 2027 os quatro pesos são idênticos (Presencial 1 · EAD 0,25 · EAD MOOC 0,08 · EAD FP 0,8),
+ * mas a lista de programas mudou bastante entre eles (12 linhas em 2026, 25 em 2027, com
+ * nomenclatura diferente) — e nada garante que os pesos sigam iguais no próximo ciclo, já que a
+ * CONIF republica a tabela a cada ano. Guardando por ano, recalcular um ciclo anterior continua
+ * reproduzindo o que foi publicado na época.
  *
  * A importação **substitui** a composição daquele ano (o arquivo é a fonte da verdade), dentro de
  * uma transação. Linha com categoria ou peso irreconhecível não é adivinhada: fica em
@@ -118,8 +121,9 @@ export async function importarComposicaoRepasseAction(
     return {
       ok: false,
       errorMessage:
-        "Nenhuma linha válida encontrada. Confira se o arquivo tem as colunas " +
-        "Modalidade;FonteFinanciamento;Repasse;Porcentagem separadas por ponto-e-vírgula.",
+        "As colunas foram encontradas, mas nenhuma linha tinha conteúdo aproveitável. " +
+        "Confira se as linhas trazem Modalidade, Fonte de Financiamento, Repasse (PRESENCIAL, EAD, " +
+        "EAD MOOC ou EAD FP) e Porcentagem preenchidos.",
       naoImportadas,
     };
   }
