@@ -4,7 +4,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { Variacao, calcularVariacao } from "@/components/shared/Variacao";
-import { salvarOrcamentoAnualAction, calcularDistribuicaoOficialAction } from "@/server/actions/orcamentoAnual";
+import {
+  salvarOrcamentoAnualAction,
+  calcularDistribuicaoOficialAction,
+  excluirOrcamentoAnualAction,
+} from "@/server/actions/orcamentoAnual";
 import {
   PESO_BLOCO_FUNCIONAMENTO,
   PESO_BLOCO_REITORIAS,
@@ -436,6 +440,10 @@ function formatarTempo(segundos: number): string {
 
 export function OrcamentoAnualPanel() {
   const [orcamentos, setOrcamentos] = useState<OrcamentoAnual[]>([]);
+  /** Ano cuja exclusão está aguardando confirmação — nada é apagado no primeiro clique. */
+  const [anoConfirmandoExclusao, setAnoConfirmandoExclusao] = useState<number | null>(null);
+  const [excluindoAno, setExcluindoAno] = useState<number | null>(null);
+  const [avisoExclusao, setAvisoExclusao] = useState<string | null>(null);
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [valorTotal, setValorTotal] = useState(0);
   const [ajuste, setAjuste] = useState(0);
@@ -477,6 +485,32 @@ export function OrcamentoAnualPanel() {
   }
 
   useEffect(carregarOrcamentos, []);
+
+  async function handleExcluir(ano: number) {
+    setExcluindoAno(ano);
+    setAvisoExclusao(null);
+    try {
+      const formData = new FormData();
+      formData.set("ano", String(ano));
+      const resultado = await excluirOrcamentoAnualAction(formData);
+      if (!resultado.ok) {
+        setAvisoExclusao(resultado.errorMessage ?? "Não foi possível excluir.");
+      } else {
+        setAvisoExclusao(
+          `Configuração de ${ano} excluída.` +
+            (resultado.calculosOficiaisRestantes
+              ? ` Atenção: ${resultado.calculosOficiaisRestantes} cálculo(s) oficial(is) de ${ano} continuam publicados e ainda aparecem em Consulta — excluir a configuração não os remove.`
+              : " Não havia cálculo oficial publicado para este ano."),
+        );
+        carregarOrcamentos();
+      }
+    } catch (error) {
+      setAvisoExclusao((error as Error).message);
+    } finally {
+      setExcluindoAno(null);
+      setAnoConfirmandoExclusao(null);
+    }
+  }
 
   async function handleSalvar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -759,6 +793,11 @@ export function OrcamentoAnualPanel() {
 
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Anos configurados</h2>
+        {avisoExclusao && (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            {avisoExclusao}
+          </p>
+        )}
         {orcamentos.length === 0 ? (
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Nenhum orçamento anual cadastrado ainda.</p>
         ) : (
@@ -790,7 +829,45 @@ export function OrcamentoAnualPanel() {
                     Referência PNP: dados de {o.ano - 2}
                   </p>
 
+                  {anoConfirmandoExclusao === o.ano && (
+                    <div className="flex flex-col gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                      <p className="font-medium">Excluir a configuração de {o.ano}?</p>
+                      <p>
+                        <strong>O que será apagado:</strong> apenas os parâmetros que você digitou para este ano
+                        — Custeio, Ajuste, Assistência Estudantil, Anuidade, Piso de Câmpus Novo e a escolha das
+                        faixas de IEA.
+                      </p>
+                      <p>
+                        <strong>O que NÃO será apagado:</strong> os cálculos já publicados deste ano (continuam
+                        aparecendo em Consulta), os dados da PNP importados, os dados anuais oficiais (Matrícula
+                        Total equalizada, RAPP, Eficiência Acadêmica) e a Composição de Repasse. Nada disso
+                        pertence ao orçamento — são tabelas próprias, reaproveitadas por outros anos.
+                      </p>
+                      <p>
+                        Na prática, excluir aqui significa <em>&quot;quero reconfigurar {o.ano} do zero&quot;</em>,
+                        e não <em>&quot;quero apagar o histórico de {o.ano}&quot;</em>. Você pode simplesmente
+                        salvar o ano de novo com outros valores, sem excluir.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleExcluir(o.ano)}
+                        disabled={excluindoAno !== null}
+                        className="w-fit rounded-md bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {excluindoAno === o.ano ? "Excluindo..." : `Confirmar exclusão de ${o.ano}`}
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAnoConfirmandoExclusao(anoConfirmandoExclusao === o.ano ? null : o.ano)}
+                      disabled={calculandoAno !== null || excluindoAno !== null}
+                      className="w-fit rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                    >
+                      {anoConfirmandoExclusao === o.ano ? "Cancelar exclusão" : "Excluir configuração"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleCalcular(o.ano)}

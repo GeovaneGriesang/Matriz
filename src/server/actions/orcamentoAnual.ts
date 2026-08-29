@@ -134,3 +134,55 @@ export async function calcularDistribuicaoOficialAction(formData: FormData): Pro
 
   return { ok: true, runId: resultado.runId, instituicoesIncluidas: instituicoes.length };
 }
+
+export interface ExcluirOrcamentoAnualResult {
+  ok: boolean;
+  errorMessage?: string;
+  /** Cálculos oficiais daquele ano que continuam existindo — o usuário precisa saber disso. */
+  calculosOficiaisRestantes?: number;
+}
+
+/**
+ * Server Action (admin) que exclui a configuração de orçamento de um ano.
+ *
+ * Apaga SOMENTE a linha de `OrcamentoAnual` — os parâmetros que o administrador digitou (Custeio,
+ * Ajuste, Assistência, Anuidade, Piso, faixas de IEA). Deliberadamente **não** apaga:
+ *
+ * - os cálculos já executados (`CalculationRun`/`CalculationResult`), que são registro histórico do
+ *   que foi publicado e continuam alimentando a tela de Consulta;
+ * - nenhum dado da PNP (`FatoIndicador`), que não pertence a um ano de orçamento e sim ao ano-base;
+ * - os dados anuais oficiais (Matrícula Total equalizada, RAPP, Eficiência Acadêmica) nem a
+ *   Composição de Repasse, que vivem em tabelas próprias e são reaproveitados por outros anos.
+ *
+ * Ou seja: excluir aqui significa "quero reconfigurar este ano do zero", não "quero apagar o
+ * histórico deste ano". Se ainda houver cálculo oficial publicado, ele continua aparecendo em
+ * Consulta — por isso o resultado devolve quantos sobraram, para a tela avisar.
+ */
+export async function excluirOrcamentoAnualAction(formData: FormData): Promise<ExcluirOrcamentoAnualResult> {
+  if (!(await getAdminSession())) {
+    return { ok: false, errorMessage: "Não autenticado." };
+  }
+
+  const ano = Number(formData.get("ano"));
+  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
+    return { ok: false, errorMessage: "Ano inválido." };
+  }
+
+  const existente = await prisma.orcamentoAnual.findUnique({ where: { ano } });
+  if (existente === null) {
+    return { ok: false, errorMessage: `Não há orçamento cadastrado para ${ano}.` };
+  }
+
+  await prisma.orcamentoAnual.delete({ where: { ano } });
+
+  // Runs oficiais são identificados pelo ano do orçamento guardado no snapshot de parâmetros.
+  const calculosOficiaisRestantes = await prisma.calculationRun.count({
+    where: {
+      origem: "OFICIAL",
+      status: "COMPLETED",
+      parametersSnapshot: { path: "$.anoOrcamento", equals: ano },
+    },
+  });
+
+  return { ok: true, calculosOficiaisRestantes };
+}
