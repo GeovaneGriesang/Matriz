@@ -273,7 +273,7 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
       />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {linhasFiltradas.length} de {linhas.length} câmpus — ano-base {ano}.
+        {linhasFiltradas.length} de {linhas.length} câmpus — ano do orçamento {ano}.
       </p>
 
       {carregando ? (
@@ -445,7 +445,7 @@ function RappAnualTabela({ ano }: { ano: number }) {
       <ExplicacaoImportacaoCsv colunas={["Sigla", "Instituicao", "UF", "RAPP"]} nomeArquivo="modelo_rapp_anual.csv" />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
+        {linhasFiltradas.length} de {linhas.length} instituições — ano do orçamento {ano}.
       </p>
 
       {carregando ? (
@@ -618,7 +618,7 @@ function EficienciaAcademicaAnualTabela({ ano }: { ano: number }) {
       />
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
+        {linhasFiltradas.length} de {linhas.length} instituições — ano do orçamento {ano}.
       </p>
 
       {carregando ? (
@@ -822,7 +822,7 @@ function OrcamentoDistribuidoOficialTabela({ ano }: { ano: number }) {
       </p>
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {linhasFiltradas.length} de {linhas.length} instituições — ano-base {ano}.
+        {linhasFiltradas.length} de {linhas.length} instituições — ano do orçamento {ano}.
       </p>
 
       {carregando ? (
@@ -911,7 +911,7 @@ export function DadosAnuaisPanel() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center gap-3">
         <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300" htmlFor="ano-dados-anuais">
-          Ano-base
+          Ano do orçamento
         </label>
         <select
           id="ano-dados-anuais"

@@ -731,8 +731,13 @@ export function OrcamentoAnualPanel() {
             <Link href="/admin/unidades" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
               Câmpus
             </Link>
-            ), já com o IPCA do ano aplicado (calcule fora do sistema — ele não estima IPCA). Regra oficial CONIF:
-            R$ 700.000 corrigidos, se o cálculo proporcional do câmpus ficar abaixo disso. Deixe em R$ 0,00 para
+            ): se a distribuição proporcional do câmpus ficar abaixo deste valor, ele recebe o piso.
+          </p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <strong>Use R$ 700.000,00.</strong> Este texto já orientou a informar &quot;700.000 corrigidos pelo
+            IPCA&quot;, o que estava errado: nas planilhas oficiais o piso é aplicado em R$ 700.000,00 exatos,
+            sem correção. Conferido no ciclo 2027, em que 53 câmpus receberam exatamente esse valor e a própria
+            planilha calcula o total de câmpus novos como 53 × 700.000 = R$ 37.100.000,00. Deixe em R$ 0,00 para
             não aplicar nenhum piso.
           </p>
         </div>
@@ -742,10 +747,12 @@ export function OrcamentoAnualPanel() {
             Faixas de peso do IEA
           </legend>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            As duas tabelas abaixo não são metodologias concorrentes — são o mesmo cálculo normativo (Portaria
+            As tabelas abaixo não são metodologias concorrentes — são o mesmo cálculo normativo (Portaria
             MEC/SETEC 646/2022: faixas relativas à média de IEA da rede), só &quot;congeladas&quot; com a média de
-            anos-base diferentes. Por isso apenas a tabela do ciclo vigente pode ser usada no cálculo; a do ciclo
-            2025 fica disponível só como referência histórica.
+            anos-base diferentes. <strong>Escolha a tabela do ciclo que está calculando</strong>: a média da rede
+            subiu de 46,1% (2026) para 49,0% (2027), e isso desloca todos os limiares. Não é detalhe — conferindo
+            a planilha oficial de 2027, 16 das 42 instituições caem em faixa diferente nas duas tabelas, e todas
+            as 16 batem com a de 2027. A tabela do ciclo 2025 fica só como referência histórica.
           </p>
           <div className="flex flex-col gap-2">
             {(Object.keys(ESTRATEGIA_FAIXAS_IEA_INFO) as EstrategiaFaixasIea[]).map((chave) => {
