@@ -148,7 +148,7 @@ export async function importarEficienciaAcademicaAnualAction(
   // lotes paralelos só para reimport de um ano já existente.
   if (novos.length > 0) {
     await prisma.eficienciaAcademicaAnual.createMany({
-      data: novos.map((item) => ({ ...item, ano })),
+      data: novos.map((item) => ({ ...item, ano, origem: "PLANILHA" })),
       skipDuplicates: true,
     });
   }
@@ -165,6 +165,7 @@ export async function importarEficienciaAcademicaAnualAction(
             evasaoCiclo: item.evasaoCiclo,
             retencaoCiclo: item.retencaoCiclo,
             eficienciaAcademica: item.eficienciaAcademica,
+            origem: "PLANILHA",
           },
         }),
       ),
@@ -217,8 +218,8 @@ export async function salvarEficienciaAcademicaAnualAction(
 
   await prisma.eficienciaAcademicaAnual.upsert({
     where: { instituicaoId_ano: { instituicaoId, ano } },
-    create: { instituicaoId, ano, ...valores },
-    update: valores,
+    create: { instituicaoId, ano, ...valores, origem: "CONFIGURADO" },
+    update: { ...valores, origem: "CONFIGURADO" },
   });
 
   return { ok: true };

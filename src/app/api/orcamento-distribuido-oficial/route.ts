@@ -11,6 +11,10 @@ export interface OrcamentoDistribuidoOficialResumo {
   /** Base pré-trava (aba COMPARATIVO, colunas AF/AK) — 0 quando ainda não importada/cadastrada. */
   custeioBaseOficial: number;
   assistenciaBaseOficial: number;
+  /** Custeio e Assistência são gravados em tabelas separadas e podem ter origens diferentes
+   *  (ex.: um importado via planilha, o outro corrigido à mão depois). */
+  origemCusteio: "PLANILHA" | "CONFIGURADO" | null;
+  origemAssistencia: "PLANILHA" | "CONFIGURADO" | null;
 }
 
 /** Lista todas as instituições com o Custeio/Assistência Estudantil oficiais (com complemento da
@@ -53,6 +57,8 @@ export async function GET(request: NextRequest) {
       i.assistenciaDistribuidoOficial[0]?.assistenciaBaseOficial !== undefined
         ? Number(i.assistenciaDistribuidoOficial[0].assistenciaBaseOficial)
         : 0,
+    origemCusteio: i.custeioDistribuidoOficial[0]?.origem ?? null,
+    origemAssistencia: i.assistenciaDistribuidoOficial[0]?.origem ?? null,
   }));
 
   return NextResponse.json(resumo);

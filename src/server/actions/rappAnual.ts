@@ -118,7 +118,7 @@ export async function importarRappAnualAction(formData: FormData): Promise<Impor
   // (caso comum), updates em lotes paralelos só para reimport de um ano já existente.
   if (novos.length > 0) {
     await prisma.rappAnual.createMany({
-      data: novos.map((item) => ({ instituicaoId: item.instituicaoId, ano, rapp: item.rapp })),
+      data: novos.map((item) => ({ instituicaoId: item.instituicaoId, ano, rapp: item.rapp, origem: "PLANILHA" })),
       skipDuplicates: true,
     });
   }
@@ -130,7 +130,7 @@ export async function importarRappAnualAction(formData: FormData): Promise<Impor
       lote.map((item) =>
         prisma.rappAnual.update({
           where: { instituicaoId_ano: { instituicaoId: item.instituicaoId, ano } },
-          data: { rapp: item.rapp },
+          data: { rapp: item.rapp, origem: "PLANILHA" },
         }),
       ),
     );
@@ -170,8 +170,8 @@ export async function salvarRappAnualAction(formData: FormData): Promise<SalvarR
 
   await prisma.rappAnual.upsert({
     where: { instituicaoId_ano: { instituicaoId, ano } },
-    create: { instituicaoId, ano, rapp },
-    update: { rapp },
+    create: { instituicaoId, ano, rapp, origem: "CONFIGURADO" },
+    update: { rapp, origem: "CONFIGURADO" },
   });
 
   return { ok: true };

@@ -201,6 +201,20 @@ const IN_SCOPE_M1: Record<PnpFileType, boolean> = {
   CARGOS_CARREIRA: false,
 };
 
+/**
+ * Medidas (`measureLabel`) de um tipo de arquivo, na ordem declarada no mapeamento — usado para
+ * pivotar `FatoIndicador` (uma linha por medida) numa linha por câmpus/dimensão com uma coluna por
+ * medida (ver /api/fatos e a tela /dados-importados). Fonte única: o mesmo `kind: "measure"` que
+ * `persistFatoIndicador.ts` usa para decidir o que vira `FatoIndicador.medida` na importação —
+ * nunca manter essa lista duplicada à mão.
+ */
+export function getMeasureLabels(fileType: PnpFileType): string[] {
+  const mapping = MAPPING_BY_FILE_TYPE[fileType];
+  return Object.values(mapping.columns)
+    .filter((def) => def.kind === "measure")
+    .map((def) => def.measureLabel as string);
+}
+
 export function getFileTypeMetadata(fileType: PnpFileType): FileTypeMetadata {
   const mapping = MAPPING_BY_FILE_TYPE[fileType];
   const columns = Object.values(mapping.columns).map((def) => ({

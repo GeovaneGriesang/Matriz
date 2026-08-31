@@ -92,8 +92,8 @@ enum EstrategiaFaixasIea {
 }
 
 model IngestionBatch {
-  id               Int             @id @default(autoincrement())
-  status           BatchStatus     @default(PENDING)
+  id               Int                   @id @default(autoincrement())
+  status           BatchStatus           @default(PENDING)
   uploadedByEmail  String?
   originalFilename String
   fileType         PnpFileType
@@ -101,7 +101,7 @@ model IngestionBatch {
   checksum         String
   rowCount         Int?
   validationReport Json?
-  createdAt        DateTime        @default(now())
+  createdAt        DateTime              @default(now())
   completedAt      DateTime?
   fatos            FatoIndicador[]
   yearDigests      IngestionYearDigest[]
@@ -264,6 +264,15 @@ model OrcamentoAnual {
   updatedAt                  DateTime            @updatedAt
 }
 
+/// Origem do valor mais recente gravado num registro de dados anuais (CONIF): importado em lote do
+/// CSV oficial ("PLANILHA") ou digitado/corrigido à mão pelo administrador ("CONFIGURADO"). Cada
+/// escrita (import ou salvar pontual) sobrescreve este campo para refletir como o valor ATUAL chegou
+/// ali — não é um histórico. Exibido na tela pública /dados-importados.
+enum OrigemDadoAnual {
+  PLANILHA
+  CONFIGURADO
+}
+
 /// Matrícula Total equalizada por câmpus/ano (colunas Q/R/S/T de "COMPLETO PROPOSTA" na planilha
 /// oficial da CONIF) — publicada pela CONIF, confirmado que NÃO é deriveável dos CSVs públicos da
 /// PNP (ver src/calculation-engine/matriculaTotalEqualizada.ts). Cadastro manual/importado por
@@ -272,16 +281,17 @@ model OrcamentoAnual {
 /// substitui o placeholder ("Matrícula Equivalente | Geral" da PNP) no Bloco Funcionamento/Reitorias;
 /// sem registro, o câmpus continua no placeholder (ver fonteMatricula em TabelaDistribuicao.tsx).
 model MatriculaTotalEqualizadaAnual {
-  id                                 Int      @id @default(autoincrement())
+  id                                 Int             @id @default(autoincrement())
   unidadeId                          Int
-  unidade                            Unidade  @relation(fields: [unidadeId], references: [id])
+  unidade                            Unidade         @relation(fields: [unidadeId], references: [id])
   ano                                Int
-  matriculaTotalPresencialEqualizada Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadEqualizada        Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadMoocEqualizada    Decimal  @db.Decimal(18, 5)
-  matriculaTotalEadFpEqualizada      Decimal  @db.Decimal(18, 5)
-  createdAt                          DateTime @default(now())
-  updatedAt                          DateTime @updatedAt
+  matriculaTotalPresencialEqualizada Decimal         @db.Decimal(18, 5)
+  matriculaTotalEadEqualizada        Decimal         @db.Decimal(18, 5)
+  matriculaTotalEadMoocEqualizada    Decimal         @db.Decimal(18, 5)
+  matriculaTotalEadFpEqualizada      Decimal         @db.Decimal(18, 5)
+  origem                             OrigemDadoAnual @default(CONFIGURADO)
+  createdAt                          DateTime        @default(now())
+  updatedAt                          DateTime        @updatedAt
 
   @@unique([unidadeId, ano])
   @@index([ano])
@@ -293,13 +303,14 @@ model MatriculaTotalEqualizadaAnual {
 /// aproximação via TaxaEvasao.csv em calcularBlocoRap.ts (prioridade: override do simulador > este
 /// valor oficial > aproximação); ver campo `fonte` em TabelaDistribuicao.tsx para qual foi usada.
 model RappAnual {
-  id            Int         @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   instituicaoId Int
-  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  instituicao   Instituicao     @relation(fields: [instituicaoId], references: [id])
   ano           Int
-  rapp          Decimal     @db.Decimal(18, 6)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  rapp          Decimal         @db.Decimal(18, 6)
+  origem        OrigemDadoAnual @default(CONFIGURADO)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])
@@ -315,16 +326,17 @@ model RappAnual {
 /// substitui por completo a agregação aproximada em calcularBlocoIea.ts (prioridade: override do
 /// simulador > este valor oficial > agregação aproximada, com o erro de até ~53pp já documentado).
 model EficienciaAcademicaAnual {
-  id                  Int         @id @default(autoincrement())
+  id                  Int             @id @default(autoincrement())
   instituicaoId       Int
-  instituicao         Instituicao @relation(fields: [instituicaoId], references: [id])
+  instituicao         Instituicao     @relation(fields: [instituicaoId], references: [id])
   ano                 Int
-  conclusaoCiclo      Decimal     @db.Decimal(18, 6)
-  evasaoCiclo         Decimal     @db.Decimal(18, 6)
-  retencaoCiclo       Decimal     @db.Decimal(18, 6)
-  eficienciaAcademica Decimal     @db.Decimal(18, 6)
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  conclusaoCiclo      Decimal         @db.Decimal(18, 6)
+  evasaoCiclo         Decimal         @db.Decimal(18, 6)
+  retencaoCiclo       Decimal         @db.Decimal(18, 6)
+  eficienciaAcademica Decimal         @db.Decimal(18, 6)
+  origem              OrigemDadoAnual @default(CONFIGURADO)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])
@@ -336,18 +348,19 @@ model EficienciaAcademicaAnual {
 /// exercício anterior). Este sistema NÃO reimplementa o algoritmo da trava — importa o valor final
 /// diretamente enquanto houver planilha oficial publicada para o ano (ver calcularDistribuicaoOficialAction).
 model CusteioDistribuidoOficial {
-  id                 Int         @id @default(autoincrement())
+  id                 Int             @id @default(autoincrement())
   instituicaoId      Int
-  instituicao        Instituicao @relation(fields: [instituicaoId], references: [id])
+  instituicao        Instituicao     @relation(fields: [instituicaoId], references: [id])
   ano                Int
-  custeioOficial     Decimal     @db.Decimal(18, 6)
+  custeioOficial     Decimal         @db.Decimal(18, 6)
   /// Custeio calculado pela CONIF ANTES da trava de não-decréscimo (aba COMPARATIVO, coluna AF) —
   /// permite calcular o complemento REAL (custeioOficial - custeioBaseOficial) direto da planilha,
   /// sem depender do nosso próprio cálculo por fórmula. Opcional: nem todo import necessariamente traz
   /// essa coluna (ver importarOrcamentoDistribuidoOficialAction).
-  custeioBaseOficial Decimal?    @db.Decimal(18, 6)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  custeioBaseOficial Decimal?        @db.Decimal(18, 6)
+  origem             OrigemDadoAnual @default(CONFIGURADO)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])
@@ -357,16 +370,17 @@ model CusteioDistribuidoOficial {
 /// `VALOR SPO` — mesma situação de CusteioDistribuidoOficial (já com o complemento da trava
 /// embutido, importado diretamente, não recalculado).
 model AssistenciaDistribuidoOficial {
-  id                     Int         @id @default(autoincrement())
+  id                     Int             @id @default(autoincrement())
   instituicaoId          Int
-  instituicao            Instituicao @relation(fields: [instituicaoId], references: [id])
+  instituicao            Instituicao     @relation(fields: [instituicaoId], references: [id])
   ano                    Int
-  assistenciaOficial     Decimal     @db.Decimal(18, 6)
+  assistenciaOficial     Decimal         @db.Decimal(18, 6)
   /// Assistência calculada pela CONIF ANTES da trava de não-decréscimo (aba COMPARATIVO, coluna AK)
   /// — mesma finalidade de CusteioDistribuidoOficial.custeioBaseOficial.
-  assistenciaBaseOficial Decimal?    @db.Decimal(18, 6)
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
+  assistenciaBaseOficial Decimal?        @db.Decimal(18, 6)
+  origem                 OrigemDadoAnual @default(CONFIGURADO)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 
   @@unique([instituicaoId, ano])
   @@index([ano])
