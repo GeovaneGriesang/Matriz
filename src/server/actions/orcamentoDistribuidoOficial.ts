@@ -164,6 +164,7 @@ export async function importarOrcamentoDistribuidoOficialAction(
         ano,
         custeioOficial: item.custeioOficial,
         custeioBaseOficial: item.custeioBaseOficial,
+        origem: "PLANILHA",
       })),
       skipDuplicates: true,
     });
@@ -184,6 +185,7 @@ export async function importarOrcamentoDistribuidoOficialAction(
         ano,
         assistenciaOficial: item.assistenciaOficial,
         assistenciaBaseOficial: item.assistenciaBaseOficial,
+        origem: "PLANILHA",
       })),
       skipDuplicates: true,
     });
@@ -196,7 +198,7 @@ export async function importarOrcamentoDistribuidoOficialAction(
       lote.map((item) =>
         prisma.custeioDistribuidoOficial.update({
           where: { instituicaoId_ano: { instituicaoId: item.instituicaoId, ano } },
-          data: { custeioOficial: item.custeioOficial, custeioBaseOficial: item.custeioBaseOficial },
+          data: { custeioOficial: item.custeioOficial, custeioBaseOficial: item.custeioBaseOficial, origem: "PLANILHA" },
         }),
       ),
     );
@@ -207,7 +209,11 @@ export async function importarOrcamentoDistribuidoOficialAction(
       lote.map((item) =>
         prisma.assistenciaDistribuidoOficial.update({
           where: { instituicaoId_ano: { instituicaoId: item.instituicaoId, ano } },
-          data: { assistenciaOficial: item.assistenciaOficial, assistenciaBaseOficial: item.assistenciaBaseOficial },
+          data: {
+            assistenciaOficial: item.assistenciaOficial,
+            assistenciaBaseOficial: item.assistenciaBaseOficial,
+            origem: "PLANILHA",
+          },
         }),
       ),
     );
@@ -278,13 +284,13 @@ export async function salvarOrcamentoDistribuidoOficialAction(
 
   await prisma.custeioDistribuidoOficial.upsert({
     where: { instituicaoId_ano: { instituicaoId, ano } },
-    create: { instituicaoId, ano, custeioOficial, custeioBaseOficial },
-    update: { custeioOficial, custeioBaseOficial },
+    create: { instituicaoId, ano, custeioOficial, custeioBaseOficial, origem: "CONFIGURADO" },
+    update: { custeioOficial, custeioBaseOficial, origem: "CONFIGURADO" },
   });
   await prisma.assistenciaDistribuidoOficial.upsert({
     where: { instituicaoId_ano: { instituicaoId, ano } },
-    create: { instituicaoId, ano, assistenciaOficial, assistenciaBaseOficial },
-    update: { assistenciaOficial, assistenciaBaseOficial },
+    create: { instituicaoId, ano, assistenciaOficial, assistenciaBaseOficial, origem: "CONFIGURADO" },
+    update: { assistenciaOficial, assistenciaBaseOficial, origem: "CONFIGURADO" },
   });
 
   return { ok: true };

@@ -4,8 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   importarMatriculaTotalEqualizadaAnualAction,
   salvarMatriculaTotalEqualizadaAnualAction,
-  type LinhaMatriculaNaoImportada,
 } from "@/server/actions/matriculaTotalEqualizadaAnual";
+import type {
+  AnoCriacaoDivergente,
+  CampusAusenteNaPlanilha,
+  LinhaMatriculaNaoImportada,
+} from "@/server/dadosAnuais/matriculaTotalEqualizadaCsv";
 import { importarRappAnualAction, salvarRappAnualAction, type LinhaRappNaoImportada } from "@/server/actions/rappAnual";
 import {
   importarEficienciaAcademicaAnualAction,
@@ -143,6 +147,131 @@ function ResultadoImport({
   );
 }
 
+/**
+ * O que a importação fez ao cadastro de Câmpus (passo 2), além de gravar a matrícula. Fica visível
+ * porque o sistema é didático: preencher ano de criação e criar câmpus muda quem recebe o Piso
+ * Mínimo, e o administrador precisa ver a consequência — não descobrir depois pela distribuição.
+ */
+function EfeitoNoCadastroDeCampus({
+  campusCriados,
+  anosPreenchidos,
+  divergentes,
+}: {
+  campusCriados: number;
+  anosPreenchidos: number;
+  divergentes: AnoCriacaoDivergente[];
+}) {
+  const [expandido, setExpandido] = useState(false);
+  if (campusCriados === 0 && anosPreenchidos === 0 && divergentes.length === 0) return null;
+  return (
+    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+      <p className="font-medium">Reflexo no cadastro de Câmpus (passo 2)</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+        {campusCriados > 0 && <li>{campusCriados} câmpus criado(s) a partir da planilha, já com o ano de criação.</li>}
+        {anosPreenchidos > 0 && (
+          <li>
+            {anosPreenchidos} ano(s) de criação preenchido(s) em câmpus que estavam sem essa informação — antes só
+            era possível digitar um a um.
+          </li>
+        )}
+        {divergentes.length > 0 && (
+          <li>
+            <button
+              type="button"
+              onClick={() => setExpandido((v) => !v)}
+              className="font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
+            >
+              {divergentes.length} câmpus com ano diferente do já cadastrado — {expandido ? "ocultar" : "ver detalhe"}
+            </button>
+            <p className="mt-0.5 text-emerald-800 dark:text-emerald-300">
+              Nada foi sobrescrito: o valor já revisado à mão foi mantido. Corrija em{" "}
+              <a href="/admin/unidades" className="underline">
+                Câmpus
+              </a>{" "}
+              se a planilha estiver certa.
+            </p>
+            {expandido && (
+              <ul className="mt-1 max-h-48 space-y-0.5 overflow-y-auto">
+                {divergentes.map((d) => (
+                  <li key={d.unidadeId}>
+                    {d.campus} ({d.instituicao}): sistema {d.anoNoSistema} × planilha {d.anoNaPlanilha}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Oferta de criar os câmpus que a planilha traz e o sistema não tem. Deliberadamente **não** é
+ * automática: criar câmpus redistribui o Piso Mínimo por Câmpus Novo, então a ação é do
+ * administrador, depois de ver a lista.
+ */
+function OfertaCriarCampusAusentes({
+  ausentes,
+  criando,
+  onCriar,
+}: {
+  ausentes: CampusAusenteNaPlanilha[];
+  criando: boolean;
+  onCriar: () => void;
+}) {
+  const [expandido, setExpandido] = useState(false);
+  const semAno = ausentes.filter((a) => a.anoCriacao === null).length;
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      <p className="font-medium">
+        A planilha traz {ausentes.length} câmpus que o sistema não tem — as matrículas deles não foram gravadas.
+      </p>
+      <p className="mt-1">
+        Isso é esperado, não é erro de digitação: um câmpus recém-criado ainda não tem alunos, logo não aparece em
+        nenhum extrato da PNP e nunca nasceria sozinho. Mas a matriz da CONIF já o contempla — ele recebe o Piso
+        Mínimo por Câmpus Novo mesmo sem matrícula. Criá-los aqui evita que esse dinheiro fique sem dono no cálculo.
+      </p>
+      <p className="mt-1">
+        <strong>Atenção:</strong> criar câmpus <strong>redistribui o Piso Mínimo</strong> entre mais unidades. Por
+        isso a ação é sua, e não um efeito colateral do import.
+        {semAno > 0 && (
+          <>
+            {" "}
+            {semAno} deles vêm sem ano de criação na planilha e continuarão precisando de digitação em{" "}
+            <a href="/admin/unidades" className="underline">
+              Câmpus
+            </a>{" "}
+            (sem ano, o câmpus nunca é elegível ao piso).
+          </>
+        )}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={criando}
+          onClick={onCriar}
+          className="rounded-md bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800 disabled:opacity-60 dark:bg-amber-600 dark:hover:bg-amber-500"
+        >
+          {criando ? "Criando..." : `Criar os ${ausentes.length} câmpus e importar as matrículas deles`}
+        </button>
+        <button type="button" onClick={() => setExpandido((v) => !v)} className="font-medium underline">
+          {expandido ? "Ocultar lista" : "Ver a lista"}
+        </button>
+      </div>
+      {expandido && (
+        <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto">
+          {ausentes.map((a) => (
+            <li key={`${a.instituicaoId}-${a.campus}`}>
+              {a.instituicaoNome} / {a.campus} — criado em {a.anoCriacao ?? "ano não informado"}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
   const [linhas, setLinhas] = useState<MatriculaResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -154,8 +283,15 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
     importadas: number;
     atualizadas: number;
     naoImportadas: { linha: number; motivo: string; detalhe: string }[];
+    campusAusentes: CampusAusenteNaPlanilha[];
+    campusCriados: number;
+    anosCriacaoPreenchidos: number;
+    anosCriacaoDivergentes: AnoCriacaoDivergente[];
   } | null>(null);
   const inputArquivoRef = useRef<HTMLInputElement | null>(null);
+  // O arquivo enviado fica guardado para a segunda passada ("criar câmpus e importar"), senão o
+  // administrador teria que selecionar o mesmo CSV de novo só para confirmar a criação.
+  const arquivoEnviadoRef = useRef<File | null>(null);
 
   function carregar() {
     setCarregando(true);
@@ -205,13 +341,15 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
     }
   }
 
-  async function importarArquivo(arquivo: File) {
+  async function importarArquivo(arquivo: File, criarCampusAusentes = false) {
     setImportando(true);
     setResultadoImport(null);
+    arquivoEnviadoRef.current = arquivo;
     try {
       const formData = new FormData();
       formData.set("ano", String(ano));
       formData.set("arquivo", arquivo);
+      if (criarCampusAusentes) formData.set("criarCampusAusentes", "1");
       const resultado = await importarMatriculaTotalEqualizadaAnualAction(formData);
       if (!resultado.ok) throw new Error(resultado.errorMessage ?? "Falha ao importar.");
       setResultadoImport({
@@ -224,10 +362,22 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
             `${n.instituicao} / ${n.campus}` +
             (n.candidatos ? ` — candidatos: ${n.candidatos.map((c) => `#${c.id} ${c.nome}`).join(", ")}` : ""),
         })),
+        campusAusentes: resultado.campusAusentes ?? [],
+        campusCriados: resultado.campusCriados ?? 0,
+        anosCriacaoPreenchidos: resultado.anosCriacaoPreenchidos ?? 0,
+        anosCriacaoDivergentes: resultado.anosCriacaoDivergentes ?? [],
       });
       carregar();
     } catch (error) {
-      setResultadoImport({ importadas: 0, atualizadas: 0, naoImportadas: [{ linha: 0, motivo: "erro", detalhe: (error as Error).message }] });
+      setResultadoImport({
+        importadas: 0,
+        atualizadas: 0,
+        naoImportadas: [{ linha: 0, motivo: "erro", detalhe: (error as Error).message }],
+        campusAusentes: [],
+        campusCriados: 0,
+        anosCriacaoPreenchidos: 0,
+        anosCriacaoDivergentes: [],
+      });
     } finally {
       setImportando(false);
       if (inputArquivoRef.current) inputArquivoRef.current.value = "";
@@ -264,6 +414,7 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
           "Instituicao",
           "UF",
           "Campus",
+          "AnoCriacaoCampus",
           "MatriculaTotalPresencialEqualizada",
           "MatriculaTotalEadEqualizada",
           "MatriculaTotalEadMoocEqualizada",
@@ -271,7 +422,30 @@ function MatriculaTotalEqualizadaTabela({ ano }: { ano: number }) {
         ]}
         nomeArquivo="modelo_matricula_total_equalizada.csv"
       />
+      <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+        Esta planilha também alimenta o <strong>passo 2 (Câmpus)</strong>: a coluna{" "}
+        <code className="rounded bg-neutral-200 px-1 dark:bg-neutral-800">AnoCriacaoCampus</code> preenche o ano de
+        criação dos câmpus que ainda estão sem ele — informação que não existe em nenhum arquivo da PNP e que antes
+        só podia ser digitada uma a uma. Ano já cadastrado nunca é sobrescrito: se divergir, você é avisado e decide.
+      </p>
       {resultadoImport && <ResultadoImport resultado={resultadoImport} />}
+      {resultadoImport && (
+        <EfeitoNoCadastroDeCampus
+          campusCriados={resultadoImport.campusCriados}
+          anosPreenchidos={resultadoImport.anosCriacaoPreenchidos}
+          divergentes={resultadoImport.anosCriacaoDivergentes}
+        />
+      )}
+      {resultadoImport && resultadoImport.campusAusentes.length > 0 && (
+        <OfertaCriarCampusAusentes
+          ausentes={resultadoImport.campusAusentes}
+          criando={importando}
+          onCriar={() => {
+            const arquivo = arquivoEnviadoRef.current;
+            if (arquivo) importarArquivo(arquivo, true);
+          }}
+        />
+      )}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {linhasFiltradas.length} de {linhas.length} câmpus — ano do orçamento {ano}.
       </p>

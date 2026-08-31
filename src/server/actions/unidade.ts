@@ -2,11 +2,7 @@
 
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
-
-/** Mesmo critério de `/api/unidades` — Reitoria/Direção Geral não são elegíveis ao Piso Mínimo por Câmpus Novo. */
-function ehUnidadeAdministrativa(nome: string): boolean {
-  return /^(reitoria|direção geral|direcao geral)\b/i.test(nome);
-}
+import { ehUnidadeAdministrativa } from "@/server/unidades/unidadeAdministrativa";
 
 export interface SalvarAnoCriacaoUnidadeResult {
   ok: boolean;

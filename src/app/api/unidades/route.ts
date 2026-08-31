@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
+import { ehUnidadeAdministrativa } from "@/server/unidades/unidadeAdministrativa";
 
 export interface UnidadeResumo {
   id: number;
@@ -7,14 +8,6 @@ export interface UnidadeResumo {
   anoCriacao: number | null;
   instituicaoId: number;
   instituicaoSigla: string;
-}
-
-/** Reitoria/Direção Geral são unidades administrativas (sem matrícula, sem Bloco Funcionamento) — não fazem
- * sentido na tela de ano de criação por câmpus. Identificadas pelo nome porque o PNP não distingue por um
- * campo próprio (mesmo padrão em todas as ~40 instituições ingeridas: "Reitoria do ..." / "Direção Geral do ...").
- */
-function ehUnidadeAdministrativa(nome: string): boolean {
-  return /^(reitoria|direção geral|direcao geral)\b/i.test(nome);
 }
 
 /** Lista os câmpus (Unidade) com seu ano de criação — usado pela tela admin de cadastro manual. */
