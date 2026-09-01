@@ -26,3 +26,13 @@ next-env.d.ts
 
 # docker
 mysql-data/
+
+# Matriz2 (aplicação nova, mesmo repositório, subpasta própria).
+# Na prática quem ignora essas pastas é o matriz2/.gitignore, onde os mesmos
+# padrões ficam ancorados na subpasta. Estas linhas são redundantes de propósito:
+# os padrões daqui de cima começam com barra e valem só para a raiz, então se um
+# dia o .gitignore de dentro sumir, o node_modules do Matriz2 (250 pacotes) iria
+# para o commit sem ninguém perceber.
+matriz2/node_modules/
+matriz2/.next/
+matriz2/tsconfig.tsbuildinfo

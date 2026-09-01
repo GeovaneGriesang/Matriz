@@ -1,0 +1,353 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// Matriz2 guarda FATOS, não fórmulas.
+//
+// O sistema anterior tentava recalcular a Matriz de Distribuição Orçamentária a
+// partir dos microdados da PNP. Não dá: três insumos centrais (Matrícula Total
+// equalizada, RAPP e Eficiência Acadêmica de ciclo) não são deriváveis da PNP, e
+// os dados só fecham no fim do ano, depois das seis fases de homologação.
+//
+// Aqui a premissa é outra: a MDO (mdo.iftm.edu.br), sistema oficial da RFEPCT,
+// já publica o resultado homologado em todos os grãos. O Matriz2 importa esse
+// resultado e constrói em cima dele o que a MDO não oferece: comparação entre
+// ciclos, simulação de cenários e recorte por instituição e câmpus.
+//
+// Por isso TODO registro aponta para uma `FonteDados`, que diz de onde o número
+// veio, em que fase foi homologado, que arquivo o trouxe e o que ele abrange.
+// ============================================================================
+
+// ---------- Procedência ----------
+
+/// De onde o número veio. Exibido ao lado de cada valor na interface.
+enum OrigemDados {
+  /// Microdados públicos da Plataforma Nilo Peçanha.
+  PNP
+  /// Exportações da Matriz de Distribuição Orçamentária, operada pelo IFTM para a RFEPCT.
+  MDO_IFTM
+  /// Derivado pelo próprio Matriz2 (somas, variações, simulações). Sempre rastreável às parcelas.
+  CALCULADO
+  /// Digitado por um administrador, para o que nenhuma fonte publica. O de menor confiança.
+  ADMINISTRADOR
+}
+
+/// O que um conjunto de dados cobre. Metade do material da MDO cobre apenas uma
+/// instituição; sem este campo, uma consulta de rede somaria 14 câmpus achando
+/// que somou 639, e o erro não apareceria em lugar nenhum.
+enum Abrangencia {
+  REDE
+  INSTITUICAO
+  CAMPUS
+}
+
+/// As sete etapas da MDO, na ordem em que o sistema oficial as executa. Guardar a
+/// fase é guardar quem homologou o número: as fases 2, 3 e 4 são homologadas por
+/// cada instituição; as demais, pela própria MDO.
+enum FaseMdo {
+  /// 1ª (a): microdados disponibilizados pela PNP.
+  F1A_OBTENCAO
+  /// 1ª (b): integração dos dados na base da MDO.
+  F1B_IMPORTACAO
+  /// 2ª: conferência da extração, homologada por cada instituição.
+  F2_CONFERENCIA_EXTRACAO
+  /// 3ª: parametrização por câmpus e alunos em Regime de Internato Pleno (RIP).
+  F3_PARAMETROS_CAMPUS
+  /// 4ª: checagem das matrículas totais e indicadores.
+  F4_CHECAGEM_MATRICULAS
+  /// 5ª: geração da proposta, com todos os blocos por câmpus e instituição.
+  F5_PROPOSTA
+  /// 6ª: participação de cada ciclo de curso na distribuição. Em andamento no ciclo 2027.
+  F6_PARTICIPACAO
+}
+
+/// Um arquivo importado, com tudo que é preciso saber para confiar (ou desconfiar)
+/// dos números que vieram dele.
+model FonteDados {
+  id             Int          @id @default(autoincrement())
+  origem         OrigemDados
+  fase           FaseMdo?
+  /// Ciclo orçamentário a que o dado se refere (2026, 2027), não o ano-base da PNP.
+  cicloOrcamento Int
+  /// Nome do arquivo de procedência, como recebido.
+  arquivo        String
+  /// Data que o próprio arquivo declara ("Gerado em 30/08/2026"). É a data do DADO.
+  geradoEm       DateTime?
+  /// Quando este sistema leu o arquivo. É a data da CARGA, diferente da anterior.
+  carregadoEm    DateTime     @default(now())
+  abrangencia    Abrangencia
+  /// Preenchido quando `abrangencia` não é REDE: de quem são os dados.
+  instituicaoId  Int?
+  instituicao    Instituicao? @relation(fields: [instituicaoId], references: [id])
+  /// SHA-256 do arquivo, para detectar recarga do mesmo conteúdo.
+  checksum       String?      @db.Char(64)
+  /// Ressalvas conhecidas, exibidas junto do dado. Ex.: a 6ª fase de 2027 ainda
+  /// está "Em andamento" na MDO, então os valores podem mudar.
+  ressalva       String?      @db.Text
+
+  distribuicoesCiclo       DistribuicaoCiclo[]
+  distribuicoesCampus      DistribuicaoCampus[]
+  distribuicoesInstituicao DistribuicaoInstituicao[]
+  ciclosOrcamento          CicloOrcamento[]
+
+  @@index([cicloOrcamento, origem])
+  @@index([instituicaoId])
+}
+
+// ---------- Entidades ----------
+
+model Instituicao {
+  id       Int       @id @default(autoincrement())
+  sigla    String    @unique
+  nome     String
+  uf       String
+  unidades Unidade[]
+
+  fontes                   FonteDados[]
+  distribuicoesInstituicao DistribuicaoInstituicao[]
+
+  @@index([uf])
+}
+
+/// A MDO separa as unidades em três tipos na coluna TIPO da aba COMPLETO PROPOSTA:
+/// `T` (linha de total da instituição), `R` (reitoria) e `C` (câmpus). Somar sem
+/// filtrar por tipo duplica todos os totais, erro que já cometemos uma vez.
+enum TipoUnidade {
+  CAMPUS
+  REITORIA
+}
+
+model Unidade {
+  id            Int         @id @default(autoincrement())
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  nome          String
+  tipo          TipoUnidade @default(CAMPUS)
+  /// Ano de criação, publicado pela MDO na coluna ANO_CRIACAO. Define elegibilidade ao Piso Mínimo.
+  anoCriacao    Int?
+
+  distribuicoesCiclo  DistribuicaoCiclo[]
+  distribuicoesCampus DistribuicaoCampus[]
+
+  @@unique([instituicaoId, nome])
+  @@index([instituicaoId])
+}
+
+// ---------- Parâmetros do ciclo ----------
+
+/// Os parâmetros que definem um ciclo orçamentário, lidos da aba DADOS BASE da 5ª fase.
+///
+/// O encadeamento oficial, conferido contra a planilha de 2027 e fechando ao centavo:
+///
+///   Valor referência (SPO)          3.077.715.770,00
+///   (-) Ajuste                         89.990.947,79
+///   = Valor referência                2.987.724.822,21
+///   (-) Assistência Estudantil          651.560.247,20
+///   = Base do rateio                  2.336.164.575,01
+///       Funcionamento          80%    1.868.931.660,00
+///         dos quais Piso Mínimo          37.100.000,00   (53 câmpus x R$ 700.000)
+///         distribuído por matrícula   1.831.831.660,00
+///       Reitorias              10%      233.616.457,50
+///       Qualidade e Eficiência 10%      233.616.457,50
+///         IEA 25% + RAP 25% + IAPL 50%
+///
+/// Duas armadilhas registradas aqui para não se repetirem:
+///
+/// 1. O Piso Mínimo é RESERVADO de dentro dos 80%, não somado por cima. O sistema
+///    anterior aplicava MAX(piso, calculado), o que inflava o bloco e produzia 67
+///    câmpus no piso onde a planilha diz 53.
+/// 2. A Assistência sai ANTES do rateio, e não é um "ajuste". O sistema anterior
+///    embutia parte dela no ajuste e chegava à mesma base por um caminho que não
+///    corresponde ao da planilha, o que tornava impossível conferir parcela a parcela.
+model CicloOrcamento {
+  ano Int @id
+
+  /// Valor de referência informado pela SPO (célula M23 da aba DADOS BASE).
+  valorReferenciaSpo Decimal @db.Decimal(18, 2)
+  /// Dedução aplicada sobre o valor de referência (M24).
+  ajuste             Decimal @default(0) @db.Decimal(18, 2)
+  /// Assistência Estudantil (Ação 2994), retirada antes do rateio 80/10/10 (W42).
+  assistenciaTotal   Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Bloco Funcionamento, 80% da base (W29).
+  funcionamentoTotal Decimal @db.Decimal(18, 2)
+  /// Parcela do Funcionamento reservada ao Piso Mínimo (W28).
+  pisoTotal          Decimal @default(0) @db.Decimal(18, 2)
+  /// Piso por câmpus, em reais. R$ 700.000 em 2027 e em 2026.
+  pisoPorCampus      Decimal @default(0) @db.Decimal(18, 2)
+  /// Quantos câmpus efetivamente recebem o piso, conforme a linha de totais da planilha
+  /// (53 em 2027, 55 em 2026). Não confundir com a aba EXPANSÃO, que lista 65 câmpus
+  /// com portaria de criação, conjunto maior.
+  campusComPiso      Int     @default(0)
+
+  /// Bloco Reitorias, 10% da base (W32).
+  reitoriasTotal          Decimal @default(0) @db.Decimal(18, 2)
+  /// Bloco Qualidade e Eficiência, 10% da base (W20).
+  qualidadeEficienciaTotal Decimal @default(0) @db.Decimal(18, 2)
+  valorIea                Decimal @default(0) @db.Decimal(18, 2)
+  valorRap                Decimal @default(0) @db.Decimal(18, 2)
+  valorIapl               Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Valor de uma matrícula em cada balde de repasse (I29, I33, I37, I41). É o que
+  /// multiplica a matrícula do câmpus para chegar ao valor dele.
+  valorMatriculaPresencial Decimal? @db.Decimal(18, 6)
+  valorMatriculaEad        Decimal? @db.Decimal(18, 6)
+  valorMatriculaEadFp      Decimal? @db.Decimal(18, 6)
+  valorMatriculaEadMooc    Decimal? @db.Decimal(18, 6)
+
+  /// Percentual da anuidade CONIF (I21), em fração. 0,0015 é 0,15%.
+  percentualAnuidade Decimal @default(0) @db.Decimal(9, 6)
+
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  @@index([fonteDadosId])
+}
+
+// ---------- Distribuição, nos três grãos que a MDO publica ----------
+
+/// Em qual dos quatro baldes de repasse a matrícula entra. A PNP só distingue
+/// presencial e a distância; é a fonte de financiamento que separa a distância em três.
+enum CategoriaRepasse {
+  PRESENCIAL
+  EAD
+  EAD_MOOC
+  EAD_FP
+}
+
+/// O grão mais fino que existe: quanto cada ciclo de curso recebe (6ª fase da MDO).
+///
+/// São 58.242 linhas em 2027, cobrindo 42 instituições, 639 câmpus e 1.520 cursos.
+/// A soma de `valorReais` dá R$ 1.831.831.659,97, exatamente o mesmo total que se
+/// obtém somando as linhas de câmpus ou as de instituição da 5ª fase. Essa
+/// coincidência tripla é a melhor conferência que o conjunto oferece; vale
+/// reproduzi-la como teste depois de cada carga.
+model DistribuicaoCiclo {
+  id           Int         @id @default(autoincrement())
+  ano          Int
+  unidadeId    Int
+  unidade      Unidade     @relation(fields: [unidadeId], references: [id])
+  fonteDadosId Int
+  fonteDados   FonteDados  @relation(fields: [fonteDadosId], references: [id])
+
+  /// Identificador do ciclo na MDO, estável entre exportações.
+  codigoCiclo  String
+  ciclo        String      @db.Text
+  curso        String
+  areaEixo     String?
+  nivel        String?
+  tipoCurso    String?
+  tipoOferta   String?
+  turno        String?
+
+  modalidade         String
+  fonteFinanciamento String
+  repasse            CategoriaRepasse
+
+  inicio      DateTime?
+  termino     DateTime?
+  jubilamento DateTime?
+
+  /// Peso do curso na matriz. Assume 1,00, 1,50, 2,00, 2,50 ou 3,75.
+  pesoCursoMatriz Decimal? @db.Decimal(10, 4)
+  chMinimaMec     Int?
+  cargaHoraria    Int?
+  chMatriz        Int?
+
+  qtdAlunosMatriz Decimal? @db.Decimal(18, 5)
+  matriculaTotal  Decimal  @db.Decimal(18, 6)
+
+  /// Quanto este ciclo recebe.
+  valorReais      Decimal  @db.Decimal(18, 6)
+  icqa            Decimal? @db.Decimal(18, 6)
+  valorAluno      Decimal? @db.Decimal(18, 6)
+  /// Quanto o ciclo deixa de receber por evasão. Somou R$ 102.320.304,23 na rede em 2027.
+  perdaEvasaoReais Decimal? @db.Decimal(18, 6)
+
+  @@unique([ano, unidadeId, codigoCiclo])
+  @@index([ano, unidadeId])
+  @@index([ano, repasse])
+  @@index([curso])
+  @@index([fonteDadosId])
+}
+
+/// Grão de câmpus (linhas TIPO = C da aba COMPLETO PROPOSTA, 5ª fase). Traz todos
+/// os blocos abertos, inclusive o RIP da Assistência, que nunca conseguimos derivar.
+model DistribuicaoCampus {
+  id           Int        @id @default(autoincrement())
+  ano          Int
+  unidadeId    Int
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id])
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  /// Valor do Piso Mínimo recebido, quando o câmpus é elegível. Zero para os demais.
+  piso Decimal @default(0) @db.Decimal(18, 6)
+
+  matrPresencialAjustada Decimal? @db.Decimal(18, 6)
+  matrEadAjustada        Decimal? @db.Decimal(18, 6)
+
+  qtAlPresencial Decimal? @db.Decimal(18, 5)
+  qtAlEad        Decimal? @db.Decimal(18, 5)
+  qtAlMooc       Decimal? @db.Decimal(18, 5)
+  qtAlEadFp      Decimal? @db.Decimal(18, 5)
+
+  mtPresencial Decimal? @db.Decimal(18, 6)
+  mtEad        Decimal? @db.Decimal(18, 6)
+  mtEadMooc    Decimal? @db.Decimal(18, 6)
+  mtEadFp      Decimal? @db.Decimal(18, 6)
+
+  /// Bloco Funcionamento, aberto por modalidade.
+  vlMatrizPresencial Decimal? @db.Decimal(18, 6)
+  vlMatrizEad        Decimal? @db.Decimal(18, 6)
+  vlMatrizEadMooc    Decimal? @db.Decimal(18, 6)
+  vlMatrizEadFp      Decimal? @db.Decimal(18, 6)
+
+  /// Bloco Assistência Estudantil, aberto por modalidade e pelo Regime de Internato Pleno.
+  aePresencial Decimal? @db.Decimal(18, 6)
+  aeEad        Decimal? @db.Decimal(18, 6)
+  aeRip        Decimal? @db.Decimal(18, 6)
+
+  @@unique([ano, unidadeId])
+  @@index([ano])
+  @@index([fonteDadosId])
+}
+
+/// Grão de instituição (linhas TIPO = T, mais os indicadores da aba INDICADORES).
+model DistribuicaoInstituicao {
+  id            Int         @id @default(autoincrement())
+  ano           Int
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  fonteDadosId  Int
+  fonteDados    FonteDados  @relation(fields: [fonteDadosId], references: [id])
+
+  /// Bloco Funcionamento somado dos câmpus.
+  vlMatr        Decimal? @db.Decimal(18, 6)
+  /// Bloco Qualidade e Eficiência, repartido em IEA 25%, RAP 25% e IAPL 50%.
+  vlIea         Decimal? @db.Decimal(18, 6)
+  vlRap         Decimal? @db.Decimal(18, 6)
+  vlIapl        Decimal? @db.Decimal(18, 6)
+  matrizCusteio Decimal? @db.Decimal(18, 6)
+  matrizAe      Decimal? @db.Decimal(18, 6)
+  anuidadeConif Decimal? @db.Decimal(18, 6)
+  /// Participação da instituição no total da rede, como a MDO publica.
+  porcentagem   Decimal? @db.Decimal(12, 8)
+
+  /// Indicadores da aba INDICADORES, já homologados; não recalcular.
+  ieaConclusao  Decimal? @db.Decimal(18, 6)
+  ieaEvasao     Decimal? @db.Decimal(18, 6)
+  ieaRetencao   Decimal? @db.Decimal(18, 6)
+  ieaEficiencia Decimal? @db.Decimal(18, 6)
+  ieaEqualizado Decimal? @db.Decimal(18, 6)
+
+  @@unique([ano, instituicaoId])
+  @@index([ano])
+  @@index([fonteDadosId])
+}
