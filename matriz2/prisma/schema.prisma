@@ -157,14 +157,29 @@ model Unidade {
 ///       Qualidade e Eficiência 10%      233.616.457,50
 ///         IEA 25% + RAP 25% + IAPL 50%
 ///
-/// Duas armadilhas registradas aqui para não se repetirem:
+/// Como o Piso Mínimo realmente funciona, conferido linha a linha na planilha de 2027
+/// (a leitura anterior, registrada aqui antes, estava errada e foi corrigida):
 ///
-/// 1. O Piso Mínimo é RESERVADO de dentro dos 80%, não somado por cima. O sistema
-///    anterior aplicava MAX(piso, calculado), o que inflava o bloco e produzia 67
-///    câmpus no piso onde a planilha diz 53.
-/// 2. A Assistência sai ANTES do rateio, e não é um "ajuste". O sistema anterior
-///    embutia parte dela no ajuste e chegava à mesma base por um caminho que não
-///    corresponde ao da planilha, o que tornava impossível conferir parcela a parcela.
+///   1. Reserva-se 53 x R$ 700.000 = R$ 37.100.000 de dentro dos 80%.
+///   2. O que sobra (R$ 1.831.831.660) é distribuído por matrícula entre TODOS os
+///      câmpus. É esse total que a 6ª fase publica somando os 58.242 ciclos.
+///   3. Os 53 marcados recebem R$ 700.000 no lugar do que calcularam, e não somado a
+///      ele. Todos os 53 ficaram exatamente em R$ 700.000, porque o calculado deles
+///      somava apenas R$ 1.760.440,90 no conjunto.
+///
+/// Ou seja, a regra por câmpus é MAX(piso, calculado), a mesma do sistema antigo. O
+/// erro dele está em NÃO reservar o piso do bolo antes de ratear: ele distribui os
+/// 80% inteiros por matrícula e depois eleva quem está abaixo do piso, inflando o
+/// bloco em R$ 40,4 milhões. A CONIF reserva primeiro, e por isso fecha dentro dos
+/// 80% (na verdade R$ 1,76 milhão abaixo, que é a parcela que os 53 abriram mão).
+///
+/// A elegibilidade é uma bandeira explícita da planilha, não uma regra deduzível: ver
+/// `DistribuicaoCampus.elegivelPiso`.
+///
+/// Outra diferença que vale registrar: a Assistência sai ANTES do rateio, e não é um
+/// "ajuste". O sistema anterior embutia parte dela no ajuste e chegava à mesma base
+/// por um caminho que não corresponde ao da planilha, o que tornava impossível
+/// conferir parcela a parcela.
 model CicloOrcamento {
   ano Int @id
 
@@ -287,8 +302,18 @@ model DistribuicaoCampus {
   fonteDadosId Int
   fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
 
-  /// Valor do Piso Mínimo recebido, quando o câmpus é elegível. Zero para os demais.
-  piso Decimal @default(0) @db.Decimal(18, 6)
+  /// A planilha marca com "S", na coluna Piso, os câmpus elegíveis ao Piso Mínimo:
+  /// 53 em 2027 e 55 em 2026. É uma BANDEIRA da MDO, não uma regra que se deduza do
+  /// ano de criação. Os 53 de 2027 foram criados entre 2022 e 2026, e existem 21
+  /// câmpus criados de 2018 em diante que a planilha NÃO marca; por isso o sistema
+  /// antigo, que deduzia elegibilidade de `anoCriacao >= 2018`, chegava a 67.
+  elegivelPiso Boolean @default(false)
+
+  /// Valor final do Funcionamento do câmpus (VL_MATR da aba RESUMO PROPOSTA), já com
+  /// a regra do piso aplicada pela MDO. Para os 53 elegíveis de 2027 é exatamente
+  /// R$ 700.000; para os demais é o valor por matrícula. Guardamos o resultado, não
+  /// a fórmula: quem calcula é a MDO.
+  vlMatrFinal Decimal? @db.Decimal(18, 6)
 
   matrPresencialAjustada Decimal? @db.Decimal(18, 6)
   matrEadAjustada        Decimal? @db.Decimal(18, 6)
@@ -337,15 +362,43 @@ model DistribuicaoInstituicao {
   matrizCusteio Decimal? @db.Decimal(18, 6)
   matrizAe      Decimal? @db.Decimal(18, 6)
   anuidadeConif Decimal? @db.Decimal(18, 6)
-  /// Participação da instituição no total da rede, como a MDO publica.
+  /// Coluna PORCENTAGEM da aba RESUMO PROPOSTA, guardada como vem. **O significado
+  /// ainda não está confirmado**: não é participação na rede, porque a soma das 42
+  /// instituições dá 4,87 (487%), não 1. Os valores vão de 2,4% (IFSP) a 21,0%
+  /// (IFAC), o que sugere variação contra o ciclo anterior, mas a planilha não
+  /// rotula a coluna e não dá para afirmar. Não usar em tela até confirmar com a
+  /// CONIF ou com o IFTM.
   porcentagem   Decimal? @db.Decimal(12, 8)
 
-  /// Indicadores da aba INDICADORES, já homologados; não recalcular.
+  /// Indicadores da aba INDICADORES, já homologados pelas instituições na 4ª fase.
+  /// NÃO recalcular: é exatamente o que o sistema antigo não conseguia derivar da PNP
+  /// (a aproximação do IEA chegava a errar 53 pontos percentuais em redes grandes).
   ieaConclusao  Decimal? @db.Decimal(18, 6)
   ieaEvasao     Decimal? @db.Decimal(18, 6)
   ieaRetencao   Decimal? @db.Decimal(18, 6)
   ieaEficiencia Decimal? @db.Decimal(18, 6)
+  ieaPonderado  Decimal? @db.Decimal(18, 6)
   ieaEqualizado Decimal? @db.Decimal(18, 6)
+
+  /// Relação Aluno Professor. `rapPresencial` é o RAPP oficial, que o sistema antigo
+  /// aproximava por TaxaEvasao.csv.
+  rapPresencial    Decimal? @db.Decimal(18, 6)
+  rapMecPresencial Decimal? @db.Decimal(18, 6)
+  rapEquivalente   Decimal? @db.Decimal(18, 6)
+  rapPonderado     Decimal? @db.Decimal(18, 6)
+  rapEqualizado    Decimal? @db.Decimal(18, 6)
+
+  /// Atendimento aos Percentuais Legais, aberto nos três percentuais que o compõem.
+  aplTecnico           Decimal? @db.Decimal(18, 6)
+  aplTecnicoPonderado  Decimal? @db.Decimal(18, 6)
+  aplFormacaoProfessor Decimal? @db.Decimal(18, 6)
+  ialPonderado         Decimal? @db.Decimal(18, 6)
+  aplProeja            Decimal? @db.Decimal(18, 6)
+  aplProejaPonderado   Decimal? @db.Decimal(18, 6)
+  ialEqualizado        Decimal? @db.Decimal(18, 6)
+
+  /// Matrícula Equivalente da instituição, base dos indicadores acima.
+  matrEquivalente Decimal? @db.Decimal(18, 6)
 
   @@unique([ano, instituicaoId])
   @@index([ano])

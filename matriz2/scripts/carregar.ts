@@ -11,13 +11,31 @@
  */
 import { prisma } from "../src/server/db/prisma";
 import { carregarParticipacao } from "../src/carga/carregarParticipacao";
-import { existe, planilhaParticipacao } from "../src/carga/caminhos";
+import { carregarProposta } from "../src/carga/carregarProposta";
+import { existe, planilhaParticipacao, planilhaProposta } from "../src/carga/caminhos";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
 
 async function carregarCiclo(ano: number) {
   console.log(`\n${"=".repeat(72)}\nCICLO ${ano}\n${"=".repeat(72)}`);
+
+  // A 5ª fase vem primeiro: é ela que traz a UF das instituições, o tipo de cada
+  // unidade e o ano de criação dos câmpus. A 6ª fase, se rodar antes, cria as
+  // instituições sem UF.
+  if (!existe(planilhaProposta(ano))) {
+    console.log(`  5ª fase (Completo proposta): arquivo não existe para ${ano}, pulando.`);
+  } else {
+    console.log(`  5ª fase (Completo proposta)...`);
+    const p = await carregarProposta(ano);
+    console.log(`     ${p.instituicoes} instituições, ${inteiro.format(p.campus)} câmpus, ${p.reitorias} reitorias`);
+    console.log(`     câmpus elegíveis ao Piso Mínimo ... ${p.elegiveisPiso}`);
+    console.log(`     Funcionamento somado por câmpus ... ${reais.format(p.somaVlMatr)}`);
+    console.log(`     Funcionamento declarado (80%) ..... ${reais.format(p.funcionamentoTotalDeclarado)}`);
+    console.log(`     Piso reservado do bloco ........... ${reais.format(p.pisoTotalDeclarado)}`);
+    console.log(`     Assistência somada por câmpus ..... ${reais.format(p.somaAssistencia)}`);
+    for (const a of p.avisos) console.log(`     AVISO: ${a}`);
+  }
 
   if (!existe(planilhaParticipacao(ano))) {
     console.log(`  6ª fase (Participação Orçamentária): arquivo não existe para ${ano}, pulando.`);
