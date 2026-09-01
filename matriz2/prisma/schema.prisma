@@ -16,7 +16,7 @@ generator client {
 // os dados só fecham no fim do ano, depois das seis fases de homologação.
 //
 // Aqui a premissa é outra: a MDO (mdo.iftm.edu.br), sistema oficial da RFEPCT,
-// já publica o resultado homologado em todos os grãos. O Matriz2 importa esse
+// já publica o resultado homologado em todos os níveis de detalhe. O Matriz2 importa
 // resultado e constrói em cima dele o que a MDO não oferece: comparação entre
 // ciclos, simulação de cenários e recorte por instituição e câmpus.
 //
@@ -210,7 +210,7 @@ model CicloOrcamento {
   @@index([fonteDadosId])
 }
 
-// ---------- Distribuição, nos três grãos que a MDO publica ----------
+// ---------- Distribuição, nos três níveis de detalhe que a MDO publica ----------
 
 /// Em qual dos quatro baldes de repasse a matrícula entra. A PNP só distingue
 /// presencial e a distância; é a fonte de financiamento que separa a distância em três.
@@ -221,7 +221,7 @@ enum CategoriaRepasse {
   EAD_FP
 }
 
-/// O grão mais fino que existe: quanto cada ciclo de curso recebe (6ª fase da MDO).
+/// O nível de detalhe mais fino que existe: quanto cada ciclo de curso recebe (6ª fase da MDO).
 ///
 /// São 58.242 linhas em 2027, cobrindo 42 instituições, 639 câmpus e 1.520 cursos.
 /// A soma de `valorReais` dá R$ 1.831.831.659,97, exatamente o mesmo total que se
@@ -277,7 +277,7 @@ model DistribuicaoCiclo {
   @@index([fonteDadosId])
 }
 
-/// Grão de câmpus (linhas TIPO = C da aba COMPLETO PROPOSTA, 5ª fase). Traz todos
+/// Nível de câmpus (linhas TIPO = C da aba COMPLETO PROPOSTA, 5ª fase). Traz todos
 /// os blocos abertos, inclusive o RIP da Assistência, que nunca conseguimos derivar.
 model DistribuicaoCampus {
   id           Int        @id @default(autoincrement())
@@ -319,7 +319,7 @@ model DistribuicaoCampus {
   @@index([fonteDadosId])
 }
 
-/// Grão de instituição (linhas TIPO = T, mais os indicadores da aba INDICADORES).
+/// Nível de instituição (linhas TIPO = T, mais os indicadores da aba INDICADORES).
 model DistribuicaoInstituicao {
   id            Int         @id @default(autoincrement())
   ano           Int

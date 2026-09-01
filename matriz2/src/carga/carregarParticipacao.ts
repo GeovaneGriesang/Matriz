@@ -7,7 +7,7 @@ import { checksumArquivo, data, numero, numeroOuZero, texto } from "./planilha";
 /**
  * Carrega a 6ª fase da MDO: a participação de cada ciclo de curso na distribuição.
  *
- * É o grão mais fino que existe, e o mais valioso. Em 2027 são 58.242 ciclos, de 42
+ * É o nível de detalhe mais fino que existe, e o mais valioso. Em 2027 são 58.242 ciclos, de 42
  * instituições e 639 câmpus. A soma de `Valor (R$)` precisa bater com o total do
  * Bloco Funcionamento distribuído por matrícula (R$ 1.831.831.660,00), e essa
  * conferência roda ao final da carga.

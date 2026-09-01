@@ -17,8 +17,8 @@ Acadêmica de ciclo) não são deriváveis da PNP, e os dados só fecham no fim 
 depois das seis fases de homologação.
 
 O Matriz2 parte de outro lugar. A **MDO** (mdo.iftm.edu.br), sistema oficial da rede
-operado pelo IFTM, já publica o resultado homologado em todos os grãos. Aqui a gente
-importa esse resultado e constrói em cima dele o que a MDO não oferece:
+operado pelo IFTM, já publica o resultado homologado em todos os níveis de detalhe.
+Aqui a gente importa esse resultado e constrói em cima dele o que a MDO não oferece:
 
 - comparação entre ciclos orçamentários;
 - simulação de cenários ("e se este curso tivesse menos evasão?");
@@ -98,7 +98,7 @@ totais.
 Carregado e conferido: ciclo **2027** pela 6ª fase (58.242 ciclos, 42 instituições,
 639 câmpus).
 
-Pendente: a 5ª fase (grão de câmpus e instituição) e o ciclo 2026, cuja exportação
+Pendente: a 5ª fase (nível de câmpus e instituição) e o ciclo 2026, cuja exportação
 de 2026 traz as matrículas por câmpus gravadas como zero, o que zera todo o
 Funcionamento derivado dela. Enquanto isso não se resolver com o IFTM, 2026 só
-existe no grão de instituição.
+existe no nível de instituição.
