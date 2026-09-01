@@ -387,13 +387,26 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
     0,
   );
 
-  // Uma exportação incompleta é o caso real de 2026: as matrículas por câmpus vieram
-  // gravadas como zero, e tudo que delas deriva zerou junto. Melhor gritar do que
-  // deixar o sistema publicar zeros com cara de dado.
-  if (somaVlMatr === 0 && campusParaGravar.length > 0) {
+  // Uma exportação incompleta é o caso real de 2026: a planilha saiu sem NENHUM dado
+  // de matrícula, nem por câmpus nem nos totais de rede da aba DADOS BASE, e por isso
+  // o Funcionamento derivado dela zerou. Comparar contra zero não basta, porque os
+  // câmpus do piso continuam somando (em 2026, R$ 38,5 milhões de um bloco de
+  // R$ 1,9 bilhão); a conferência precisa ser contra o total que a própria planilha
+  // declara. Melhor gritar do que deixar o sistema publicar zeros com cara de dado.
+  const LIMITE_INCOMPLETO = 0.5;
+  if (funcionamentoTotal > 0 && somaVlMatr < funcionamentoTotal * LIMITE_INCOMPLETO) {
+    const pct = ((somaVlMatr / funcionamentoTotal) * 100).toFixed(1);
     avisos.push(
-      "Nenhum câmpus tem valor de Funcionamento nesta exportação. É o sintoma conhecido " +
-        "da planilha de 2026, cujas matrículas por câmpus vieram zeradas na origem.",
+      `A soma do Funcionamento por câmpus cobre apenas ${pct}% do total que a planilha declara. ` +
+        "É o sintoma da exportação de 2026, que saiu sem nenhum dado de matrícula (o Valor da " +
+        "Matrícula na aba DADOS BASE é zero, e tudo que multiplica por ele zera junto). " +
+        "Este ciclo não deve ser usado no nível de câmpus.",
+    );
+  }
+  if (somaAssistencia > 0 && somaAssistencia < 1_000_000) {
+    avisos.push(
+      `A Assistência Estudantil somada por câmpus é de apenas ${somaAssistencia.toFixed(2)}, ` +
+        "ordem de grandeza incompatível com um ciclo completo. Mesma causa da matrícula zerada.",
     );
   }
 
