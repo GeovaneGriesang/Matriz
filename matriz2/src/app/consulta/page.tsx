@@ -112,8 +112,8 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
           Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
-          valor vem. Os números não são calculados aqui; vêm da 6ª fase da MDO, já homologada, no
-          grão de ciclo de curso.
+          valor vem. Os números não são calculados aqui; vêm da 6ª fase da MDO, já homologada,
+          detalhados curso a curso.
         </p>
       </div>
 
