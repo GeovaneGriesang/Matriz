@@ -82,23 +82,40 @@ somando as linhas de câmpus da 5ª fase .... R$ 1.831.831.659,97
 somando as linhas de instituição da 5ª ..... R$ 1.831.831.659,97
 ```
 
-## Duas armadilhas já pagas
+## Três armadilhas já pagas
 
-**O Piso Mínimo é reservado, não somado.** A CONIF separa R$ 37,1 milhões de dentro
-dos 80% do Funcionamento e distribui o resto por matrícula. O sistema anterior usava
-`MAX(piso, calculado)`, que inflava o bloco e produzia 67 câmpus no piso onde a
-planilha diz 53.
+**O Piso Mínimo é reservado do bolo, e a regra por câmpus é MAX.** A CONIF separa
+R$ 37,1 milhões (53 × R$ 700.000) de dentro dos 80% e distribui o restante por
+matrícula entre todos os câmpus; depois os 53 marcados recebem R$ 700.000 no lugar
+do que calcularam. O sistema anterior aplica o mesmo `MAX`, mas **sem reservar o
+piso antes de ratear**, então infla o bloco em R$ 40,4 milhões.
+
+**A elegibilidade ao piso é uma bandeira, não uma regra.** A planilha marca com `S`
+os câmpus elegíveis, e não há como deduzi-la do ano de criação: os 53 de 2027 foram
+criados entre 2022 e 2026, e existem 21 câmpus criados de 2018 em diante que a
+planilha não marca. O sistema anterior deduzia de `anoCriacao >= 2018` e chegava a 67.
 
 **As linhas da 5ª fase vêm em três tipos.** A coluna TIPO separa `T` (total da
 instituição), `R` (reitoria) e `C` (câmpus). Somar sem filtrar duplica todos os
-totais.
+totais, e a coluna do nome muda de significado conforme o tipo.
 
 ## Estado atual
 
-Carregado e conferido: ciclo **2027** pela 6ª fase (58.242 ciclos, 42 instituições,
-639 câmpus).
+Ciclo **2027** carregado e conferido nas duas fases:
 
-Pendente: a 5ª fase (nível de câmpus e instituição) e o ciclo 2026, cuja exportação
-de 2026 traz as matrículas por câmpus gravadas como zero, o que zera todo o
-Funcionamento derivado dela. Enquanto isso não se resolver com o IFTM, 2026 só
-existe no nível de instituição.
+| | |
+|---|---|
+| 6ª fase, por ciclo de curso | 58.242 registros, 42 instituições, 639 câmpus |
+| 5ª fase, por câmpus | 706 câmpus, 42 reitorias, 53 elegíveis ao piso |
+| 5ª fase, por instituição | 42, com IEA, RAP e IAPL homologados |
+| Funcionamento distribuído | R$ 1.867.171.219,07 (80% declarado: R$ 1.868.931.660,00) |
+| Assistência Estudantil | R$ 651.560.247,24 |
+
+Pendente: o ciclo **2026**, cuja exportação traz as matrículas por câmpus gravadas
+como zero, o que zera todo o Funcionamento derivado dela. Enquanto isso não se
+resolver com o IFTM, 2026 só existe no nível de instituição, e a comparação entre
+ciclos não desce ao câmpus.
+
+Em aberto: a coluna `PORCENTAGEM` da aba RESUMO PROPOSTA é carregada mas não é
+exibida, porque o significado dela não está confirmado (a soma das 42 instituições
+dá 487%, então não é participação na rede).
