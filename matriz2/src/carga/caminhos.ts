@@ -47,6 +47,15 @@ export function planilhaParticipacao(ano: number): string {
   );
 }
 
+/**
+ * Relatórios da pasta "03 - Indicadores". São interanuais: o mesmo arquivo traz 2026
+ * e 2027, e as duas pastas de ano contêm cópias byte a byte idênticas. O parâmetro de
+ * ano serve só para escolher de qual pasta ler.
+ */
+export function relatorioIndicadores(pastaAno: number, arquivo: string): string {
+  return path.join(EXPORTADOS, "03 - Indicadores", String(pastaAno), arquivo);
+}
+
 export function existe(caminho: string): boolean {
   return fs.existsSync(caminho);
 }

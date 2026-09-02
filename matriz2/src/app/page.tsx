@@ -65,6 +65,11 @@ export default async function Home() {
           resumo="Quanto cada câmpus recebe, e de quais cursos esse valor vem."
         />
         <Atalho
+          href="/comparativo"
+          titulo="Comparativo entre ciclos"
+          resumo="O que mudou de um ciclo para o outro, por instituição."
+        />
+        <Atalho
           href="/evasao"
           titulo="Perda por evasão"
           resumo="Quanto se deixa de receber por aluno evadido, por câmpus e por curso."
