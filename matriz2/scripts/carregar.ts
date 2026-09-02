@@ -13,6 +13,7 @@ import { prisma } from "../src/server/db/prisma";
 import { carregarParticipacao } from "../src/carga/carregarParticipacao";
 import { carregarProposta } from "../src/carga/carregarProposta";
 import { carregarComparativo } from "../src/carga/carregarComparativo";
+import { carregarConferencia } from "../src/carga/carregarConferencia";
 import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -36,6 +37,16 @@ async function carregarCiclo(ano: number) {
     console.log(`     Piso reservado do bloco ........... ${reais.format(p.pisoTotalDeclarado)}`);
     console.log(`     Assistência somada por câmpus ..... ${reais.format(p.somaAssistencia)}`);
     for (const a of p.avisos) console.log(`     AVISO: ${a}`);
+  }
+
+  // 2ª fase: só existe para o IFSul. Depende da 5ª, que cria as unidades.
+  const conf = await carregarConferencia(ano, "IFSUL");
+  if (!conf) {
+    console.log(`  2ª fase (Conferência da Extração): sem arquivo do IFSul para ${ano}, pulando.`);
+  } else {
+    console.log(`  2ª fase (Conferência da Extração, IFSul)...`);
+    console.log(`     ${conf.campus} câmpus | matrícula Matriz ${inteiro.format(conf.somaMatriz)} | evasão ${inteiro.format(conf.somaEvasao)}`);
+    for (const a of conf.avisos) console.log(`     AVISO: ${a}`);
   }
 
   if (!existe(planilhaParticipacao(ano))) {

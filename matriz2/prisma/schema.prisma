@@ -95,6 +95,7 @@ model FonteDados {
   distribuicoesCampus      DistribuicaoCampus[]
   distribuicoesInstituicao DistribuicaoInstituicao[]
   comparativos             ComparativoInstitucional[]
+  conferenciasExtracao     ConferenciaExtracao[]
   ciclosOrcamento          CicloOrcamento[]
 
   @@index([cicloOrcamento, origem])
@@ -134,8 +135,9 @@ model Unidade {
   /// Ano de criação, publicado pela MDO na coluna ANO_CRIACAO. Define elegibilidade ao Piso Mínimo.
   anoCriacao    Int?
 
-  distribuicoesCiclo  DistribuicaoCiclo[]
-  distribuicoesCampus DistribuicaoCampus[]
+  distribuicoesCiclo   DistribuicaoCiclo[]
+  distribuicoesCampus  DistribuicaoCampus[]
+  conferenciasExtracao ConferenciaExtracao[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -386,6 +388,58 @@ model ComparativoInstitucional {
   posicaoRede            Int?
 
   @@unique([ano, instituicaoId])
+  @@index([ano])
+  @@index([fonteDadosId])
+}
+
+/// Conferência da Extração da PNP (2ª fase da MDO), homologada por cada instituição.
+/// Traz, por câmpus, a matrícula aberta por situação, a evasão aberta por motivo e a
+/// distribuição de renda familiar das famílias dos alunos.
+///
+/// Abrangência INSTITUICAO: só temos o arquivo do IFSul. É o primeiro conjunto do
+/// sistema que não cobre a rede, e a razão de `FonteDados.abrangencia` existir.
+///
+/// Ressalva registrada na carga: as pastas de 2026 e 2027 contêm o MESMO arquivo,
+/// ambos nomeados `..._2025`, quando o ciclo 2026 deveria usar a PNP de 2024. O
+/// seletor de ano não pegou na exportação, então os dois ciclos ficam com os números
+/// da PNP de 2025 até uma reexportação.
+model ConferenciaExtracao {
+  id           Int        @id @default(autoincrement())
+  ano          Int
+  unidadeId    Int
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id])
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  /// Matrículas por situação, como a PNP as classifica.
+  concluido     Decimal? @db.Decimal(18, 4)
+  integralizado Decimal? @db.Decimal(18, 4)
+  emCurso       Decimal? @db.Decimal(18, 4)
+  retido        Decimal? @db.Decimal(18, 4)
+  /// "Matriz": a matrícula que efetivamente entra no cálculo.
+  matriz        Decimal? @db.Decimal(18, 4)
+
+  /// Evasão aberta por motivo. Somada, é o numerador da taxa de evasão.
+  abandono      Decimal? @db.Decimal(18, 4)
+  desligado     Decimal? @db.Decimal(18, 4)
+  reprovado     Decimal? @db.Decimal(18, 4)
+  transfExterna Decimal? @db.Decimal(18, 4)
+  transfInterna Decimal? @db.Decimal(18, 4)
+
+  /// Renda familiar em salários mínimos, quantidade de alunos por faixa. Alimenta a
+  /// Assistência Estudantil, que é rateada por renda.
+  rendaNaoDeclarada Decimal? @db.Decimal(18, 4)
+  rendaAte05        Decimal? @db.Decimal(18, 4)
+  renda05a10        Decimal? @db.Decimal(18, 4)
+  renda10a15        Decimal? @db.Decimal(18, 4)
+  renda15a25        Decimal? @db.Decimal(18, 4)
+  renda25a35        Decimal? @db.Decimal(18, 4)
+  rendaAcima35      Decimal? @db.Decimal(18, 4)
+  rendaTotal        Decimal? @db.Decimal(18, 4)
+  /// Índice de renda ponderada que a MDO calcula a partir das faixas acima.
+  rendaPonderada    Decimal? @db.Decimal(18, 6)
+
+  @@unique([ano, unidadeId])
   @@index([ano])
   @@index([fonteDadosId])
 }
