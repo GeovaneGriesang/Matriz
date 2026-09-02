@@ -56,6 +56,27 @@ export function relatorioIndicadores(pastaAno: number, arquivo: string): string 
   return path.join(EXPORTADOS, "03 - Indicadores", String(pastaAno), arquivo);
 }
 
+/**
+ * 2ª fase, Conferência da Extração da PNP, por unidade. Só existe para o IFSul, e o
+ * nome do arquivo carrega o ano-base da PNP, que não é o ciclo: procura o do ciclo
+ * (N-2, N-1 e N) e devolve o primeiro que existir.
+ */
+export function conferenciaExtracao(ciclo: number, sigla: string): string | null {
+  const pasta = path.join(
+    EXPORTADOS,
+    "01 - Matriz orçamentária",
+    "2a fase - Conferência Extração PNP",
+    "01 - Por unidade",
+    sigla,
+    String(ciclo),
+  );
+  for (const base of [ciclo - 2, ciclo - 1, ciclo]) {
+    const c = path.join(pasta, `conferencia_extracao_pnp_por_unidade_${base}.xlsx`);
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
 export function existe(caminho: string): boolean {
   return fs.existsSync(caminho);
 }
