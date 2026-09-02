@@ -65,6 +65,11 @@ export default async function Home() {
           resumo="Quanto cada câmpus recebe, e de quais cursos esse valor vem."
         />
         <Atalho
+          href="/evasao"
+          titulo="Perda por evasão"
+          resumo="Quanto se deixa de receber por aluno evadido, por câmpus e por curso."
+        />
+        <Atalho
           href="/dados-importados"
           titulo="Dados importados"
           resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."
