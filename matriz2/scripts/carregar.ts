@@ -12,7 +12,8 @@
 import { prisma } from "../src/server/db/prisma";
 import { carregarParticipacao } from "../src/carga/carregarParticipacao";
 import { carregarProposta } from "../src/carga/carregarProposta";
-import { existe, planilhaParticipacao, planilhaProposta } from "../src/carga/caminhos";
+import { carregarComparativo } from "../src/carga/carregarComparativo";
+import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
@@ -59,6 +60,24 @@ async function main() {
   }
   for (const ano of anos) {
     await carregarCiclo(ano);
+  }
+
+  // Os relatórios de Indicadores são interanuais: um arquivo só cobre todos os
+  // ciclos, então roda uma vez ao final, a partir da pasta do ano mais recente.
+  const maisRecente = Math.max(...anos);
+  console.log(`
+${"=".repeat(72)}
+RELATORIOS DE INDICADORES (interanuais)
+${"=".repeat(72)}`);
+  if (!existe(relatorioIndicadores(maisRecente, "comparativo-institucional.xlsx"))) {
+    console.log(`  pasta "03 - Indicadores/${maisRecente}" sem o comparativo institucional, pulando.`);
+  } else {
+    const c = await carregarComparativo(maisRecente);
+    console.log(`  ${c.registros} registros, ciclos ${c.anos.join(" e ")}`);
+    for (const s of c.somaPorAno) {
+      console.log(`     ${s.ano}: Funcionamento ${reais.format(s.matriculas)} | IQE ${reais.format(s.iqe)} | Assistencia ${reais.format(s.ae)} | participacao ${s.participacao.toFixed(2)}%`);
+    }
+    for (const a of c.avisos) console.log(`     AVISO: ${a}`);
   }
   await prisma.$disconnect();
   console.log("\nCarga concluída.\n");

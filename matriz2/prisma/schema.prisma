@@ -17,7 +17,7 @@ generator client {
 //
 // Aqui a premissa é outra: a MDO (mdo.iftm.edu.br), sistema oficial da RFEPCT,
 // já publica o resultado homologado em todos os níveis de detalhe. O Matriz2 importa
-// resultado e constrói em cima dele o que a MDO não oferece: comparação entre
+// esse resultado e constrói em cima dele o que a MDO não oferece: comparação entre
 // ciclos, simulação de cenários e recorte por instituição e câmpus.
 //
 // Por isso TODO registro aponta para uma `FonteDados`, que diz de onde o número
@@ -94,6 +94,7 @@ model FonteDados {
   distribuicoesCiclo       DistribuicaoCiclo[]
   distribuicoesCampus      DistribuicaoCampus[]
   distribuicoesInstituicao DistribuicaoInstituicao[]
+  comparativos             ComparativoInstitucional[]
   ciclosOrcamento          CicloOrcamento[]
 
   @@index([cicloOrcamento, origem])
@@ -111,6 +112,7 @@ model Instituicao {
 
   fontes                   FonteDados[]
   distribuicoesInstituicao DistribuicaoInstituicao[]
+  comparativos             ComparativoInstitucional[]
 
   @@index([uf])
 }
@@ -202,12 +204,12 @@ model CicloOrcamento {
   campusComPiso      Int     @default(0)
 
   /// Bloco Reitorias, 10% da base (W32).
-  reitoriasTotal          Decimal @default(0) @db.Decimal(18, 2)
+  reitoriasTotal           Decimal @default(0) @db.Decimal(18, 2)
   /// Bloco Qualidade e Eficiência, 10% da base (W20).
   qualidadeEficienciaTotal Decimal @default(0) @db.Decimal(18, 2)
-  valorIea                Decimal @default(0) @db.Decimal(18, 2)
-  valorRap                Decimal @default(0) @db.Decimal(18, 2)
-  valorIapl               Decimal @default(0) @db.Decimal(18, 2)
+  valorIea                 Decimal @default(0) @db.Decimal(18, 2)
+  valorRap                 Decimal @default(0) @db.Decimal(18, 2)
+  valorIapl                Decimal @default(0) @db.Decimal(18, 2)
 
   /// Valor de uma matrícula em cada balde de repasse (I29, I33, I37, I41). É o que
   /// multiplica a matrícula do câmpus para chegar ao valor dele.
@@ -244,22 +246,22 @@ enum CategoriaRepasse {
 /// coincidência tripla é a melhor conferência que o conjunto oferece; vale
 /// reproduzi-la como teste depois de cada carga.
 model DistribuicaoCiclo {
-  id           Int         @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   ano          Int
   unidadeId    Int
-  unidade      Unidade     @relation(fields: [unidadeId], references: [id])
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id])
   fonteDadosId Int
-  fonteDados   FonteDados  @relation(fields: [fonteDadosId], references: [id])
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
 
   /// Identificador do ciclo na MDO, estável entre exportações.
-  codigoCiclo  String
-  ciclo        String      @db.Text
-  curso        String
-  areaEixo     String?
-  nivel        String?
-  tipoCurso    String?
-  tipoOferta   String?
-  turno        String?
+  codigoCiclo String
+  ciclo       String  @db.Text
+  curso       String
+  areaEixo    String?
+  nivel       String?
+  tipoCurso   String?
+  tipoOferta  String?
+  turno       String?
 
   modalidade         String
   fonteFinanciamento String
@@ -279,9 +281,9 @@ model DistribuicaoCiclo {
   matriculaTotal  Decimal  @db.Decimal(18, 6)
 
   /// Quanto este ciclo recebe.
-  valorReais      Decimal  @db.Decimal(18, 6)
-  icqa            Decimal? @db.Decimal(18, 6)
-  valorAluno      Decimal? @db.Decimal(18, 6)
+  valorReais       Decimal  @db.Decimal(18, 6)
+  icqa             Decimal? @db.Decimal(18, 6)
+  valorAluno       Decimal? @db.Decimal(18, 6)
   /// Quanto o ciclo deixa de receber por evasão. Somou R$ 102.320.304,23 na rede em 2027.
   perdaEvasaoReais Decimal? @db.Decimal(18, 6)
 
@@ -340,6 +342,50 @@ model DistribuicaoCampus {
   aeRip        Decimal? @db.Decimal(18, 6)
 
   @@unique([ano, unidadeId])
+  @@index([ano])
+  @@index([fonteDadosId])
+}
+
+/// Comparativo entre ciclos, por instituição, vindo dos relatórios de Indicadores da
+/// MDO (pasta "03 - Indicadores"). Fica separado de `DistribuicaoInstituicao` porque é
+/// outra fonte, exportada em outra data, e porque **resolve a lacuna de 2026**: a 5ª
+/// fase de 2026 saiu sem matrícula e zerou o Funcionamento, enquanto este relatório
+/// traz os dois ciclos preenchidos.
+///
+/// Conferido em 2026-09-02: no nível de instituição bate ao centavo com a 5ª fase
+/// (IFSP 2027: Matrículas 130.713.627,35 + IQE 3.188.215,39 = os R$ 133.901.842,74 de
+/// `matrizCusteio`), e a participação percentual soma 100% nos dois anos.
+///
+/// ATENÇÃO, e é o motivo de só guardarmos o nível de instituição: o arquivo irmão
+/// `comparativo-institucional-completo.xlsx`, que desce a câmpus, tem os valores
+/// **trocados de unidade**. Onze câmpus receberam o valor de um "irmão" cujo nome é
+/// uma extensão do seu, e esse irmão sumiu da lista (no IFSul, CAMPUS PELOTAS ficou
+/// com os R$ 5.156.741,72 do CAMPUS PELOTAS VISCONDE DA GRAÇA). É a mesma armadilha
+/// de casar câmpus por nome que já nos pegou antes; aqui ela está do lado da MDO.
+model ComparativoInstitucional {
+  id            Int         @id @default(autoincrement())
+  ano           Int
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  fonteDadosId  Int
+  fonteDados    FonteDados  @relation(fields: [fonteDadosId], references: [id])
+
+  /// Bloco Funcionamento (a MDO chama de "Matrículas" nestes relatórios).
+  matriculas Decimal? @db.Decimal(18, 6)
+  /// Índice de Qualidade e Eficiência, o bloco de 10%.
+  iqe        Decimal? @db.Decimal(18, 6)
+  /// Assistência Estudantil.
+  ae         Decimal? @db.Decimal(18, 6)
+  /// Soma dos três, como a MDO publica.
+  totalSpo   Decimal? @db.Decimal(18, 6)
+
+  /// Fatia da instituição no orçamento da rede, em pontos percentuais (2,19 = 2,19%).
+  /// Some 100 entre as instituições do ciclo, ao contrário da coluna PORCENTAGEM da
+  /// aba RESUMO PROPOSTA, cujo significado segue desconhecido.
+  participacaoPercentual Decimal? @db.Decimal(9, 4)
+  posicaoRede            Int?
+
+  @@unique([ano, instituicaoId])
   @@index([ano])
   @@index([fonteDadosId])
 }

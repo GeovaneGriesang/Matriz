@@ -141,6 +141,48 @@ describe("conferência da carga da MDO", () => {
     expect(redeComDono).toBe(0);
   });
 
+  it("a participação das instituições soma 100% em cada ciclo", async () => {
+    if (!(await bancoDisponivel())) return;
+    const anos = await prisma.comparativoInstitucional.findMany({
+      distinct: ["ano"],
+      select: { ano: true },
+    });
+    for (const { ano } of anos) {
+      const s = await prisma.comparativoInstitucional.aggregate({
+        where: { ano },
+        _sum: { participacaoPercentual: true },
+      });
+      const total = num(s._sum.participacaoPercentual);
+      if (total === 0) continue;
+      // A MDO publica cada fatia com duas casas, então a soma erra alguns centésimos.
+      expect(total).toBeGreaterThan(99.5);
+      expect(total).toBeLessThan(100.5);
+    }
+  });
+
+  it("o comparativo bate com a 5ª fase onde as duas fontes se sobrepõem", async () => {
+    if (!(await bancoDisponivel())) return;
+    // Fontes diferentes, exportadas em datas diferentes, têm de dizer a mesma coisa
+    // sobre o mesmo ciclo. É a conferência cruzada mais valiosa que temos.
+    const anos = await prisma.comparativoInstitucional.findMany({ distinct: ["ano"], select: { ano: true } });
+    for (const { ano } of anos) {
+      const cmp = await prisma.comparativoInstitucional.aggregate({
+        where: { ano },
+        _sum: { matriculas: true, ae: true },
+      });
+      const cinco = await prisma.distribuicaoInstituicao.aggregate({
+        where: { ano },
+        _sum: { vlMatr: true, matrizAe: true },
+      });
+      const matrCinco = num(cinco._sum.vlMatr);
+      // A 5ª fase de 2026 saiu quebrada; só compara onde ela tem dado de verdade.
+      if (matrCinco === 0 || num(cmp._sum.matriculas) === 0) continue;
+      if (matrCinco < num(cmp._sum.matriculas) * 0.5) continue;
+      expect(num(cmp._sum.matriculas)).toBeCloseTo(matrCinco, 0);
+      expect(num(cmp._sum.ae)).toBeCloseTo(num(cinco._sum.matrizAe), 0);
+    }
+  });
+
   it("nenhum câmpus aparece duas vezes no mesmo ciclo", async () => {
     if (!(await bancoDisponivel())) return;
     const duplicados = await prisma.$queryRaw<{ n: bigint }[]>`
