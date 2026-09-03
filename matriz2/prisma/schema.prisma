@@ -91,12 +91,13 @@ model FonteDados {
   /// está "Em andamento" na MDO, então os valores podem mudar.
   ressalva       String?      @db.Text
 
-  distribuicoesCiclo       DistribuicaoCiclo[]
-  distribuicoesCampus      DistribuicaoCampus[]
-  distribuicoesInstituicao DistribuicaoInstituicao[]
-  comparativos             ComparativoInstitucional[]
-  conferenciasExtracao     ConferenciaExtracao[]
-  ciclosOrcamento          CicloOrcamento[]
+  distribuicoesCiclo        DistribuicaoCiclo[]
+  distribuicoesCampus       DistribuicaoCampus[]
+  distribuicoesInstituicao  DistribuicaoInstituicao[]
+  comparativos              ComparativoInstitucional[]
+  conferenciasExtracao      ConferenciaExtracao[]
+  conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
+  ciclosOrcamento           CicloOrcamento[]
 
   @@index([cicloOrcamento, origem])
   @@index([instituicaoId])
@@ -135,9 +136,10 @@ model Unidade {
   /// Ano de criação, publicado pela MDO na coluna ANO_CRIACAO. Define elegibilidade ao Piso Mínimo.
   anoCriacao    Int?
 
-  distribuicoesCiclo   DistribuicaoCiclo[]
-  distribuicoesCampus  DistribuicaoCampus[]
-  conferenciasExtracao ConferenciaExtracao[]
+  distribuicoesCiclo        DistribuicaoCiclo[]
+  distribuicoesCampus       DistribuicaoCampus[]
+  conferenciasExtracao      ConferenciaExtracao[]
+  conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -442,6 +444,65 @@ model ConferenciaExtracao {
   @@unique([ano, unidadeId])
   @@index([ano])
   @@index([fonteDadosId])
+}
+
+/// Conferência da Extração da PNP (2ª fase), no nível MAIS FINO que existe: um
+/// registro por matrícula de aluno. 206.700 linhas para o IFSul, em cada um dos dois
+/// ciclos.
+///
+/// ATENÇÃO — NUNCA consultar este model a partir de uma rota, página ou API pública.
+/// `matriculaAluno` é um identificador pseudonimizado (não é nome nem CPF), mas
+/// combinado com câmpus + curso + datas + faixa de renda pode reidentificar um aluno
+/// em turmas pequenas — é dado pessoal sob a LGPD. Decisão do usuário em 2026-09-03:
+/// carregar para auditoria e conferência interna, nunca expor publicamente. Só é lido
+/// por scripts administrativos (`scripts/carregar.ts`), jamais por `src/app/**`.
+///
+/// Ressalva da carga: a pasta de 2027 tem, por engano da própria MDO, um arquivo
+/// chamado "Matriz Distribuição Orçamentária 2027.xlsx" (nome de outro relatório,
+/// conteúdo certo — ver `caminhos.conferenciaExtracaoAluno`). E o conteúdo é
+/// IDÊNTICO ao da pasta de 2026 (mesmas 206.700 linhas, mesmos valores): é o mesmo
+/// bug do seletor de ano que já afeta `ConferenciaExtracao` (agregada) e
+/// `ComparativoInstitucional`.
+model ConferenciaExtracaoAluno {
+  id           Int        @id @default(autoincrement())
+  ano          Int
+  unidadeId    Int
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id])
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  /// Identificador do ciclo de curso ao qual a matrícula pertence (mesmo conceito de
+  /// `DistribuicaoCiclo.codigoCiclo`, aqui a granularidade é o aluno dentro do ciclo).
+  codigoCiclo   String
+  nomeCiclo     String  @db.Text
+  financiamento String
+  tipoCurso     String
+  curso         String
+  areaEixo      String?
+  agropecuaria  Boolean @default(false)
+  tipoOferta    String?
+
+  inicio          DateTime?
+  previstoTermino DateTime?
+  jubilamento     DateTime?
+
+  chHoraria    Int?
+  chHorariaMec Int?
+  chMatriz     Int?
+
+  /// Identificador PSEUDONIMIZADO do aluno (não é nome nem CPF), persistente entre
+  /// registros do mesmo aluno. Ver o aviso de privacidade no topo deste model.
+  matriculaAluno String
+
+  /// Faixa de Renda Familiar Per capita (RFP), como a MDO publica (ex.: "0,5<RFP<=1").
+  renda String?
+
+  situacaoMatricula String?
+  situacaoMatriz    String?
+
+  @@index([ano, unidadeId])
+  @@index([fonteDadosId])
+  @@index([matriculaAluno])
 }
 
 /// Nível de instituição (linhas TIPO = T, mais os indicadores da aba INDICADORES).

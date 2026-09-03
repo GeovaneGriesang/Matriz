@@ -77,6 +77,27 @@ export function conferenciaExtracao(ciclo: number, sigla: string): string | null
   return null;
 }
 
+/**
+ * 2ª fase, Conferência da Extração da PNP, por ALUNO (microdado individual, um
+ * registro por matrícula). Só existe para o IFSul. O nome do arquivo é INSTÁVEL: a
+ * pasta de 2027 chegou, por engano da própria MDO, com um arquivo chamado "Matriz
+ * Distribuição Orçamentária 2027.xlsx" (nome de outro relatório, conteúdo certo).
+ * Por isso a busca é pelo único .xlsx que existir na pasta, não por um nome fixo.
+ */
+export function conferenciaExtracaoAluno(ciclo: number, sigla: string): string | null {
+  const pasta = path.join(
+    EXPORTADOS,
+    "01 - Matriz orçamentária",
+    "2a fase - Conferência Extração PNP",
+    "03 - Por aluno",
+    sigla,
+    String(ciclo),
+  );
+  if (!fs.existsSync(pasta)) return null;
+  const arquivo = fs.readdirSync(pasta).find((f) => f.toLowerCase().endsWith(".xlsx"));
+  return arquivo ? path.join(pasta, arquivo) : null;
+}
+
 export function existe(caminho: string): boolean {
   return fs.existsSync(caminho);
 }
