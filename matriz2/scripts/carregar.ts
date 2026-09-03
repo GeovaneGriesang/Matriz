@@ -14,6 +14,7 @@ import { carregarParticipacao } from "../src/carga/carregarParticipacao";
 import { carregarProposta } from "../src/carga/carregarProposta";
 import { carregarComparativo } from "../src/carga/carregarComparativo";
 import { carregarConferencia } from "../src/carga/carregarConferencia";
+import { carregarConferenciaAluno } from "../src/carga/carregarConferenciaAluno";
 import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -47,6 +48,18 @@ async function carregarCiclo(ano: number) {
     console.log(`  2ª fase (Conferência da Extração, IFSul)...`);
     console.log(`     ${conf.campus} câmpus | matrícula Matriz ${inteiro.format(conf.somaMatriz)} | evasão ${inteiro.format(conf.somaEvasao)}`);
     for (const a of conf.avisos) console.log(`     AVISO: ${a}`);
+  }
+
+  // 2ª fase, por aluno: dado pessoal (LGPD), nunca exposto em tela pública — só
+  // carregado para auditoria interna. O console mostra apenas contagens agregadas,
+  // nunca uma linha individual.
+  const confAluno = await carregarConferenciaAluno(ano, "IFSUL");
+  if (!confAluno) {
+    console.log(`  2ª fase (Conferência da Extração, por aluno): sem arquivo do IFSul para ${ano}, pulando.`);
+  } else {
+    console.log(`  2ª fase (Conferência da Extração, por aluno, IFSul) [dado pessoal, uso interno]...`);
+    console.log(`     ${inteiro.format(confAluno.registros)} registros | ${confAluno.campus} câmpus | ${inteiro.format(confAluno.alunosDistintos)} alunos distintos`);
+    for (const a of confAluno.avisos) console.log(`     AVISO: ${a}`);
   }
 
   if (!existe(planilhaParticipacao(ano))) {
