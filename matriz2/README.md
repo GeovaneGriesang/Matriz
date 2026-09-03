@@ -20,8 +20,9 @@ O Matriz2 parte de outro lugar. A **MDO** (mdo.iftm.edu.br), sistema oficial da 
 operado pelo IFTM, já publica o resultado homologado em todos os níveis de detalhe.
 Aqui a gente importa esse resultado e constrói em cima dele o que a MDO não oferece:
 
-- comparação entre ciclos orçamentários;
-- simulação de cenários ("e se este curso tivesse menos evasão?");
+- comparação entre ciclos orçamentários (`/comparativo`);
+- simulação de cenários de evasão (`/simulador`, primeira versão: reduzir a evasão de
+  um câmpus e ver quanto ele recuperaria, em cima do valor que a MDO já publica);
 - recorte pelo interesse do IFSul e de Venâncio Aires;
 - cruzamento da distribuição com os microdados da PNP.
 
@@ -70,6 +71,25 @@ resolve), em outro banco: `matriz2_dev`. Os dois nunca se tocam.
 Os arquivos da MDO ficam **fora do repositório**, em
 `_Matriz orçamentária - CONIF`. Aponte para outro lugar com a variável
 `MATRIZ2_DADOS`.
+
+`.env` também precisa de `ADMIN_PASSWORD` e `ADMIN_SESSION_SECRET`, só usados pela
+área administrativa (ver abaixo). O resto do sistema é público e não exige login.
+
+## Área administrativa
+
+`/admin/login` autentica por senha (cookie assinado por HMAC, 8h de validade,
+mesmo desenho do Matriz original). O cookie se chama `matriz2_admin_session`,
+deliberadamente diferente do `admin_session` de lá: em produção os dois sistemas
+respondem no mesmo domínio (`movaci.com.br/matriz` e `/matriz2`), e um nome igual
+faria um login sobrescrever o cookie do outro sistema no navegador.
+
+`/admin/orcamento` corrige à mão os 17 parâmetros de um `CicloOrcamento`, para
+quando a MDO ainda não publicou algo ou publicou algo que já se sabe estar errado.
+Salvar sobrescreve o ciclo inteiro e cria uma `FonteDados` com origem
+`ADMINISTRADOR`; não há rastro de qual campo mudou, só de que o ciclo passou por
+uma correção humana. A próxima carga (`npm run carregar`) daquele ano apaga a
+correção e traz o valor da MDO de volta — de propósito: é uma ponte, não uma
+decisão permanente.
 
 ## Conferência que o próprio dado oferece
 
