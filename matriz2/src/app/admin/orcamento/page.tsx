@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { requireAdminOrRedirect } from "@/server/auth/session";
-import { logoutAction } from "@/server/actions/adminAuth";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CicloOrcamentoForm } from "@/components/admin/CicloOrcamentoForm";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
@@ -12,7 +12,7 @@ export default async function AdminOrcamentoPage({
 }: {
   searchParams: Promise<{ ano?: string }>;
 }) {
-  await requireAdminOrRedirect("/admin/orcamento");
+  const usuario = await requireAdminOrRedirect("/admin/orcamento");
 
   const ciclos = await prisma.cicloOrcamento.findMany({
     orderBy: { ano: "desc" },
@@ -25,23 +25,15 @@ export default async function AdminOrcamentoPage({
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Correção manual</h1>
-          <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
-            Para quando a MDO ainda não publicou um parâmetro do ciclo, ou publicou algo que já se sabe
-            estar errado. Salvar aqui sobrescreve os 17 parâmetros do ciclo escolhido e registra a origem
-            como &quot;administrador&quot;, até a próxima carga da MDO trazer o valor de volta.
-          </p>
-        </div>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="text-sm font-medium text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-100"
-          >
-            Sair
-          </button>
-        </form>
+      <AdminHeader usuario={usuario} atual="/admin/orcamento" />
+
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Correção manual</h1>
+        <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
+          Para quando a MDO ainda não publicou um parâmetro do ciclo, ou publicou algo que já se sabe
+          estar errado. Salvar aqui sobrescreve os 17 parâmetros do ciclo escolhido e registra a origem
+          como &quot;administrador&quot;, até a próxima carga da MDO trazer o valor de volta.
+        </p>
       </div>
 
       {ciclos.length === 0 ? (

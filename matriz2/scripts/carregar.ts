@@ -16,6 +16,7 @@ import { carregarComparativo } from "../src/carga/carregarComparativo";
 import { carregarConferencia } from "../src/carga/carregarConferencia";
 import { carregarConferenciaAluno } from "../src/carga/carregarConferenciaAluno";
 import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
+import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "../src/lib/escopoTemporal";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
@@ -77,7 +78,12 @@ async function carregarCiclo(ano: number) {
 }
 
 async function main() {
-  const anos = process.argv.slice(2).map(Number).filter((n) => Number.isInteger(n) && n > 2000);
+  const argumentos = process.argv.slice(2).map(Number);
+  const anos = argumentos.filter(anoDentroDoEscopo);
+  const foraDoEscopo = argumentos.filter((n) => Number.isInteger(n) && !anoDentroDoEscopo(n));
+  for (const n of foraDoEscopo) {
+    console.error(`Ciclo ${n} ignorado: este sistema controla os ciclos a partir de ${ANO_MINIMO_SISTEMA}.`);
+  }
   if (anos.length === 0) {
     console.error("Informe ao menos um ciclo. Exemplo: npm run carregar -- 2027");
     process.exit(1);

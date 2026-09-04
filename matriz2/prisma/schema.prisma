@@ -24,6 +24,73 @@ generator client {
 // veio, em que fase foi homologado, que arquivo o trouxe e o que ele abrange.
 // ============================================================================
 
+// ---------- Acesso e auditoria ----------
+//
+// Todo o resto do sistema é público de propósito (Consulta, Comparativo, Evasão,
+// Simulador, Dados importados): é a transparência que o usuário quer poder mostrar
+// ao reitor e aos diretores-gerais sem que ninguém precise de login. O que fica
+// atrás de senha é só a correção manual de dados e a gestão de usuários.
+
+/// Uma pessoa que pode entrar na área administrativa. O login é o e-mail.
+/// `superAdmin` é quem pode criar outros usuários e resetar a senha de alguém sem
+/// precisar da senha antiga (decisão do usuário em 2026-09-04: sem e-mail de
+/// recuperação por enquanto, o reset é sempre feito por um super-admin).
+model Usuario {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  nome          String
+  /// Hash bcrypt; a senha em si nunca é gravada nem logada em lugar nenhum.
+  senhaHash     String
+  superAdmin    Boolean   @default(false)
+  /// Desativar em vez de apagar preserva o rastro de quem fez o quê no
+  /// RegistroAuditoria, que aponta para o usuário por id.
+  ativo         Boolean   @default(true)
+  criadoEm      DateTime  @default(now())
+  ultimoLoginEm DateTime?
+
+  sessoes    Sessao[]
+  auditorias RegistroAuditoria[]
+}
+
+/// Uma sessão de login, guardada no banco (não só num cookie autocontido) para
+/// poder ser revogada e auditada. O cookie carrega um token opaco gerado na hora do
+/// login; aqui fica só o HASH desse token (SHA-256) — se o banco vazar, ninguém
+/// consegue logar com o que está nesta tabela, precisa do token original.
+model Sessao {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  tokenHash String   @unique @db.Char(64)
+  criadoEm  DateTime @default(now())
+  expiraEm  DateTime
+  ip        String?
+  userAgent String?  @db.Text
+
+  @@index([usuarioId])
+  @@index([expiraEm])
+}
+
+/// Uma ação sensível registrada. Existe para o super-admin conseguir responder
+/// "quem mudou o quê, e quando" — a pergunta que a correção manual de dados
+/// (`CicloOrcamento`) torna real: ela sobrescreve o que a MDO publicou, então
+/// precisa ficar rastreável quem fez isso e quando.
+model RegistroAuditoria {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  /// Curto, no infinitivo, ex.: "login", "logout", "trocar_senha",
+  /// "resetar_senha_usuario", "criar_usuario", "corrigir_ciclo_orcamento".
+  acao      String
+  /// Contexto livre da ação, ex.: { "ano": 2027 } ou { "usuarioAlvoId": 3 }.
+  detalhe   Json?
+  ip        String?
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([criadoEm])
+}
+
 // ---------- Procedência ----------
 
 /// De onde o número veio. Exibido ao lado de cada valor na interface.
