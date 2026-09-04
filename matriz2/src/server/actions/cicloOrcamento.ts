@@ -2,6 +2,8 @@
 
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
+import { registrarAuditoria } from "@/server/auth/auditoria";
+import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "@/lib/escopoTemporal";
 
 export interface SalvarCicloOrcamentoResult {
   ok: boolean;
@@ -59,13 +61,14 @@ const OPCIONAIS = new Set([
  * uma decisão permanente que sobrevive a uma reimportação.
  */
 export async function salvarCicloOrcamentoManualAction(formData: FormData): Promise<SalvarCicloOrcamentoResult> {
-  if (!(await getAdminSession())) {
+  const usuario = await getAdminSession();
+  if (!usuario) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
 
   const ano = Number(formData.get("ano"));
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
-    return { ok: false, errorMessage: "Ano inválido." };
+  if (!anoDentroDoEscopo(ano)) {
+    return { ok: false, errorMessage: `Este sistema controla os ciclos a partir de ${ANO_MINIMO_SISTEMA}.` };
   }
 
   const existente = await prisma.cicloOrcamento.findUnique({ where: { ano } });
@@ -136,6 +139,8 @@ export async function salvarCicloOrcamentoManualAction(formData: FormData): Prom
       percentualAnuidade: valores.percentualAnuidade!,
     },
   });
+
+  await registrarAuditoria(usuario.id, "corrigir_ciclo_orcamento", { ano });
 
   return { ok: true };
 }

@@ -33,15 +33,31 @@ export function AdminLoginForm() {
       className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800"
     >
       <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-          Senha de administrador
+        <label htmlFor="email" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+          E-mail
         </label>
         <input
-          id="password"
-          name="password"
-          type="password"
+          id="email"
+          name="email"
+          type="email"
           required
           autoFocus
+          autoComplete="username"
+          disabled={enviando}
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="senha" className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+          Senha
+        </label>
+        <input
+          id="senha"
+          name="senha"
+          type="password"
+          required
+          autoComplete="current-password"
           disabled={enviando}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         />
@@ -58,6 +74,10 @@ export function AdminLoginForm() {
       >
         {enviando ? "Entrando..." : "Entrar"}
       </button>
+
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        Esqueceu a senha? Por enquanto só um super-administrador pode resetá-la — peça a ele.
+      </p>
     </form>
   );
 }

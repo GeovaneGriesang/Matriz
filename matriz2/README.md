@@ -72,16 +72,25 @@ Os arquivos da MDO ficam **fora do repositório**, em
 `_Matriz orçamentária - CONIF`. Aponte para outro lugar com a variável
 `MATRIZ2_DADOS`.
 
-`.env` também precisa de `ADMIN_PASSWORD` e `ADMIN_SESSION_SECRET`, só usados pela
-área administrativa (ver abaixo). O resto do sistema é público e não exige login.
+Depois do primeiro `npx prisma migrate dev`, rode `npm run seed:superadmin` para
+criar o primeiro usuário (super-admin), com senha gerada mostrada uma única vez no
+terminal. O resto do sistema é público e não exige login.
 
 ## Área administrativa
 
-`/admin/login` autentica por senha (cookie assinado por HMAC, 8h de validade,
-mesmo desenho do Matriz original). O cookie se chama `matriz2_admin_session`,
-deliberadamente diferente do `admin_session` de lá: em produção os dois sistemas
-respondem no mesmo domínio (`movaci.com.br/matriz` e `/matriz2`), e um nome igual
-faria um login sobrescrever o cookie do outro sistema no navegador.
+`/admin/login` autentica por e-mail e senha (bcrypt). A sessão fica no banco
+(`Sessao`, tabela com hash SHA-256 do token, nunca o token em claro), não num
+cookie autocontido: dá para revogar uma sessão específica e listar quem está
+logado. O cookie se chama `matriz2_admin_session`, deliberadamente diferente do
+`admin_session` do Matriz raiz: em produção os dois sistemas respondem no mesmo
+domínio (`movaci.com.br/matriz` e `/matriz2`), e um nome igual faria um login
+sobrescrever o cookie do outro sistema no navegador.
+
+Não há recuperação de senha por e-mail: quem esquece a senha pede a um
+super-administrador para resetá-la em `/admin/usuarios` (o reset também derruba
+as sessões abertas daquela conta). `/admin/auditoria` lista login, logout, troca
+e reset de senha, criação de usuário e correção manual de dados, mais recente
+primeiro, com filtro por usuário e ação.
 
 `/admin/orcamento` corrige à mão os 17 parâmetros de um `CicloOrcamento`, para
 quando a MDO ainda não publicou algo ou publicou algo que já se sabe estar errado.
@@ -90,6 +99,10 @@ Salvar sobrescreve o ciclo inteiro e cria uma `FonteDados` com origem
 uma correção humana. A próxima carga (`npm run carregar`) daquele ano apaga a
 correção e traz o valor da MDO de volta — de propósito: é uma ponte, não uma
 decisão permanente.
+
+O sistema controla os ciclos orçamentários a partir de **2026** (`ANO_MINIMO_SISTEMA`
+em `src/lib/escopoTemporal.ts`); ciclos anteriores não são carregados nem exibidos,
+mesmo que existam planilhas da MDO para eles.
 
 ## Conferência que o próprio dado oferece
 
