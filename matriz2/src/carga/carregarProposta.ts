@@ -105,6 +105,28 @@ const DB = {
   percentualAnuidade: "I21",
 } as const;
 
+/**
+ * DADOS BASE de 2026 tem outro layout — confirma o que o usuário já esperava
+ * ("tivemos alterações na forma de gerar a matriz de 2026 para 2027"). Conferido em
+ * 2026-09-05 contra a fonte alternativa de 2026 (ver `caminhos.ts`).
+ *
+ * Só três parâmetros têm célula própria aqui; os demais (funcionamentoTotal,
+ * assistenciaTotal, pisoTotal, reitoriasTotal, qualidadeEficienciaTotal, valorIea,
+ * valorRap, valorIapl, valorMatricula*) não existem preenchidos nesta planilha — as
+ * fórmulas de valor por câmpus em COMPLETO PROPOSTA (colunas V/W/X/Y e AO/AV) todas
+ * multiplicam a matrícula ponderada pelo "valor por matrícula", que fica justamente
+ * em I29/I33/I37/I41 no layout de 2027 — e essas quatro células estão vazias aqui.
+ * A MDO nunca calculou o valor final para esta versão do arquivo: o que ele traz são
+ * os INSUMOS (matrícula, indicadores brutos), não o resultado distribuído. Por isso
+ * ficam de fora deste mapa (a chave ausente é lida como "sem célula", nunca como uma
+ * célula errada de outro layout).
+ */
+const DB_2026: Partial<Record<keyof typeof DB, string>> = {
+  valorReferenciaSpo: "M25",
+  ajuste: "M26",
+  percentualAnuidade: "I22",
+};
+
 export interface ResultadoProposta {
   campus: number;
   reitorias: number;
@@ -120,13 +142,20 @@ export interface ResultadoProposta {
 
 type Linha = { getCell(c: number): { value: unknown } };
 
-function celula(ws: { getCell(ref: string): { value: unknown } }, ref: string): number | null {
-  return numero(ws.getCell(ref).value);
+function celula(ws: { getCell(ref: string): { value: unknown } }, ref: string | undefined): number | null {
+  return ref ? numero(ws.getCell(ref).value) : null;
 }
 
 export async function carregarProposta(ano: number): Promise<ResultadoProposta> {
   const caminho = exigirArquivo(planilhaProposta(ano), `a planilha da 5ª fase (Completo proposta) de ${ano}`);
   const avisos: string[] = [];
+
+  // Ver comentário de DB_2026: o layout de DADOS BASE (e a coluna de sigla em
+  // INDICADORES) mudou entre os ciclos 2026 e 2027.
+  const layout2026 = ano === 2026;
+  function db(chave: keyof typeof DB): string | undefined {
+    return layout2026 ? DB_2026[chave] : DB[chave];
+  }
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(caminho);
@@ -156,12 +185,20 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
       geradoEm,
       abrangencia: "REDE",
       checksum: checksumArquivo(caminho),
+      ressalva: layout2026
+        ? "Não é a exportação oficial do usuário na MDO (essa saiu com a matrícula por câmpus " +
+          "zerada): veio por outro canal, com matrícula e indicadores reais. Mas a MDO nunca " +
+          "calculou, nesta versão, o valor final por matrícula (DADOS BASE não traz esse número), " +
+          "então o Funcionamento e a Assistência Estudantil por câmpus ficam em zero aqui também, " +
+          "por um motivo diferente do da exportação oficial. A marcação de elegibilidade ao Piso " +
+          "Mínimo também não veio preenchida nesta versão."
+        : null,
     },
   });
 
   // ---- Parâmetros do ciclo (aba DADOS BASE) ----
-  const funcionamentoTotal = celula(dadosBase, DB.funcionamentoTotal) ?? 0;
-  const pisoTotal = celula(dadosBase, DB.pisoTotal) ?? 0;
+  const funcionamentoTotal = celula(dadosBase, db("funcionamentoTotal")) ?? 0;
+  const pisoTotal = celula(dadosBase, db("pisoTotal")) ?? 0;
 
   // ---- Instituições, unidades e o nível de câmpus (aba COMPLETO PROPOSTA) ----
   const instituicaoPorSigla = new Map<string, number>();
@@ -321,9 +358,13 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
   if (semVlMatr > 0) avisos.push(`${semVlMatr} câmpus sem VL_MATR correspondente na aba RESUMO PROPOSTA.`);
 
   // ---- Indicadores homologados (aba INDICADORES) ----
+  // Em 2026 a sigla fica na coluna E (5), não F (6): a coluna F desta versão é
+  // "ds_abreviatura" só de exibição, vazia em algumas linhas; a sigla de verdade,
+  // usada para casar com a instituição, está uma coluna antes.
+  const colSiglaIndicadores = layout2026 ? 5 : IND.sigla;
   indicadores.eachRow((linha) => {
     const l = linha as Linha;
-    const sigla = texto(l.getCell(IND.sigla).value);
+    const sigla = texto(l.getCell(colSiglaIndicadores).value);
     if (!sigla) return;
     const alvo = instituicaoParaGravar.get(sigla);
     if (!alvo) return;
@@ -353,23 +394,23 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
     data: {
       ano,
       fonteDadosId: fonte.id,
-      valorReferenciaSpo: celula(dadosBase, DB.valorReferenciaSpo) ?? 0,
-      ajuste: celula(dadosBase, DB.ajuste) ?? 0,
-      assistenciaTotal: celula(dadosBase, DB.assistenciaTotal) ?? 0,
+      valorReferenciaSpo: celula(dadosBase, db("valorReferenciaSpo")) ?? 0,
+      ajuste: celula(dadosBase, db("ajuste")) ?? 0,
+      assistenciaTotal: celula(dadosBase, db("assistenciaTotal")) ?? 0,
       funcionamentoTotal,
       pisoTotal,
       pisoPorCampus: elegiveisPiso > 0 ? pisoTotal / elegiveisPiso : 0,
       campusComPiso: elegiveisPiso,
-      reitoriasTotal: celula(dadosBase, DB.reitoriasTotal) ?? 0,
-      qualidadeEficienciaTotal: celula(dadosBase, DB.qualidadeEficienciaTotal) ?? 0,
-      valorIea: celula(dadosBase, DB.valorIea) ?? 0,
-      valorRap: celula(dadosBase, DB.valorRap) ?? 0,
-      valorIapl: celula(dadosBase, DB.valorIapl) ?? 0,
-      valorMatriculaPresencial: celula(dadosBase, DB.valorMatriculaPresencial),
-      valorMatriculaEad: celula(dadosBase, DB.valorMatriculaEad),
-      valorMatriculaEadFp: celula(dadosBase, DB.valorMatriculaEadFp),
-      valorMatriculaEadMooc: celula(dadosBase, DB.valorMatriculaEadMooc),
-      percentualAnuidade: celula(dadosBase, DB.percentualAnuidade) ?? 0,
+      reitoriasTotal: celula(dadosBase, db("reitoriasTotal")) ?? 0,
+      qualidadeEficienciaTotal: celula(dadosBase, db("qualidadeEficienciaTotal")) ?? 0,
+      valorIea: celula(dadosBase, db("valorIea")) ?? 0,
+      valorRap: celula(dadosBase, db("valorRap")) ?? 0,
+      valorIapl: celula(dadosBase, db("valorIapl")) ?? 0,
+      valorMatriculaPresencial: celula(dadosBase, db("valorMatriculaPresencial")),
+      valorMatriculaEad: celula(dadosBase, db("valorMatriculaEad")),
+      valorMatriculaEadFp: celula(dadosBase, db("valorMatriculaEadFp")),
+      valorMatriculaEadMooc: celula(dadosBase, db("valorMatriculaEadMooc")),
+      percentualAnuidade: celula(dadosBase, db("percentualAnuidade")) ?? 0,
     },
   });
 
@@ -387,12 +428,29 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
     0,
   );
 
-  // Uma exportação incompleta é o caso real de 2026: a planilha saiu sem NENHUM dado
-  // de matrícula, nem por câmpus nem nos totais de rede da aba DADOS BASE, e por isso
-  // o Funcionamento derivado dela zerou. Comparar contra zero não basta, porque os
-  // câmpus do piso continuam somando (em 2026, R$ 38,5 milhões de um bloco de
-  // R$ 1,9 bilhão); a conferência precisa ser contra o total que a própria planilha
-  // declara. Melhor gritar do que deixar o sistema publicar zeros com cara de dado.
+  // A fonte alternativa de 2026 nunca teve o valor por matrícula calculado (ver
+  // DB_2026): Funcionamento e Assistência Estudantil somam zero por um motivo
+  // diferente do da exportação oficial (que zerou por matrícula ausente), mas o
+  // resultado prático é o mesmo. Aviso próprio, em vez de deixar o sistema publicar
+  // zero com cara de dado.
+  if (layout2026) {
+    avisos.push(
+      "Ciclo 2026 carregado a partir da fonte alternativa (ver ressalva da fonte de dados). " +
+        `Matrícula e indicadores por instituição são reais, mas o Funcionamento (R$ ${somaVlMatr.toFixed(2)}) ` +
+        `e a Assistência Estudantil (R$ ${somaAssistencia.toFixed(2)}) por câmpus ficam em zero: ` +
+        "a MDO não calculou o valor por matrícula nesta versão do arquivo. Não usar este ciclo " +
+        "para valores em R$ por câmpus ou instituição até que essa lacuna se resolva.",
+    );
+  }
+
+  // Uma exportação incompleta é o caso real da fonte OFICIAL de 2026: a planilha saiu
+  // sem NENHUM dado de matrícula, nem por câmpus nem nos totais de rede da aba DADOS
+  // BASE, e por isso o Funcionamento derivado dela zerou. Comparar contra zero não
+  // basta, porque os câmpus do piso continuam somando (em 2026, R$ 38,5 milhões de um
+  // bloco de R$ 1,9 bilhão); a conferência precisa ser contra o total que a própria
+  // planilha declara. Não dispara para o layout de 2026 acima, que já tem seu próprio
+  // aviso: ali `funcionamentoTotal` fica em zero por falta de célula, não por ela
+  // declarar um total maior que zero e a soma não bater.
   const LIMITE_INCOMPLETO = 0.5;
   if (funcionamentoTotal > 0 && somaVlMatr < funcionamentoTotal * LIMITE_INCOMPLETO) {
     const pct = ((somaVlMatr / funcionamentoTotal) * 100).toFixed(1);
