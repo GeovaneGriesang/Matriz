@@ -1,9 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { trocarMinhaSenhaAction } from "@/server/actions/usuarios";
 
-export function TrocarSenhaForm() {
+/**
+ * `trocaObrigatoria` vem de `precisaTrocarSenha` (senha gerada pelo sistema): depois
+ * de trocar com sucesso, manda para uma tela que qualquer admin acessa (não só
+ * super-admin), em vez de deixar a mensagem de sucesso parada aqui — a pessoa entrou
+ * numa conta nova, ainda não tem motivo para ficar em "Minha conta".
+ */
+export function TrocarSenhaForm({ trocaObrigatoria = false }: { trocaObrigatoria?: boolean }) {
+  const router = useRouter();
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
@@ -16,12 +24,18 @@ export function TrocarSenhaForm() {
 
     const formData = new FormData(event.currentTarget);
     const resultado = await trocarMinhaSenhaAction(formData);
-    setEnviando(false);
 
     if (resultado.ok) {
+      if (trocaObrigatoria) {
+        router.push("/admin/orcamento");
+        router.refresh();
+        return;
+      }
+      setEnviando(false);
       setSucesso(true);
       event.currentTarget.reset();
     } else {
+      setEnviando(false);
       setErro(resultado.errorMessage ?? "Não foi possível trocar a senha.");
     }
   }
