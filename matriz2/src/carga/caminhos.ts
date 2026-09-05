@@ -24,8 +24,20 @@ export const RAIZ_DADOS =
 
 const EXPORTADOS = path.join(RAIZ_DADOS, "mdo.iftm.edu.br", "Exportados");
 
+/**
+ * A exportação oficial da MDO para 2026 saiu com a matrícula por câmpus zerada (ver
+ * `carregarProposta.ts`), e o IFTM nunca corrigiu. Para 2026, e só para 2026, existe
+ * uma fonte alternativa: um arquivo da mesma proposta, obtido por outro canal (não a
+ * exportação oficial do usuário), com matrícula e indicadores de verdade — ainda que
+ * sem o valor final por matrícula (ver ressalva gravada em `carregarProposta.ts`).
+ * O nome do arquivo carrega "2025" porque é o ano em que a proposta foi GERADA
+ * ("Gerado em 06/11/2025"), não o ciclo que ela propõe.
+ */
+const FONTE_ALTERNATIVA_2026 = path.join(RAIZ_DADOS, "Outras fontes", "2026", "Matriz Distribuição Orçamentária 2025.xlsx");
+
 /** 5ª fase: a proposta compilada, com todos os blocos por câmpus e instituição. */
 export function planilhaProposta(ano: number): string {
+  if (ano === 2026 && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
   return path.join(
     EXPORTADOS,
     "01 - Matriz orçamentária",
