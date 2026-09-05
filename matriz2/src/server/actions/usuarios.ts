@@ -56,12 +56,16 @@ async function criarCodigoVerificacao(usuarioId: number, tipo: TipoCodigoVerific
  * concluir `/admin/definir-senha` com o código recebido (decisão do usuário em
  * 2026-09-05). Se o envio falhar (ex.: Resend ainda não configurado), o cadastro
  * não se perde — devolve o código para o super-admin repassar à mão.
+ *
+ * Só cria ADMIN ou PADRAO, nunca SUPER_ADMIN: ninguém precisa saber que esse papel
+ * existe (decisão do usuário em 2026-09-05), então o app nunca oferece criá-lo — só
+ * nasce pelo script `seedSuperAdmin.ts`, fora da interface.
  */
 export async function criarUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
   if (solicitante.papel !== "SUPER_ADMIN") {
-    return { ok: false, errorMessage: "Só um super-administrador pode criar usuários." };
+    return { ok: false, errorMessage: "Você não tem permissão para criar usuários." };
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -70,7 +74,7 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
 
   if (!email || !email.includes("@")) return { ok: false, errorMessage: "Informe um e-mail válido." };
   if (!nome) return { ok: false, errorMessage: "Informe o nome." };
-  if (!["SUPER_ADMIN", "ADMIN", "PADRAO"].includes(papel)) {
+  if (!["ADMIN", "PADRAO"].includes(papel)) {
     return { ok: false, errorMessage: "Selecione um papel válido." };
   }
 
@@ -106,7 +110,7 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
   if (solicitante.papel !== "SUPER_ADMIN") {
-    return { ok: false, errorMessage: "Só um super-administrador pode resetar senhas." };
+    return { ok: false, errorMessage: "Você não tem permissão para resetar senhas." };
   }
 
   const usuarioAlvoId = Number(formData.get("usuarioId"));
@@ -132,7 +136,7 @@ export async function alternarAtivoUsuarioAction(formData: FormData): Promise<Re
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
   if (solicitante.papel !== "SUPER_ADMIN") {
-    return { ok: false, errorMessage: "Só um super-administrador pode fazer isso." };
+    return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
   }
 
   const usuarioAlvoId = Number(formData.get("usuarioId"));

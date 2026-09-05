@@ -156,7 +156,6 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
           >
             <option value="PADRAO">Padrão</option>
             <option value="ADMIN">Admin</option>
-            <option value="SUPER_ADMIN">Super-admin</option>
           </select>
         </div>
         <button

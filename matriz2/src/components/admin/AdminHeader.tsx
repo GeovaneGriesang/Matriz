@@ -5,12 +5,6 @@ import type { UsuarioLogado } from "@/server/auth/session";
 
 const RANQUE: Record<Papel, number> = { PADRAO: 0, ADMIN: 1, SUPER_ADMIN: 2 };
 
-const ROTULO_PAPEL: Record<Papel, string> = {
-  SUPER_ADMIN: "super-admin",
-  ADMIN: "admin",
-  PADRAO: "padrão",
-};
-
 /**
  * Cabeçalho comum às telas administrativas: quem está logado, navegação entre as
  * telas (algumas exigem admin ou super-admin, outras só super-admin) e o botão de
@@ -45,10 +39,10 @@ export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual:
             ))}
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-neutral-500 dark:text-neutral-400">
-            {usuario.nome}{" "}
-            {usuario.papel !== "PADRAO" && <span className="text-if-green">· {ROTULO_PAPEL[usuario.papel]}</span>}
-          </span>
+          {/* Sem rótulo de papel aqui de propósito: ninguém precisa saber que existe um
+              super-admin (decisão do usuário em 2026-09-05) — o próprio conjunto de
+              links acima já diferencia o que cada um alcança, sem nomear o nível. */}
+          <span className="text-neutral-500 dark:text-neutral-400">{usuario.nome}</span>
           <Link href="/admin/conta" className="text-neutral-600 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
             Minha conta
           </Link>

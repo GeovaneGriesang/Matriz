@@ -22,7 +22,6 @@ export default async function AdminContaPage({
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Minha conta</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           {usuario.nome} · {usuario.email}
-          {usuario.papel === "SUPER_ADMIN" && <span className="text-if-green"> · super-admin</span>}
         </p>
       </div>
 
