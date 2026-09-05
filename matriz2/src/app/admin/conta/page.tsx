@@ -5,8 +5,14 @@ import { FORM_MAX_WIDTH } from "@/lib/layoutWidths";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminContaPage() {
+export default async function AdminContaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ trocaObrigatoria?: string }>;
+}) {
   const usuario = await requireAdminOrRedirect("/admin/conta");
+  const params = await searchParams;
+  const trocaObrigatoria = params.trocaObrigatoria === "1" || usuario.precisaTrocarSenha;
 
   return (
     <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-6 px-6 py-12`}>
@@ -20,7 +26,13 @@ export default async function AdminContaPage() {
         </p>
       </div>
 
-      <TrocarSenhaForm />
+      {trocaObrigatoria && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          Esta senha foi gerada pelo sistema. Antes de continuar, escolha uma senha sua.
+        </p>
+      )}
+
+      <TrocarSenhaForm trocaObrigatoria={trocaObrigatoria} />
     </main>
   );
 }

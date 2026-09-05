@@ -46,6 +46,7 @@ export interface UsuarioLogado {
   email: string;
   nome: string;
   superAdmin: boolean;
+  precisaTrocarSenha: boolean;
 }
 
 /**
@@ -60,7 +61,11 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
 
   const sessao = await prisma.sessao.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { usuario: { select: { id: true, email: true, nome: true, superAdmin: true, ativo: true } } },
+    include: {
+      usuario: {
+        select: { id: true, email: true, nome: true, superAdmin: true, ativo: true, precisaTrocarSenha: true },
+      },
+    },
   });
   if (!sessao || sessao.expiraEm <= new Date() || !sessao.usuario.ativo) return null;
 
@@ -69,6 +74,7 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
     email: sessao.usuario.email,
     nome: sessao.usuario.nome,
     superAdmin: sessao.usuario.superAdmin,
+    precisaTrocarSenha: sessao.usuario.precisaTrocarSenha,
   };
 }
 
@@ -90,11 +96,19 @@ export async function requireAdminSessionOrResponse(): Promise<NextResponse | nu
   return null;
 }
 
-/** Layouts de páginas admin: redireciona para o login se não houver sessão válida. */
+/**
+ * Layouts de páginas admin: redireciona para o login se não houver sessão válida.
+ * Com sessão válida mas senha gerada (criação de conta ou reset por um super-admin),
+ * força a ida para `/admin/conta` antes de deixar entrar em qualquer outra tela — a
+ * própria página de troca de senha é a única exceção, para não virar um loop.
+ */
 export async function requireAdminOrRedirect(nextPath: string): Promise<UsuarioLogado> {
   const usuario = await getAdminSession();
   if (!usuario) {
     redirect(`/admin/login?next=${encodeURIComponent(nextPath)}`);
+  }
+  if (usuario.precisaTrocarSenha && nextPath !== "/admin/conta") {
+    redirect("/admin/conta?trocaObrigatoria=1");
   }
   return usuario;
 }

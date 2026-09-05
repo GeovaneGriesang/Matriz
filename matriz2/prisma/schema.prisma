@@ -45,6 +45,10 @@ model Usuario {
   /// Desativar em vez de apagar preserva o rastro de quem fez o quê no
   /// RegistroAuditoria, que aponta para o usuário por id.
   ativo         Boolean   @default(true)
+  /// Marca uma senha gerada pelo sistema (criação de conta ou reset por um
+  /// super-admin): força a troca no próximo login, ver `requireAdminOrRedirect`.
+  /// Volta a `false` assim que o próprio usuário escolhe uma senha.
+  precisaTrocarSenha Boolean @default(true)
   criadoEm      DateTime  @default(now())
   ultimoLoginEm DateTime?
 

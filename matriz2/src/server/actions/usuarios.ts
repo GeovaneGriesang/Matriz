@@ -66,7 +66,7 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
   const senha = gerarSenhaTemporaria();
   const senhaHash = await bcrypt.hash(senha, CUSTO_BCRYPT);
 
-  await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { senhaHash } });
+  await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { senhaHash, precisaTrocarSenha: true } });
   // Resetar a senha derruba todas as sessões abertas daquele usuário — se alguém
   // mais tinha acesso à conta, o reset também serve para tirá-lo.
   await prisma.sessao.deleteMany({ where: { usuarioId: usuarioAlvoId } });
@@ -123,7 +123,7 @@ export async function trocarMinhaSenhaAction(formData: FormData): Promise<Trocar
   if (!confere) return { ok: false, errorMessage: "Senha atual incorreta." };
 
   const senhaHash = await bcrypt.hash(senhaNova, CUSTO_BCRYPT);
-  await prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash } });
+  await prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash, precisaTrocarSenha: false } });
   await registrarAuditoria(usuario.id, "trocar_senha");
 
   return { ok: true };
