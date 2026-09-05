@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { EtiquetaProcedencia } from "@/components/Procedencia";
+import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export const dynamic = "force-dynamic";
 
@@ -60,52 +61,70 @@ export default async function DadosImportadosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-              <tr>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Ciclo</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Origem</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Etapa</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Arquivo</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Abrange</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Registros</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Soma</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Carregado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fontes.map((f) => {
-                const registros =
-                  f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao;
-                const soma = somaPorFonte.get(f.id);
-                return (
-                  <tr key={f.id} className="border-t border-neutral-200 align-top dark:border-neutral-800">
-                    <td className="px-4 py-2.5 font-medium tabular-nums">{f.cicloOrcamento}</td>
-                    <td className="px-4 py-2.5">
-                      <EtiquetaProcedencia fonte={f} />
-                    </td>
-                    <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-400">
-                      {f.fase ? ROTULO_FASE[f.fase] : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                      {f.arquivo}
-                    </td>
-                    <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-400">
+          <TabelaOrdenavel
+            linhas={fontes}
+            chaveLinha={(f) => f.id}
+            colunas={
+              [
+                { chave: "ciclo", rotulo: "Ciclo", alinhamento: "right", valor: (f) => f.cicloOrcamento, render: (f) => <span className="font-medium">{f.cicloOrcamento}</span> },
+                {
+                  chave: "origem",
+                  rotulo: "Origem",
+                  valor: (f) => f.origem,
+                  render: (f) => <EtiquetaProcedencia fonte={f} />,
+                },
+                {
+                  chave: "etapa",
+                  rotulo: "Etapa",
+                  valor: (f) => (f.fase ? (ROTULO_FASE[f.fase] ?? f.fase) : ""),
+                  render: (f) => <span className="text-neutral-600 dark:text-neutral-400">{f.fase ? ROTULO_FASE[f.fase] : "—"}</span>,
+                },
+                {
+                  chave: "arquivo",
+                  rotulo: "Arquivo",
+                  valor: (f) => f.arquivo,
+                  render: (f) => <span className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.arquivo}</span>,
+                },
+                {
+                  chave: "abrange",
+                  rotulo: "Abrange",
+                  valor: (f) => ROTULO_ABRANGENCIA[f.abrangencia] + (f.instituicao ? `, ${f.instituicao.sigla}` : ""),
+                  render: (f) => (
+                    <span className="text-neutral-600 dark:text-neutral-400">
                       {ROTULO_ABRANGENCIA[f.abrangencia]}
                       {f.instituicao && `, ${f.instituicao.sigla}`}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(registros)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {soma !== undefined ? reais.format(soma) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-400">
-                      {dataHora.format(f.carregadoEm)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </span>
+                  ),
+                },
+                {
+                  chave: "registros",
+                  rotulo: "Registros",
+                  alinhamento: "right",
+                  valor: (f) => f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
+                  render: (f) =>
+                    numero.format(
+                      f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
+                    ),
+                },
+                {
+                  chave: "soma",
+                  rotulo: "Soma",
+                  alinhamento: "right",
+                  valor: (f) => somaPorFonte.get(f.id) ?? null,
+                  render: (f) => {
+                    const soma = somaPorFonte.get(f.id);
+                    return soma !== undefined ? reais.format(soma) : "—";
+                  },
+                },
+                {
+                  chave: "carregado",
+                  rotulo: "Carregado",
+                  valor: (f) => f.carregadoEm.getTime(),
+                  render: (f) => <span className="text-neutral-600 dark:text-neutral-400">{dataHora.format(f.carregadoEm)}</span>,
+                },
+              ] satisfies ColunaOrdenavel<(typeof fontes)[number]>[]
+            }
+          />
         </div>
       )}
 

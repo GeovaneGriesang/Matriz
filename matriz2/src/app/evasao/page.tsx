@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export const dynamic = "force-dynamic";
 
@@ -207,54 +208,66 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus</h2>
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-              <tr>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Câmpus</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Recebido</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Perda</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Taxa</th>
-                <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Contra a rede</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campusLinhas.map((c) => (
-                <tr
-                  key={c.unidadeId}
-                  className={`border-t border-neutral-200 dark:border-neutral-800 ${
-                    c.unidadeId === campusId ? "bg-if-green/5" : ""
-                  }`}
-                >
-                  <td className="px-4 py-2.5">
+          <TabelaOrdenavel
+            linhas={campusLinhas}
+            chaveLinha={(c) => c.unidadeId}
+            linhaClasse={(c) => (c.unidadeId === campusId ? "bg-if-green/5" : "")}
+            colunas={
+              [
+                {
+                  chave: "nome",
+                  rotulo: "Câmpus",
+                  valor: (c) => c.nome,
+                  render: (c) => (
                     <Link href={href({ campus: String(c.unidadeId) })} className="hover:underline">
                       {c.nome}
                     </Link>
+                  ),
+                },
+                {
+                  chave: "recebido",
+                  rotulo: "Recebido",
+                  alinhamento: "right",
+                  valor: (c) => c.recebido,
+                  render: (c) => <span className="text-neutral-600 dark:text-neutral-400">{reais.format(c.recebido)}</span>,
+                },
+                {
+                  chave: "perda",
+                  rotulo: "Perda",
+                  alinhamento: "right",
+                  valor: (c) => c.perda,
+                  render: (c) => <span className="font-medium text-if-red dark:text-red-400">{reais.format(c.perda)}</span>,
+                },
+                {
+                  chave: "taxa",
+                  rotulo: "Taxa",
+                  alinhamento: "right",
+                  valor: (c) => c.taxa,
+                  render: (c) => `${doisDecimais.format(c.taxa)}%`,
+                },
+                {
+                  chave: "barra",
+                  rotulo: "Contra a rede",
+                  ordenavel: false,
+                  valor: () => null,
+                  render: (c) => <Barra taxa={c.taxa} referencia={redePct} />,
+                },
+              ] satisfies ColunaOrdenavel<(typeof campusLinhas)[number]>[]
+            }
+            rodape={
+              <tfoot>
+                <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
+                  <td className="px-4 py-2.5">{instituicao.sigla}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(daInstituicao.recebido)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
+                    {reais.format(daInstituicao.perda)}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                    {reais.format(c.recebido)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-medium tabular-nums text-if-red dark:text-red-400">
-                    {reais.format(c.perda)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{doisDecimais.format(c.taxa)}%</td>
-                  <td className="px-4 py-2.5">
-                    <Barra taxa={c.taxa} referencia={redePct} />
-                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{doisDecimais.format(daInstituicao.taxa)}%</td>
+                  <td className="px-4 py-2.5" />
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
-                <td className="px-4 py-2.5">{instituicao.sigla}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(daInstituicao.recebido)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
-                  {reais.format(daInstituicao.perda)}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{doisDecimais.format(daInstituicao.taxa)}%</td>
-                <td className="px-4 py-2.5" />
-              </tr>
-            </tfoot>
-          </table>
+              </tfoot>
+            }
+          />
         </div>
       </div>
 
@@ -274,49 +287,56 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
           pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
         </p>
         <div className="max-h-[36rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-neutral-50 text-left dark:bg-neutral-900">
+          <TabelaOrdenavel
+            linhas={cursos}
+            chaveLinha={(c) => `${c.curso}-${c.nivel}-${cursos.indexOf(c)}`}
+            cabecalhoFixo
+            corpoVazio={
               <tr>
-                <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Curso</th>
-                <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Nível</th>
-                <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Ciclos</th>
-                <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Recebido</th>
-                <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Perda</th>
-                <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Taxa</th>
+                <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+                  Nenhum curso com perda registrada neste recorte.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {cursos.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
-                    Nenhum curso com perda registrada neste recorte.
-                  </td>
-                </tr>
-              )}
-              {cursos.map((c, i) => (
-                <tr key={`${c.curso}-${c.nivel}-${i}`} className="border-t border-neutral-200 dark:border-neutral-800">
-                  <td className="px-4 py-2">{c.curso}</td>
-                  <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{c.nivel ?? "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                    {inteiro.format(c.ciclos)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                    {reais.format(c.recebido)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium tabular-nums text-if-red dark:text-red-400">
-                    {reais.format(c.perda)}
-                  </td>
-                  <td
-                    className={`px-4 py-2 text-right tabular-nums ${
-                      c.taxa >= 15 ? "font-semibold text-if-red dark:text-red-400" : ""
-                    }`}
-                  >
-                    {doisDecimais.format(c.taxa)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            }
+            colunas={
+              [
+                { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
+                { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "—" },
+                {
+                  chave: "ciclos",
+                  rotulo: "Ciclos",
+                  alinhamento: "right",
+                  valor: (c) => c.ciclos,
+                  render: (c) => <span className="text-neutral-600 dark:text-neutral-400">{inteiro.format(c.ciclos)}</span>,
+                },
+                {
+                  chave: "recebido",
+                  rotulo: "Recebido",
+                  alinhamento: "right",
+                  valor: (c) => c.recebido,
+                  render: (c) => <span className="text-neutral-600 dark:text-neutral-400">{reais.format(c.recebido)}</span>,
+                },
+                {
+                  chave: "perda",
+                  rotulo: "Perda",
+                  alinhamento: "right",
+                  valor: (c) => c.perda,
+                  render: (c) => <span className="font-medium text-if-red dark:text-red-400">{reais.format(c.perda)}</span>,
+                },
+                {
+                  chave: "taxa",
+                  rotulo: "Taxa",
+                  alinhamento: "right",
+                  valor: (c) => c.taxa,
+                  render: (c) => (
+                    <span className={c.taxa >= 15 ? "font-semibold text-if-red dark:text-red-400" : ""}>
+                      {doisDecimais.format(c.taxa)}%
+                    </span>
+                  ),
+                },
+              ] satisfies ColunaOrdenavel<(typeof cursos)[number]>[]
+            }
+          />
         </div>
       </div>
 

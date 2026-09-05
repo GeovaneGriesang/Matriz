@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
+import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export const dynamic = "force-dynamic";
 
@@ -150,71 +151,88 @@ export default async function ComparativoPage({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-            <tr>
-              <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Instituição</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">{anoA}</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">{anoB}</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Variação</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">
-                Fatia {anoB}
-              </th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Posição</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((l) => {
-              const novo = l.a === 0 && l.b > 0;
-              return (
-                <tr
-                  key={l.sigla}
-                  className={`border-t border-neutral-200 dark:border-neutral-800 ${
-                    l.sigla === DESTAQUE ? "bg-if-green/5 font-medium" : ""
-                  }`}
-                >
-                  <td className="px-4 py-2.5">
+        <TabelaOrdenavel
+          linhas={linhas}
+          chaveLinha={(l) => l.sigla}
+          linhaClasse={(l) => (l.sigla === DESTAQUE ? "bg-if-green/5 font-medium" : "")}
+          colunas={
+            [
+              {
+                chave: "instituicao",
+                rotulo: "Instituição",
+                valor: (l) => l.sigla,
+                render: (l) => (
+                  <>
                     <span className="font-medium">{l.sigla}</span>
                     <span className="ml-2 text-xs text-neutral-500">{l.nome}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                    {novo ? "—" : reais.format(l.a)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(l.b)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
-                    {novo ? (
-                      <span className="text-xs text-neutral-500">novo no ciclo</span>
-                    ) : (
-                      <span className={l.variacao >= variacaoRede ? "text-if-green" : "text-if-red dark:text-red-400"}>
-                        {l.variacao >= 0 ? "+" : ""}
-                        {doisDecimais.format(l.variacao)}%
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
+                  </>
+                ),
+              },
+              {
+                chave: "anoA",
+                rotulo: anoA,
+                alinhamento: "right",
+                valor: (l) => (l.a === 0 && l.b > 0 ? null : l.a),
+                render: (l) => (
+                  <span className="text-neutral-600 dark:text-neutral-400">
+                    {l.a === 0 && l.b > 0 ? "—" : reais.format(l.a)}
+                  </span>
+                ),
+              },
+              { chave: "anoB", rotulo: anoB, alinhamento: "right", valor: (l) => l.b, render: (l) => reais.format(l.b) },
+              {
+                chave: "variacao",
+                rotulo: "Variação",
+                alinhamento: "right",
+                valor: (l) => (l.a === 0 && l.b > 0 ? null : l.variacao),
+                render: (l) =>
+                  l.a === 0 && l.b > 0 ? (
+                    <span className="text-xs text-neutral-500">novo no ciclo</span>
+                  ) : (
+                    <span className={l.variacao >= variacaoRede ? "text-if-green" : "text-if-red dark:text-red-400"}>
+                      {l.variacao >= 0 ? "+" : ""}
+                      {doisDecimais.format(l.variacao)}%
+                    </span>
+                  ),
+              },
+              {
+                chave: "participacao",
+                rotulo: `Fatia ${anoB}`,
+                alinhamento: "right",
+                valor: (l) => l.participacaoB,
+                render: (l) => (
+                  <span className="text-neutral-600 dark:text-neutral-400">
                     {l.participacaoB !== null ? `${doisDecimais.format(l.participacaoB)}%` : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                    {l.posicaoB ?? "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
-              <td className="px-4 py-2.5">Rede, {linhas.length} instituições</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalA)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalB)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">
-                {variacaoRede >= 0 ? "+" : ""}
-                {doisDecimais.format(variacaoRede)}%
-              </td>
-              <td className="px-4 py-2.5" />
-              <td className="px-4 py-2.5" />
-            </tr>
-          </tfoot>
-        </table>
+                  </span>
+                ),
+              },
+              {
+                chave: "posicao",
+                rotulo: "Posição",
+                alinhamento: "right",
+                valor: (l) => l.posicaoB,
+                render: (l) => (
+                  <span className="text-neutral-600 dark:text-neutral-400">{l.posicaoB ?? "—"}</span>
+                ),
+              },
+            ] satisfies ColunaOrdenavel<(typeof linhas)[number]>[]
+          }
+          rodape={
+            <tfoot>
+              <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
+                <td className="px-4 py-2.5">Rede, {linhas.length} instituições</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalA)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalB)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {variacaoRede >= 0 ? "+" : ""}
+                  {doisDecimais.format(variacaoRede)}%
+                </td>
+                <td className="px-4 py-2.5" />
+                <td className="px-4 py-2.5" />
+              </tr>
+            </tfoot>
+          }
+        />
       </div>
 
       <p className="text-sm text-neutral-500 dark:text-neutral-400">

@@ -7,6 +7,7 @@ import {
   resetarSenhaUsuarioAction,
   alternarAtivoUsuarioAction,
 } from "@/server/actions/usuarios";
+import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 interface UsuarioLinha {
   id: number;
@@ -143,36 +144,42 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
       </form>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
-            <tr>
-              <th className="px-4 py-2">Nome</th>
-              <th className="px-4 py-2">E-mail</th>
-              <th className="px-4 py-2">Perfil</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Último login</th>
-              <th className="px-4 py-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuarios.map((u) => (
-              <tr key={u.id} className="border-t border-neutral-100 dark:border-neutral-800">
-                <td className="px-4 py-2 text-neutral-900 dark:text-neutral-100">{u.nome}</td>
-                <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{u.email}</td>
-                <td className="px-4 py-2">
-                  {u.superAdmin ? <span className="text-if-green">super-admin</span> : "admin"}
-                </td>
-                <td className="px-4 py-2">
-                  {u.ativo ? (
-                    "ativo"
-                  ) : (
-                    <span className="text-red-600 dark:text-red-400">desativado</span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
-                  {u.ultimoLoginEm ? formatoData.format(u.ultimoLoginEm) : "nunca"}
-                </td>
-                <td className="px-4 py-2">
+        <TabelaOrdenavel
+          className="w-full min-w-[720px] text-sm"
+          linhas={usuarios}
+          chaveLinha={(u) => u.id}
+          colunas={
+            [
+              { chave: "nome", rotulo: "Nome", valor: (u) => u.nome, render: (u) => <span className="text-neutral-900 dark:text-neutral-100">{u.nome}</span> },
+              { chave: "email", rotulo: "E-mail", valor: (u) => u.email, render: (u) => <span className="text-neutral-600 dark:text-neutral-400">{u.email}</span> },
+              {
+                chave: "perfil",
+                rotulo: "Perfil",
+                valor: (u) => (u.superAdmin ? 1 : 0),
+                render: (u) => (u.superAdmin ? <span className="text-if-green">super-admin</span> : "admin"),
+              },
+              {
+                chave: "status",
+                rotulo: "Status",
+                valor: (u) => (u.ativo ? 1 : 0),
+                render: (u) => (u.ativo ? "ativo" : <span className="text-red-600 dark:text-red-400">desativado</span>),
+              },
+              {
+                chave: "ultimoLogin",
+                rotulo: "Último login",
+                valor: (u) => u.ultimoLoginEm?.getTime() ?? 0,
+                render: (u) => (
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    {u.ultimoLoginEm ? formatoData.format(u.ultimoLoginEm) : "nunca"}
+                  </span>
+                ),
+              },
+              {
+                chave: "acoes",
+                rotulo: "Ações",
+                ordenavel: false,
+                valor: () => null,
+                render: (u) => (
                   <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
@@ -193,11 +200,11 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
                       </button>
                     )}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ),
+              },
+            ] satisfies ColunaOrdenavel<(typeof usuarios)[number]>[]
+          }
+        />
       </div>
     </div>
   );
