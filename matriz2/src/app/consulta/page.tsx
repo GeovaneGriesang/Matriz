@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export const dynamic = "force-dynamic";
 
@@ -164,54 +165,68 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-            <tr>
-              <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Câmpus</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Ciclos</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Matrícula</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Recebido</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Perda por evasão</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((l) => (
-              <tr
-                key={l.unidadeId}
-                className={`border-t border-neutral-200 dark:border-neutral-800 ${
-                  l.unidadeId === campusEscolhido ? "bg-if-green/5" : ""
-                }`}
-              >
-                <td className="px-4 py-2.5">
+        <TabelaOrdenavel
+          linhas={linhas}
+          chaveLinha={(l) => l.unidadeId}
+          linhaClasse={(l) => (l.unidadeId === campusEscolhido ? "bg-if-green/5" : "")}
+          colunas={
+            [
+              {
+                chave: "nome",
+                rotulo: "Câmpus",
+                valor: (l) => l.nome,
+                render: (l) => (
                   <Link href={href({ campus: String(l.unidadeId) })} className="hover:underline">
                     {l.nome}
                   </Link>
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                  {numero.format(l.ciclos)}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                  {numero.format(l.matricula)}
-                </td>
-                <td className="px-4 py-2.5 text-right font-medium tabular-nums">{reais.format(l.valor)}</td>
+                ),
+              },
+              {
+                chave: "ciclos",
+                rotulo: "Ciclos",
+                alinhamento: "right",
+                valor: (l) => l.ciclos,
+                render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{numero.format(l.ciclos)}</span>,
+              },
+              {
+                chave: "matricula",
+                rotulo: "Matrícula",
+                alinhamento: "right",
+                valor: (l) => l.matricula,
+                render: (l) => (
+                  <span className="text-neutral-600 dark:text-neutral-400">{numero.format(l.matricula)}</span>
+                ),
+              },
+              {
+                chave: "valor",
+                rotulo: "Recebido",
+                alinhamento: "right",
+                valor: (l) => l.valor,
+                render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
+              },
+              {
+                chave: "perda",
+                rotulo: "Perda por evasão",
+                alinhamento: "right",
+                valor: (l) => l.perda,
+                render: (l) => <span className="text-if-red dark:text-red-400">{reais.format(l.perda)}</span>,
+              },
+            ] satisfies ColunaOrdenavel<(typeof linhas)[number]>[]
+          }
+          rodape={
+            <tfoot>
+              <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
+                <td className="px-4 py-2.5">{instituicao.sigla}, {linhas.length} câmpus</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.ciclos)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.matricula)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(total.valor)}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
-                  {reais.format(l.perda)}
+                  {reais.format(total.perda)}
                 </td>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
-              <td className="px-4 py-2.5">{instituicao.sigla}, {linhas.length} câmpus</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.ciclos)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.matricula)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(total.valor)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
-                {reais.format(total.perda)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            </tfoot>
+          }
+        />
       </div>
 
       {campusEscolhido && (
@@ -225,38 +240,55 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             </Link>
           </div>
           <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-neutral-50 text-left dark:bg-neutral-900">
-                <tr>
-                  <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Curso</th>
-                  <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Nível</th>
-                  <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Repasse</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Peso</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Matrícula</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Recebido</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Perda</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cursos.map((c) => (
-                  <tr key={c.id} className="border-t border-neutral-200 dark:border-neutral-800">
-                    <td className="px-4 py-2">{c.curso}</td>
-                    <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{c.nivel ?? "—"}</td>
-                    <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{c.repasse.replace("_", " ")}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                      {c.pesoCursoMatriz ? decimal.format(Number(c.pesoCursoMatriz)) : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
-                      {decimal.format(Number(c.matriculaTotal))}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">{reais.format(Number(c.valorReais))}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-if-red dark:text-red-400">
-                      {reais.format(Number(c.perdaEvasaoReais ?? 0))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <TabelaOrdenavel
+              linhas={cursos}
+              chaveLinha={(c) => c.id}
+              cabecalhoFixo
+              colunas={
+                [
+                  { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
+                  { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "—" },
+                  {
+                    chave: "repasse",
+                    rotulo: "Repasse",
+                    valor: (c) => c.repasse,
+                    render: (c) => c.repasse.replace("_", " "),
+                  },
+                  {
+                    chave: "peso",
+                    rotulo: "Peso",
+                    alinhamento: "right",
+                    valor: (c) => (c.pesoCursoMatriz ? Number(c.pesoCursoMatriz) : null),
+                    render: (c) => (c.pesoCursoMatriz ? decimal.format(Number(c.pesoCursoMatriz)) : "—"),
+                  },
+                  {
+                    chave: "matricula",
+                    rotulo: "Matrícula",
+                    alinhamento: "right",
+                    valor: (c) => Number(c.matriculaTotal),
+                    render: (c) => decimal.format(Number(c.matriculaTotal)),
+                  },
+                  {
+                    chave: "valor",
+                    rotulo: "Recebido",
+                    alinhamento: "right",
+                    valor: (c) => Number(c.valorReais),
+                    render: (c) => reais.format(Number(c.valorReais)),
+                  },
+                  {
+                    chave: "perda",
+                    rotulo: "Perda",
+                    alinhamento: "right",
+                    valor: (c) => Number(c.perdaEvasaoReais ?? 0),
+                    render: (c) => (
+                      <span className="text-if-red dark:text-red-400">
+                        {reais.format(Number(c.perdaEvasaoReais ?? 0))}
+                      </span>
+                    ),
+                  },
+                ] satisfies ColunaOrdenavel<(typeof cursos)[number]>[]
+              }
+            />
           </div>
         </div>
       )}
