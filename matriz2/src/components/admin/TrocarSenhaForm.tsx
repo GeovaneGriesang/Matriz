@@ -76,7 +76,9 @@ export function TrocarSenhaForm({ trocaObrigatoria = false }: { trocaObrigatoria
           disabled={enviando}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">Pelo menos 8 caracteres.</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          8+ caracteres, com maiúscula, minúscula, número e caractere especial.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">

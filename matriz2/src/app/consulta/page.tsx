@@ -4,6 +4,7 @@ import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ interface Busca {
 }
 
 export default async function ConsultaPage({ searchParams }: { searchParams: Promise<Busca> }) {
+  await requireAcessoPlenoOrRedirect("/consulta");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
   const siglaEscolhida = params.instituicao ?? "IFSUL";

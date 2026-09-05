@@ -1,13 +1,41 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH } from "@/lib/layoutWidths";
+import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
 const numero = new Intl.NumberFormat("pt-BR");
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
+/**
+ * Sem sessão (ou com o papel `PADRAO`) esta tela não menciona a MDO nem mostra
+ * nenhum número: tudo que o sistema calcula hoje vem de exportações da MDO obtidas
+ * com credenciais pessoais, e não pode circular sem login (ver topo de
+ * `schema.prisma`). O painel completo, com números e a explicação de onde vêm,
+ * só aparece para quem já tem acesso pleno (admin ou super-admin).
+ */
 export default async function Home() {
+  const usuario = await getAdminSession();
+  if (!usuario || usuario.papel === "PADRAO") {
+    return (
+      <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-6 px-6 py-20 text-center`}>
+        <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Matriz Orçamentária RFEPCT
+        </h1>
+        <p className="text-lg text-neutral-600 dark:text-neutral-400">
+          Sistema de acompanhamento orçamentário do IFSul e do Câmpus Venâncio Aires.
+        </p>
+        <Link
+          href="/admin/login"
+          className="mx-auto w-fit rounded-md bg-if-green px-5 py-2.5 text-sm font-medium text-white hover:bg-if-green/90"
+        >
+          Entrar
+        </Link>
+      </main>
+    );
+  }
+
   const [ciclos, instituicoes, campus, soma, anos] = await Promise.all([
     prisma.distribuicaoCiclo.count(),
     prisma.instituicao.count(),

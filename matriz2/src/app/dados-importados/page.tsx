@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { EtiquetaProcedencia } from "@/components/Procedencia";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ const ROTULO_ABRANGENCIA: Record<string, string> = {
 };
 
 export default async function DadosImportadosPage() {
+  await requireAcessoPlenoOrRedirect("/dados-importados");
   const fontes = await prisma.fonteDados.findMany({
     orderBy: [{ cicloOrcamento: "desc" }, { carregadoEm: "desc" }],
     include: {

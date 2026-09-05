@@ -11,7 +11,7 @@ export default async function AdminUsuariosPage() {
 
   const usuarios = await prisma.usuario.findMany({
     orderBy: { criadoEm: "asc" },
-    select: { id: true, nome: true, email: true, superAdmin: true, ativo: true, criadoEm: true, ultimoLoginEm: true },
+    select: { id: true, nome: true, email: true, papel: true, ativo: true, criadoEm: true, ultimoLoginEm: true },
   });
 
   return (
@@ -21,9 +21,9 @@ export default async function AdminUsuariosPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Usuários</h1>
         <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
-          Só super-administradores acessam esta tela. Não há recuperação de senha por e-mail: quem esquecer a
-          senha pede a um super-administrador para resetá-la aqui, o que também derruba as sessões abertas
-          daquela conta.
+          Só super-administradores acessam esta tela. Ao criar, a pessoa recebe um código por e-mail para o
+          primeiro acesso. "Resetar senha" é a reserva sem depender de e-mail: gera uma senha temporária e
+          derruba as sessões abertas daquela conta.
         </p>
       </div>
 

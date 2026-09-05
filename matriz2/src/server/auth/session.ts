@@ -1,7 +1,8 @@
 import { randomBytes, createHash } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
+import type { Papel } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 
 /**
@@ -41,11 +42,32 @@ export async function criarSessao(usuarioId: number, ip?: string, userAgent?: st
   return token;
 }
 
+/**
+ * Cria a sessão e já grava o cookie, lendo IP e user-agent da própria requisição.
+ * Usada tanto pelo login comum quanto por `definirSenhaAction` (primeiro acesso e
+ * recuperação também logam a pessoa direto, sem pedir a senha de novo).
+ */
+export async function abrirSessaoParaUsuario(usuarioId: number): Promise<void> {
+  const cabecalhos = await headers();
+  const ip = cabecalhos.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const userAgent = cabecalhos.get("user-agent") ?? undefined;
+  const token = await criarSessao(usuarioId, ip, userAgent);
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
+  });
+}
+
 export interface UsuarioLogado {
   id: number;
   email: string;
   nome: string;
-  superAdmin: boolean;
+  papel: Papel;
   precisaTrocarSenha: boolean;
 }
 
@@ -63,7 +85,7 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
     where: { tokenHash: hashToken(token) },
     include: {
       usuario: {
-        select: { id: true, email: true, nome: true, superAdmin: true, ativo: true, precisaTrocarSenha: true },
+        select: { id: true, email: true, nome: true, papel: true, ativo: true, precisaTrocarSenha: true },
       },
     },
   });
@@ -73,7 +95,7 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
     id: sessao.usuario.id,
     email: sessao.usuario.email,
     nome: sessao.usuario.nome,
-    superAdmin: sessao.usuario.superAdmin,
+    papel: sessao.usuario.papel,
     precisaTrocarSenha: sessao.usuario.precisaTrocarSenha,
   };
 }
@@ -116,8 +138,22 @@ export async function requireAdminOrRedirect(nextPath: string): Promise<UsuarioL
 /** Páginas só de super-admin (gestão de usuários, auditoria). */
 export async function requireSuperAdminOrRedirect(nextPath: string): Promise<UsuarioLogado> {
   const usuario = await requireAdminOrRedirect(nextPath);
-  if (!usuario.superAdmin) {
+  if (usuario.papel !== "SUPER_ADMIN") {
     redirect("/admin/orcamento");
+  }
+  return usuario;
+}
+
+/**
+ * Telas que vêm de dados da MDO (Consulta, Comparativo, Evasão, Simulador, Dados
+ * importados, Correção manual): decisão de 2026-09-05, exigem admin ou super-admin.
+ * Usuário `PADRAO` existe, mas por enquanto não enxerga nenhuma delas — ver
+ * `/admin/inicio` e o comentário no topo de `schema.prisma`.
+ */
+export async function requireAcessoPlenoOrRedirect(nextPath: string): Promise<UsuarioLogado> {
+  const usuario = await requireAdminOrRedirect(nextPath);
+  if (usuario.papel === "PADRAO") {
+    redirect("/admin/inicio");
   }
   return usuario;
 }

@@ -1,14 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/server/db/prisma";
 import {
   ADMIN_SESSION_COOKIE_NAME,
-  ADMIN_SESSION_MAX_AGE_SECONDS,
+  abrirSessaoParaUsuario,
   apagarSessaoAtual,
-  criarSessao,
   getAdminSession,
 } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
@@ -41,6 +40,13 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
     return { ok: false, errorMessage: MENSAGEM_GENERICA };
   }
 
+  if (!usuario.senhaHash) {
+    return {
+      ok: false,
+      errorMessage: "Você ainda não concluiu o primeiro acesso. Veja o código enviado por e-mail e complete em /admin/definir-senha.",
+    };
+  }
+
   const confere = await bcrypt.compare(senha, usuario.senhaHash);
   if (!confere) {
     return { ok: false, errorMessage: MENSAGEM_GENERICA };
@@ -49,20 +55,7 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
   // Sessões expiradas do mesmo usuário não custam nada guardadas, mas limpar aqui
   // mantém a tabela pequena sem precisar de uma tarefa agendada separada.
   await prisma.sessao.deleteMany({ where: { usuarioId: usuario.id, expiraEm: { lte: new Date() } } });
-
-  const cabecalhos = await headers();
-  const ip = cabecalhos.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const userAgent = cabecalhos.get("user-agent") ?? undefined;
-  const token = await criarSessao(usuario.id, ip, userAgent);
-
-  const cookieStore = await cookies();
-  cookieStore.set(ADMIN_SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
-  });
+  await abrirSessaoParaUsuario(usuario.id);
 
   await prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoLoginEm: new Date() } });
   await registrarAuditoria(usuario.id, "login");

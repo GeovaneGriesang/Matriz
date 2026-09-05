@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SimuladorEvasao, type LinhaSimulavel } from "@/components/simulador/SimuladorEvasao";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ interface Busca {
 }
 
 export default async function SimuladorPage({ searchParams }: { searchParams: Promise<Busca> }) {
+  await requireAcessoPlenoOrRedirect("/simulador");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
   const sigla = params.instituicao ?? "IFSUL";
