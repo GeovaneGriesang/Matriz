@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
@@ -112,7 +113,7 @@ export default async function ComparativoPage({
 
       <div className="flex flex-wrap gap-1">
         {BLOCOS.map((b) => (
-          <a
+          <Link
             key={b.chave}
             href={`/comparativo?bloco=${b.chave}`}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
@@ -122,7 +123,7 @@ export default async function ComparativoPage({
             }`}
           >
             {b.rotulo}
-          </a>
+          </Link>
         ))}
       </div>
 

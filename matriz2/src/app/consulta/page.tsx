@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
+import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 
 export const dynamic = "force-dynamic";
 
@@ -138,23 +139,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
         <div className="flex min-w-64 flex-1 flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <form>
-            <input type="hidden" name="ano" value={ano} />
-            <select
-              name="instituicao"
-              defaultValue={siglaEscolhida}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            >
-              {instituicoes.map((i) => (
-                <option key={i.id} value={i.sigla}>
-                  {i.sigla} — {i.nome}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className="sr-only">
-              Aplicar
-            </button>
-          </form>
+          <SeletorInstituicao
+            instituicoes={instituicoes}
+            siglaEscolhida={siglaEscolhida}
+            urlPorSigla={Object.fromEntries(
+              instituicoes.map((i) => [i.sigla, href({ instituicao: i.sigla, campus: undefined })]),
+            )}
+          />
         </div>
       </div>
 
