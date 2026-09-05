@@ -1,18 +1,26 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt, createHash } from "node:crypto";
+import type { Papel, TipoCodigoVerificacao } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
-import { getAdminSession } from "@/server/auth/session";
+import { getAdminSession, abrirSessaoParaUsuario } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
+import { validarForcaSenha } from "@/lib/senha";
+import { enviarEmailCadastro, enviarEmailRecuperacao } from "@/server/email/enviar";
 
 const CUSTO_BCRYPT = 12;
+const VALIDADE_CODIGO_MS = 30 * 60 * 1000;
 
 export interface ResultadoUsuario {
   ok: boolean;
   errorMessage?: string;
-  /** Só presente quando uma senha nova foi gerada (criação e reset) — mostrada uma única vez. */
+  /** Presente com `ok: true` quando algo merece atenção mesmo com sucesso (ex.: e-mail não enviado). */
+  aviso?: string;
+  /** Só no reset manual (a reserva sem e-mail) — mostrada uma única vez. */
   senhaGerada?: string;
+  /** Só na criação de conta, e só se o e-mail falhar — para o super-admin repassar à mão. */
+  codigoGerado?: string;
 }
 
 function gerarSenhaTemporaria(): string {
@@ -21,41 +29,85 @@ function gerarSenhaTemporaria(): string {
   return randomBytes(12).toString("base64url");
 }
 
-/** Server Action (só super-admin) que cria um novo usuário com senha gerada. */
+function gerarCodigo(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function hashCodigo(codigo: string): string {
+  return createHash("sha256").update(codigo).digest("hex");
+}
+
+async function criarCodigoVerificacao(usuarioId: number, tipo: TipoCodigoVerificacao): Promise<string> {
+  const codigo = gerarCodigo();
+  await prisma.codigoVerificacao.create({
+    data: {
+      usuarioId,
+      tipo,
+      codigoHash: hashCodigo(codigo),
+      expiraEm: new Date(Date.now() + VALIDADE_CODIGO_MS),
+    },
+  });
+  return codigo;
+}
+
+/**
+ * Server Action (só super-admin) que cria um novo usuário e manda o e-mail de
+ * primeiro acesso. Sem senha gerada: a conta fica sem `senhaHash` até a pessoa
+ * concluir `/admin/definir-senha` com o código recebido (decisão do usuário em
+ * 2026-09-05). Se o envio falhar (ex.: Resend ainda não configurado), o cadastro
+ * não se perde — devolve o código para o super-admin repassar à mão.
+ */
 export async function criarUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (!solicitante.superAdmin) return { ok: false, errorMessage: "Só um super-administrador pode criar usuários." };
+  if (solicitante.papel !== "SUPER_ADMIN") {
+    return { ok: false, errorMessage: "Só um super-administrador pode criar usuários." };
+  }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nome = String(formData.get("nome") ?? "").trim();
-  const superAdmin = formData.get("superAdmin") === "on";
+  const papel = String(formData.get("papel") ?? "") as Papel;
 
   if (!email || !email.includes("@")) return { ok: false, errorMessage: "Informe um e-mail válido." };
   if (!nome) return { ok: false, errorMessage: "Informe o nome." };
+  if (!["SUPER_ADMIN", "ADMIN", "PADRAO"].includes(papel)) {
+    return { ok: false, errorMessage: "Selecione um papel válido." };
+  }
 
   const existente = await prisma.usuario.findUnique({ where: { email } });
   if (existente) return { ok: false, errorMessage: `Já existe um usuário com o e-mail ${email}.` };
 
-  const senha = gerarSenhaTemporaria();
-  const senhaHash = await bcrypt.hash(senha, CUSTO_BCRYPT);
+  const novo = await prisma.usuario.create({ data: { email, nome, papel, senhaHash: null } });
+  const codigo = await criarCodigoVerificacao(novo.id, "PRIMEIRO_ACESSO");
+  await registrarAuditoria(solicitante.id, "criar_usuario", { usuarioAlvoId: novo.id, email, papel });
 
-  const novo = await prisma.usuario.create({ data: { email, nome, senhaHash, superAdmin } });
-  await registrarAuditoria(solicitante.id, "criar_usuario", { usuarioAlvoId: novo.id, email, superAdmin });
-
-  return { ok: true, senhaGerada: senha };
+  try {
+    await enviarEmailCadastro({ email, nome }, codigo);
+    return { ok: true };
+  } catch (erro) {
+    return {
+      ok: true,
+      codigoGerado: codigo,
+      aviso:
+        "Usuário criado, mas o e-mail não pôde ser enviado " +
+        `(${erro instanceof Error ? erro.message : "erro desconhecido"}). Repasse o código a seguir por outro meio.`,
+    };
+  }
 }
 
 /**
  * Server Action (só super-admin) que reseta a senha de outro usuário para uma nova
- * senha gerada, sem precisar da senha antiga. É a resposta a "esqueci a senha"
- * combinada com o usuário: sem e-mail de recuperação, o reset é sempre feito por
- * quem já tem acesso de super-admin.
+ * senha gerada, sem precisar da senha antiga. É a reserva sem depender de e-mail
+ * (decisão do usuário em 2026-09-05): a recuperação normal usa código por e-mail
+ * (`solicitarRecuperacaoSenhaAction`), mas esta continua existindo para quando o
+ * e-mail não for uma opção.
  */
 export async function resetarSenhaUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (!solicitante.superAdmin) return { ok: false, errorMessage: "Só um super-administrador pode resetar senhas." };
+  if (solicitante.papel !== "SUPER_ADMIN") {
+    return { ok: false, errorMessage: "Só um super-administrador pode resetar senhas." };
+  }
 
   const usuarioAlvoId = Number(formData.get("usuarioId"));
   if (!Number.isInteger(usuarioAlvoId)) return { ok: false, errorMessage: "Usuário inválido." };
@@ -79,7 +131,9 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
 export async function alternarAtivoUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (!solicitante.superAdmin) return { ok: false, errorMessage: "Só um super-administrador pode fazer isso." };
+  if (solicitante.papel !== "SUPER_ADMIN") {
+    return { ok: false, errorMessage: "Só um super-administrador pode fazer isso." };
+  }
 
   const usuarioAlvoId = Number(formData.get("usuarioId"));
   if (!Number.isInteger(usuarioAlvoId)) return { ok: false, errorMessage: "Usuário inválido." };
@@ -113,11 +167,12 @@ export async function trocarMinhaSenhaAction(formData: FormData): Promise<Trocar
   const senhaNova = String(formData.get("senhaNova") ?? "");
   const confirmacao = String(formData.get("confirmacao") ?? "");
 
-  if (senhaNova.length < 8) return { ok: false, errorMessage: "A nova senha precisa de pelo menos 8 caracteres." };
+  const erroForca = validarForcaSenha(senhaNova);
+  if (erroForca) return { ok: false, errorMessage: erroForca };
   if (senhaNova !== confirmacao) return { ok: false, errorMessage: "A confirmação não confere com a nova senha." };
 
   const usuario = await prisma.usuario.findUnique({ where: { id: solicitante.id } });
-  if (!usuario) return { ok: false, errorMessage: "Usuário não encontrado." };
+  if (!usuario?.senhaHash) return { ok: false, errorMessage: "Usuário não encontrado." };
 
   const confere = await bcrypt.compare(senhaAtual, usuario.senhaHash);
   if (!confere) return { ok: false, errorMessage: "Senha atual incorreta." };
@@ -126,5 +181,86 @@ export async function trocarMinhaSenhaAction(formData: FormData): Promise<Trocar
   await prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash, precisaTrocarSenha: false } });
   await registrarAuditoria(usuario.id, "trocar_senha");
 
+  return { ok: true };
+}
+
+export interface DefinirSenhaResult {
+  ok: boolean;
+  errorMessage?: string;
+}
+
+/**
+ * Server Action pública (sem sessão) que conclui o primeiro acesso ou uma
+ * recuperação de senha: confere o código enviado por e-mail, valida a força da
+ * senha nova e já loga a pessoa. Mesma ação para os dois casos — a diferença é só
+ * qual e-mail chegou antes (cadastro ou "esqueci minha senha").
+ *
+ * Mensagem de erro sempre genérica: não diz se o e-mail existe, se o código é que
+ * está errado ou se expirou, para não dar pista a quem está tentando adivinhar.
+ */
+export async function definirSenhaAction(formData: FormData): Promise<DefinirSenhaResult> {
+  const GENERICO = "Código inválido ou expirado. Confira o e-mail e peça um novo código, se precisar.";
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const codigo = String(formData.get("codigo") ?? "").trim();
+  const senhaNova = String(formData.get("senhaNova") ?? "");
+  const confirmacao = String(formData.get("confirmacao") ?? "");
+
+  if (!email || !codigo) return { ok: false, errorMessage: GENERICO };
+
+  const erroForca = validarForcaSenha(senhaNova);
+  if (erroForca) return { ok: false, errorMessage: erroForca };
+  if (senhaNova !== confirmacao) return { ok: false, errorMessage: "A confirmação não confere com a nova senha." };
+
+  const usuario = await prisma.usuario.findUnique({ where: { email } });
+  if (!usuario || !usuario.ativo) return { ok: false, errorMessage: GENERICO };
+
+  const pendente = await prisma.codigoVerificacao.findFirst({
+    where: { usuarioId: usuario.id, usadoEm: null, expiraEm: { gt: new Date() } },
+    orderBy: { criadoEm: "desc" },
+  });
+  if (!pendente || pendente.codigoHash !== hashCodigo(codigo)) {
+    return { ok: false, errorMessage: GENERICO };
+  }
+
+  const senhaHash = await bcrypt.hash(senhaNova, CUSTO_BCRYPT);
+  await prisma.$transaction([
+    prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash, precisaTrocarSenha: false } }),
+    prisma.codigoVerificacao.update({ where: { id: pendente.id }, data: { usadoEm: new Date() } }),
+  ]);
+  await registrarAuditoria(
+    usuario.id,
+    pendente.tipo === "PRIMEIRO_ACESSO" ? "concluir_primeiro_acesso" : "concluir_recuperacao_senha",
+  );
+
+  await abrirSessaoParaUsuario(usuario.id);
+  return { ok: true };
+}
+
+export interface SolicitarRecuperacaoResult {
+  ok: boolean;
+}
+
+/**
+ * Server Action pública que inicia a recuperação de senha por e-mail. Sempre
+ * responde sucesso, exista ou não a conta — quem chama mostra a mesma mensagem nos
+ * dois casos, para não revelar quais e-mails têm cadastro.
+ */
+export async function solicitarRecuperacaoSenhaAction(formData: FormData): Promise<SolicitarRecuperacaoResult> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) return { ok: true };
+
+  const usuario = await prisma.usuario.findUnique({ where: { email } });
+  if (!usuario || !usuario.ativo) return { ok: true };
+
+  const codigo = await criarCodigoVerificacao(usuario.id, "RECUPERACAO_SENHA");
+  await registrarAuditoria(usuario.id, "solicitar_recuperacao_senha");
+  try {
+    await enviarEmailRecuperacao({ email: usuario.email, nome: usuario.nome }, codigo);
+  } catch {
+    // Falha de envio não muda a resposta (ver comentário acima) — fica só o código
+    // salvo (com hash) no banco; sem e-mail, essa recuperação específica não segue
+    // adiante, mas o pedido em si não pode denunciar se a conta existe.
+  }
   return { ok: true };
 }

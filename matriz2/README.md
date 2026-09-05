@@ -74,7 +74,29 @@ Os arquivos da MDO ficam **fora do repositório**, em
 
 Depois do primeiro `npx prisma migrate dev`, rode `npm run seed:superadmin` para
 criar o primeiro usuário (super-admin), com senha gerada mostrada uma única vez no
-terminal. O resto do sistema é público e não exige login.
+terminal.
+
+`.env` também precisa de `RESEND_API_KEY`, `EMAIL_REMETENTE` e `APP_URL` (ver
+"Área administrativa" abaixo) — sem eles, a criação de usuário continua funcionando,
+mas o e-mail de primeiro acesso não sai, e a tela devolve o código para repassar à
+mão.
+
+## Login obrigatório, e por quê
+
+**Consulta, Comparativo, Evasão, Simulador, Dados importados e a Correção manual
+exigem login** (papel admin ou super-admin) desde 2026-09-05. Motivo: hoje 100% do
+que essas telas mostram vem de exportações da MDO, obtidas com usuário e senha
+*pessoais* de quem administra o sistema — deixar isso público arrisca a MDO notar e
+cortar esse acesso. `OrigemDados.PNP` existe no schema para o dia em que houver uma
+versão pública baseada só em dados da PNP; nenhuma tabela usa essa origem ainda.
+
+Três papéis (`Usuario.papel`):
+
+| Papel | Vê |
+|---|---|
+| `SUPER_ADMIN` | Tudo, incluindo Usuários e Auditoria |
+| `ADMIN` | Todas as telas de dados e a Correção manual; não vê Usuários nem Auditoria |
+| `PADRAO` | Só a própria conta, por enquanto — nada de MDO. Existe para quando houver conteúdo público baseado em PNP |
 
 ## Área administrativa
 
@@ -86,10 +108,19 @@ logado. O cookie se chama `matriz2_admin_session`, deliberadamente diferente do
 domínio (`movaci.com.br/matriz` e `/matriz2`), e um nome igual faria um login
 sobrescrever o cookie do outro sistema no navegador.
 
-Não há recuperação de senha por e-mail: quem esquece a senha pede a um
-super-administrador para resetá-la em `/admin/usuarios` (o reset também derruba
-as sessões abertas daquela conta). `/admin/auditoria` lista login, logout, troca
-e reset de senha, criação de usuário e correção manual de dados, mais recente
+**Cadastro e primeiro acesso** (decisão de 2026-09-05): um super-admin cria a conta
+em `/admin/usuarios` (nome, e-mail, papel), sem definir senha nenhuma. O sistema
+manda um e-mail (via Resend) com um código de 6 dígitos, válido por 30 minutos. A
+pessoa completa em `/admin/definir-senha`: e-mail + código + a própria senha, que
+precisa ter 8+ caracteres com maiúscula, minúscula, número e caractere especial
+(`src/lib/senha.ts`). A mesma tela serve para recuperação: `/admin/recuperar-senha`
+manda um novo código para quem esqueceu a senha, sem revelar se aquele e-mail tem
+conta ou não. Como reserva, sem depender de e-mail, um super-admin ainda pode
+resetar a senha de alguém em `/admin/usuarios` (gera uma senha temporária, mostrada
+uma única vez, e força a troca no próximo login).
+
+`/admin/auditoria` lista login, logout, troca e reset de senha, criação de usuário,
+conclusão de primeiro acesso/recuperação e correção manual de dados, mais recente
 primeiro, com filtro por usuário e ação.
 
 `/admin/orcamento` corrige à mão os 17 parâmetros de um `CicloOrcamento`, para

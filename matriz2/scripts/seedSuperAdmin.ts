@@ -35,7 +35,7 @@ async function main() {
   const senha = gerarSenhaTemporaria();
   const senhaHash = await bcrypt.hash(senha, CUSTO_BCRYPT);
   const usuario = await prisma.usuario.create({
-    data: { email, nome, senhaHash, superAdmin: true },
+    data: { email, nome, senhaHash, papel: "SUPER_ADMIN", precisaTrocarSenha: true },
   });
 
   console.log(`\nSuper-administrador criado: ${usuario.nome} <${usuario.email}> (id ${usuario.id})`);

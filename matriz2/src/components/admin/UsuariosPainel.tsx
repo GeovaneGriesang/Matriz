@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import type { Papel } from "@prisma/client";
 import {
   criarUsuarioAction,
   resetarSenhaUsuarioAction,
@@ -13,7 +14,7 @@ interface UsuarioLinha {
   id: number;
   nome: string;
   email: string;
-  superAdmin: boolean;
+  papel: Papel;
   ativo: boolean;
   criadoEm: Date;
   ultimoLoginEm: Date | null;
@@ -21,15 +22,21 @@ interface UsuarioLinha {
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
+const ROTULO_PAPEL: Record<Papel, string> = {
+  SUPER_ADMIN: "super-admin",
+  ADMIN: "admin",
+  PADRAO: "padrão",
+};
+
 /**
- * Painel de gestão de usuários: criar, resetar senha, ativar/desativar. A senha
- * gerada (na criação ou no reset) só existe nesta resposta — não fica salva em
- * lugar nenhum, nem em claro nem recuperável — por isso fica destacada até o
- * super-admin fechar o aviso, e some ao atualizar a lista.
+ * Painel de gestão de usuários: criar (manda e-mail de primeiro acesso), resetar
+ * senha manualmente (reserva sem e-mail, gera senha temporária) e ativar/desativar.
+ * A senha do reset manual só existe nesta resposta — não fica salva em lugar nenhum
+ * — por isso fica destacada até o super-admin fechar o aviso.
  */
 export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; meuId: number }) {
   const router = useRouter();
-  const [senhaRevelada, setSenhaRevelada] = useState<{ email: string; senha: string } | null>(null);
+  const [avisoSegredo, setAvisoSegredo] = useState<{ email: string; rotulo: string; valor: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
 
@@ -45,7 +52,13 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
       setErro(resultado.errorMessage ?? "Não foi possível criar o usuário.");
       return;
     }
-    setSenhaRevelada({ email, senha: resultado.senhaGerada! });
+    if (resultado.codigoGerado) {
+      // E-mail falhou: resultado.aviso explica o motivo, sem impedir o cadastro.
+      setErro(resultado.aviso ?? null);
+      setAvisoSegredo({ email, rotulo: "Código de primeiro acesso", valor: resultado.codigoGerado });
+    } else {
+      setAvisoSegredo(null);
+    }
     event.currentTarget.reset();
     router.refresh();
   }
@@ -61,7 +74,7 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
       setErro(resultado.errorMessage ?? "Não foi possível resetar a senha.");
       return;
     }
-    setSenhaRevelada({ email, senha: resultado.senhaGerada! });
+    setAvisoSegredo({ email, rotulo: "Senha temporária", valor: resultado.senhaGerada! });
     router.refresh();
   }
 
@@ -81,17 +94,18 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
 
   return (
     <div className="flex flex-col gap-6">
-      {senhaRevelada && (
+      {avisoSegredo && (
         <div className="flex flex-col gap-2 rounded-lg border border-if-green bg-green-50 p-4 text-sm dark:bg-green-950">
           <p className="text-neutral-900 dark:text-neutral-100">
-            Senha para <strong>{senhaRevelada.email}</strong> (anote agora, não será mostrada de novo):
+            {avisoSegredo.rotulo} para <strong>{avisoSegredo.email}</strong> (anote agora, não será mostrada de
+            novo):
           </p>
           <p className="w-fit rounded bg-white px-3 py-2 font-mono text-base dark:bg-neutral-900">
-            {senhaRevelada.senha}
+            {avisoSegredo.valor}
           </p>
           <button
             type="button"
-            onClick={() => setSenhaRevelada(null)}
+            onClick={() => setAvisoSegredo(null)}
             className="w-fit text-xs text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-100"
           >
             Fechar
@@ -130,10 +144,21 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           />
         </div>
-        <label className="flex items-center gap-2 pb-1.5 text-sm text-neutral-700 dark:text-neutral-300">
-          <input type="checkbox" name="superAdmin" className="rounded" />
-          Super-admin
-        </label>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="papel" className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            Papel
+          </label>
+          <select
+            id="papel"
+            name="papel"
+            defaultValue="ADMIN"
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          >
+            <option value="PADRAO">Padrão</option>
+            <option value="ADMIN">Admin</option>
+            <option value="SUPER_ADMIN">Super-admin</option>
+          </select>
+        </div>
         <button
           type="submit"
           disabled={enviando === "criar"}
@@ -142,6 +167,10 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
           {enviando === "criar" ? "Criando..." : "Criar usuário"}
         </button>
       </form>
+      <p className="-mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+        Ao criar, mandamos um e-mail com o código de primeiro acesso — a pessoa escolhe a própria senha em{" "}
+        <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">/admin/definir-senha</code>.
+      </p>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <TabelaOrdenavel
@@ -155,8 +184,12 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
               {
                 chave: "perfil",
                 rotulo: "Perfil",
-                valor: (u) => (u.superAdmin ? 1 : 0),
-                render: (u) => (u.superAdmin ? <span className="text-if-green">super-admin</span> : "admin"),
+                valor: (u) => u.papel,
+                render: (u) => (
+                  <span className={u.papel === "SUPER_ADMIN" ? "text-if-green" : undefined}>
+                    {ROTULO_PAPEL[u.papel]}
+                  </span>
+                ),
               },
               {
                 chave: "status",

@@ -1,18 +1,26 @@
 import Link from "next/link";
+import type { Papel } from "@prisma/client";
 import { logoutAction } from "@/server/actions/adminAuth";
 import type { UsuarioLogado } from "@/server/auth/session";
 
+const RANQUE: Record<Papel, number> = { PADRAO: 0, ADMIN: 1, SUPER_ADMIN: 2 };
+
+const ROTULO_PAPEL: Record<Papel, string> = {
+  SUPER_ADMIN: "super-admin",
+  ADMIN: "admin",
+  PADRAO: "padrão",
+};
+
 /**
  * Cabeçalho comum às telas administrativas: quem está logado, navegação entre as
- * telas (algumas só aparecem para super-admin) e o botão de sair. Existe para não
- * repetir essa barra em cada página — eram três cópias quase idênticas antes desta
- * versão.
+ * telas (algumas exigem admin ou super-admin, outras só super-admin) e o botão de
+ * sair. Existe para não repetir essa barra em cada página.
  */
 export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual: string }) {
-  const links = [
-    { href: "/admin/orcamento", rotulo: "Correção manual", soSuperAdmin: false },
-    { href: "/admin/usuarios", rotulo: "Usuários", soSuperAdmin: true },
-    { href: "/admin/auditoria", rotulo: "Auditoria", soSuperAdmin: true },
+  const links: { href: string; rotulo: string; minimo: Papel }[] = [
+    { href: "/admin/orcamento", rotulo: "Correção manual", minimo: "ADMIN" },
+    { href: "/admin/usuarios", rotulo: "Usuários", minimo: "SUPER_ADMIN" },
+    { href: "/admin/auditoria", rotulo: "Auditoria", minimo: "SUPER_ADMIN" },
   ];
 
   return (
@@ -20,7 +28,7 @@ export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual:
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav className="flex flex-wrap items-center gap-1">
           {links
-            .filter((l) => !l.soSuperAdmin || usuario.superAdmin)
+            .filter((l) => RANQUE[usuario.papel] >= RANQUE[l.minimo])
             .map((l) => (
               <Link
                 key={l.href}
@@ -38,7 +46,8 @@ export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual:
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-neutral-500 dark:text-neutral-400">
-            {usuario.nome} {usuario.superAdmin && <span className="text-if-green">· super-admin</span>}
+            {usuario.nome}{" "}
+            {usuario.papel !== "PADRAO" && <span className="text-if-green">· {ROTULO_PAPEL[usuario.papel]}</span>}
           </span>
           <Link href="/admin/conta" className="text-neutral-600 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
             Minha conta

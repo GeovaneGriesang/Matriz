@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginAction } from "@/server/actions/adminAuth";
 
@@ -76,7 +77,11 @@ export function AdminLoginForm() {
       </button>
 
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        Esqueceu a senha? Por enquanto só um super-administrador pode resetá-la — peça a ele.
+        Primeiro acesso ou esqueceu a senha?{" "}
+        <Link href="/admin/recuperar-senha" className="underline hover:text-neutral-800 dark:hover:text-neutral-200">
+          Peça um código por e-mail
+        </Link>
+        .
       </p>
     </form>
   );

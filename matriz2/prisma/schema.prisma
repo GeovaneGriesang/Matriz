@@ -26,34 +26,78 @@ generator client {
 
 // ---------- Acesso e auditoria ----------
 //
-// Todo o resto do sistema é público de propósito (Consulta, Comparativo, Evasão,
-// Simulador, Dados importados): é a transparência que o usuário quer poder mostrar
-// ao reitor e aos diretores-gerais sem que ninguém precise de login. O que fica
-// atrás de senha é só a correção manual de dados e a gestão de usuários.
+// Decisão de 2026-09-05: Consulta, Comparativo, Evasão, Simulador, Dados importados
+// e a Correção manual exigem login (admin ou super-admin). Motivo: hoje 100% do que
+// essas telas mostram vem de exportações da MDO, obtidas com usuário e senha
+// PESSOAIS de quem administra o sistema — deixar isso público arrisca a MDO notar e
+// cortar esse acesso. `OrigemDados.PNP` existe no enum de `FonteDados` para o dia em
+// que houver dado público de verdade (uma versão baseada só na PNP), mas nenhuma
+// tabela usa essa origem ainda. Só a tela de "primeiro acesso"/recuperação de senha
+// e a página inicial (sem os números, só um convite para entrar) ficam sem login.
+
+/// Os três papéis de quem acessa a área administrativa. `PADRAO` existe para o dia em
+/// que houver uma versão pública baseada em PNP: por enquanto ele não enxerga nenhuma
+/// tela com dado de verdade, só a própria conta.
+enum Papel {
+  /// Também cria/desativa usuários e vê a Auditoria.
+  SUPER_ADMIN
+  /// Acessa tudo que vem da MDO (Consulta, Comparativo, Evasão, Simulador, Dados
+  /// importados, Correção manual). Não vê Usuários nem Auditoria.
+  ADMIN
+  /// Por enquanto, só a própria conta — ver comentário acima.
+  PADRAO
+}
 
 /// Uma pessoa que pode entrar na área administrativa. O login é o e-mail.
-/// `superAdmin` é quem pode criar outros usuários e resetar a senha de alguém sem
-/// precisar da senha antiga (decisão do usuário em 2026-09-04: sem e-mail de
-/// recuperação por enquanto, o reset é sempre feito por um super-admin).
 model Usuario {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  nome          String
-  /// Hash bcrypt; a senha em si nunca é gravada nem logada em lugar nenhum.
-  senhaHash     String
-  superAdmin    Boolean   @default(false)
+  id    Int    @id @default(autoincrement())
+  email String @unique
+  nome  String
+  /// Hash bcrypt. Nulo até a pessoa concluir o primeiro acesso (ver
+  /// `CodigoVerificacao`) — sem mais "senha temporária" mostrada na criação da
+  /// conta. Só o reset manual do super-admin (a reserva sem e-mail) grava aqui uma
+  /// senha temporária diretamente.
+  senhaHash String?
+  papel     Papel   @default(PADRAO)
   /// Desativar em vez de apagar preserva o rastro de quem fez o quê no
   /// RegistroAuditoria, que aponta para o usuário por id.
-  ativo         Boolean   @default(true)
-  /// Marca uma senha gerada pelo sistema (criação de conta ou reset por um
-  /// super-admin): força a troca no próximo login, ver `requireAdminOrRedirect`.
-  /// Volta a `false` assim que o próprio usuário escolhe uma senha.
-  precisaTrocarSenha Boolean @default(true)
-  criadoEm      DateTime  @default(now())
-  ultimoLoginEm DateTime?
+  ativo Boolean @default(true)
+  /// Marca uma senha gerada pelo reset manual do super-admin: força a troca no
+  /// próximo login, ver `requireAdminOrRedirect`. Cadastro de conta nova não usa
+  /// mais isto (o primeiro acesso já pede para a pessoa escolher a própria senha).
+  precisaTrocarSenha Boolean   @default(false)
+  criadoEm           DateTime  @default(now())
+  ultimoLoginEm      DateTime?
 
-  sessoes    Sessao[]
-  auditorias RegistroAuditoria[]
+  sessoes            Sessao[]
+  auditorias         RegistroAuditoria[]
+  codigosVerificacao CodigoVerificacao[]
+}
+
+/// Tipo de código enviado por e-mail.
+enum TipoCodigoVerificacao {
+  PRIMEIRO_ACESSO
+  RECUPERACAO_SENHA
+}
+
+/// Código de uso único enviado por e-mail (Resend), para primeiro acesso ou
+/// recuperação de senha. Mesmo padrão de `Sessao`: só o HASH do código fica
+/// gravado, nunca o valor em claro — quem tem o e-mail tem o código, não quem lê o
+/// banco.
+model CodigoVerificacao {
+  id        Int                    @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario                @relation(fields: [usuarioId], references: [id])
+  tipo      TipoCodigoVerificacao
+  codigoHash String                @db.Char(64)
+  criadoEm  DateTime               @default(now())
+  expiraEm  DateTime
+  /// Nulo enquanto não usado. Marcar em vez de apagar evita reenvio acidental do
+  /// mesmo código já consumido.
+  usadoEm   DateTime?
+
+  @@index([usuarioId])
+  @@index([expiraEm])
 }
 
 /// Uma sessão de login, guardada no banco (não só num cookie autocontido) para

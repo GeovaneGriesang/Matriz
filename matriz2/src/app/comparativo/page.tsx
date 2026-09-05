@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function ComparativoPage({
 }: {
   searchParams: Promise<{ bloco?: string }>;
 }) {
+  await requireAcessoPlenoOrRedirect("/comparativo");
   const params = await searchParams;
   const bloco = (["matriculas", "iqe", "ae", "totalSpo"] as const).includes(params.bloco as never)
     ? (params.bloco as "matriculas" | "iqe" | "ae" | "totalSpo")
