@@ -3,7 +3,8 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
-import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
+import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -83,8 +84,11 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   const rede = await prisma.distribuicaoCiclo.aggregate({ where: { ano }, _sum: { valorReais: true } });
   const totalRede = Number(rede._sum.valorReais ?? 0);
 
-  // Detalhe por ciclo de curso, quando um câmpus está selecionado.
-  const cursos = campusEscolhido
+  // Detalhe por ciclo de curso, quando um câmpus está selecionado. `TabelaOrdenavel`
+  // é client-side, então os campos `Decimal` do Prisma (instâncias de classe, não
+  // dado simples) precisam virar `number` aqui, antes de atravessar a fronteira de
+  // Server para Client Component.
+  const cursosBrutos = campusEscolhido
     ? await prisma.distribuicaoCiclo.findMany({
         where: { ano, unidadeId: campusEscolhido },
         orderBy: { valorReais: "desc" },
@@ -94,6 +98,16 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         },
       })
     : [];
+  const cursos = cursosBrutos.map((c) => ({
+    id: c.id,
+    curso: c.curso,
+    nivel: c.nivel,
+    repasse: c.repasse,
+    peso: c.pesoCursoMatriz ? Number(c.pesoCursoMatriz) : null,
+    matricula: Number(c.matriculaTotal),
+    valor: Number(c.valorReais),
+    perda: Number(c.perdaEvasaoReais ?? 0),
+  }));
 
   const fonte = await prisma.fonteDados.findFirst({
     where: { cicloOrcamento: ano, fase: "F6_PARTICIPACAO" },
@@ -167,67 +181,16 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <TabelaOrdenavel
+        <ConsultaTabelaCampus
           linhas={linhas}
-          chaveLinha={(l) => l.unidadeId}
-          linhaClasse={(l) => (l.unidadeId === campusEscolhido ? "bg-if-green/5" : "")}
-          colunas={
-            [
-              {
-                chave: "nome",
-                rotulo: "Câmpus",
-                valor: (l) => l.nome,
-                render: (l) => (
-                  <Link href={href({ campus: String(l.unidadeId) })} className="hover:underline">
-                    {l.nome}
-                  </Link>
-                ),
-              },
-              {
-                chave: "ciclos",
-                rotulo: "Ciclos",
-                alinhamento: "right",
-                valor: (l) => l.ciclos,
-                render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{numero.format(l.ciclos)}</span>,
-              },
-              {
-                chave: "matricula",
-                rotulo: "Matrícula",
-                alinhamento: "right",
-                valor: (l) => l.matricula,
-                render: (l) => (
-                  <span className="text-neutral-600 dark:text-neutral-400">{numero.format(l.matricula)}</span>
-                ),
-              },
-              {
-                chave: "valor",
-                rotulo: "Recebido",
-                alinhamento: "right",
-                valor: (l) => l.valor,
-                render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
-              },
-              {
-                chave: "perda",
-                rotulo: "Perda por evasão",
-                alinhamento: "right",
-                valor: (l) => l.perda,
-                render: (l) => <span className="text-if-red dark:text-red-400">{reais.format(l.perda)}</span>,
-              },
-            ] satisfies ColunaOrdenavel<(typeof linhas)[number]>[]
-          }
-          rodape={
-            <tfoot>
-              <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
-                <td className="px-4 py-2.5">{instituicao.sigla}, {linhas.length} câmpus</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.ciclos)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(total.matricula)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(total.valor)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
-                  {reais.format(total.perda)}
-                </td>
-              </tr>
-            </tfoot>
-          }
+          campusEscolhido={campusEscolhido}
+          ano={ano}
+          sigla={siglaEscolhida}
+          instituicaoSigla={instituicao.sigla}
+          totalCiclos={total.ciclos}
+          totalValor={total.valor}
+          totalPerda={total.perda}
+          totalMatricula={total.matricula}
         />
       </div>
 
@@ -242,55 +205,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             </Link>
           </div>
           <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <TabelaOrdenavel
-              linhas={cursos}
-              chaveLinha={(c) => c.id}
-              cabecalhoFixo
-              colunas={
-                [
-                  { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
-                  { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "—" },
-                  {
-                    chave: "repasse",
-                    rotulo: "Repasse",
-                    valor: (c) => c.repasse,
-                    render: (c) => c.repasse.replace("_", " "),
-                  },
-                  {
-                    chave: "peso",
-                    rotulo: "Peso",
-                    alinhamento: "right",
-                    valor: (c) => (c.pesoCursoMatriz ? Number(c.pesoCursoMatriz) : null),
-                    render: (c) => (c.pesoCursoMatriz ? decimal.format(Number(c.pesoCursoMatriz)) : "—"),
-                  },
-                  {
-                    chave: "matricula",
-                    rotulo: "Matrícula",
-                    alinhamento: "right",
-                    valor: (c) => Number(c.matriculaTotal),
-                    render: (c) => decimal.format(Number(c.matriculaTotal)),
-                  },
-                  {
-                    chave: "valor",
-                    rotulo: "Recebido",
-                    alinhamento: "right",
-                    valor: (c) => Number(c.valorReais),
-                    render: (c) => reais.format(Number(c.valorReais)),
-                  },
-                  {
-                    chave: "perda",
-                    rotulo: "Perda",
-                    alinhamento: "right",
-                    valor: (c) => Number(c.perdaEvasaoReais ?? 0),
-                    render: (c) => (
-                      <span className="text-if-red dark:text-red-400">
-                        {reais.format(Number(c.perdaEvasaoReais ?? 0))}
-                      </span>
-                    ),
-                  },
-                ] satisfies ColunaOrdenavel<(typeof cursos)[number]>[]
-              }
-            />
+            <ConsultaTabelaCursos cursos={cursos} />
           </div>
         </div>
       )}

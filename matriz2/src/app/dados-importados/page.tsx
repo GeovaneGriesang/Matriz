@@ -1,14 +1,9 @@
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
-import { EtiquetaProcedencia } from "@/components/Procedencia";
-import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { DadosImportadosTabela } from "./DadosImportadosTabela";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
-
-const numero = new Intl.NumberFormat("pt-BR");
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const dataHora = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
 const ROTULO_FASE: Record<string, string> = {
   F1A_OBTENCAO: "1ª fase, obtenção dos dados",
@@ -18,12 +13,6 @@ const ROTULO_FASE: Record<string, string> = {
   F4_CHECAGEM_MATRICULAS: "4ª fase, checagem de matrículas",
   F5_PROPOSTA: "5ª fase, geração da proposta",
   F6_PARTICIPACAO: "6ª fase, participação na distribuição",
-};
-
-const ROTULO_ABRANGENCIA: Record<string, string> = {
-  REDE: "Rede completa",
-  INSTITUICAO: "Uma instituição",
-  CAMPUS: "Um câmpus",
 };
 
 export default async function DadosImportadosPage() {
@@ -41,6 +30,15 @@ export default async function DadosImportadosPage() {
     _sum: { valorReais: true },
   });
   const somaPorFonte = new Map(somasPorFonte.map((s) => [s.fonteDadosId, Number(s._sum.valorReais ?? 0)]));
+
+  // `TabelaOrdenavel` é client-side: nenhuma linha pode carregar um `Map` ou algo
+  // que dependa de fechar sobre uma função só existente aqui no Server Component,
+  // então soma e contagem já vêm prontas em cada linha.
+  const linhasTabela = fontes.map((f) => ({
+    ...f,
+    registros: f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
+    soma: somaPorFonte.get(f.id) ?? null,
+  }));
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
@@ -63,70 +61,7 @@ export default async function DadosImportadosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <TabelaOrdenavel
-            linhas={fontes}
-            chaveLinha={(f) => f.id}
-            colunas={
-              [
-                { chave: "ciclo", rotulo: "Ciclo", alinhamento: "right", valor: (f) => f.cicloOrcamento, render: (f) => <span className="font-medium">{f.cicloOrcamento}</span> },
-                {
-                  chave: "origem",
-                  rotulo: "Origem",
-                  valor: (f) => f.origem,
-                  render: (f) => <EtiquetaProcedencia fonte={f} />,
-                },
-                {
-                  chave: "etapa",
-                  rotulo: "Etapa",
-                  valor: (f) => (f.fase ? (ROTULO_FASE[f.fase] ?? f.fase) : ""),
-                  render: (f) => <span className="text-neutral-600 dark:text-neutral-400">{f.fase ? ROTULO_FASE[f.fase] : "—"}</span>,
-                },
-                {
-                  chave: "arquivo",
-                  rotulo: "Arquivo",
-                  valor: (f) => f.arquivo,
-                  render: (f) => <span className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.arquivo}</span>,
-                },
-                {
-                  chave: "abrange",
-                  rotulo: "Abrange",
-                  valor: (f) => ROTULO_ABRANGENCIA[f.abrangencia] + (f.instituicao ? `, ${f.instituicao.sigla}` : ""),
-                  render: (f) => (
-                    <span className="text-neutral-600 dark:text-neutral-400">
-                      {ROTULO_ABRANGENCIA[f.abrangencia]}
-                      {f.instituicao && `, ${f.instituicao.sigla}`}
-                    </span>
-                  ),
-                },
-                {
-                  chave: "registros",
-                  rotulo: "Registros",
-                  alinhamento: "right",
-                  valor: (f) => f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
-                  render: (f) =>
-                    numero.format(
-                      f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
-                    ),
-                },
-                {
-                  chave: "soma",
-                  rotulo: "Soma",
-                  alinhamento: "right",
-                  valor: (f) => somaPorFonte.get(f.id) ?? null,
-                  render: (f) => {
-                    const soma = somaPorFonte.get(f.id);
-                    return soma !== undefined ? reais.format(soma) : "—";
-                  },
-                },
-                {
-                  chave: "carregado",
-                  rotulo: "Carregado",
-                  valor: (f) => f.carregadoEm.getTime(),
-                  render: (f) => <span className="text-neutral-600 dark:text-neutral-400">{dataHora.format(f.carregadoEm)}</span>,
-                },
-              ] satisfies ColunaOrdenavel<(typeof fontes)[number]>[]
-            }
-          />
+          <DadosImportadosTabela fontes={linhasTabela} />
         </div>
       )}
 
