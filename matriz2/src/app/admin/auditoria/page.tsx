@@ -1,13 +1,12 @@
 import { prisma } from "@/server/db/prisma";
 import { requireSuperAdminOrRedirect } from "@/server/auth/session";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { AuditoriaTabela } from "./AuditoriaTabela";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 
 export const dynamic = "force-dynamic";
 
 const LIMITE = 200;
-const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" });
 
 export default async function AdminAuditoriaPage({
   searchParams,
@@ -96,63 +95,7 @@ export default async function AdminAuditoriaPage({
       </form>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <TabelaOrdenavel
-          className="w-full min-w-[720px] text-sm"
-          linhas={registros}
-          chaveLinha={(r) => r.id}
-          corpoVazio={
-            <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-neutral-500 dark:text-neutral-400">
-                Nenhum registro para este filtro.
-              </td>
-            </tr>
-          }
-          colunas={
-            [
-              {
-                chave: "quando",
-                rotulo: "Quando",
-                valor: (r) => r.criadoEm.getTime(),
-                render: (r) => (
-                  <span className="whitespace-nowrap text-neutral-500 dark:text-neutral-400">
-                    {formatoData.format(r.criadoEm)}
-                  </span>
-                ),
-              },
-              {
-                chave: "quem",
-                rotulo: "Quem",
-                valor: (r) => r.usuario?.nome ?? "(sistema)",
-                render: (r) => (
-                  <span className="text-neutral-900 dark:text-neutral-100">{r.usuario ? r.usuario.nome : "(sistema)"}</span>
-                ),
-              },
-              {
-                chave: "acao",
-                rotulo: "Ação",
-                valor: (r) => r.acao,
-                render: (r) => <span className="font-mono text-xs text-neutral-700 dark:text-neutral-300">{r.acao}</span>,
-              },
-              {
-                chave: "detalhe",
-                rotulo: "Detalhe",
-                ordenavel: false,
-                valor: () => null,
-                render: (r) => (
-                  <span className="font-mono text-xs text-neutral-500 dark:text-neutral-400">
-                    {r.detalhe ? JSON.stringify(r.detalhe) : ""}
-                  </span>
-                ),
-              },
-              {
-                chave: "ip",
-                rotulo: "IP",
-                valor: (r) => r.ip ?? "",
-                render: (r) => <span className="text-neutral-500 dark:text-neutral-400">{r.ip ?? ""}</span>,
-              },
-            ] satisfies ColunaOrdenavel<(typeof registros)[number]>[]
-          }
-        />
+        <AuditoriaTabela registros={registros} />
       </div>
     </main>
   );
