@@ -7,6 +7,9 @@ export interface LinhaSimulavel {
   nome: string;
   recebido: number;
   perda: number;
+  /** Agrupa no `<select>` (ex.: a sigla da instituição, para achar um câmpus específico
+   * entre os mais de 600 da rede sem rolar uma lista só). Sem grupo, a opção fica solta. */
+  grupo?: string;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -26,8 +29,20 @@ function pct(parte: number, total: number): number {
 export function SimuladorEvasao({ linhas, redeTaxa }: { linhas: LinhaSimulavel[]; redeTaxa: number }) {
   const [chaveEscolhida, setChaveEscolhida] = useState(linhas[0]?.chave ?? "");
   const [reducao, setReducao] = useState(50);
+  const [filtro, setFiltro] = useState("");
 
   const linha = useMemo(() => linhas.find((l) => l.chave === chaveEscolhida) ?? linhas[0], [linhas, chaveEscolhida]);
+
+  const linhasFiltradas = useMemo(() => {
+    if (!filtro.trim()) return linhas;
+    const alvo = filtro.trim().toLowerCase();
+    return linhas.filter(
+      (l) => l.nome.toLowerCase().includes(alvo) || l.grupo?.toLowerCase().includes(alvo),
+    );
+  }, [linhas, filtro]);
+
+  const semGrupo = linhasFiltradas.filter((l) => !l.grupo);
+  const grupos = Array.from(new Set(linhasFiltradas.filter((l) => l.grupo).map((l) => l.grupo!)));
 
   const { recuperado, novoRecebido, novaPerda, taxaAtual, novaTaxa } = useMemo(() => {
     if (!linha) return { recuperado: 0, novoRecebido: 0, novaPerda: 0, taxaAtual: 0, novaTaxa: 0 };
@@ -57,17 +72,39 @@ export function SimuladorEvasao({ linhas, redeTaxa }: { linhas: LinhaSimulavel[]
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">Câmpus</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">
+              Instituição ou câmpus, de toda a rede
+            </span>
+            <input
+              type="text"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Filtrar por nome ou sigla..."
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            />
             <select
               value={chaveEscolhida}
               onChange={(e) => setChaveEscolhida(e.target.value)}
+              size={8}
               className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
             >
-              {linhas.map((l) => (
+              {semGrupo.map((l) => (
                 <option key={l.chave} value={l.chave} disabled={l.perda === 0}>
                   {l.nome}
                   {l.perda === 0 ? " (sem perda por evasão)" : ""}
                 </option>
+              ))}
+              {grupos.map((grupo) => (
+                <optgroup key={grupo} label={grupo}>
+                  {linhasFiltradas
+                    .filter((l) => l.grupo === grupo)
+                    .map((l) => (
+                      <option key={l.chave} value={l.chave} disabled={l.perda === 0}>
+                        {l.nome}
+                        {l.perda === 0 ? " (sem perda por evasão)" : ""}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </label>
