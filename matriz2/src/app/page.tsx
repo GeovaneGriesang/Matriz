@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
-import { FORM_MAX_WIDTH } from "@/lib/layoutWidths";
+import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
-const numero = new Intl.NumberFormat("pt-BR");
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const numero = new Intl.NumberFormat("pt-BR");
 
 /**
  * Sem sessão (ou com o papel `PADRAO`) esta tela não menciona a MDO nem mostra
@@ -36,16 +36,54 @@ export default async function Home() {
     );
   }
 
-  const [ciclos, instituicoes, campus, soma, anos] = await Promise.all([
-    prisma.distribuicaoCiclo.count(),
-    prisma.instituicao.count(),
-    prisma.unidade.count(),
-    prisma.distribuicaoCiclo.aggregate({ _sum: { valorReais: true } }),
-    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "asc" } }),
+  // Um resumo POR CICLO, de propósito: 2026 e 2027 vêm de fontes e estados
+  // diferentes hoje (ver docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md e
+  // README), e uma tela didática não pode esconder isso atrás de um número só.
+  const [porInstituicaoRaw, cicloOrcamentos, cicloCursoPorAno, cicloCampusPorAno] = await Promise.all([
+    prisma.comparativoInstitucional.groupBy({
+      by: ["ano"],
+      _sum: { matriculas: true, iqe: true, ae: true },
+      _count: { instituicaoId: true },
+    }),
+    prisma.cicloOrcamento.findMany({ orderBy: { ano: "asc" } }),
+    prisma.distribuicaoCiclo.groupBy({ by: ["ano"], _count: { _all: true } }),
+    prisma.distribuicaoCampus.groupBy({ by: ["ano"], _count: { _all: true } }),
   ]);
 
+  const anos = Array.from(
+    new Set([
+      ...porInstituicaoRaw.map((r) => r.ano),
+      ...cicloOrcamentos.map((c) => c.ano),
+      ...cicloCursoPorAno.map((r) => r.ano),
+      ...cicloCampusPorAno.map((r) => r.ano),
+    ]),
+  ).sort();
+
+  const porInstituicao = new Map(porInstituicaoRaw.map((r) => [r.ano, r]));
+  const cursosPorAno = new Map(cicloCursoPorAno.map((r) => [r.ano, r._count._all]));
+  const campusPorAno = new Map(cicloCampusPorAno.map((r) => [r.ano, r._count._all]));
+
+  const resumoAnos = anos.map((ano) => {
+    const inst = porInstituicao.get(ano);
+    const funcionamento = Number(inst?._sum.matriculas ?? 0);
+    const iqe = Number(inst?._sum.iqe ?? 0);
+    const ae = Number(inst?._sum.ae ?? 0);
+    return {
+      ano,
+      instituicoes: inst?._count.instituicaoId ?? 0,
+      funcionamento,
+      iqe,
+      ae,
+      total: funcionamento + iqe + ae,
+      cursos: cursosPorAno.get(ano) ?? 0,
+      campus: campusPorAno.get(ano) ?? 0,
+    };
+  });
+
+  const semNenhumDado = resumoAnos.length === 0;
+
   return (
-    <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-8 px-6 py-16`}>
+    <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-16 lg:px-12`}>
       <div className="flex flex-col gap-4">
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
           Matriz de Distribuição Orçamentária
@@ -67,64 +105,110 @@ export default async function Home() {
           por evasão.
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Todo número exibido carrega uma etiqueta dizendo de onde veio e de quando é.
+          Todo número exibido carrega uma etiqueta dizendo de onde veio e de quando é.{" "}
+          <Link href="/como-funciona" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
+            Veja como a matriz é calculada
+          </Link>
+          .
         </p>
       </div>
 
-      {ciclos === 0 ? (
+      {semNenhumDado ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Ainda não há dados carregados. Rode{" "}
           <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">npm run carregar -- 2027</code> para
           trazer o ciclo 2027 a partir das exportações da MDO.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Numero rotulo="Ciclos de curso" valor={numero.format(ciclos)} />
-          <Numero rotulo="Instituições" valor={numero.format(instituicoes)} />
-          <Numero rotulo="Câmpus" valor={numero.format(campus)} />
-          <Numero rotulo="Distribuído" valor={reais.format(Number(soma._sum.valorReais ?? 0))} />
+        <div className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por ciclo</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {resumoAnos.map((r) => (
+              <div
+                key={r.ano}
+                className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950"
+              >
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{r.ano}</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {r.instituicoes > 0 ? `${r.instituicoes} instituições` : "sem dado por instituição"}
+                  </span>
+                </div>
+
+                {r.total > 0 ? (
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <dt className="text-neutral-500 dark:text-neutral-400">Funcionamento</dt>
+                    <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+                      {reais.format(r.funcionamento)}
+                    </dd>
+                    <dt className="text-neutral-500 dark:text-neutral-400">Qualidade e Eficiência</dt>
+                    <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+                      {reais.format(r.iqe)}
+                    </dd>
+                    <dt className="text-neutral-500 dark:text-neutral-400">Assistência Estudantil</dt>
+                    <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+                      {reais.format(r.ae)}
+                    </dd>
+                    <dt className="font-medium text-neutral-700 dark:text-neutral-300">Total</dt>
+                    <dd className="text-right font-medium tabular-nums text-neutral-900 dark:text-neutral-100">
+                      {reais.format(r.total)}
+                    </dd>
+                  </dl>
+                ) : (
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Sem valor distribuído por instituição carregado para este ciclo ainda.
+                  </p>
+                )}
+
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {r.campus > 0 ? `${numero.format(r.campus)} câmpus com dado de entrada (5ª fase)` : "sem 5ª fase carregada"}
+                  {" · "}
+                  {r.cursos > 0
+                    ? `${numero.format(r.cursos)} ciclos de curso (6ª fase, valor por câmpus disponível)`
+                    : "sem 6ª fase — Consulta, Evasão e Simulador não descem a câmpus/curso neste ciclo"}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       <div className="flex flex-col gap-3">
-        <Atalho
-          href="/consulta"
-          titulo="Consulta"
-          resumo="Quanto cada câmpus recebe, e de quais cursos esse valor vem."
-        />
-        <Atalho
-          href="/comparativo"
-          titulo="Comparativo entre ciclos"
-          resumo="O que mudou de um ciclo para o outro, por instituição."
-        />
-        <Atalho
-          href="/evasao"
-          titulo="Perda por evasão"
-          resumo="Quanto se deixa de receber por aluno evadido, por câmpus e por curso."
-        />
-        <Atalho
-          href="/dados-importados"
-          titulo="Dados importados"
-          resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."
-        />
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Telas</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Atalho
+            href="/consulta"
+            titulo="Consulta"
+            resumo="Quanto cada instituição e câmpus recebe, e de quais cursos esse valor vem."
+          />
+          <Atalho
+            href="/comparativo"
+            titulo="Comparativo entre ciclos"
+            resumo="O que mudou de um ciclo para o outro, por instituição."
+          />
+          <Atalho
+            href="/evasao"
+            titulo="Perda por evasão"
+            resumo="Quanto se deixa de receber por aluno evadido, por instituição, câmpus e curso."
+          />
+          <Atalho
+            href="/simulador"
+            titulo="Simulador"
+            resumo="E se a evasão de um câmpus caísse? Veja o efeito estimado."
+          />
+          <Atalho
+            href="/dados-importados"
+            titulo="Dados importados"
+            resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."
+          />
+          <Atalho
+            href="/como-funciona"
+            titulo="Como funciona"
+            resumo="O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado."
+          />
+        </div>
       </div>
-
-      {anos.length > 0 && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Ciclos carregados: {anos.map((a) => a.ano).join(", ")}.
-          {anos.length === 1 && " A comparação entre ciclos fica disponível quando houver dois."}
-        </p>
-      )}
     </main>
-  );
-}
-
-function Numero({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{rotulo}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{valor}</div>
-    </div>
   );
 }
 

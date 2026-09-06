@@ -44,6 +44,9 @@ export async function SiteHeader() {
               <Link href="/dados-importados" className={LINK_CLASS}>
                 Dados importados
               </Link>
+              <Link href="/como-funciona" className={LINK_CLASS}>
+                Como funciona
+              </Link>
               <Link href="/admin/orcamento" className={LINK_CLASS}>
                 Painel
               </Link>
