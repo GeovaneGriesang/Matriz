@@ -170,6 +170,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         select: {
           id: true, curso: true, nivel: true, tipoCurso: true, turno: true, repasse: true,
           matriculaTotal: true, valorReais: true, perdaEvasaoReais: true, pesoCursoMatriz: true,
+          inicio: true, termino: true, chMinimaMec: true, chMatriz: true, qtdAlunosMatriz: true,
         },
       })
     : [];
@@ -182,7 +183,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     matricula: Number(c.matriculaTotal),
     valor: Number(c.valorReais),
     perda: Number(c.perdaEvasaoReais ?? 0),
+    inicio: c.inicio ? c.inicio.toISOString() : null,
+    termino: c.termino ? c.termino.toISOString() : null,
+    chMinimaMec: c.chMinimaMec ?? null,
+    chMatriz: c.chMatriz ?? null,
+    alunos: c.qtdAlunosMatriz ? Number(c.qtdAlunosMatriz) : null,
   }));
+  const cursoDestaque = cursos[0] ?? null;
 
   const fonte = await prisma.fonteDados.findFirst({
     where: { cicloOrcamento: ano, fase: "F6_PARTICIPACAO" },
@@ -284,6 +291,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
               limpar seleção
             </Link>
           </div>
+          {cursoDestaque && (
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              O curso com maior participação no orçamento é <strong className="text-neutral-900 dark:text-neutral-100">{cursoDestaque.curso}</strong>,
+              com aproximadamente <strong className="text-neutral-900 dark:text-neutral-100">{reais.format(cursoDestaque.valor)}</strong>.
+              Marque as caixas da coluna &quot;Comparar&quot; para ver dois ou mais cursos lado a lado.
+            </p>
+          )}
           <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
             <ConsultaTabelaCursos cursos={cursos} />
           </div>
