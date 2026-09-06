@@ -2,29 +2,25 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SimuladorEvasao, type LinhaSimulavel } from "@/components/simulador/SimuladorEvasao";
-import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
 interface Busca {
   ano?: string;
-  instituicao?: string;
 }
 
 export default async function SimuladorPage({ searchParams }: { searchParams: Promise<Busca> }) {
   await requireAcessoPlenoOrRedirect("/simulador");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
-  const sigla = params.instituicao ?? "IFSUL";
 
   const [anos, instituicoes] = await Promise.all([
     prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } }),
     prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
   ]);
-  const instituicao = instituicoes.find((i) => i.sigla === sigla) ?? instituicoes[0];
 
-  if (!instituicao || anos.length === 0) {
+  if (anos.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
         <h1 className="text-2xl font-semibold">Simulador</h1>
@@ -44,37 +40,68 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   const redePerda = Number(rede._sum.perdaEvasaoReais ?? 0);
   const redeTaxa = redeRecebido > 0 ? (redePerda / redeRecebido) * 100 : 0;
 
-  const porCampus = await prisma.distribuicaoCiclo.groupBy({
+  const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
-    where: { ano, unidade: { instituicaoId: instituicao.id } },
+    where: { ano },
     _sum: { valorReais: true, perdaEvasaoReais: true },
   });
   const unidades = await prisma.unidade.findMany({
-    where: { id: { in: porCampus.map((c) => c.unidadeId) } },
-    select: { id: true, nome: true },
+    where: { id: { in: porCampusRede.map((c) => c.unidadeId) } },
+    select: { id: true, nome: true, instituicaoId: true },
   });
-  const nomePorUnidade = new Map(unidades.map((u) => [u.id, u.nome]));
+  const unidadePorId = new Map(unidades.map((u) => [u.id, u]));
+  const instituicaoPorId = new Map(instituicoes.map((i) => [i.id, i]));
 
-  const linhasCampus: LinhaSimulavel[] = porCampus
-    .map((c) => ({
+  const linhasCampus: LinhaSimulavel[] = porCampusRede.map((c) => {
+    const unidade = unidadePorId.get(c.unidadeId);
+    const instituicao = unidade ? instituicaoPorId.get(unidade.instituicaoId) : undefined;
+    return {
       chave: `campus-${c.unidadeId}`,
-      nome: nomePorUnidade.get(c.unidadeId) ?? `Unidade ${c.unidadeId}`,
+      nome: unidade?.nome ?? `Unidade ${c.unidadeId}`,
       recebido: Number(c._sum.valorReais ?? 0),
       perda: Number(c._sum.perdaEvasaoReais ?? 0),
-    }))
-    .sort((a, b) => b.perda - a.perda);
+      grupo: instituicao?.sigla,
+    };
+  });
 
-  const totalInstituicao: LinhaSimulavel = {
-    chave: "instituicao",
-    nome: `${instituicao.sigla}, toda a instituição`,
-    recebido: linhasCampus.reduce((s, l) => s + l.recebido, 0),
-    perda: linhasCampus.reduce((s, l) => s + l.perda, 0),
+  const totalPorInstituicao = new Map<string, { recebido: number; perda: number }>();
+  for (const c of linhasCampus) {
+    if (!c.grupo) continue;
+    const atual = totalPorInstituicao.get(c.grupo) ?? { recebido: 0, perda: 0 };
+    atual.recebido += c.recebido;
+    atual.perda += c.perda;
+    totalPorInstituicao.set(c.grupo, atual);
+  }
+
+  const linhasPorInstituicao: LinhaSimulavel[] = [];
+  for (const instituicao of instituicoes) {
+    const total = totalPorInstituicao.get(instituicao.sigla);
+    if (!total) continue;
+    const campi = linhasCampus
+      .filter((c) => c.grupo === instituicao.sigla)
+      .sort((a, b) => b.perda - a.perda);
+    linhasPorInstituicao.push(
+      {
+        chave: `instituicao-${instituicao.sigla}`,
+        nome: `${instituicao.sigla}, toda a instituição`,
+        recebido: total.recebido,
+        perda: total.perda,
+        grupo: instituicao.sigla,
+      },
+      ...campi,
+    );
+  }
+
+  const totalRede: LinhaSimulavel = {
+    chave: "rede",
+    nome: "Rede inteira (todas as instituições)",
+    recebido: redeRecebido,
+    perda: redePerda,
   };
 
   function href(mudanca: Partial<Busca>) {
     const q = new URLSearchParams({
       ano: String(ano),
-      instituicao: sigla,
       ...Object.fromEntries(Object.entries(mudanca).filter(([, v]) => v !== undefined)),
     } as Record<string, string>);
     return `/simulador?${q.toString()}`;
@@ -85,8 +112,9 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
-          E se a evasão de um câmpus caísse? Escolha um câmpus e uma redução hipotética para ver quanto ele
-          deixaria de perder, a partir do que a 6ª fase já publica por ciclo de curso.
+          E se a evasão de um câmpus, de uma instituição ou de toda a rede caísse? Escolha abaixo e uma redução
+          hipotética para ver quanto se deixaria de perder, a partir do que a 6ª fase já publica por ciclo de
+          curso.
         </p>
         <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <strong>É uma estimativa, não um recálculo da metodologia da CONIF.</strong> A conta é simples: valor
@@ -114,17 +142,9 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
             ))}
           </div>
         </div>
-        <div className="flex min-w-64 flex-1 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao
-            instituicoes={instituicoes}
-            siglaEscolhida={sigla}
-            urlPorSigla={Object.fromEntries(instituicoes.map((i) => [i.sigla, href({ instituicao: i.sigla })]))}
-          />
-        </div>
       </div>
 
-      <SimuladorEvasao linhas={[totalInstituicao, ...linhasCampus]} redeTaxa={redeTaxa} />
+      <SimuladorEvasao linhas={[totalRede, ...linhasPorInstituicao]} redeTaxa={redeTaxa} />
     </main>
   );
 }

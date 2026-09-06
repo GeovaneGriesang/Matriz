@@ -5,6 +5,7 @@ import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
+import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   await requireAcessoPlenoOrRedirect("/consulta");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
+  const modoMacro = !params.instituicao;
   const siglaEscolhida = params.instituicao ?? "IFSUL";
   const campusEscolhido = params.campus ? Number(params.campus) : null;
 
@@ -31,9 +33,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
   ]);
 
-  const instituicao = instituicoes.find((i) => i.sigla === siglaEscolhida) ?? instituicoes[0];
-
-  if (!instituicao) {
+  if (instituicoes.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
         <h1 className="text-2xl font-semibold">Consulta</h1>
@@ -44,6 +44,81 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       </main>
     );
   }
+
+  // Visão macro (rede inteira): uma linha por instituição, sem exigir escolher uma
+  // primeiro. É a porta de entrada — clicar numa instituição leva ao detalhamento
+  // por câmpus abaixo.
+  if (modoMacro) {
+    const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
+      by: ["unidadeId"],
+      where: { ano },
+      _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
+    });
+    const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
+    const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
+
+    const acumulado = new Map<number, { campus: number; valor: number; perda: number; matricula: number }>();
+    for (const g of porCampusRede) {
+      const instId = instituicaoPorUnidade.get(g.unidadeId);
+      if (instId === undefined) continue;
+      const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0 };
+      a.campus += 1;
+      a.valor += Number(g._sum.valorReais ?? 0);
+      a.perda += Number(g._sum.perdaEvasaoReais ?? 0);
+      a.matricula += Number(g._sum.matriculaTotal ?? 0);
+      acumulado.set(instId, a);
+    }
+
+    const linhasInstituicoes = instituicoes
+      .map((i) => {
+        const a = acumulado.get(i.id) ?? { campus: 0, valor: 0, perda: 0, matricula: 0 };
+        return { sigla: i.sigla, nome: i.nome, ...a };
+      })
+      .filter((l) => l.campus > 0)
+      .sort((a, b) => b.valor - a.valor);
+
+    const totalRede = linhasInstituicoes.reduce((s, l) => s + l.valor, 0);
+
+    return (
+      <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
+          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+            Quanto cada instituição recebe da Matriz de Distribuição Orçamentária. Clique numa instituição para
+            descer a câmpus e, dentro de um câmpus, a curso.
+          </p>
+        </div>
+
+        <div className="flex gap-1">
+          {anosDisponiveis.map((a) => (
+            <Link
+              key={a.ano}
+              href={`/consulta?ano=${a.ano}`}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                a.ano === ano
+                  ? "bg-if-green text-white"
+                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {a.ano}
+            </Link>
+          ))}
+        </div>
+
+        {linhasInstituicoes.length === 0 ? (
+          <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            Nenhuma instituição com dado por curso (6ª fase) neste ciclo ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <ConsultaTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} totalRede={totalRede} />
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  const instituicao = instituicoes.find((i) => i.sigla === siglaEscolhida) ?? instituicoes[0]!;
 
   // Totais por câmpus da instituição escolhida.
   const porCampus = await prisma.distribuicaoCiclo.groupBy({
@@ -127,6 +202,11 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Link href={`/consulta?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
+            ← todas as instituições
+          </Link>
+        </div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
           Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
