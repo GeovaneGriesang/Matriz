@@ -47,6 +47,9 @@ export async function SiteHeader() {
               <Link href="/como-funciona" className={LINK_CLASS}>
                 Como funciona
               </Link>
+              <Link href="/conferencia" className={LINK_CLASS}>
+                Conferência
+              </Link>
               <Link href="/admin/orcamento" className={LINK_CLASS}>
                 Painel
               </Link>
