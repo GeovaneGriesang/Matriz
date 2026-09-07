@@ -1,18 +1,12 @@
 import Link from "next/link";
-import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import {
-  anosComFaixaIeaDisponivel,
-  calcularIea,
-  faixaIea,
-  faixaRap,
-  pesoIea,
-  pesoIaplFormacaoProfessores,
-  pesoIaplProeja,
-  pesoIaplTecnicos,
-  pesoRap,
-} from "@/lib/qualidadeEficiencia";
+  calcularQualidadeEficienciaRede,
+  iaplEqualizadoRecalc,
+  ieaEqualizadoRecalc,
+  rapEqualizadoRecalc,
+} from "@/server/queries/qualidadeEficienciaRede";
 import { ConferenciaTabela, type InstituicaoConferida } from "./ConferenciaTabela";
 
 export const dynamic = "force-dynamic";
@@ -26,22 +20,15 @@ const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const percentual = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function n(v: unknown): number | null {
-  return v === null || v === undefined ? null : Number(v);
-}
-
 export default async function ConferenciaPage({ searchParams }: { searchParams: Promise<Busca> }) {
   await requireAcessoPlenoOrRedirect("/conferencia");
   const params = await searchParams;
-  const anosComFaixa = anosComFaixaIeaDisponivel();
-  const ano = Number(params.ano) || anosComFaixa[anosComFaixa.length - 1] || 2027;
+  const anoEscolhido = Number(params.ano) || 2027;
 
-  const registros = await prisma.distribuicaoInstituicao.findMany({
-    where: { ano },
-    include: { instituicao: { select: { sigla: true, nome: true } } },
-  });
+  const rede = await calcularQualidadeEficienciaRede(anoEscolhido);
+  const { ano, temFaixaIea, instituicoes: linhas } = rede;
 
-  if (registros.length === 0) {
+  if (linhas.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
         <h1 className="text-2xl font-semibold">Conferência de cálculo</h1>
@@ -53,95 +40,19 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
     );
   }
 
-  const temFaixaIea = anosComFaixa.includes(ano);
-
-  // Cada instituição já traz, prontos da MDO, os componentes brutos (Conclusão/Evasão/
-  // Retenção, RAP Presencial, %ME de cada categoria do IAPL) e o resultado final
-  // (ponderado, equalizado, valor em reais). Este módulo refaz a conta com os mesmos
-  // componentes brutos e compara o que dá com o que a MDO publicou; nunca o contrário.
-  const linhas = registros
-    .map((r) => {
-      const ieaConclusao = n(r.ieaConclusao);
-      const ieaEvasao = n(r.ieaEvasao);
-      const ieaRetencao = n(r.ieaRetencao);
-      const rapPresencial = n(r.rapPresencial);
-      const aplTecnico = n(r.aplTecnico);
-      const aplFormacaoProfessor = n(r.aplFormacaoProfessor);
-      const aplProeja = n(r.aplProeja);
-      if (
-        ieaConclusao === null || ieaEvasao === null || ieaRetencao === null ||
-        rapPresencial === null || aplTecnico === null || aplFormacaoProfessor === null || aplProeja === null
-      ) {
-        return null;
-      }
-
-      const ieaRecalc = temFaixaIea ? calcularIea(ieaConclusao, ieaEvasao, ieaRetencao) : null;
-      const faixaIeaRecalc = ieaRecalc !== null ? faixaIea(ieaRecalc, ano) : null;
-      const ieaPonderadoRecalc = ieaRecalc !== null && faixaIeaRecalc ? ieaRecalc * pesoIea(faixaIeaRecalc) : null;
-
-      const faixaRapRecalc = faixaRap(rapPresencial);
-      const rapPonderadoRecalc = rapPresencial * pesoRap(faixaRapRecalc);
-
-      const iaplTecnicoPonderadoRecalc = aplTecnico * pesoIaplTecnicos(aplTecnico);
-      const iaplFormacaoPonderadoRecalc = aplFormacaoProfessor * pesoIaplFormacaoProfessores(aplFormacaoProfessor);
-      const iaplProejaPonderadoRecalc = aplProeja * pesoIaplProeja(aplProeja);
-
-      return {
-        sigla: r.instituicao.sigla,
-        nome: r.instituicao.nome,
-        ieaConclusao, ieaEvasao, ieaRetencao,
-        ieaOficial: n(r.ieaEficiencia),
-        ieaRecalc,
-        ieaPonderadoOficial: n(r.ieaPonderado),
-        ieaPonderadoRecalc,
-        ieaEqualizadoOficial: n(r.ieaEqualizado),
-        vlIeaOficial: n(r.vlIea) ?? 0,
-        rapPresencial,
-        rapPonderadoOficial: n(r.rapPonderado),
-        rapPonderadoRecalc,
-        rapEqualizadoOficial: n(r.rapEqualizado),
-        vlRapOficial: n(r.vlRap) ?? 0,
-        aplTecnico, aplFormacaoProfessor, aplProeja,
-        aplTecnicoPonderadoOficial: n(r.aplTecnicoPonderado),
-        iaplTecnicoPonderadoRecalc,
-        formacaoPonderadoOficial: n(r.ialPonderado),
-        iaplFormacaoPonderadoRecalc,
-        aplProejaPonderadoOficial: n(r.aplProejaPonderado),
-        iaplProejaPonderadoRecalc,
-        iaplEqualizadoOficial: n(r.ialEqualizado),
-        vlIaplOficial: n(r.vlIapl) ?? 0,
-      };
-    })
-    .filter((l): l is NonNullable<typeof l> => l !== null);
-
-  // Denominadores de rede para reconstruir o "equalizado" (fatia de cada instituição no
-  // total do bloco) a partir dos ponderados recalculados, do mesmo jeito que a MDO faz
-  // a partir dos ponderados dela: soma de todas as instituições, cada uma dividida pelo
-  // total. Como as fatias somam sempre 100%, a soma dos valores oficiais em reais de um
-  // bloco É o valor total daquele bloco na rede; não precisamos de nenhuma fonte a mais.
-  const somaIeaPonderadoRecalc = linhas.reduce((s, l) => s + (l.ieaPonderadoRecalc ?? 0), 0);
-  const somaRapPonderadoRecalc = linhas.reduce((s, l) => s + l.rapPonderadoRecalc, 0);
-  const somaIaplTecnicoRecalc = linhas.reduce((s, l) => s + l.iaplTecnicoPonderadoRecalc, 0);
-  const somaIaplFormacaoRecalc = linhas.reduce((s, l) => s + l.iaplFormacaoPonderadoRecalc, 0);
-  const somaIaplProejaRecalc = linhas.reduce((s, l) => s + l.iaplProejaPonderadoRecalc, 0);
-  const totalBlocoIea = linhas.reduce((s, l) => s + l.vlIeaOficial, 0);
-  const totalBlocoRap = linhas.reduce((s, l) => s + l.vlRapOficial, 0);
-  const totalBlocoIapl = linhas.reduce((s, l) => s + l.vlIaplOficial, 0);
-
   const conferidas: InstituicaoConferida[] = linhas.map((l) => {
-    const ieaEqualizadoRecalc =
-      l.ieaPonderadoRecalc !== null && somaIeaPonderadoRecalc > 0 ? l.ieaPonderadoRecalc / somaIeaPonderadoRecalc : null;
-    const rapEqualizadoRecalc = somaRapPonderadoRecalc > 0 ? l.rapPonderadoRecalc / somaRapPonderadoRecalc : null;
-    const iaplEqualizadoRecalc =
-      somaIaplTecnicoRecalc > 0 && somaIaplFormacaoRecalc > 0 && somaIaplProejaRecalc > 0
-        ? (l.iaplTecnicoPonderadoRecalc / somaIaplTecnicoRecalc) * 0.7 +
-          (l.iaplFormacaoPonderadoRecalc / somaIaplFormacaoRecalc) * 0.2 +
-          (l.iaplProejaPonderadoRecalc / somaIaplProejaRecalc) * 0.1
-        : null;
+    const ieaEq = ieaEqualizadoRecalc(rede, l.ieaPonderadoRecalc);
+    const rapEq = rapEqualizadoRecalc(rede, l.rapPonderadoRecalc);
+    const iaplEq = iaplEqualizadoRecalc(
+      rede,
+      l.iaplTecnicoPonderadoRecalc,
+      l.iaplFormacaoPonderadoRecalc,
+      l.iaplProejaPonderadoRecalc,
+    );
 
-    const vlIeaRecalc = ieaEqualizadoRecalc !== null ? ieaEqualizadoRecalc * totalBlocoIea : null;
-    const vlRapRecalc = rapEqualizadoRecalc !== null ? rapEqualizadoRecalc * totalBlocoRap : null;
-    const vlIaplRecalc = iaplEqualizadoRecalc !== null ? iaplEqualizadoRecalc * totalBlocoIapl : null;
+    const vlIeaRecalc = ieaEq !== null ? ieaEq * rede.totalBlocoIea : null;
+    const vlRapRecalc = rapEq !== null ? rapEq * rede.totalBlocoRap : null;
+    const vlIaplRecalc = iaplEq !== null ? iaplEq * rede.totalBlocoIapl : null;
 
     const valorOficial = l.vlIeaOficial + l.vlRapOficial + l.vlIaplOficial;
     const valorRecalc =
@@ -165,18 +76,14 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
     if (detalheBruto) {
       const conferida = conferidas.find((c) => c.sigla === params.instituicao)!;
 
-      const ieaEqualizadoRecalc =
-        detalheBruto.ieaPonderadoRecalc !== null && somaIeaPonderadoRecalc > 0
-          ? detalheBruto.ieaPonderadoRecalc / somaIeaPonderadoRecalc
-          : null;
-      const rapEqualizadoRecalc =
-        somaRapPonderadoRecalc > 0 ? detalheBruto.rapPonderadoRecalc / somaRapPonderadoRecalc : null;
-      const iaplEqualizadoRecalc =
-        somaIaplTecnicoRecalc > 0 && somaIaplFormacaoRecalc > 0 && somaIaplProejaRecalc > 0
-          ? (detalheBruto.iaplTecnicoPonderadoRecalc / somaIaplTecnicoRecalc) * 0.7 +
-            (detalheBruto.iaplFormacaoPonderadoRecalc / somaIaplFormacaoRecalc) * 0.2 +
-            (detalheBruto.iaplProejaPonderadoRecalc / somaIaplProejaRecalc) * 0.1
-          : null;
+      const ieaEqRecalc = ieaEqualizadoRecalc(rede, detalheBruto.ieaPonderadoRecalc);
+      const rapEqRecalc = rapEqualizadoRecalc(rede, detalheBruto.rapPonderadoRecalc);
+      const iaplEqRecalc = iaplEqualizadoRecalc(
+        rede,
+        detalheBruto.iaplTecnicoPonderadoRecalc,
+        detalheBruto.iaplFormacaoPonderadoRecalc,
+        detalheBruto.iaplProejaPonderadoRecalc,
+      );
 
       return (
         <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
@@ -217,7 +124,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
               {
                 rotulo: "IEA equalizado (fatia na rede)",
                 oficial: detalheBruto.ieaEqualizadoOficial !== null ? percentual.format(detalheBruto.ieaEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: ieaEqualizadoRecalc !== null ? percentual.format(ieaEqualizadoRecalc * 100) + "%" : "não informado",
+                recalculado: ieaEqRecalc !== null ? percentual.format(ieaEqRecalc * 100) + "%" : "não informado",
               },
               { rotulo: "Valor recebido (bloco IEA)", oficial: reais.format(detalheBruto.vlIeaOficial) },
             ]}
@@ -235,7 +142,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
               {
                 rotulo: "RAP equalizado (fatia na rede)",
                 oficial: detalheBruto.rapEqualizadoOficial !== null ? percentual.format(detalheBruto.rapEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: rapEqualizadoRecalc !== null ? percentual.format(rapEqualizadoRecalc * 100) + "%" : "não informado",
+                recalculado: rapEqRecalc !== null ? percentual.format(rapEqRecalc * 100) + "%" : "não informado",
               },
               { rotulo: "Valor recebido (bloco RAP)", oficial: reais.format(detalheBruto.vlRapOficial) },
             ]}
@@ -262,7 +169,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
               {
                 rotulo: "IAPL equalizado (0,7×Técnicos + 0,2×Formação + 0,1×Proeja, cada um normalizado pela rede)",
                 oficial: detalheBruto.iaplEqualizadoOficial !== null ? percentual.format(detalheBruto.iaplEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: iaplEqualizadoRecalc !== null ? percentual.format(iaplEqualizadoRecalc * 100) + "%" : "não informado",
+                recalculado: iaplEqRecalc !== null ? percentual.format(iaplEqRecalc * 100) + "%" : "não informado",
               },
               { rotulo: "Valor recebido (bloco IAPL)", oficial: reais.format(detalheBruto.vlIaplOficial) },
             ]}
