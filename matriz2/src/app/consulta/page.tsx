@@ -5,6 +5,7 @@ import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
+import { carregarCursosDoCampus } from "@/server/queries/cursosCampus";
 import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
@@ -116,7 +117,11 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
               Valores recebidos
             </Link>{" "}
             e pode ser diferente, porque contingenciamento e outras decisões orçamentárias não passam pela
-            matriz.
+            matriz. Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
+            <Link href={`/consulta/comparar?ano=${ano}`} className="underline">
+              Comparar entre câmpus
+            </Link>
+            .
           </p>
         </div>
 
@@ -199,36 +204,8 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   const rede = await prisma.distribuicaoCiclo.aggregate({ where: { ano }, _sum: { valorReais: true } });
   const totalRede = Number(rede._sum.valorReais ?? 0);
 
-  // Detalhe por ciclo de curso, quando um câmpus está selecionado. `TabelaOrdenavel`
-  // é client-side, então os campos `Decimal` do Prisma (instâncias de classe, não
-  // dado simples) precisam virar `number` aqui, antes de atravessar a fronteira de
-  // Server para Client Component.
-  const cursosBrutos = campusEscolhido
-    ? await prisma.distribuicaoCiclo.findMany({
-        where: { ano, unidadeId: campusEscolhido },
-        orderBy: { valorReais: "desc" },
-        select: {
-          id: true, curso: true, nivel: true, tipoCurso: true, turno: true, repasse: true,
-          matriculaTotal: true, valorReais: true, perdaEvasaoReais: true, pesoCursoMatriz: true,
-          inicio: true, termino: true, chMinimaMec: true, chMatriz: true, qtdAlunosMatriz: true,
-        },
-      })
-    : [];
-  const cursos = cursosBrutos.map((c) => ({
-    id: c.id,
-    curso: c.curso,
-    nivel: c.nivel,
-    repasse: c.repasse,
-    peso: c.pesoCursoMatriz ? Number(c.pesoCursoMatriz) : null,
-    matricula: Number(c.matriculaTotal),
-    valor: Number(c.valorReais),
-    perda: Number(c.perdaEvasaoReais ?? 0),
-    inicio: c.inicio ? c.inicio.toISOString() : null,
-    termino: c.termino ? c.termino.toISOString() : null,
-    chMinimaMec: c.chMinimaMec ?? null,
-    chMatriz: c.chMatriz ?? null,
-    alunos: c.qtdAlunosMatriz ? Number(c.qtdAlunosMatriz) : null,
-  }));
+  // Detalhe por ciclo de curso, quando um câmpus está selecionado.
+  const cursos = campusEscolhido ? await carregarCursosDoCampus(ano, campusEscolhido) : [];
   const cursoDestaque = cursos[0] ?? null;
 
   const fonte = await prisma.fonteDados.findFirst({
@@ -350,7 +327,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             </p>
           )}
           <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <ConsultaTabelaCursos cursos={cursos} />
+            <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
           </div>
         </div>
       )}
