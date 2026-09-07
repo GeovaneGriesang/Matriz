@@ -19,7 +19,7 @@ export function DefinirSenhaForm() {
     const resultado = await definirSenhaAction(formData);
 
     if (resultado.ok) {
-      router.push("/admin/orcamento");
+      router.push("/consulta");
       router.refresh();
     } else {
       setErro(resultado.errorMessage ?? "Não foi possível concluir.");

@@ -190,9 +190,9 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
             <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
               Refaz o cálculo dos blocos IEA, RAP e IAPL a partir dos mesmos componentes que a MDO já
               publica (Conclusão, Evasão e Retenção do ciclo; RAP Presencial; %ME de cada categoria do
-              IAPL), e compara com o que a MDO calculou. Veja a explicação das fórmulas em{" "}
-              <Link href="/como-funciona" className="underline">
-                Como funciona
+              IAPL), e compara com o que a MDO calculou. Veja o que cada indicador significa em{" "}
+              <Link href="/como-funciona#qualidade-eficiencia" className="underline">
+                Qualidade e Eficiência
               </Link>
               .
             </p>
@@ -296,11 +296,14 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência de cálculo</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
-          Refaz o cálculo dos blocos IEA, RAP e IAPL de Qualidade e Eficiência a partir dos mesmos
-          componentes que a MDO já publica por instituição, e compara com o valor que a MDO calculou.
-          Serve para auditoria: se a diferença for grande, ou a fórmula usada aqui está desatualizada,
-          ou algo mudou na metodologia que ainda não foi conferido. O Matriz2 nunca usa este
-          recálculo para decidir quanto uma instituição recebe, só para conferir.
+          Refaz o cálculo dos blocos{" "}
+          <Link href="/como-funciona#qualidade-eficiencia" className="underline">
+            IEA, RAP e IAPL de Qualidade e Eficiência
+          </Link>{" "}
+          a partir dos mesmos componentes que a MDO já publica por instituição, e compara com o valor
+          que a MDO calculou. Serve para auditoria: se a diferença for grande, ou a fórmula usada aqui
+          está desatualizada, ou algo mudou na metodologia que ainda não foi conferido. Este recálculo
+          nunca decide quanto uma instituição recebe, só serve para conferir.
         </p>
         {!temFaixaIea && (
           <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">

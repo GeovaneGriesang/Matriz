@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { ComparativoTabela } from "./ComparativoTabela";
+import { ComparativoTabelaCampus } from "./ComparativoTabelaCampus";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +24,18 @@ interface Linha {
   posicaoB: number | null;
 }
 
+interface LinhaCampus {
+  unidadeId: number;
+  nome: string;
+  a: number;
+  b: number;
+  variacao: number;
+}
+
 export default async function ComparativoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bloco?: string }>;
+  searchParams: Promise<{ bloco?: string; instituicao?: string }>;
 }) {
   await requireAcessoPlenoOrRedirect("/comparativo");
   const params = await searchParams;
@@ -90,6 +99,54 @@ export default async function ComparativoPage({
     orderBy: { carregadoEm: "desc" },
   });
 
+  // Detalhe por câmpus, só quando uma instituição é escolhida. Usa `DistribuicaoCiclo`
+  // (a mesma fonte da Consulta), NÃO o relatório de comparativo que desce a câmpus: esse
+  // relatório troca o valor entre câmpus "irmãos" de nome parecido (ver comentário de
+  // `ComparativoInstitucional` no schema), então nunca foi carregado. Por vir de outra
+  // fonte, o Total por câmpus pode não bater ao centavo com o Total da instituição acima.
+  let linhasCampus: LinhaCampus[] = [];
+  let instituicaoEscolhida: { sigla: string; nome: string } | null = null;
+  if (params.instituicao) {
+    const instituicao = await prisma.instituicao.findUnique({ where: { sigla: params.instituicao } });
+    if (instituicao) {
+      instituicaoEscolhida = { sigla: instituicao.sigla, nome: instituicao.nome };
+      const [porCampusA, porCampusB] = await Promise.all([
+        prisma.distribuicaoCiclo.groupBy({
+          by: ["unidadeId"],
+          where: { ano: anoA, unidade: { instituicaoId: instituicao.id } },
+          _sum: { valorReais: true },
+        }),
+        prisma.distribuicaoCiclo.groupBy({
+          by: ["unidadeId"],
+          where: { ano: anoB, unidade: { instituicaoId: instituicao.id } },
+          _sum: { valorReais: true },
+        }),
+      ]);
+      const unidadeIds = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
+      const unidades = await prisma.unidade.findMany({
+        where: { id: { in: unidadeIds } },
+        select: { id: true, nome: true },
+      });
+      const nomePorId = new Map(unidades.map((u) => [u.id, u.nome]));
+      const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c._sum.valorReais ?? 0)]));
+      const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c._sum.valorReais ?? 0)]));
+
+      linhasCampus = unidadeIds
+        .map((id) => {
+          const a = aPorId.get(id) ?? 0;
+          const b = bPorId.get(id) ?? 0;
+          return {
+            unidadeId: id,
+            nome: nomePorId.get(id) ?? `Unidade ${id}`,
+            a,
+            b,
+            variacao: a > 0 ? (b / a - 1) * 100 : Number.NaN,
+          };
+        })
+        .sort((x, y) => y.b - x.b);
+    }
+  }
+
   const BLOCOS = [
     { chave: "totalSpo", rotulo: "Total" },
     { chave: "matriculas", rotulo: "Funcionamento" },
@@ -108,9 +165,11 @@ export default async function ComparativoPage({
           MDO não responde numa tela só, porque lá cada ciclo se consulta separado.
         </p>
         <p className="max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
-          Só o nível de instituição. O relatório que desce a câmpus tem valores atribuídos à unidade
+          Este bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência) só existe por
+          instituição: o relatório que abre por bloco e desce a câmpus tem valores atribuídos à unidade
           errada (no IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça), então
-          ele não foi carregado.
+          ele não foi carregado. Clique numa instituição para ver o Total por câmpus, vindo de outra
+          fonte (a mesma da Consulta).
         </p>
       </div>
 
@@ -157,6 +216,7 @@ export default async function ComparativoPage({
           linhas={linhas}
           anoA={anoA}
           anoB={anoB}
+          bloco={bloco}
           variacaoRede={variacaoRede}
           destaqueSigla={DESTAQUE}
           totalA={totalA}
@@ -168,6 +228,31 @@ export default async function ComparativoPage({
         A cor da variação compara cada instituição com a variação da rede, não com zero: crescer menos
         que a rede significa perder fatia, mesmo com o valor em reais subindo.
       </p>
+
+      {instituicaoEscolhida && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              {instituicaoEscolhida.sigla}, por câmpus, {anoA} e {anoB}
+            </h2>
+            <Link
+              href={`/comparativo?bloco=${bloco}`}
+              className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
+              ← todas as instituições
+            </Link>
+          </div>
+          {linhasCampus.length === 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Nenhum câmpus com dado por curso (6ª fase) em {anoA} ou {anoB}.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+              <ComparativoTabelaCampus linhas={linhasCampus} anoA={anoA} anoB={anoB} />
+            </div>
+          )}
+        </div>
+      )}
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

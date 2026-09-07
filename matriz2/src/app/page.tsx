@@ -137,15 +137,27 @@ export default async function Home() {
 
                 {r.total > 0 ? (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                    <dt className="text-neutral-500 dark:text-neutral-400">Funcionamento</dt>
+                    <dt className="text-neutral-500 dark:text-neutral-400">
+                      <Link href="/como-funciona#funcionamento" className="hover:underline">
+                        Funcionamento
+                      </Link>
+                    </dt>
                     <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
                       {reais.format(r.funcionamento)}
                     </dd>
-                    <dt className="text-neutral-500 dark:text-neutral-400">Qualidade e Eficiência</dt>
+                    <dt className="text-neutral-500 dark:text-neutral-400">
+                      <Link href="/como-funciona#qualidade-eficiencia" className="hover:underline">
+                        Qualidade e Eficiência
+                      </Link>
+                    </dt>
                     <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
                       {reais.format(r.iqe)}
                     </dd>
-                    <dt className="text-neutral-500 dark:text-neutral-400">Assistência Estudantil</dt>
+                    <dt className="text-neutral-500 dark:text-neutral-400">
+                      <Link href="/como-funciona#assistencia" className="hover:underline">
+                        Assistência Estudantil
+                      </Link>
+                    </dt>
                     <dd className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
                       {reais.format(r.ae)}
                     </dd>

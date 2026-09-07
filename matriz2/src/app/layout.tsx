@@ -10,7 +10,7 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Matriz2",
+  title: "Matriz Orçamentária RFEPCT",
   description: "Consulta, comparação e simulação da Matriz de Distribuição Orçamentária da RFEPCT",
 };
 

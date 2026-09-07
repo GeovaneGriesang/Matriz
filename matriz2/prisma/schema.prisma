@@ -50,18 +50,18 @@ enum Papel {
 
 /// Uma pessoa que pode entrar na área administrativa. O login é o e-mail.
 model Usuario {
-  id    Int    @id @default(autoincrement())
-  email String @unique
-  nome  String
+  id                 Int       @id @default(autoincrement())
+  email              String    @unique
+  nome               String
   /// Hash bcrypt. Nulo até a pessoa concluir o primeiro acesso (ver
   /// `CodigoVerificacao`) — sem mais "senha temporária" mostrada na criação da
   /// conta. Só o reset manual do super-admin (a reserva sem e-mail) grava aqui uma
   /// senha temporária diretamente.
-  senhaHash String?
-  papel     Papel   @default(PADRAO)
+  senhaHash          String?
+  papel              Papel     @default(PADRAO)
   /// Desativar em vez de apagar preserva o rastro de quem fez o quê no
   /// RegistroAuditoria, que aponta para o usuário por id.
-  ativo Boolean @default(true)
+  ativo              Boolean   @default(true)
   /// Marca uma senha gerada pelo reset manual do super-admin: força a troca no
   /// próximo login, ver `requireAdminOrRedirect`. Cadastro de conta nova não usa
   /// mais isto (o primeiro acesso já pede para a pessoa escolher a própria senha).
@@ -72,6 +72,7 @@ model Usuario {
   sessoes            Sessao[]
   auditorias         RegistroAuditoria[]
   codigosVerificacao CodigoVerificacao[]
+  valoresRecebidos   ValorRecebidoCampus[]
 }
 
 /// Tipo de código enviado por e-mail.
@@ -85,16 +86,16 @@ enum TipoCodigoVerificacao {
 /// gravado, nunca o valor em claro — quem tem o e-mail tem o código, não quem lê o
 /// banco.
 model CodigoVerificacao {
-  id        Int                    @id @default(autoincrement())
-  usuarioId Int
-  usuario   Usuario                @relation(fields: [usuarioId], references: [id])
-  tipo      TipoCodigoVerificacao
+  id         Int                   @id @default(autoincrement())
+  usuarioId  Int
+  usuario    Usuario               @relation(fields: [usuarioId], references: [id])
+  tipo       TipoCodigoVerificacao
   codigoHash String                @db.Char(64)
-  criadoEm  DateTime               @default(now())
-  expiraEm  DateTime
+  criadoEm   DateTime              @default(now())
+  expiraEm   DateTime
   /// Nulo enquanto não usado. Marcar em vez de apagar evita reenvio acidental do
   /// mesmo código já consumido.
-  usadoEm   DateTime?
+  usadoEm    DateTime?
 
   @@index([usuarioId])
   @@index([expiraEm])
@@ -255,6 +256,7 @@ model Unidade {
   distribuicoesCampus       DistribuicaoCampus[]
   conferenciasExtracao      ConferenciaExtracao[]
   conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
+  valoresRecebidos          ValorRecebidoCampus[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -463,6 +465,31 @@ model DistribuicaoCampus {
   @@unique([ano, unidadeId])
   @@index([ano])
   @@index([fonteDadosId])
+}
+
+/// Quanto um câmpus REALMENTE recebeu, digitado por um administrador. Não é o mesmo
+/// número que `DistribuicaoCiclo.valorReais` (a soma por curso) ou
+/// `DistribuicaoCampus.vlMatrFinal`: aqueles são o que a matriz da MDO gerou, este é
+/// o que o Tesouro/MEC de fato depositou, que pode divergir por contingenciamento,
+/// emenda parlamentar, ou qualquer outro motivo orçamentário fora da matriz. Por
+/// isso NÃO aponta para `FonteDados`: ao contrário de todo o resto do schema, este
+/// fato não vem de nenhum arquivo da MDO e não é apagado quando `npm run carregar`
+/// roda de novo para o ano — é um dado independente, que só muda quando alguém edita
+/// à mão em /admin/valores-recebidos.
+model ValorRecebidoCampus {
+  id              Int      @id @default(autoincrement())
+  ano             Int
+  unidadeId       Int
+  unidade         Unidade  @relation(fields: [unidadeId], references: [id])
+  valorRecebido   Decimal  @db.Decimal(18, 6)
+  observacao      String?  @db.Text
+  registradoPorId Int
+  registradoPor   Usuario  @relation(fields: [registradoPorId], references: [id])
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  @@unique([ano, unidadeId])
+  @@index([ano])
 }
 
 /// Comparativo entre ciclos, por instituição, vindo dos relatórios de Indicadores da

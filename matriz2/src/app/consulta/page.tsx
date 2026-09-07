@@ -46,7 +46,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   }
 
   // Visão macro (rede inteira): uma linha por instituição, sem exigir escolher uma
-  // primeiro. É a porta de entrada — clicar numa instituição leva ao detalhamento
+  // primeiro. É a porta de entrada: clicar numa instituição leva ao detalhamento
   // por câmpus abaixo.
   if (modoMacro) {
     const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
@@ -57,22 +57,47 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
     const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
 
-    const acumulado = new Map<number, { campus: number; valor: number; perda: number; matricula: number }>();
+    const recebidosRede = await prisma.valorRecebidoCampus.findMany({
+      where: { ano },
+      select: { unidadeId: true, valorRecebido: true },
+    });
+
+    const acumulado = new Map<
+      number,
+      { campus: number; valor: number; perda: number; matricula: number; recebidoReal: number; campusComRecebido: number }
+    >();
     for (const g of porCampusRede) {
       const instId = instituicaoPorUnidade.get(g.unidadeId);
       if (instId === undefined) continue;
-      const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0 };
+      const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
       a.campus += 1;
       a.valor += Number(g._sum.valorReais ?? 0);
       a.perda += Number(g._sum.perdaEvasaoReais ?? 0);
       a.matricula += Number(g._sum.matriculaTotal ?? 0);
       acumulado.set(instId, a);
     }
+    for (const r of recebidosRede) {
+      const instId = instituicaoPorUnidade.get(r.unidadeId);
+      if (instId === undefined) continue;
+      const a = acumulado.get(instId);
+      if (!a) continue;
+      a.recebidoReal += Number(r.valorRecebido);
+      a.campusComRecebido += 1;
+    }
 
     const linhasInstituicoes = instituicoes
       .map((i) => {
-        const a = acumulado.get(i.id) ?? { campus: 0, valor: 0, perda: 0, matricula: 0 };
-        return { sigla: i.sigla, nome: i.nome, ...a };
+        const a = acumulado.get(i.id) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
+        return {
+          sigla: i.sigla,
+          nome: i.nome,
+          campus: a.campus,
+          valor: a.valor,
+          perda: a.perda,
+          matricula: a.matricula,
+          recebidoReal: a.campusComRecebido > 0 ? a.recebidoReal : null,
+          campusComRecebido: a.campusComRecebido,
+        };
       })
       .filter((l) => l.campus > 0)
       .sort((a, b) => b.valor - a.valor);
@@ -85,7 +110,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
           <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
             Quanto cada instituição recebe da Matriz de Distribuição Orçamentária. Clique numa instituição para
-            descer a câmpus e, dentro de um câmpus, a curso.
+            descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela matriz&quot; é o valor de
+            referência que a MDO calcula; &quot;Recebido&quot; é o que foi de fato informado em{" "}
+            <Link href="/admin/valores-recebidos" className="underline">
+              Valores recebidos
+            </Link>{" "}
+            e pode ser diferente, porque contingenciamento e outras decisões orçamentárias não passam pela
+            matriz.
           </p>
         </div>
 
@@ -134,6 +165,12 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   });
   const nomePorId = new Map(unidades.map((u) => [u.id, u.nome]));
 
+  const recebidos = await prisma.valorRecebidoCampus.findMany({
+    where: { ano, unidadeId: { in: porCampus.map((c) => c.unidadeId) } },
+    select: { unidadeId: true, valorRecebido: true, observacao: true },
+  });
+  const recebidoPorId = new Map(recebidos.map((r) => [r.unidadeId, Number(r.valorRecebido)]));
+
   const linhas = porCampus
     .map((c) => ({
       unidadeId: c.unidadeId,
@@ -142,6 +179,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       valor: Number(c._sum.valorReais ?? 0),
       perda: Number(c._sum.perdaEvasaoReais ?? 0),
       matricula: Number(c._sum.matriculaTotal ?? 0),
+      recebidoReal: recebidoPorId.get(c.unidadeId) ?? null,
     }))
     .sort((a, b) => b.valor - a.valor);
 
@@ -151,8 +189,10 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       valor: acc.valor + l.valor,
       perda: acc.perda + l.perda,
       matricula: acc.matricula + l.matricula,
+      recebidoReal: acc.recebidoReal + (l.recebidoReal ?? 0),
+      campusComRecebido: acc.campusComRecebido + (l.recebidoReal !== null ? 1 : 0),
     }),
-    { ciclos: 0, valor: 0, perda: 0, matricula: 0 },
+    { ciclos: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 },
   );
 
   // Rede inteira, para situar a participação da instituição.
@@ -217,8 +257,14 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
           Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
-          valor vem. Os números não são calculados aqui; vêm da 6ª fase da MDO, já homologada,
-          detalhados curso a curso.
+          valor vem. Os números da coluna &quot;Gerado pela matriz&quot; não são calculados aqui; vêm da 6ª
+          fase da MDO, já homologada, detalhados curso a curso. A coluna &quot;Recebido&quot; é diferente:
+          é o que foi de fato depositado, informado à mão em{" "}
+          <Link href="/admin/valores-recebidos" className="underline">
+            Valores recebidos
+          </Link>
+          , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
+          pela matriz.
         </p>
       </div>
 
@@ -253,11 +299,15 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Cartao rotulo="Recebido no ciclo" valor={reais.format(total.valor)} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Cartao rotulo="Gerado pela matriz" valor={reais.format(total.valor)} />
+        <Cartao
+          rotulo="Recebido (real)"
+          valor={total.campusComRecebido > 0 ? reais.format(total.recebidoReal) : "não informado"}
+        />
         <Cartao
           rotulo="Participação na rede"
-          valor={totalRede > 0 ? `${decimal.format((total.valor / totalRede) * 100)}%` : "—"}
+          valor={totalRede > 0 ? `${decimal.format((total.valor / totalRede) * 100)}%` : "não informado"}
         />
         <Cartao rotulo="Matrícula total" valor={numero.format(total.matricula)} />
         <Cartao
@@ -278,6 +328,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           totalValor={total.valor}
           totalPerda={total.perda}
           totalMatricula={total.matricula}
+          totalRecebidoReal={total.campusComRecebido > 0 ? total.recebidoReal : null}
         />
       </div>
 

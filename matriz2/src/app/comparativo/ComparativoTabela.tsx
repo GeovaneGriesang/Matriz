@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export interface LinhaComparativo {
@@ -19,13 +20,14 @@ const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, 
 /**
  * Client Component só para hospedar `colunas` (com funções `valor`/`render`):
  * `TabelaOrdenavel` é "use client", e uma função não atravessa a fronteira de
- * Server para Client Component como prop — por isso `variacaoRede`/`anoA`/`anoB`
+ * Server para Client Component como prop; por isso `variacaoRede`/`anoA`/`anoB`
  * chegam como dado simples, não fechados numa função vinda do servidor.
  */
 export function ComparativoTabela({
   linhas,
   anoA,
   anoB,
+  bloco,
   variacaoRede,
   destaqueSigla,
   totalA,
@@ -34,6 +36,7 @@ export function ComparativoTabela({
   linhas: LinhaComparativo[];
   anoA: number;
   anoB: number;
+  bloco: string;
   variacaoRede: number;
   destaqueSigla: string;
   totalA: number;
@@ -51,10 +54,10 @@ export function ComparativoTabela({
             rotulo: "Instituição",
             valor: (l) => l.sigla,
             render: (l) => (
-              <>
+              <Link href={`/comparativo?bloco=${bloco}&instituicao=${l.sigla}`} className="hover:underline">
                 <span className="font-medium">{l.sigla}</span>
                 <span className="ml-2 text-xs text-neutral-500">{l.nome}</span>
-              </>
+              </Link>
             ),
           },
           {

@@ -10,6 +10,7 @@ export interface InstituicaoLinha {
   matricula: number;
   valor: number;
   perda: number;
+  recebidoReal: number | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -19,7 +20,7 @@ const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 /**
  * Visão macro (rede inteira): uma linha por instituição, clicável para abrir o
  * detalhamento por câmpus de cada uma. Client Component pelo mesmo motivo de
- * sempre — `TabelaOrdenavel` é "use client" e não aceita função vinda de fora.
+ * sempre: `TabelaOrdenavel` é "use client" e não aceita função vinda de fora.
  */
 export function ConsultaTabelaInstituicoes({
   linhas,
@@ -63,10 +64,22 @@ export function ConsultaTabelaInstituicoes({
           },
           {
             chave: "valor",
-            rotulo: "Recebido",
+            rotulo: "Gerado pela matriz",
             alinhamento: "right",
             valor: (l) => l.valor,
             render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
+          },
+          {
+            chave: "recebidoReal",
+            rotulo: "Recebido (real)",
+            alinhamento: "right",
+            valor: (l) => l.recebidoReal,
+            render: (l) =>
+              l.recebidoReal !== null ? (
+                <span className="font-medium text-if-green">{reais.format(l.recebidoReal)}</span>
+              ) : (
+                <span className="text-xs text-neutral-400">não informado</span>
+              ),
           },
           {
             chave: "participacao",
@@ -75,7 +88,7 @@ export function ConsultaTabelaInstituicoes({
             valor: (l) => (totalRede > 0 ? (l.valor / totalRede) * 100 : null),
             render: (l) => (
               <span className="text-neutral-600 dark:text-neutral-400">
-                {totalRede > 0 ? `${decimal.format((l.valor / totalRede) * 100)}%` : "—"}
+                {totalRede > 0 ? `${decimal.format((l.valor / totalRede) * 100)}%` : "não informado"}
               </span>
             ),
           },

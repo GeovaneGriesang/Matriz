@@ -13,6 +13,7 @@ const RANQUE: Record<Papel, number> = { PADRAO: 0, ADMIN: 1, SUPER_ADMIN: 2 };
 export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual: string }) {
   const links: { href: string; rotulo: string; minimo: Papel }[] = [
     { href: "/admin/orcamento", rotulo: "Correção manual", minimo: "ADMIN" },
+    { href: "/admin/valores-recebidos", rotulo: "Valores recebidos", minimo: "ADMIN" },
     { href: "/admin/usuarios", rotulo: "Usuários", minimo: "SUPER_ADMIN" },
     { href: "/admin/auditoria", rotulo: "Auditoria", minimo: "SUPER_ADMIN" },
   ];
