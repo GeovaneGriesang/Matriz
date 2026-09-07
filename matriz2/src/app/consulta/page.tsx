@@ -6,6 +6,7 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
 import { carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import { carregarTaxasFuncionamento, calcularFuncionamentoCampus } from "@/server/queries/funcionamentoCampus";
 import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
@@ -58,6 +59,19 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
     const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
 
+    // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
+    // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
+    // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato recebe
+    // (visto em produção: um câmpus mostrando R$ 72 mil somando os cursos contra
+    // R$ 700 mil reais). Ver o mesmo ajuste no detalhe por câmpus, mais abaixo.
+    const distribuicaoCampusRede = await prisma.distribuicaoCampus.findMany({
+      where: { ano },
+      select: { unidadeId: true, vlMatrFinal: true },
+    });
+    const vlMatrFinalPorId = new Map(
+      distribuicaoCampusRede.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
+    );
+
     const recebidosRede = await prisma.valorRecebidoCampus.findMany({
       where: { ano },
       select: { unidadeId: true, valorRecebido: true },
@@ -72,7 +86,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       if (instId === undefined) continue;
       const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
       a.campus += 1;
-      a.valor += Number(g._sum.valorReais ?? 0);
+      a.valor += vlMatrFinalPorId.get(g.unidadeId) ?? Number(g._sum.valorReais ?? 0);
       a.perda += Number(g._sum.perdaEvasaoReais ?? 0);
       a.matricula += Number(g._sum.matriculaTotal ?? 0);
       acumulado.set(instId, a);
@@ -110,9 +124,15 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
           <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
-            Quanto cada instituição recebe da Matriz de Distribuição Orçamentária. Clique numa instituição para
-            descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela matriz&quot; é o valor de
-            referência que a MDO calcula; &quot;Recebido&quot; é o que foi de fato informado em{" "}
+            Quanto cada instituição recebe no bloco{" "}
+            <Link href="/como-funciona#funcionamento" className="underline">
+              Funcionamento
+            </Link>{" "}
+            da Matriz de Distribuição Orçamentária (cerca de 80% do total; não inclui Qualidade e
+            Eficiência, Reitorias nem Assistência, que não são valores por câmpus). Clique numa
+            instituição para descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela
+            matriz&quot; é o valor homologado pela MDO; &quot;Recebido&quot; é o que foi de fato
+            informado em{" "}
             <Link href="/admin/valores-recebidos" className="underline">
               Valores recebidos
             </Link>{" "}
@@ -176,15 +196,54 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   });
   const recebidoPorId = new Map(recebidos.map((r) => [r.unidadeId, Number(r.valorRecebido)]));
 
+  // A 6ª fase (`DistribuicaoCiclo`, por curso) traz a participação de cada ciclo no
+  // Funcionamento ANTES do Piso Mínimo: para os câmpus elegíveis, somar os cursos
+  // dá o valor "calculado" pela matrícula, não o R$ 700.000 que o câmpus de fato
+  // recebe (o piso substitui, não soma, ver comentário de `CicloOrcamento`).
+  // Confirmado comparando com `vlMatrFinal`: um câmpus elegível chegou a mostrar
+  // R$ 72 mil somando os cursos contra R$ 700 mil reais. Por isso o valor "Gerado
+  // pela matriz" usa `vlMatrFinal` (5ª fase, já com o piso aplicado pela MDO) em vez
+  // da soma dos cursos.
+  const distribuicaoCampus = await prisma.distribuicaoCampus.findMany({
+    where: { ano, unidadeId: { in: porCampus.map((c) => c.unidadeId) } },
+    select: {
+      unidadeId: true, vlMatrFinal: true, elegivelPiso: true,
+      mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true,
+    },
+  });
+  const vlMatrFinalPorId = new Map(
+    distribuicaoCampus.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
+  );
+
+  // Funcionamento calculado: refeito a partir da matrícula equalizada por modalidade
+  // e das taxas oficiais (DADOS BASE), não copiado de `vlMatrFinal`. Só existe quando
+  // o ciclo tem essas taxas (não em 2026, que saiu sem o valor final por matrícula).
+  const taxasFuncionamento = await carregarTaxasFuncionamento(ano);
+  const funcionamentoPorId = new Map(
+    taxasFuncionamento
+      ? distribuicaoCampus.map((d) => [
+          d.unidadeId,
+          calcularFuncionamentoCampus(taxasFuncionamento, {
+            mtPresencial: Number(d.mtPresencial ?? 0),
+            mtEad: Number(d.mtEad ?? 0),
+            mtEadMooc: Number(d.mtEadMooc ?? 0),
+            mtEadFp: Number(d.mtEadFp ?? 0),
+            elegivelPiso: d.elegivelPiso,
+          }),
+        ])
+      : [],
+  );
+
   const linhas = porCampus
     .map((c) => ({
       unidadeId: c.unidadeId,
       nome: nomePorId.get(c.unidadeId) ?? `Unidade ${c.unidadeId}`,
       ciclos: c._count._all,
-      valor: Number(c._sum.valorReais ?? 0),
+      valor: vlMatrFinalPorId.get(c.unidadeId) ?? Number(c._sum.valorReais ?? 0),
       perda: Number(c._sum.perdaEvasaoReais ?? 0),
       matricula: Number(c._sum.matriculaTotal ?? 0),
       recebidoReal: recebidoPorId.get(c.unidadeId) ?? null,
+      funcionamentoCalculado: funcionamentoPorId.get(c.unidadeId) ?? null,
     }))
     .sort((a, b) => b.valor - a.valor);
 
@@ -196,13 +255,16 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       matricula: acc.matricula + l.matricula,
       recebidoReal: acc.recebidoReal + (l.recebidoReal ?? 0),
       campusComRecebido: acc.campusComRecebido + (l.recebidoReal !== null ? 1 : 0),
+      funcionamentoCalculado: acc.funcionamentoCalculado + (l.funcionamentoCalculado ?? 0),
+      campusComFuncionamento: acc.campusComFuncionamento + (l.funcionamentoCalculado !== null ? 1 : 0),
     }),
-    { ciclos: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 },
+    { ciclos: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0, funcionamentoCalculado: 0, campusComFuncionamento: 0 },
   );
 
-  // Rede inteira, para situar a participação da instituição.
-  const rede = await prisma.distribuicaoCiclo.aggregate({ where: { ano }, _sum: { valorReais: true } });
-  const totalRede = Number(rede._sum.valorReais ?? 0);
+  // Rede inteira, para situar a participação da instituição. `vlMatrFinal` (5ª fase,
+  // já com o Piso Mínimo aplicado), pelo mesmo motivo do `valor` de cada câmpus acima.
+  const rede = await prisma.distribuicaoCampus.aggregate({ where: { ano }, _sum: { vlMatrFinal: true } });
+  const totalRede = Number(rede._sum.vlMatrFinal ?? 0);
 
   // Detalhe por ciclo de curso, quando um câmpus está selecionado.
   const cursos = campusEscolhido ? await carregarCursosDoCampus(ano, campusEscolhido) : [];
@@ -234,9 +296,16 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
         <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
           Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
-          valor vem. Os números da coluna &quot;Gerado pela matriz&quot; não são calculados aqui; vêm da 6ª
-          fase da MDO, já homologada, detalhados curso a curso. A coluna &quot;Recebido&quot; é diferente:
-          é o que foi de fato depositado, informado à mão em{" "}
+          valor vem. &quot;Gerado pela matriz&quot; é o bloco{" "}
+          <Link href="/como-funciona#funcionamento" className="underline">
+            Funcionamento
+          </Link>{" "}
+          (cerca de 80% do total, já com o Piso Mínimo aplicado), homologado pela MDO; não inclui
+          Qualidade e Eficiência, Reitorias nem Assistência, que não são valores por câmpus. A coluna
+          &quot;Funcionamento calculado&quot; refaz esse mesmo bloco a partir da matrícula equalizada por
+          modalidade e das taxas oficiais, para conferência: as duas colunas devem ficar bem próximas, e
+          uma diferença grande é sinal de algo errado, na fórmula ou nos dados. &quot;Recebido&quot; é
+          diferente dos dois: é o que foi de fato depositado, informado à mão em{" "}
           <Link href="/admin/valores-recebidos" className="underline">
             Valores recebidos
           </Link>
@@ -276,11 +345,15 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Cartao rotulo="Gerado pela matriz" valor={reais.format(total.valor)} />
         <Cartao
           rotulo="Recebido (real)"
           valor={total.campusComRecebido > 0 ? reais.format(total.recebidoReal) : "não informado"}
+        />
+        <Cartao
+          rotulo="Funcionamento calculado"
+          valor={total.campusComFuncionamento > 0 ? reais.format(total.funcionamentoCalculado) : "não informado"}
         />
         <Cartao
           rotulo="Participação na rede"
@@ -306,6 +379,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           totalPerda={total.perda}
           totalMatricula={total.matricula}
           totalRecebidoReal={total.campusComRecebido > 0 ? total.recebidoReal : null}
+          totalFuncionamentoCalculado={total.campusComFuncionamento > 0 ? total.funcionamentoCalculado : null}
         />
       </div>
 

@@ -99,11 +99,15 @@ export default async function ComparativoPage({
     orderBy: { carregadoEm: "desc" },
   });
 
-  // Detalhe por câmpus, só quando uma instituição é escolhida. Usa `DistribuicaoCiclo`
-  // (a mesma fonte da Consulta), NÃO o relatório de comparativo que desce a câmpus: esse
-  // relatório troca o valor entre câmpus "irmãos" de nome parecido (ver comentário de
-  // `ComparativoInstitucional` no schema), então nunca foi carregado. Por vir de outra
-  // fonte, o Total por câmpus pode não bater ao centavo com o Total da instituição acima.
+  // Detalhe por câmpus, só quando uma instituição é escolhida. Usa `DistribuicaoCampus`
+  // (a mesma fonte que a Consulta passou a usar), NÃO o relatório de comparativo que
+  // desce a câmpus: esse relatório troca o valor entre câmpus "irmãos" de nome
+  // parecido (ver comentário de `ComparativoInstitucional` no schema), então nunca
+  // foi carregado. `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado), não a soma
+  // dos cursos da 6ª fase: essa soma vem ANTES do piso, e para um câmpus elegível fica
+  // bem abaixo do que ele de fato recebe (confirmado em produção: R$ 72 mil somando
+  // os cursos contra R$ 700 mil reais). Por vir de outra fonte, o Total por câmpus
+  // pode não bater ao centavo com o Total da instituição acima.
   let linhasCampus: LinhaCampus[] = [];
   let instituicaoEscolhida: { sigla: string; nome: string } | null = null;
   if (params.instituicao) {
@@ -111,15 +115,13 @@ export default async function ComparativoPage({
     if (instituicao) {
       instituicaoEscolhida = { sigla: instituicao.sigla, nome: instituicao.nome };
       const [porCampusA, porCampusB] = await Promise.all([
-        prisma.distribuicaoCiclo.groupBy({
-          by: ["unidadeId"],
+        prisma.distribuicaoCampus.findMany({
           where: { ano: anoA, unidade: { instituicaoId: instituicao.id } },
-          _sum: { valorReais: true },
+          select: { unidadeId: true, vlMatrFinal: true },
         }),
-        prisma.distribuicaoCiclo.groupBy({
-          by: ["unidadeId"],
+        prisma.distribuicaoCampus.findMany({
           where: { ano: anoB, unidade: { instituicaoId: instituicao.id } },
-          _sum: { valorReais: true },
+          select: { unidadeId: true, vlMatrFinal: true },
         }),
       ]);
       const unidadeIds = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
@@ -128,8 +130,8 @@ export default async function ComparativoPage({
         select: { id: true, nome: true },
       });
       const nomePorId = new Map(unidades.map((u) => [u.id, u.nome]));
-      const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c._sum.valorReais ?? 0)]));
-      const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c._sum.valorReais ?? 0)]));
+      const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
+      const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
 
       linhasCampus = unidadeIds
         .map((id) => {
