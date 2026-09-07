@@ -2,7 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SimuladorEvasao, type LinhaSimulavel } from "@/components/simulador/SimuladorEvasao";
+import { SimuladorRap, type InstituicaoRap } from "@/components/simulador/SimuladorRap";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { calcularQualidadeEficienciaRede } from "@/server/queries/qualidadeEficienciaRede";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +101,19 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     perda: redePerda,
   };
 
+  // RAP é sempre indicador de instituição, nunca de câmpus isolado (ver
+  // /como-funciona#qualidade-eficiencia), por isso o simulador de RAP escolhe uma
+  // instituição, diferente do simulador de evasão acima, que desce a câmpus.
+  const redeQE = await calcularQualidadeEficienciaRede(ano);
+  const instituicoesRap: InstituicaoRap[] = redeQE.instituicoes.map((i) => ({
+    sigla: i.sigla,
+    nome: i.nome,
+    rapPresencial: i.rapPresencial,
+    restoRedeRapPonderado: redeQE.somaRapPonderadoRecalc - i.rapPonderadoRecalc,
+    rapEqualizadoOficial: i.rapEqualizadoOficial,
+    vlRapOficial: i.vlRapOficial,
+  }));
+
   function href(mudanca: Partial<Busca>) {
     const q = new URLSearchParams({
       ano: String(ano),
@@ -144,7 +159,24 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <SimuladorEvasao linhas={[totalRede, ...linhasPorInstituicao]} redeTaxa={redeTaxa} />
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h2>
+        <SimuladorEvasao linhas={[totalRede, ...linhasPorInstituicao]} redeTaxa={redeTaxa} />
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            Qualidade e Eficiência, RAP
+          </h2>
+          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+            E se a RAP (Relação Aluno-Professor Presencial, também chamada de RAPP) de uma instituição
+            mudasse de faixa? Diferente da evasão, a RAP só existe por instituição, nunca por câmpus
+            isolado.
+          </p>
+        </div>
+        <SimuladorRap instituicoes={instituicoesRap} totalBlocoRap={redeQE.totalBlocoRap} ano={ano} />
+      </div>
     </main>
   );
 }
