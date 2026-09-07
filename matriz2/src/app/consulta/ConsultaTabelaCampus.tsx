@@ -11,6 +11,7 @@ export interface CampusLinha {
   perda: number;
   matricula: number;
   recebidoReal: number | null;
+  funcionamentoCalculado: number | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -34,6 +35,7 @@ export function ConsultaTabelaCampus({
   totalPerda,
   totalMatricula,
   totalRecebidoReal,
+  totalFuncionamentoCalculado,
 }: {
   linhas: CampusLinha[];
   campusEscolhido: number | null;
@@ -45,6 +47,7 @@ export function ConsultaTabelaCampus({
   totalPerda: number;
   totalMatricula: number;
   totalRecebidoReal: number | null;
+  totalFuncionamentoCalculado: number | null;
 }) {
   return (
     <TabelaOrdenavel
@@ -100,6 +103,18 @@ export function ConsultaTabelaCampus({
               ),
           },
           {
+            chave: "funcionamentoCalculado",
+            rotulo: "Funcionamento calculado",
+            alinhamento: "right",
+            valor: (l) => l.funcionamentoCalculado,
+            render: (l) =>
+              l.funcionamentoCalculado !== null ? (
+                <span className="text-neutral-600 dark:text-neutral-400">{reais.format(l.funcionamentoCalculado)}</span>
+              ) : (
+                <span className="text-xs text-neutral-400">não informado</span>
+              ),
+          },
+          {
             chave: "perda",
             rotulo: "Perda por evasão",
             alinhamento: "right",
@@ -119,6 +134,9 @@ export function ConsultaTabelaCampus({
             <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalValor)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">
               {totalRecebidoReal !== null ? reais.format(totalRecebidoReal) : "não informado"}
+            </td>
+            <td className="px-4 py-2.5 text-right tabular-nums">
+              {totalFuncionamentoCalculado !== null ? reais.format(totalFuncionamentoCalculado) : "não informado"}
             </td>
             <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
               {reais.format(totalPerda)}
