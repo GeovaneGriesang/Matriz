@@ -9,6 +9,10 @@ export interface CampusLinha {
   recebido: number;
   perda: number;
   taxa: number;
+  /** Câmpus elegível ao Piso Mínimo e já travado nele (o cálculo por matrícula dá
+   * menos que o piso). Reduzir a evasão não aumenta o que ele recebe, porque o
+   * Funcionamento já está no piso, não no calculado. */
+  estaNoPiso: boolean;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -76,6 +80,14 @@ export function EvasaoTabelaCampus({
                 className="hover:underline"
               >
                 {c.nome}
+                {c.estaNoPiso && (
+                  <span
+                    className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    title="Câmpus travado no Piso Mínimo: reduzir a evasão pode não aumentar o valor recebido."
+                  >
+                    no piso
+                  </span>
+                )}
               </Link>
             ),
           },

@@ -7,6 +7,7 @@ import { EvasaoTabelaCampus } from "./EvasaoTabelaCampus";
 import { EvasaoTabelaCursos } from "./EvasaoTabelaCursos";
 import { EvasaoTabelaInstituicoes } from "./EvasaoTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { campusEstaNoPiso, carregarTaxasFuncionamento } from "@/server/queries/funcionamentoCampus";
 
 export const dynamic = "force-dynamic";
 
@@ -139,15 +140,50 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const posicao = ranking.findIndex((r) => r.id === instituicao.id) + 1;
   const daInstituicao = ranking.find((r) => r.id === instituicao.id) ?? { recebido: 0, perda: 0, taxa: 0 };
 
-  // Câmpus da instituição.
+  // Câmpus da instituição. `estaNoPiso` avisa quando reduzir a evasão não muda nada:
+  // o câmpus já está travado no Piso Mínimo, não no cálculo por matrícula que a
+  // evasão afeta (ver `funcionamentoCampus.ts`).
+  const campusIds = porInstituicao
+    .filter((g) => instPorUnidade.get(g.unidadeId) === instituicao.id)
+    .map((g) => g.unidadeId);
+  const [taxasFuncionamento, distribuicaoCampus] = await Promise.all([
+    carregarTaxasFuncionamento(ano),
+    prisma.distribuicaoCampus.findMany({
+      where: { ano, unidadeId: { in: campusIds } },
+      select: { unidadeId: true, mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true, elegivelPiso: true },
+    }),
+  ]);
+  const noPisoPorId = new Map(
+    distribuicaoCampus.map((d) => [
+      d.unidadeId,
+      taxasFuncionamento
+        ? campusEstaNoPiso(taxasFuncionamento, {
+            mtPresencial: Number(d.mtPresencial ?? 0),
+            mtEad: Number(d.mtEad ?? 0),
+            mtEadMooc: Number(d.mtEadMooc ?? 0),
+            mtEadFp: Number(d.mtEadFp ?? 0),
+            elegivelPiso: d.elegivelPiso,
+          })
+        : false,
+    ]),
+  );
+
   const campusLinhas = porInstituicao
     .filter((g) => instPorUnidade.get(g.unidadeId) === instituicao.id)
     .map((g) => {
       const recebido = Number(g._sum.valorReais ?? 0);
       const perda = Number(g._sum.perdaEvasaoReais ?? 0);
-      return { unidadeId: g.unidadeId, nome: nomePorUnidade.get(g.unidadeId) ?? "?", recebido, perda, taxa: pct(perda, recebido) };
+      return {
+        unidadeId: g.unidadeId,
+        nome: nomePorUnidade.get(g.unidadeId) ?? "?",
+        recebido,
+        perda,
+        taxa: pct(perda, recebido),
+        estaNoPiso: noPisoPorId.get(g.unidadeId) ?? false,
+      };
     })
     .sort((a, b) => b.perda - a.perda);
+  const algumNoPiso = campusLinhas.some((c) => c.estaNoPiso);
 
   // Cursos: do câmpus escolhido, ou de toda a instituição.
   const cursosBrutos = await prisma.distribuicaoCiclo.groupBy({
@@ -271,6 +307,17 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus</h2>
+        {algumNoPiso && (
+          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            Os câmpus marcados <strong>&quot;no piso&quot;</strong> já recebem o{" "}
+            <Link href="/como-funciona#funcionamento" className="underline">
+              Piso Mínimo
+            </Link>{" "}
+            (R$ 700.000), não o valor calculado pela matrícula. Reduzir a evasão desses câmpus pode não
+            aumentar nada o que recebem: eles só ganhariam mais se a matrícula subisse o bastante para
+            ultrapassar o piso.
+          </p>
+        )}
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <EvasaoTabelaCampus
             linhas={campusLinhas}

@@ -10,6 +10,10 @@ export interface LinhaSimulavel {
   /** Agrupa no `<select>` (ex.: a sigla da instituição, para achar um câmpus específico
    * entre os mais de 600 da rede sem rolar uma lista só). Sem grupo, a opção fica solta. */
   grupo?: string;
+  /** Câmpus travado no Piso Mínimo: reduzir a evasão simulada não aumenta o que ele
+   * recebe de verdade (o Funcionamento já está no piso, não no cálculo por matrícula
+   * que a evasão afeta). Sempre `false`/ausente para instituição e rede. */
+  estaNoPiso?: boolean;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -92,6 +96,7 @@ export function SimuladorEvasao({ linhas, redeTaxa }: { linhas: LinhaSimulavel[]
                 <option key={l.chave} value={l.chave} disabled={l.perda === 0}>
                   {l.nome}
                   {l.perda === 0 ? " (sem perda por evasão)" : ""}
+                  {l.estaNoPiso ? " · no piso" : ""}
                 </option>
               ))}
               {grupos.map((grupo) => (
@@ -102,6 +107,7 @@ export function SimuladorEvasao({ linhas, redeTaxa }: { linhas: LinhaSimulavel[]
                       <option key={l.chave} value={l.chave} disabled={l.perda === 0}>
                         {l.nome}
                         {l.perda === 0 ? " (sem perda por evasão)" : ""}
+                        {l.estaNoPiso ? " · no piso" : ""}
                       </option>
                     ))}
                 </optgroup>
@@ -131,6 +137,15 @@ export function SimuladorEvasao({ linhas, redeTaxa }: { linhas: LinhaSimulavel[]
           </div>
         </div>
       </div>
+
+      {linha.estaNoPiso && (
+        <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <strong>{linha.nome}</strong> já está travado no Piso Mínimo (R$ 700.000), não no valor calculado
+          pela matrícula. O cenário abaixo é uma estimativa sobre a perda registrada, mas na prática este
+          câmpus só passaria a receber mais se a matrícula subisse o bastante para ultrapassar o piso;
+          reduzir a evasão sozinha pode não mudar nada o que ele recebe.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Cartao rotulo="Recebido hoje" valor={reais.format(linha.recebido)} />
