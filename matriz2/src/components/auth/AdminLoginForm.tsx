@@ -20,7 +20,7 @@ export function AdminLoginForm() {
     const resultado = await loginAction(formData);
 
     if (resultado.ok) {
-      router.push(searchParams.get("next") ?? "/admin/orcamento");
+      router.push(searchParams.get("next") ?? "/consulta");
       router.refresh();
     } else {
       setErro(resultado.errorMessage ?? "Não foi possível entrar.");

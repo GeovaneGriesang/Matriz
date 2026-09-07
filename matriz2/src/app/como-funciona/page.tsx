@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FORM_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
@@ -12,10 +13,10 @@ export default async function ComoFuncionaPage() {
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">Como funciona a matriz</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           A Matriz de Distribuição Orçamentária é calculada pela MDO (mdo.iftm.edu.br), sistema oficial da Rede
-          Federal operado pelo IFTM. O Matriz2 <strong>não recalcula</strong> nada disso: importa o resultado já
-          homologado. Esta página explica o que cada bloco significa e, a grosso modo, como a MDO chega a esse
-          número — para que os valores que você vê nas outras telas façam sentido, mesmo sem reproduzir a conta
-          aqui dentro.
+          Federal operado pelo IFTM. Este sistema <strong>não recalcula</strong> nada disso: importa o resultado
+          já homologado. Esta página explica o que cada bloco significa e, a grosso modo, como a MDO chega a
+          esse número, para que os valores que você vê nas outras telas façam sentido, mesmo sem reproduzir a
+          conta aqui dentro.
         </p>
       </div>
 
@@ -31,26 +32,27 @@ export default async function ComoFuncionaPage() {
       </div>
 
       <Bloco
+        id="funcionamento"
         titulo="Funcionamento"
         fatia="A maior fatia do orçamento (por volta de 80%)"
         resumo="Custeia o dia a dia de cada câmpus: energia, água, manutenção, materiais, contratos de serviço. É rateado essencialmente por matrícula."
       >
         <p>
           A MDO conta, para cada câmpus, quantos alunos ele tem em cada modalidade (presencial, EAD, EAD MOOC,
-          EAD com financiamento próprio) — mas não a matrícula bruta simples: cada aluno entra com um peso
+          EAD com financiamento próprio), mas não a matrícula bruta simples: cada aluno entra com um peso
           diferente conforme o curso (um curso técnico de carga horária longa pesa mais que um curso rápido de
           qualificação, por exemplo), numa conta que a MDO chama de <strong>matrícula equalizada</strong>.
         </p>
         <p>
           O valor total do bloco Funcionamento é dividido pela matrícula equalizada de toda a rede, dando um
           "valor por matrícula". Multiplicando esse valor pela matrícula equalizada de um câmpus específico
-          (com pesos diferentes para presencial, EAD, EAD MOOC e EAD com financiamento próprio — o EAD MOOC pesa
+          (com pesos diferentes para presencial, EAD, EAD MOOC e EAD com financiamento próprio; o EAD MOOC pesa
           bem menos, cerca de 8% do peso do presencial), chega-se ao Funcionamento daquele câmpus.
         </p>
         <p>
           <strong>Piso Mínimo:</strong> câmpus criados a partir de 2018 (marcados pela MDO, não deduzido
           automaticamente pela data) têm garantia de receber pelo menos um valor mínimo fixo, mesmo que a conta
-          da matrícula desse um valor menor — para não penalizar um câmpus novo que ainda está crescendo. Esse
+          da matrícula desse um valor menor, para não penalizar um câmpus novo que ainda está crescendo. Esse
           piso é reservado de dentro do próprio bloco Funcionamento antes de ratear o resto, não somado por
           cima.
         </p>
@@ -61,6 +63,7 @@ export default async function ComoFuncionaPage() {
       </Bloco>
 
       <Bloco
+        id="qualidade-eficiencia"
         titulo="Qualidade e Eficiência"
         fatia="Uma fatia menor (por volta de 10%)"
         resumo="Premia instituições (não câmpus individualmente) por três indicadores de desempenho acadêmico e de gestão."
@@ -92,6 +95,7 @@ export default async function ComoFuncionaPage() {
       </Bloco>
 
       <Bloco
+        id="assistencia"
         titulo="Assistência Estudantil"
         fatia="Verba orçamentária separada (ação 2994), não uma fatia do Funcionamento"
         resumo="Custeia bolsas, moradia estudantil, alimentação e outros apoios diretos ao estudante."
@@ -99,26 +103,31 @@ export default async function ComoFuncionaPage() {
         <p>
           É rateada por uma lógica parecida com o Funcionamento (matrícula equalizada por câmpus, separada por
           modalidade), mas com um ingrediente a mais: um peso por faixa de renda per capita das famílias dos
-          estudantes de cada instituição — quanto menor a renda, maior o peso. Existe também uma parcela
+          estudantes de cada instituição; quanto menor a renda, maior o peso. Existe também uma parcela
           específica para alunos em Regime de Internato Pleno (RIP), ratada à parte pela quantidade desses
           alunos em cada câmpus.
         </p>
         <p>
-          Esses dois ingredientes (faixa de renda e RIP) não vêm dos microdados públicos de matrícula da PNP —
+          Esses dois ingredientes (faixa de renda e RIP) não vêm dos microdados públicos de matrícula da PNP;
           são levantamentos próprios da MDO/CONIF, o que é mais um motivo para este sistema nunca tentar
           recalculá-los: só a MDO tem esse dado de origem.
         </p>
       </Bloco>
 
       <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-        <h2 className="font-semibold">Por que o Matriz2 não recalcula nada disso</h2>
+        <h2 className="font-semibold">Por que este sistema não recalcula nada disso</h2>
         <p>
-          Um projeto anterior tentou reconstruir essa conta inteira a partir dos microdados públicos da PNP.
-          Não funcionou: pelo menos três ingredientes centrais (a tabela de peso por curso usada na matrícula
-          equalizada, a faixa de renda por instituição, e a quantidade de alunos RIP) não existem em nenhum
-          arquivo público da PNP — só a própria MDO tem esses dados de origem, e alguns fecham só no fim do ano,
-          depois de sete etapas de homologação entre as instituições e o IFTM. Por isso o Matriz2 importa
-          diretamente o resultado que a MDO já homologou, em vez de tentar reproduzir a fórmula.
+          Reconstruir essa conta inteira a partir dos microdados públicos da PNP não funciona: pelo menos três
+          ingredientes centrais (a tabela de peso por curso usada na matrícula equalizada, a faixa de renda por
+          instituição, e a quantidade de alunos RIP) não existem em nenhum arquivo público da PNP, só a própria
+          MDO tem esses dados de origem, e alguns fecham apenas no fim do ano, depois de sete etapas de
+          homologação entre as instituições e o IFTM. Por isso este sistema importa diretamente o resultado que
+          a MDO já homologou, em vez de tentar reproduzir a fórmula, com uma exceção: em{" "}
+          <Link href="/conferencia" className="underline">
+            Conferência
+          </Link>
+          , os blocos IEA, RAP e IAPL são refeitos a partir dos mesmos componentes que a MDO publica, só para
+          comparar com o oficial e apontar divergência, nunca para decidir quanto uma instituição recebe.
         </p>
       </div>
     </main>
@@ -126,18 +135,20 @@ export default async function ComoFuncionaPage() {
 }
 
 function Bloco({
+  id,
   titulo,
   fatia,
   resumo,
   children,
 }: {
+  id?: string;
   titulo: string;
   fatia: string;
   resumo: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-5 dark:border-neutral-800">
+    <div id={id} className="flex scroll-mt-8 flex-col gap-3 rounded-lg border border-neutral-200 p-5 dark:border-neutral-800">
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>
         <p className="text-xs font-medium uppercase tracking-wide text-if-green">{fatia}</p>

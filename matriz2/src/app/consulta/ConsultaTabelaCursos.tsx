@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 export interface CursoLinha {
@@ -37,7 +38,7 @@ function diasEntre(inicioIso: string | null, terminoIso: string | null): number 
  * Client Component só para hospedar `colunas` (com funções `valor`/`render`):
  * `TabelaOrdenavel` é "use client", e uma função não atravessa a fronteira de
  * Server para Client Component como prop. Os campos chegam já como `number` (a
- * página converte os `Decimal` do Prisma antes de passar para cá — um `Decimal`
+ * página converte os `Decimal` do Prisma antes de passar para cá; um `Decimal`
  * também não atravessaria essa fronteira, por ser uma instância de classe, não um
  * dado simples).
  */
@@ -179,9 +180,12 @@ function PainelComparacao({
         </button>
       </div>
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        Os valores vêm prontos da 6ª fase da MDO; a matriz equalizada já considera duração do ciclo,
-        peso do curso e carga horária, mas o Matriz2 não refaz essa conta, só mostra os componentes
-        que a própria MDO publica por ciclo de curso.
+        Os valores vêm prontos da 6ª fase da MDO; a{" "}
+        <Link href="/como-funciona#funcionamento" className="underline">
+          matrícula equalizada
+        </Link>{" "}
+        já considera duração do ciclo, peso do curso e carga horária, mas este sistema não refaz essa
+        conta, só mostra os componentes que a própria MDO publica por ciclo de curso.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

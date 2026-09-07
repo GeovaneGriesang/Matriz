@@ -10,6 +10,7 @@ export interface CampusLinha {
   valor: number;
   perda: number;
   matricula: number;
+  recebidoReal: number | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -20,7 +21,7 @@ const numero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
  * `TabelaOrdenavel` é "use client", e uma função não atravessa a fronteira de
  * Server para Client Component como prop. O link de cada câmpus é remontado aqui
  * a partir de `ano`/`sigla` (dados simples), em vez de receber a função `href` da
- * página — que também não atravessaria essa fronteira.
+ * página, que também não atravessaria essa fronteira.
  */
 export function ConsultaTabelaCampus({
   linhas,
@@ -32,6 +33,7 @@ export function ConsultaTabelaCampus({
   totalValor,
   totalPerda,
   totalMatricula,
+  totalRecebidoReal,
 }: {
   linhas: CampusLinha[];
   campusEscolhido: number | null;
@@ -42,6 +44,7 @@ export function ConsultaTabelaCampus({
   totalValor: number;
   totalPerda: number;
   totalMatricula: number;
+  totalRecebidoReal: number | null;
 }) {
   return (
     <TabelaOrdenavel
@@ -79,10 +82,22 @@ export function ConsultaTabelaCampus({
           },
           {
             chave: "valor",
-            rotulo: "Recebido",
+            rotulo: "Gerado pela matriz",
             alinhamento: "right",
             valor: (l) => l.valor,
             render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
+          },
+          {
+            chave: "recebidoReal",
+            rotulo: "Recebido (real)",
+            alinhamento: "right",
+            valor: (l) => l.recebidoReal,
+            render: (l) =>
+              l.recebidoReal !== null ? (
+                <span className="font-medium text-if-green">{reais.format(l.recebidoReal)}</span>
+              ) : (
+                <span className="text-xs text-neutral-400">não informado</span>
+              ),
           },
           {
             chave: "perda",
@@ -102,6 +117,9 @@ export function ConsultaTabelaCampus({
             <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(totalCiclos)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(totalMatricula)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalValor)}</td>
+            <td className="px-4 py-2.5 text-right tabular-nums">
+              {totalRecebidoReal !== null ? reais.format(totalRecebidoReal) : "não informado"}
+            </td>
             <td className="px-4 py-2.5 text-right tabular-nums text-if-red dark:text-red-400">
               {reais.format(totalPerda)}
             </td>
