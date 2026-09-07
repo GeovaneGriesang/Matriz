@@ -5,6 +5,7 @@ import { SimuladorEvasao, type LinhaSimulavel } from "@/components/simulador/Sim
 import { SimuladorRap, type InstituicaoRap } from "@/components/simulador/SimuladorRap";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { calcularQualidadeEficienciaRede } from "@/server/queries/qualidadeEficienciaRede";
+import { campusEstaNoPiso, carregarTaxasFuncionamento } from "@/server/queries/funcionamentoCampus";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,29 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   const unidadePorId = new Map(unidades.map((u) => [u.id, u]));
   const instituicaoPorId = new Map(instituicoes.map((i) => [i.id, i]));
 
+  // Câmpus já travados no Piso Mínimo: reduzir a evasão simulada não aumenta o que
+  // eles recebem de verdade, porque o Funcionamento já está no piso, não no cálculo
+  // por matrícula que a evasão afeta (ver `funcionamentoCampus.ts`).
+  const taxasFuncionamento = await carregarTaxasFuncionamento(ano);
+  const distribuicaoCampusRede = taxasFuncionamento
+    ? await prisma.distribuicaoCampus.findMany({
+        where: { ano, unidadeId: { in: porCampusRede.map((c) => c.unidadeId) } },
+        select: { unidadeId: true, mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true, elegivelPiso: true },
+      })
+    : [];
+  const noPisoPorId = new Map(
+    distribuicaoCampusRede.map((d) => [
+      d.unidadeId,
+      campusEstaNoPiso(taxasFuncionamento!, {
+        mtPresencial: Number(d.mtPresencial ?? 0),
+        mtEad: Number(d.mtEad ?? 0),
+        mtEadMooc: Number(d.mtEadMooc ?? 0),
+        mtEadFp: Number(d.mtEadFp ?? 0),
+        elegivelPiso: d.elegivelPiso,
+      }),
+    ]),
+  );
+
   const linhasCampus: LinhaSimulavel[] = porCampusRede.map((c) => {
     const unidade = unidadePorId.get(c.unidadeId);
     const instituicao = unidade ? instituicaoPorId.get(unidade.instituicaoId) : undefined;
@@ -63,6 +87,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
       recebido: Number(c._sum.valorReais ?? 0),
       perda: Number(c._sum.perdaEvasaoReais ?? 0),
       grupo: instituicao?.sigla,
+      estaNoPiso: noPisoPorId.get(c.unidadeId) ?? false,
     };
   });
 
