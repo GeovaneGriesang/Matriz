@@ -12,6 +12,7 @@
 import { prisma } from "../src/server/db/prisma";
 import { carregarParticipacao } from "../src/carga/carregarParticipacao";
 import { carregarProposta } from "../src/carga/carregarProposta";
+import { carregarExpansaoPiso } from "../src/carga/carregarExpansaoPiso";
 import { carregarComparativo } from "../src/carga/carregarComparativo";
 import { carregarConferencia } from "../src/carga/carregarConferencia";
 import { carregarConferenciaAluno } from "../src/carga/carregarConferenciaAluno";
@@ -39,6 +40,16 @@ async function carregarCiclo(ano: number) {
     console.log(`     Piso reservado do bloco ........... ${reais.format(p.pisoTotalDeclarado)}`);
     console.log(`     Assistência somada por câmpus ..... ${reais.format(p.somaAssistencia)}`);
     for (const a of p.avisos) console.log(`     AVISO: ${a}`);
+  }
+
+  // Correção pontual: câmpus novos da aba EXPANSÃO do arquivo OFICIAL (não a fonte
+  // alternativa), que já vêm com o Piso Mínimo definido mesmo quando a matrícula
+  // por câmpus da exportação principal saiu zerada. Ver `carregarExpansaoPiso.ts`.
+  const exp = await carregarExpansaoPiso(ano);
+  if (exp) {
+    console.log(`  Correção do Piso Mínimo (aba EXPANSÃO, arquivo oficial)...`);
+    console.log(`     ${exp.total} câmpus na lista, ${exp.jaExistiam} já cadastrados, ${exp.criados} novos`);
+    for (const a of exp.avisos) console.log(`     AVISO: ${a}`);
   }
 
   // 2ª fase: só existe para o IFSul. Depende da 5ª, que cria as unidades.
