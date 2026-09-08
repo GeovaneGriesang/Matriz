@@ -35,9 +35,13 @@ const EXPORTADOS = path.join(RAIZ_DADOS, "mdo.iftm.edu.br", "Exportados");
  */
 const FONTE_ALTERNATIVA_2026 = path.join(RAIZ_DADOS, "Outras fontes", "2026", "Matriz Distribuição Orçamentária 2025.xlsx");
 
-/** 5ª fase: a proposta compilada, com todos os blocos por câmpus e instituição. */
-export function planilhaProposta(ano: number): string {
-  if (ano === 2026 && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
+/**
+ * Sempre a exportação oficial, nunca a fonte alternativa de 2026: existe à parte
+ * porque algumas abas (ex.: EXPANSÃO, com a lista de câmpus novos no Piso Mínimo)
+ * só existem no arquivo oficial, mesmo quando ele tem a matrícula por câmpus
+ * zerada e por isso `planilhaProposta` prefere a alternativa para o resto da carga.
+ */
+export function planilhaPropostaOficial(ano: number): string {
   return path.join(
     EXPORTADOS,
     "01 - Matriz orçamentária",
@@ -46,6 +50,12 @@ export function planilhaProposta(ano: number): string {
     String(ano),
     `Matriz Distribuição Orçamentária ${ano}.xlsx`,
   );
+}
+
+/** 5ª fase: a proposta compilada, com todos os blocos por câmpus e instituição. */
+export function planilhaProposta(ano: number): string {
+  if (ano === 2026 && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
+  return planilhaPropostaOficial(ano);
 }
 
 /** 6ª fase: a participação de cada ciclo de curso. Existe só para 2027 até agora. */
