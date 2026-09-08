@@ -246,7 +246,7 @@ export default async function ComparativoPage({
           </div>
           {linhasCampus.length === 0 ? (
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Nenhum câmpus com dado por curso (6ª fase) em {anoA} ou {anoB}.
+              Nenhum câmpus com Funcionamento (5ª fase) carregado em {anoA} ou {anoB}.
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
