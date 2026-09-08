@@ -18,10 +18,17 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
 
-  const [anos, instituicoes] = await Promise.all([
-    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } }),
+  // Ciclos disponíveis: união da 6ª fase (evasão) com a tabela de indicadores por
+  // instituição (RAP), porque um ciclo pode ter só uma das duas (2026 só tem RAP,
+  // ainda sem 6ª fase).
+  const [anosCiclo, anosIndicadores, instituicoes] = await Promise.all([
+    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
+    prisma.distribuicaoInstituicao.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
   ]);
+  const anos = Array.from(new Set([...anosCiclo, ...anosIndicadores].map((a) => a.ano)))
+    .sort((a, b) => b - a)
+    .map((ano) => ({ ano }));
 
   if (anos.length === 0) {
     return (
@@ -186,7 +193,14 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
 
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h2>
-        <SimuladorEvasao linhas={[totalRede, ...linhasPorInstituicao]} redeTaxa={redeTaxa} />
+        {porCampusRede.length === 0 ? (
+          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
+            por evasão, então não há nada para simular aqui neste ciclo.
+          </p>
+        ) : (
+          <SimuladorEvasao linhas={[totalRede, ...linhasPorInstituicao]} redeTaxa={redeTaxa} />
+        )}
       </div>
 
       <div className="flex flex-col gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">

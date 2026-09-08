@@ -33,10 +33,17 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const sigla = params.instituicao ?? "IFSUL";
   const campusId = params.campus ? Number(params.campus) : null;
 
-  const [anos, instituicoes] = await Promise.all([
-    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } }),
+  // Ciclos disponíveis: união da 6ª fase com a 5ª, pelo mesmo motivo da Consulta (ver
+  // comentário lá): um ciclo sem 6ª fase ainda deve aparecer como opção, só que sem
+  // dado de evasão nenhum, porque esse dado só existe na 6ª fase.
+  const [anosCiclo, anosCampus, instituicoes] = await Promise.all([
+    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
+    prisma.distribuicaoCampus.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
   ]);
+  const anos = Array.from(new Set([...anosCiclo, ...anosCampus].map((a) => a.ano)))
+    .sort((a, b) => b - a)
+    .map((ano) => ({ ano }));
 
   if (anos.length === 0) {
     return (
@@ -65,6 +72,43 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
     where: { ano },
     _sum: { valorReais: true, perdaEvasaoReais: true },
   });
+
+  // Perda por evasão só existe na 6ª fase: sem ela para este ciclo, não há nada para
+  // calcular (a Consulta consegue cair para a 5ª fase porque o Funcionamento existe
+  // lá; evasão não existe em nenhuma outra fase).
+  if (porInstituicao.length === 0) {
+    return (
+      <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
+          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+            Quanto cada instituição perde por evasão, e essa perda como proporção do que recebe.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {anos.map((a) => (
+            <Link
+              key={a.ano}
+              href={`/evasao?ano=${a.ano}`}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                a.ano === ano
+                  ? "bg-if-green text-white"
+                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {a.ano}
+            </Link>
+          ))}
+        </div>
+        <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
+          por evasão. Não é que a evasão esteja zerada: este sistema simplesmente ainda não tem esse
+          dado para {ano}.
+        </p>
+      </main>
+    );
+  }
+
   const unidades = await prisma.unidade.findMany({
     select: { id: true, nome: true, instituicaoId: true },
   });

@@ -30,10 +30,17 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   const siglaEscolhida = params.instituicao ?? "IFSUL";
   const campusEscolhido = params.campus ? Number(params.campus) : null;
 
-  const [anosDisponiveis, instituicoes] = await Promise.all([
-    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } }),
+  // Ciclos disponíveis: união da 6ª fase (por curso) com a 5ª (por câmpus), porque um
+  // ciclo pode ter só a 5ª (caso de 2026, sem Participação Orçamentária ainda) e ainda
+  // assim ter Funcionamento por câmpus para mostrar.
+  const [anosCiclo, anosCampus, instituicoes] = await Promise.all([
+    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
+    prisma.distribuicaoCampus.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
   ]);
+  const anosDisponiveis = Array.from(new Set([...anosCiclo, ...anosCampus].map((a) => a.ano)))
+    .sort((a, b) => b - a)
+    .map((ano) => ({ ano }));
 
   if (instituicoes.length === 0) {
     return (
@@ -51,26 +58,34 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   // primeiro. É a porta de entrada: clicar numa instituição leva ao detalhamento
   // por câmpus abaixo.
   if (modoMacro) {
-    const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
-      by: ["unidadeId"],
-      where: { ano },
-      _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
-    });
+    const [porCampusRede, distribuicaoCampusRede] = await Promise.all([
+      prisma.distribuicaoCiclo.groupBy({
+        by: ["unidadeId"],
+        where: { ano },
+        _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
+      }),
+      // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
+      // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
+      // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato
+      // recebe. Além disso, um ciclo pode não ter 6ª fase nenhuma (2026): por isso a
+      // lista de câmpus é a UNIÃO das duas fontes, não só quem tem curso.
+      prisma.distribuicaoCampus.findMany({
+        where: { ano },
+        select: { unidadeId: true, vlMatrFinal: true },
+      }),
+    ]);
     const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
     const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
 
-    // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
-    // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
-    // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato recebe
-    // (visto em produção: um câmpus mostrando R$ 72 mil somando os cursos contra
-    // R$ 700 mil reais). Ver o mesmo ajuste no detalhe por câmpus, mais abaixo.
-    const distribuicaoCampusRede = await prisma.distribuicaoCampus.findMany({
-      where: { ano },
-      select: { unidadeId: true, vlMatrFinal: true },
-    });
+    const somaCicloPorId = new Map(porCampusRede.map((c) => [c.unidadeId, c._sum]));
     const vlMatrFinalPorId = new Map(
       distribuicaoCampusRede.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
     );
+    const idsCampusRede = new Set<number>([
+      ...porCampusRede.map((c) => c.unidadeId),
+      ...distribuicaoCampusRede.map((d) => d.unidadeId),
+    ]);
+    const semSextaFase = porCampusRede.length === 0 && distribuicaoCampusRede.length > 0;
 
     const recebidosRede = await prisma.valorRecebidoCampus.findMany({
       where: { ano },
@@ -81,14 +96,15 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       number,
       { campus: number; valor: number; perda: number; matricula: number; recebidoReal: number; campusComRecebido: number }
     >();
-    for (const g of porCampusRede) {
-      const instId = instituicaoPorUnidade.get(g.unidadeId);
+    for (const unidadeId of idsCampusRede) {
+      const instId = instituicaoPorUnidade.get(unidadeId);
       if (instId === undefined) continue;
       const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
       a.campus += 1;
-      a.valor += vlMatrFinalPorId.get(g.unidadeId) ?? Number(g._sum.valorReais ?? 0);
-      a.perda += Number(g._sum.perdaEvasaoReais ?? 0);
-      a.matricula += Number(g._sum.matriculaTotal ?? 0);
+      const somaCiclo = somaCicloPorId.get(unidadeId);
+      a.valor += vlMatrFinalPorId.get(unidadeId) ?? Number(somaCiclo?.valorReais ?? 0);
+      a.perda += Number(somaCiclo?.perdaEvasaoReais ?? 0);
+      a.matricula += Number(somaCiclo?.matriculaTotal ?? 0);
       acumulado.set(instId, a);
     }
     for (const r of recebidosRede) {
@@ -161,9 +177,17 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           ))}
         </div>
 
+        {semSextaFase && (
+          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
+            detalhamento por curso nem perda por evasão. Os valores abaixo vêm da 5ª fase (Funcionamento
+            por câmpus).
+          </p>
+        )}
+
         {linhasInstituicoes.length === 0 ? (
           <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            Nenhuma instituição com dado por curso (6ª fase) neste ciclo ainda.
+            Nenhuma instituição com dado de Funcionamento (5ª ou 6ª fase) neste ciclo ainda.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
@@ -176,41 +200,50 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
 
   const instituicao = instituicoes.find((i) => i.sigla === siglaEscolhida) ?? instituicoes[0]!;
 
-  // Totais por câmpus da instituição escolhida.
-  const porCampus = await prisma.distribuicaoCiclo.groupBy({
-    by: ["unidadeId"],
-    where: { ano, unidade: { instituicaoId: instituicao.id } },
-    _count: { _all: true },
-    _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
-  });
+  // Totais por câmpus da instituição escolhida. A lista de câmpus é a UNIÃO da 6ª fase
+  // (`DistribuicaoCiclo`, por curso) com a 5ª (`DistribuicaoCampus`, por câmpus): um
+  // ciclo pode não ter 6ª fase nenhuma (2026, sem Participação Orçamentária ainda) e
+  // mesmo assim ter Funcionamento por câmpus para mostrar.
+  const [porCampus, distribuicaoCampus] = await Promise.all([
+    prisma.distribuicaoCiclo.groupBy({
+      by: ["unidadeId"],
+      where: { ano, unidade: { instituicaoId: instituicao.id } },
+      _count: { _all: true },
+      _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
+    }),
+    // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
+    // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
+    // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato recebe
+    // (o piso substitui, não soma, ver comentário de `CicloOrcamento`). Confirmado
+    // comparando com `vlMatrFinal`: um câmpus elegível chegou a mostrar R$ 72 mil
+    // somando os cursos contra R$ 700 mil reais.
+    prisma.distribuicaoCampus.findMany({
+      where: { ano, unidade: { instituicaoId: instituicao.id } },
+      select: {
+        unidadeId: true, vlMatrFinal: true, elegivelPiso: true,
+        mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true,
+      },
+    }),
+  ]);
+
+  const somaCicloPorId = new Map(porCampus.map((c) => [c.unidadeId, c]));
+  const idsCampus = Array.from(
+    new Set([...porCampus.map((c) => c.unidadeId), ...distribuicaoCampus.map((d) => d.unidadeId)]),
+  );
+  const semSextaFaseInstituicao = porCampus.length === 0 && distribuicaoCampus.length > 0;
 
   const unidades = await prisma.unidade.findMany({
-    where: { id: { in: porCampus.map((c) => c.unidadeId) } },
+    where: { id: { in: idsCampus } },
     select: { id: true, nome: true },
   });
   const nomePorId = new Map(unidades.map((u) => [u.id, u.nome]));
 
   const recebidos = await prisma.valorRecebidoCampus.findMany({
-    where: { ano, unidadeId: { in: porCampus.map((c) => c.unidadeId) } },
+    where: { ano, unidadeId: { in: idsCampus } },
     select: { unidadeId: true, valorRecebido: true, observacao: true },
   });
   const recebidoPorId = new Map(recebidos.map((r) => [r.unidadeId, Number(r.valorRecebido)]));
 
-  // A 6ª fase (`DistribuicaoCiclo`, por curso) traz a participação de cada ciclo no
-  // Funcionamento ANTES do Piso Mínimo: para os câmpus elegíveis, somar os cursos
-  // dá o valor "calculado" pela matrícula, não o R$ 700.000 que o câmpus de fato
-  // recebe (o piso substitui, não soma, ver comentário de `CicloOrcamento`).
-  // Confirmado comparando com `vlMatrFinal`: um câmpus elegível chegou a mostrar
-  // R$ 72 mil somando os cursos contra R$ 700 mil reais. Por isso o valor "Gerado
-  // pela matriz" usa `vlMatrFinal` (5ª fase, já com o piso aplicado pela MDO) em vez
-  // da soma dos cursos.
-  const distribuicaoCampus = await prisma.distribuicaoCampus.findMany({
-    where: { ano, unidadeId: { in: porCampus.map((c) => c.unidadeId) } },
-    select: {
-      unidadeId: true, vlMatrFinal: true, elegivelPiso: true,
-      mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true,
-    },
-  });
   const vlMatrFinalPorId = new Map(
     distribuicaoCampus.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
   );
@@ -234,17 +267,20 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       : [],
   );
 
-  const linhas = porCampus
-    .map((c) => ({
-      unidadeId: c.unidadeId,
-      nome: nomePorId.get(c.unidadeId) ?? `Unidade ${c.unidadeId}`,
-      ciclos: c._count._all,
-      valor: vlMatrFinalPorId.get(c.unidadeId) ?? Number(c._sum.valorReais ?? 0),
-      perda: Number(c._sum.perdaEvasaoReais ?? 0),
-      matricula: Number(c._sum.matriculaTotal ?? 0),
-      recebidoReal: recebidoPorId.get(c.unidadeId) ?? null,
-      funcionamentoCalculado: funcionamentoPorId.get(c.unidadeId) ?? null,
-    }))
+  const linhas = idsCampus
+    .map((unidadeId) => {
+      const c = somaCicloPorId.get(unidadeId);
+      return {
+        unidadeId,
+        nome: nomePorId.get(unidadeId) ?? `Unidade ${unidadeId}`,
+        ciclos: c?._count._all ?? 0,
+        valor: vlMatrFinalPorId.get(unidadeId) ?? Number(c?._sum.valorReais ?? 0),
+        perda: Number(c?._sum.perdaEvasaoReais ?? 0),
+        matricula: Number(c?._sum.matriculaTotal ?? 0),
+        recebidoReal: recebidoPorId.get(unidadeId) ?? null,
+        funcionamentoCalculado: funcionamentoPorId.get(unidadeId) ?? null,
+      };
+    })
     .sort((a, b) => b.valor - a.valor);
 
   const total = linhas.reduce(
@@ -312,6 +348,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
           pela matriz.
         </p>
+        {semSextaFaseInstituicao && (
+          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
+            detalhamento por curso nem perda por evasão para {instituicao.sigla}. Os valores abaixo vêm
+            da 5ª fase (Funcionamento por câmpus).
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -400,9 +443,16 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
               Marque as caixas da coluna &quot;Comparar&quot; para ver dois ou mais cursos lado a lado.
             </p>
           )}
-          <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
-          </div>
+          {cursos.length === 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Sem detalhamento por curso: o ciclo {ano} não tem a 6ª fase da MDO (participação por
+              curso) carregada.
+            </p>
+          ) : (
+            <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+              <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
+            </div>
+          )}
         </div>
       )}
 
