@@ -26,6 +26,12 @@ export interface InstituicaoQE {
   rapPresencial: number;
   rapPonderadoOficial: number | null;
   rapPonderadoRecalc: number;
+  /** Falso quando o ponderado oficial não bate com o que a fórmula de faixas
+   * (`faixaRap`/`pesoRap`) prevê para este RAP Presencial — sinal de que a
+   * instituição tem uma regra própria que este sistema não reproduz (ex.: CPII,
+   * ver comentário em `calcularQualidadeEficienciaRede`). Confiável por padrão
+   * quando não há oficial para comparar. */
+  rapConfiavel: boolean;
   rapEqualizadoOficial: number | null;
   vlRapOficial: number;
   aplTecnico: number;
@@ -101,6 +107,15 @@ export async function calcularQualidadeEficienciaRede(ano: number): Promise<Qual
 
       const faixaRapRecalc = faixaRap(rapPresencial);
       const rapPonderadoRecalc = rapPresencial * pesoRap(faixaRapRecalc);
+      // Confirmado contra a planilha oficial (2027): quase toda instituição bate
+      // exato (ex.: 21,82 × peso 2 = 43,64), mas o CPII tem RAP Presencial 16,36
+      // (faixa <18, peso 0 aqui) com ponderado oficial 38,10 — não é arredondamento,
+      // é uma instituição com regra própria (não é um "Instituto Federal" padrão)
+      // que este sistema não sabe reproduzir. Sem esse filtro, a fatia fantasma do
+      // CPII inflava o denominador da equalização e distorcia o recálculo de TODAS
+      // as outras 41 instituições, mesmo as que batiam perfeitamente sozinhas.
+      const rapPonderadoOficialBruto = n(r.rapPonderado);
+      const rapConfiavel = rapPonderadoOficialBruto === null || Math.abs(rapPonderadoOficialBruto - rapPonderadoRecalc) < 0.5;
 
       const iaplTecnicoPonderadoRecalc = aplTecnico * pesoIaplTecnicos(aplTecnico);
       const iaplFormacaoPonderadoRecalc = aplFormacaoProfessor * pesoIaplFormacaoProfessores(aplFormacaoProfessor);
@@ -117,8 +132,9 @@ export async function calcularQualidadeEficienciaRede(ano: number): Promise<Qual
         ieaEqualizadoOficial: n(r.ieaEqualizado),
         vlIeaOficial: n(r.vlIea) ?? 0,
         rapPresencial,
-        rapPonderadoOficial: n(r.rapPonderado),
+        rapPonderadoOficial: rapPonderadoOficialBruto,
         rapPonderadoRecalc,
+        rapConfiavel,
         rapEqualizadoOficial: n(r.rapEqualizado),
         vlRapOficial: n(r.vlRap) ?? 0,
         aplTecnico, aplFormacaoProfessor, aplProeja,
@@ -139,7 +155,7 @@ export async function calcularQualidadeEficienciaRede(ano: number): Promise<Qual
     temFaixaIea,
     instituicoes,
     somaIeaPonderadoRecalc: instituicoes.reduce((s, l) => s + (l.ieaPonderadoRecalc ?? 0), 0),
-    somaRapPonderadoRecalc: instituicoes.reduce((s, l) => s + l.rapPonderadoRecalc, 0),
+    somaRapPonderadoRecalc: instituicoes.reduce((s, l) => s + (l.rapConfiavel ? l.rapPonderadoRecalc : 0), 0),
     somaIaplTecnicoRecalc: instituicoes.reduce((s, l) => s + l.iaplTecnicoPonderadoRecalc, 0),
     somaIaplFormacaoRecalc: instituicoes.reduce((s, l) => s + l.iaplFormacaoPonderadoRecalc, 0),
     somaIaplProejaRecalc: instituicoes.reduce((s, l) => s + l.iaplProejaPonderadoRecalc, 0),
