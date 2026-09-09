@@ -28,28 +28,34 @@ export async function SiteHeader() {
           </span>
         </Link>
         <nav className="flex items-center gap-4">
+          {/* Ordem pensada para quem acompanha o texto de "Como funciona" e vai
+              seguindo as telas na mesma sequência da conta da MDO: primeiro o manual,
+              depois de onde vêm os dados, depois o bloco Funcionamento (Consulta e o
+              que a evasão tira dele), depois o bloco Qualidade e Eficiência
+              (Conferência), depois o Simulador (que combina os dois blocos acima) e
+              só então Comparativo, que olha tudo isso ao longo de vários ciclos. */}
           {acessoPleno && (
             <>
-              <Link href="/consulta" className={LINK_CLASS}>
-                Consulta
-              </Link>
-              <Link href="/comparativo" className={LINK_CLASS}>
-                Comparativo
-              </Link>
-              <Link href="/evasao" className={LINK_CLASS}>
-                Perda por evasão
-              </Link>
-              <Link href="/simulador" className={LINK_CLASS}>
-                Simulador
+              <Link href="/como-funciona" className={LINK_CLASS}>
+                Como funciona
               </Link>
               <Link href="/dados-importados" className={LINK_CLASS}>
                 Dados importados
               </Link>
-              <Link href="/como-funciona" className={LINK_CLASS}>
-                Como funciona
+              <Link href="/consulta" className={LINK_CLASS}>
+                Consulta
+              </Link>
+              <Link href="/evasao" className={LINK_CLASS}>
+                Perda por evasão
               </Link>
               <Link href="/conferencia" className={LINK_CLASS}>
                 Conferência
+              </Link>
+              <Link href="/simulador" className={LINK_CLASS}>
+                Simulador
+              </Link>
+              <Link href="/comparativo" className={LINK_CLASS}>
+                Comparativo
               </Link>
               <Link href="/" className={LINK_CLASS}>
                 Painel

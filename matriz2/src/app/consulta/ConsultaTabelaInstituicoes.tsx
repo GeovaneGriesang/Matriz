@@ -15,7 +15,7 @@ export interface InstituicaoLinha {
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const numero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
-const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * Visão macro (rede inteira): uma linha por instituição, clicável para abrir o

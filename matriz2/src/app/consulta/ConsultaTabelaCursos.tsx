@@ -23,7 +23,7 @@ export interface CursoLinha {
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * Client Component só para hospedar `colunas` (com funções `valor`/`render`):

@@ -187,26 +187,15 @@ export default async function Home() {
 
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Telas</h2>
+        {/* Mesma ordem do cabeçalho: começa pelo manual e pela origem dos dados,
+            depois segue a mesma sequência da conta da MDO (bloco Funcionamento,
+            depois Qualidade e Eficiência), até o Comparativo, que olha tudo isso ao
+            longo de vários ciclos. */}
         <div className="grid gap-3 sm:grid-cols-2">
           <Atalho
-            href="/consulta"
-            titulo="Consulta"
-            resumo="Quanto cada instituição e câmpus recebe, e de quais cursos esse valor vem."
-          />
-          <Atalho
-            href="/comparativo"
-            titulo="Comparativo entre ciclos"
-            resumo="O que mudou de um ciclo para o outro, por instituição."
-          />
-          <Atalho
-            href="/evasao"
-            titulo="Perda por evasão"
-            resumo="Quanto se deixa de receber por aluno evadido, por instituição, câmpus e curso."
-          />
-          <Atalho
-            href="/simulador"
-            titulo="Simulador"
-            resumo="E se a evasão de um câmpus caísse? Veja o efeito estimado."
+            href="/como-funciona"
+            titulo="Como funciona"
+            resumo="O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado."
           />
           <Atalho
             href="/dados-importados"
@@ -214,9 +203,29 @@ export default async function Home() {
             resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."
           />
           <Atalho
-            href="/como-funciona"
-            titulo="Como funciona"
-            resumo="O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado."
+            href="/consulta"
+            titulo="Consulta"
+            resumo="Quanto cada instituição e câmpus recebe, e de quais cursos esse valor vem."
+          />
+          <Atalho
+            href="/evasao"
+            titulo="Perda por evasão"
+            resumo="Quanto se deixa de receber por aluno evadido, por instituição, câmpus e curso."
+          />
+          <Atalho
+            href="/conferencia"
+            titulo="Conferência"
+            resumo="Refaz o cálculo de IEA, RAP e IAPL a partir dos mesmos componentes da MDO, para comparar com o oficial."
+          />
+          <Atalho
+            href="/simulador"
+            titulo="Simulador"
+            resumo="E se a evasão caísse e a RAP e o IAPL mudassem de faixa, ao mesmo tempo? Veja o efeito combinado."
+          />
+          <Atalho
+            href="/comparativo"
+            titulo="Comparativo entre ciclos"
+            resumo="O que mudou de um ciclo para o outro, por instituição."
           />
         </div>
       </div>
