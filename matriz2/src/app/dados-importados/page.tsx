@@ -21,7 +21,14 @@ export default async function DadosImportadosPage() {
     orderBy: [{ cicloOrcamento: "desc" }, { carregadoEm: "desc" }],
     include: {
       instituicao: { select: { sigla: true } },
-      _count: { select: { distribuicoesCiclo: true, distribuicoesCampus: true, distribuicoesInstituicao: true } },
+      _count: {
+        select: {
+          distribuicoesCiclo: true,
+          distribuicoesCampus: true,
+          distribuicoesInstituicao: true,
+          conferenciasExtracaoAluno: true,
+        },
+      },
     },
   });
 
@@ -38,6 +45,7 @@ export default async function DadosImportadosPage() {
     ...f,
     registros: f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
     soma: somaPorFonte.get(f.id) ?? null,
+    temDadoPessoal: f._count.conferenciasExtracaoAluno > 0,
   }));
 
   return (
@@ -51,7 +59,8 @@ export default async function DadosImportadosPage() {
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           A coluna <strong>Abrange</strong> merece atenção. Metade do material da MDO cobre apenas uma
           instituição; somar conjuntos de abrangências diferentes produz um total que parece de rede,
-          mas não é.
+          mas não é. Clique no nome de um arquivo para baixar o original, exceto os que trazem dado
+          pessoal por aluno (LGPD), que só ficam disponíveis nos agregados já mostrados pelo sistema.
         </p>
       </div>
 
