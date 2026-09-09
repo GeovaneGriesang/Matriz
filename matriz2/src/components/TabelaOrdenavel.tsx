@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 export interface ColunaOrdenavel<T> {
   chave: string;
@@ -31,6 +31,7 @@ export function TabelaOrdenavel<T>({
   rodape,
   corpoVazio,
   cabecalhoFixo,
+  linhaExpandida,
 }: {
   linhas: T[];
   colunas: ColunaOrdenavel<T>[];
@@ -41,8 +42,26 @@ export function TabelaOrdenavel<T>({
   corpoVazio?: ReactNode;
   /** Para tabelas longas dentro de um contêiner com rolagem própria. */
   cabecalhoFixo?: boolean;
+  /**
+   * Conteúdo do "+/-" em frente à linha (pedido do usuário, versão antiga do
+   * Matriz): quando presente, cada linha ganha uma coluna de expandir/recolher à
+   * esquerda. Retornar `null`/`undefined` para uma linha específica esconde o botão
+   * dela (linha sem nada para detalhar). Várias linhas podem ficar abertas ao mesmo
+   * tempo, cada uma independente das outras.
+   */
+  linhaExpandida?: (linha: T) => ReactNode | null | undefined;
 }) {
   const [ordenacao, setOrdenacao] = useState<{ chave: string; direcao: "asc" | "desc" } | null>(null);
+  const [expandidas, setExpandidas] = useState<Set<string | number>>(new Set());
+
+  function alternarExpandida(chave: string | number) {
+    setExpandidas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
+      return novo;
+    });
+  }
 
   const linhasOrdenadas = useMemo(() => {
     if (!ordenacao) return linhas;
@@ -74,6 +93,7 @@ export function TabelaOrdenavel<T>({
         className={`bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 ${cabecalhoFixo ? "sticky top-0" : ""}`}
       >
         <tr>
+          {linhaExpandida && <th className="w-8 px-2 py-2.5" aria-hidden />}
           {colunas.map((c) => {
             const ativa = ordenacao?.chave === c.chave;
             const alinhaDireita = c.alinhamento === "right";
@@ -105,21 +125,49 @@ export function TabelaOrdenavel<T>({
       </thead>
       <tbody>
         {linhasOrdenadas.length === 0 && corpoVazio}
-        {linhasOrdenadas.map((linha) => (
-          <tr
-            key={chaveLinha(linha)}
-            className={`border-t border-neutral-200 dark:border-neutral-800 ${linhaClasse?.(linha) ?? ""}`}
-          >
-            {colunas.map((c) => (
-              <td
-                key={c.chave}
-                className={`px-4 py-2.5 ${c.alinhamento === "right" ? "text-right tabular-nums" : ""}`}
+        {linhasOrdenadas.map((linha) => {
+          const chave = chaveLinha(linha);
+          const conteudoExpandido = linhaExpandida?.(linha);
+          const aberta = expandidas.has(chave);
+          return (
+            <Fragment key={chave}>
+              <tr
+                className={`border-t border-neutral-200 dark:border-neutral-800 ${linhaClasse?.(linha) ?? ""}`}
               >
-                {c.render ? c.render(linha) : (c.valor(linha) ?? "—")}
-              </td>
-            ))}
-          </tr>
-        ))}
+                {linhaExpandida && (
+                  <td className="px-2 py-2.5 text-center">
+                    {conteudoExpandido != null && (
+                      <button
+                        type="button"
+                        onClick={() => alternarExpandida(chave)}
+                        aria-expanded={aberta}
+                        aria-label={aberta ? "Recolher" : "Expandir"}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded border border-neutral-300 text-xs font-semibold leading-none text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                      >
+                        {aberta ? "−" : "+"}
+                      </button>
+                    )}
+                  </td>
+                )}
+                {colunas.map((c) => (
+                  <td
+                    key={c.chave}
+                    className={`px-4 py-2.5 ${c.alinhamento === "right" ? "text-right tabular-nums" : ""}`}
+                  >
+                    {c.render ? c.render(linha) : (c.valor(linha) ?? "—")}
+                  </td>
+                ))}
+              </tr>
+              {aberta && conteudoExpandido != null && (
+                <tr className="border-t border-neutral-200 dark:border-neutral-800">
+                  <td colSpan={colunas.length + 1} className="bg-neutral-50 p-3 dark:bg-neutral-900/40">
+                    {conteudoExpandido}
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          );
+        })}
       </tbody>
       {rodape}
     </table>

@@ -3,7 +3,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { ComparativoTabela } from "./ComparativoTabela";
-import { ComparativoTabelaCampus } from "./ComparativoTabelaCampus";
+import type { LinhaComparativoCampus } from "./ComparativoTabelaCampus";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -24,18 +24,10 @@ interface Linha {
   posicaoB: number | null;
 }
 
-interface LinhaCampus {
-  unidadeId: number;
-  nome: string;
-  a: number;
-  b: number;
-  variacao: number;
-}
-
 export default async function ComparativoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bloco?: string; instituicao?: string }>;
+  searchParams: Promise<{ bloco?: string }>;
 }) {
   await requireAcessoPlenoOrRedirect("/comparativo");
   const params = await searchParams;
@@ -99,54 +91,48 @@ export default async function ComparativoPage({
     orderBy: { carregadoEm: "desc" },
   });
 
-  // Detalhe por câmpus, só quando uma instituição é escolhida. Usa `DistribuicaoCampus`
-  // (a mesma fonte que a Consulta passou a usar), NÃO o relatório de comparativo que
-  // desce a câmpus: esse relatório troca o valor entre câmpus "irmãos" de nome
-  // parecido (ver comentário de `ComparativoInstitucional` no schema), então nunca
-  // foi carregado. `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado), não a soma
-  // dos cursos da 6ª fase: essa soma vem ANTES do piso, e para um câmpus elegível fica
-  // bem abaixo do que ele de fato recebe (confirmado em produção: R$ 72 mil somando
-  // os cursos contra R$ 700 mil reais). Por vir de outra fonte, o Total por câmpus
-  // pode não bater ao centavo com o Total da instituição acima.
-  let linhasCampus: LinhaCampus[] = [];
-  let instituicaoEscolhida: { sigla: string; nome: string } | null = null;
-  if (params.instituicao) {
-    const instituicao = await prisma.instituicao.findUnique({ where: { sigla: params.instituicao } });
-    if (instituicao) {
-      instituicaoEscolhida = { sigla: instituicao.sigla, nome: instituicao.nome };
-      const [porCampusA, porCampusB] = await Promise.all([
-        prisma.distribuicaoCampus.findMany({
-          where: { ano: anoA, unidade: { instituicaoId: instituicao.id } },
-          select: { unidadeId: true, vlMatrFinal: true },
-        }),
-        prisma.distribuicaoCampus.findMany({
-          where: { ano: anoB, unidade: { instituicaoId: instituicao.id } },
-          select: { unidadeId: true, vlMatrFinal: true },
-        }),
-      ]);
-      const unidadeIds = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
-      const unidades = await prisma.unidade.findMany({
-        where: { id: { in: unidadeIds } },
-        select: { id: true, nome: true },
-      });
-      const nomePorId = new Map(unidades.map((u) => [u.id, u.nome]));
-      const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
-      const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
+  // Câmpus de TODAS as instituições, para o "+/-" em frente a cada uma (nível 1 do
+  // acordeão). Usa `DistribuicaoCampus` (a mesma fonte que a Consulta passou a
+  // usar), NÃO o relatório de comparativo que desce a câmpus: esse relatório troca
+  // o valor entre câmpus "irmãos" de nome parecido (ver comentário de
+  // `ComparativoInstitucional` no schema), então nunca foi carregado. `vlMatrFinal`
+  // (5ª fase, já com o Piso Mínimo aplicado), não a soma dos cursos da 6ª fase: essa
+  // soma vem ANTES do piso, e para um câmpus elegível fica bem abaixo do que ele de
+  // fato recebe (confirmado em produção: R$ 72 mil somando os cursos contra R$ 700
+  // mil reais). Por vir de outra fonte, o Total por câmpus pode não bater ao
+  // centavo com o Total da instituição acima. Carregado para a rede inteira de uma
+  // vez (não só a instituição escolhida): expandir uma linha é instantâneo, sem
+  // recarregar a página.
+  const [porCampusA, porCampusB] = await Promise.all([
+    prisma.distribuicaoCampus.findMany({ where: { ano: anoA }, select: { unidadeId: true, vlMatrFinal: true } }),
+    prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: { unidadeId: true, vlMatrFinal: true } }),
+  ]);
+  const unidadeIdsComCampus = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
+  const unidadesComCampus = await prisma.unidade.findMany({
+    where: { id: { in: unidadeIdsComCampus } },
+    select: { id: true, nome: true, instituicao: { select: { sigla: true } } },
+  });
+  const unidadePorId = new Map(unidadesComCampus.map((u) => [u.id, u]));
+  const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
+  const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
 
-      linhasCampus = unidadeIds
-        .map((id) => {
-          const a = aPorId.get(id) ?? 0;
-          const b = bPorId.get(id) ?? 0;
-          return {
-            unidadeId: id,
-            nome: nomePorId.get(id) ?? `Unidade ${id}`,
-            a,
-            b,
-            variacao: a > 0 ? (b / a - 1) * 100 : Number.NaN,
-          };
-        })
-        .sort((x, y) => y.b - x.b);
-    }
+  const camposPorSigla: Record<string, LinhaComparativoCampus[]> = {};
+  for (const id of unidadeIdsComCampus) {
+    const unidade = unidadePorId.get(id);
+    if (!unidade) continue;
+    const a = aPorId.get(id) ?? 0;
+    const b = bPorId.get(id) ?? 0;
+    const sigla = unidade.instituicao.sigla;
+    (camposPorSigla[sigla] ??= []).push({
+      unidadeId: id,
+      nome: unidade.nome,
+      a,
+      b,
+      variacao: a > 0 ? (b / a - 1) * 100 : Number.NaN,
+    });
+  }
+  for (const campi of Object.values(camposPorSigla)) {
+    campi.sort((x, y) => y.b - x.b);
   }
 
   const BLOCOS = [
@@ -170,8 +156,9 @@ export default async function ComparativoPage({
           Este bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência) só existe por
           instituição: o relatório que abre por bloco e desce a câmpus tem valores atribuídos à unidade
           errada (no IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça), então
-          ele não foi carregado. Clique numa instituição para ver o Total por câmpus, vindo de outra
-          fonte (a mesma da Consulta).
+          ele não foi carregado. Clique no <strong>+</strong> na frente de uma instituição para abrir os
+          câmpus dela (o Total por câmpus vem de outra fonte, a mesma da Consulta); clique no{" "}
+          <strong>+</strong> de um câmpus para ver os cursos dele.
         </p>
       </div>
 
@@ -223,6 +210,7 @@ export default async function ComparativoPage({
           destaqueSigla={DESTAQUE}
           totalA={totalA}
           totalB={totalB}
+          camposPorSigla={camposPorSigla}
         />
       </div>
 
@@ -230,31 +218,6 @@ export default async function ComparativoPage({
         A cor da variação compara cada instituição com a variação da rede, não com zero: crescer menos
         que a rede significa perder fatia, mesmo com o valor em reais subindo.
       </p>
-
-      {instituicaoEscolhida && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              {instituicaoEscolhida.sigla}, por câmpus, {anoA} e {anoB}
-            </h2>
-            <Link
-              href={`/comparativo?bloco=${bloco}`}
-              className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200"
-            >
-              ← todas as instituições
-            </Link>
-          </div>
-          {linhasCampus.length === 0 ? (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Nenhum câmpus com Funcionamento (5ª fase) carregado em {anoA} ou {anoB}.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-              <ComparativoTabelaCampus linhas={linhasCampus} anoA={anoA} anoB={anoB} />
-            </div>
-          )}
-        </div>
-      )}
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

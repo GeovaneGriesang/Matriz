@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { ComparativoTabelaCampus, type LinhaComparativoCampus } from "./ComparativoTabelaCampus";
 
 export interface LinhaComparativo {
   sigla: string;
@@ -27,11 +27,11 @@ export function ComparativoTabela({
   linhas,
   anoA,
   anoB,
-  bloco,
   variacaoRede,
   destaqueSigla,
   totalA,
   totalB,
+  camposPorSigla,
 }: {
   linhas: LinhaComparativo[];
   anoA: number;
@@ -41,12 +41,19 @@ export function ComparativoTabela({
   destaqueSigla: string;
   totalA: number;
   totalB: number;
+  /** Câmpus de cada instituição, para o "+/-" em frente à sigla (nível 1). */
+  camposPorSigla: Record<string, LinhaComparativoCampus[]>;
 }) {
   return (
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(l) => l.sigla}
       linhaClasse={(l) => (l.sigla === destaqueSigla ? "bg-if-green/5 font-medium" : "")}
+      linhaExpandida={(l) => {
+        const campi = camposPorSigla[l.sigla];
+        if (!campi || campi.length === 0) return null;
+        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} />;
+      }}
       colunas={
         [
           {
@@ -54,10 +61,10 @@ export function ComparativoTabela({
             rotulo: "Instituição",
             valor: (l) => l.sigla,
             render: (l) => (
-              <Link href={`/comparativo?bloco=${bloco}&instituicao=${l.sigla}`} className="hover:underline">
+              <span>
                 <span className="font-medium">{l.sigla}</span>
                 <span className="ml-2 text-xs text-neutral-500">{l.nome}</span>
-              </Link>
+              </span>
             ),
           },
           {
@@ -116,6 +123,7 @@ export function ComparativoTabela({
       rodape={
         <tfoot>
           <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
+            <td className="px-2 py-2.5" />
             <td className="px-4 py-2.5">Rede, {linhas.length} instituições</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalA)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalB)}</td>
