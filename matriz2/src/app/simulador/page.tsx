@@ -84,25 +84,33 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     ]),
   );
 
-  // RAP é sempre indicador de instituição, nunca de câmpus isolado (ver
-  // /como-funciona#qualidade-eficiencia): por isso a árvore abaixo pendura o RAP na
-  // instituição, e um câmpus selecionado usa o RAP da instituição-mãe.
+  // RAP e IAPL são sempre indicadores de instituição, nunca de câmpus isolado (ver
+  // /como-funciona#qualidade-eficiencia): por isso a árvore abaixo pendura os dois na
+  // instituição, e um câmpus só carrega evasão e crescimento de matrícula.
   const redeQE = await calcularQualidadeEficienciaRede(ano);
-  const rapPorSigla = new Map(
+  const indicadoresPorSigla = new Map(
     redeQE.instituicoes.map((i) => [
       i.sigla,
       {
-        rapPresencial: i.rapPresencial,
-        restoRedeRapPonderado: redeQE.somaRapPonderadoRecalc - i.rapPonderadoRecalc,
-        rapEqualizadoOficial: i.rapEqualizadoOficial,
-        vlRapOficial: i.vlRapOficial,
+        rap: {
+          rapPresencial: i.rapPresencial,
+          restoRedeRapPonderado: redeQE.somaRapPonderadoRecalc - i.rapPonderadoRecalc,
+        },
+        iapl: {
+          aplTecnico: i.aplTecnico,
+          restoRedeTecnico: redeQE.somaIaplTecnicoRecalc - i.iaplTecnicoPonderadoRecalc,
+          aplFormacaoProfessor: i.aplFormacaoProfessor,
+          restoRedeFormacao: redeQE.somaIaplFormacaoRecalc - i.iaplFormacaoPonderadoRecalc,
+          aplProeja: i.aplProeja,
+          restoRedeProeja: redeQE.somaIaplProejaRecalc - i.iaplProejaPonderadoRecalc,
+        },
       },
     ]),
   );
 
   // Monta a árvore instituição → câmpus com o que cada uma tem: evasão (soma dos
-  // câmpus com 6ª fase), RAP (se a instituição tem indicador neste ciclo). União das
-  // duas fontes porque um ciclo pode ter só uma (2026 só tem RAP).
+  // câmpus com 6ª fase), RAP e IAPL (se a instituição tem indicador neste ciclo).
+  // União das duas fontes porque um ciclo pode ter só uma (2026 só tem RAP/IAPL).
   const campiPorSigla = new Map<string, NoInstituicaoSimulavel["campi"]>();
   for (const c of porCampusRede) {
     const unidade = unidadePorId.get(c.unidadeId);
@@ -119,17 +127,19 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     campiPorSigla.set(instituicao.sigla, lista);
   }
 
-  const siglasComDado = new Set([...campiPorSigla.keys(), ...rapPorSigla.keys()]);
+  const siglasComDado = new Set([...campiPorSigla.keys(), ...indicadoresPorSigla.keys()]);
   const arvore: NoInstituicaoSimulavel[] = instituicoes
     .filter((i) => siglasComDado.has(i.sigla))
     .map((i) => {
       const campi = (campiPorSigla.get(i.sigla) ?? []).sort((a, b) => b.perda - a.perda);
+      const indicadores = indicadoresPorSigla.get(i.sigla);
       return {
         sigla: i.sigla,
         nome: i.nome,
         recebido: campi.reduce((s, c) => s + c.recebido, 0),
         perda: campi.reduce((s, c) => s + c.perda, 0),
-        rap: rapPorSigla.get(i.sigla) ?? null,
+        rap: indicadores?.rap ?? null,
+        iapl: indicadores?.iapl ?? null,
         campi,
       };
     })
@@ -148,16 +158,17 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          E se a evasão caísse e a RAP mudasse de faixa, ao mesmo tempo? Escolha a rede inteira, uma
-          instituição ou um câmpus (clique no <strong>+</strong> em frente a uma instituição para abrir
-          os câmpus dela) e mexa nos dois controles juntos para ver o efeito combinado, não um de cada
-          vez.
+          Clique no <strong>+</strong> em frente a uma instituição para simular a RAP e o IAPL dela, e
+          para abrir os câmpus e simular evasão e crescimento de matrícula de cada um. Pode abrir
+          quantos quadros quiser ao mesmo tempo, em várias instituições e câmpus: cada um soma no total
+          daquela instituição e no total da rede, sem precisar escolher um alvo por vez.
         </p>
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <strong>É uma estimativa, não um recálculo da metodologia da CONIF.</strong> Evasão: valor
-          recuperado = perda atual × redução simulada. RAP: reencaixa a instituição numa faixa
-          hipotética e recalcula a fatia dela na rede. Serve para dimensionar o efeito, não para prever
-          o valor exato que a MDO publicaria.
+          recuperado = perda atual × redução simulada. Crescimento de matrícula: ganho = recebido hoje ×
+          crescimento simulado, proporcional. RAP e IAPL: reencaixam a instituição numa faixa hipotética
+          e recalculam a fatia dela na rede. Serve para dimensionar o efeito, não para prever o valor
+          exato que a MDO publicaria.
         </p>
       </div>
 
@@ -184,14 +195,15 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
 
       {arvore.length === 0 ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          O ciclo {ano} não tem nem 6ª fase (evasão) nem indicadores por instituição (RAP) carregados,
-          então não há nada para simular aqui.
+          O ciclo {ano} não tem nem 6ª fase (evasão) nem indicadores por instituição (RAP/IAPL)
+          carregados, então não há nada para simular aqui.
         </p>
       ) : (
         <SimuladorUnificado
           noRede={{ recebido: redeRecebido, perda: redePerda, taxa: redeTaxa }}
           instituicoes={arvore}
           totalBlocoRap={redeQE.totalBlocoRap}
+          totalBlocoIapl={redeQE.totalBlocoIapl}
         />
       )}
     </main>
