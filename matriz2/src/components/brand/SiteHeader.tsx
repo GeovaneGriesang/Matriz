@@ -3,6 +3,7 @@ import { InstitutoFederalMark } from "./InstitutoFederalMark";
 import { ThemeToggle } from "./ThemeToggle";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
+import { logoutAction } from "@/server/actions/adminAuth";
 
 const LINK_CLASS = "text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
 
@@ -66,6 +67,21 @@ export async function SiteHeader() {
             </Link>
           )}
         </nav>
+        {usuario && (
+          <div className="ml-auto flex items-center gap-3 text-sm">
+            <span className="text-neutral-500 dark:text-neutral-400" title={usuario.email}>
+              {usuario.nome}
+            </span>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                Sair
+              </button>
+            </form>
+          </div>
+        )}
         <ThemeToggle />
       </div>
     </header>
