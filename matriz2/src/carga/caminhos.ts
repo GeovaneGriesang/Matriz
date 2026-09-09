@@ -124,6 +124,62 @@ export function existe(caminho: string): boolean {
   return fs.existsSync(caminho);
 }
 
+/**
+ * Pasta-base de cada fase, para achar de volta o arquivo original de uma
+ * `FonteDados` já carregada (usado pelo link de baixar em "Dados importados").
+ * `null` cobre os relatórios derivados (ex.: comparativo interanual), que não têm
+ * `fase` preenchida e vivem em "03 - Indicadores"; cada fase busca só dentro da sua
+ * própria pasta para não confundir arquivos de mesmo nome em fases diferentes (ex.:
+ * "Matriz Distribuição Orçamentária 2027.xlsx" existe tanto na 5ª fase quanto,
+ * por engano da própria MDO, dentro da 2ª fase por aluno — ver
+ * `conferenciaExtracaoAluno`).
+ */
+function pastaBaseDaFase(fase: string | null): string[] {
+  switch (fase) {
+    case "F2_CONFERENCIA_EXTRACAO":
+      return [path.join(EXPORTADOS, "01 - Matriz orçamentária", "2a fase - Conferência Extração PNP")];
+    case "F5_PROPOSTA":
+      // As duas pastas: a oficial, e a fonte alternativa de 2026 (fora de
+      // "Exportados", ver `FONTE_ALTERNATIVA_2026`).
+      return [
+        path.join(EXPORTADOS, "01 - Matriz orçamentária", "5a fase - Matriz de Distribuição Orçamentária"),
+        path.join(RAIZ_DADOS, "Outras fontes"),
+      ];
+    case "F6_PARTICIPACAO":
+      return [path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária")];
+    default:
+      return [path.join(EXPORTADOS, "03 - Indicadores")];
+  }
+}
+
+function buscarArquivoRecursivo(pasta: string, nomeArquivo: string): string | null {
+  if (!fs.existsSync(pasta)) return null;
+  for (const item of fs.readdirSync(pasta, { withFileTypes: true })) {
+    const caminho = path.join(pasta, item.name);
+    if (item.isDirectory()) {
+      const achado = buscarArquivoRecursivo(caminho, nomeArquivo);
+      if (achado) return achado;
+    } else if (item.name === nomeArquivo) {
+      return caminho;
+    }
+  }
+  return null;
+}
+
+/**
+ * Acha de volta, no disco, o arquivo original que gerou uma `FonteDados` já
+ * carregada — para o link de baixar em "Dados importados". Busca pelo nome exato
+ * (`arquivo`) dentro da pasta da fase certa; `null` se não achar (arquivo movido,
+ * apagado, ou `MATRIZ2_DADOS` apontando para outro lugar nesta máquina).
+ */
+export function localizarArquivoOriginal(fase: string | null, nomeArquivo: string): string | null {
+  for (const base of pastaBaseDaFase(fase)) {
+    const achado = buscarArquivoRecursivo(base, nomeArquivo);
+    if (achado) return achado;
+  }
+  return null;
+}
+
 /** Falha cedo e com mensagem útil: o caminho errado é o erro mais provável aqui. */
 export function exigirArquivo(caminho: string, oQueEra: string): string {
   if (!fs.existsSync(caminho)) {

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import type { FaseMdo, Abrangencia, OrigemDados } from "@prisma/client";
 import { EtiquetaProcedencia } from "@/components/Procedencia";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { PROSE_LINK } from "@/lib/layoutWidths";
 
 export interface FonteLinha {
   id: number;
@@ -17,6 +19,9 @@ export interface FonteLinha {
   ressalva: string | null;
   registros: number;
   soma: number | null;
+  /** Dado pessoal por aluno (LGPD): nunca oferece o arquivo original pra baixar,
+   * só os agregados que já aparecem no sistema. */
+  temDadoPessoal: boolean;
 }
 
 const numero = new Intl.NumberFormat("pt-BR");
@@ -78,7 +83,23 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
             chave: "arquivo",
             rotulo: "Arquivo",
             valor: (f) => f.arquivo,
-            render: (f) => <span className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.arquivo}</span>,
+            render: (f) =>
+              f.temDadoPessoal ? (
+                <span
+                  className="font-mono text-xs text-neutral-600 dark:text-neutral-400"
+                  title="Dado pessoal por aluno (LGPD): não disponível para baixar, só os agregados aparecem no sistema."
+                >
+                  {f.arquivo}
+                </span>
+              ) : (
+                <Link
+                  href={`/api/dados-importados/${f.id}/baixar`}
+                  className={`font-mono text-xs ${PROSE_LINK}`}
+                  prefetch={false}
+                >
+                  {f.arquivo}
+                </Link>
+              ),
           },
           {
             chave: "abrange",
