@@ -20,7 +20,7 @@ export default async function AdminUsuariosPage() {
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Usuários</h1>
-        <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Só super-administradores acessam esta tela. Ao criar, a pessoa recebe um código por e-mail para o
           primeiro acesso. "Resetar senha" é a reserva sem depender de e-mail: gera uma senha temporária e
           derruba as sessões abertas daquela conta.

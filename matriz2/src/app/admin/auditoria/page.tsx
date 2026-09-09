@@ -43,7 +43,7 @@ export default async function AdminAuditoriaPage({
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Auditoria</h1>
-        <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Quem fez o quê, e quando: todo login, logout, troca ou reset de senha, criação de usuário e correção
           manual de dados fica registrado aqui. Mostra os {LIMITE} registros mais recentes.
         </p>

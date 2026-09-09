@@ -29,7 +29,7 @@ export default async function AdminOrcamentoPage({
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Correção manual</h1>
-        <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Para quando a MDO ainda não publicou um parâmetro do ciclo, ou publicou algo que já se sabe
           estar errado. Salvar aqui sobrescreve os 17 parâmetros do ciclo escolhido e registra a origem
           como &quot;administrador&quot;, até a próxima carga da MDO trazer o valor de volta.
@@ -65,7 +65,11 @@ export default async function AdminOrcamentoPage({
                 {" · "}
                 {ciclo.fonteDados.arquivo}
               </p>
+              {/* `key` força remontar ao trocar de ano: sem isso, o `useState` interno do
+                  formulário guarda os valores do primeiro ciclo carregado e ignora a
+                  prop `ciclo` mudando ao clicar noutro ano na aba acima. */}
               <CicloOrcamentoForm
+                key={ciclo.ano}
                 ciclo={{
                   ano: ciclo.ano,
                   valorReferenciaSpo: Number(ciclo.valorReferenciaSpo),

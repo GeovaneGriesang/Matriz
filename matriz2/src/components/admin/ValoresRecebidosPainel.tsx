@@ -29,7 +29,26 @@ interface RegistroLinha {
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const reaisSemSimbolo = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+/**
+ * `input type="number"` não sabe mostrar "1.234,56" (vírgula decimal, ponto de
+ * milhar): mostra sempre o número cru, com ponto, sem nenhum símbolo. Por isso o
+ * campo de valor é `type="text"`, formatado ao perder o foco; o valor cru some
+ * enquanto a pessoa digita, pra não brigar com o cursor a cada tecla.
+ */
+function formatarValorInput(numero: number): string {
+  return reaisSemSimbolo.format(numero);
+}
+
+/** `null` = campo vazio, `NaN` = texto que não dá pra interpretar como número. */
+function parseValorInput(texto: string): number | null {
+  const bruto = texto.trim();
+  if (bruto === "") return null;
+  const normalizado = bruto.replace(/\./g, "").replace(",", ".");
+  return Number(normalizado);
+}
 
 /**
  * Edita todos os câmpus de UMA instituição de uma vez (pedido do usuário: "não
@@ -83,19 +102,24 @@ export function ValoresRecebidosPainel({
 
     for (const u of instituicaoEscolhida.unidades) {
       const original = registroPorUnidade.get(u.id);
-      const valorBruto = String(formData.get(`valor-${u.id}`) ?? "").trim();
+      const valorBruto = String(formData.get(`valor-${u.id}`) ?? "");
       const obsBruto = String(formData.get(`obs-${u.id}`) ?? "").trim();
-      const valorOriginal = original ? String(original.valorRecebido) : "";
+      const valorNumero = parseValorInput(valorBruto);
       const obsOriginal = original?.observacao ?? "";
 
-      if (valorBruto === valorOriginal && obsBruto === obsOriginal) continue;
+      // Comparação em centavos, não pela string: o campo mostra "716,82" formatado,
+      // então comparar direto com `String(original.valorRecebido)` (que vem cru, com
+      // ponto e às vezes mais casas decimais) sempre daria "mudou" mesmo sem ninguém
+      // ter tocado no campo.
+      const valorOriginalCentavos = original ? Math.round(original.valorRecebido * 100) : null;
+      const valorNovoCentavos = valorNumero === null ? null : Math.round(valorNumero * 100);
+      if (valorNovoCentavos === valorOriginalCentavos && obsBruto === obsOriginal) continue;
 
-      if (valorBruto === "") {
+      if (valorNumero === null) {
         if (original) operacoes.push({ unidadeId: u.id, valorRecebido: null, observacao: null });
         continue;
       }
 
-      const valorNumero = Number(valorBruto.replace(",", "."));
       if (!Number.isFinite(valorNumero) || valorNumero < 0) {
         setErro(`Valor inválido em "${u.nome}".`);
         return;
@@ -209,15 +233,23 @@ export function ValoresRecebidosPainel({
                     <tr key={u.id} className="border-t border-neutral-200 dark:border-neutral-800">
                       <td className="px-4 py-2 font-medium text-neutral-900 dark:text-neutral-100">{u.nome}</td>
                       <td className="px-4 py-2">
-                        <input
-                          name={`valor-${u.id}`}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          defaultValue={original ? String(original.valorRecebido) : ""}
-                          placeholder="não informado"
-                          className="w-40 rounded-md border border-neutral-300 px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-                        />
+                        <div className="flex w-40 items-center gap-1 rounded-md border border-neutral-300 px-2 py-1.5 focus-within:ring-1 focus-within:ring-if-green dark:border-neutral-700 dark:bg-neutral-900">
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400">R$</span>
+                          <input
+                            name={`valor-${u.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            defaultValue={original ? formatarValorInput(original.valorRecebido) : ""}
+                            onBlur={(e) => {
+                              const valor = parseValorInput(e.target.value);
+                              if (valor !== null && Number.isFinite(valor) && valor >= 0) {
+                                e.target.value = formatarValorInput(valor);
+                              }
+                            }}
+                            placeholder="não informado"
+                            className="w-full border-0 bg-transparent p-0 text-sm tabular-nums text-neutral-900 focus:outline-none focus:ring-0 dark:text-neutral-100"
+                          />
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <input
