@@ -3,7 +3,11 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { salvarValorRecebidoAction, excluirValorRecebidoAction } from "@/server/actions/valoresRecebidos";
+import {
+  salvarValoresRecebidosEmLoteAction,
+  excluirValorRecebidoAction,
+  type OperacaoValorRecebido,
+} from "@/server/actions/valoresRecebidos";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 interface Instituicao {
@@ -27,6 +31,15 @@ interface RegistroLinha {
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
+/**
+ * Edita todos os câmpus de UMA instituição de uma vez (pedido do usuário: "não
+ * quero fazer cada campus de cada vez, quero fazer de todos os campus de um IF por
+ * vez"). Cada linha já vem preenchida com o valor atual, quando existe; salvar só
+ * grava o que de fato mudou (comparado ao valor original), e limpar o campo apaga o
+ * registro. `key` no formulário força um remount ao trocar de instituição ou de
+ * ano, para os campos não-controlados (`defaultValue`) voltarem a refletir os dados
+ * novos em vez de arrastar o que a pessoa tinha digitado antes.
+ */
 export function ValoresRecebidosPainel({
   ano,
   anosDisponiveis,
@@ -41,7 +54,8 @@ export function ValoresRecebidosPainel({
   const router = useRouter();
   const [instituicaoId, setInstituicaoId] = useState<number>(instituicoes[0]?.id ?? 0);
   const [erro, setErro] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
+  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState<number | null>(null);
 
   const instituicaoEscolhida = instituicoes.find((i) => i.id === instituicaoId) ?? instituicoes[0];
@@ -52,18 +66,58 @@ export function ValoresRecebidosPainel({
     return Array.from(conjunto).sort((a, b) => b - a);
   }, [anosDisponiveis, ano]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const registroPorUnidade = useMemo(() => {
+    const mapa = new Map<number, RegistroLinha>();
+    for (const r of registros) mapa.set(r.unidadeId, r);
+    return mapa;
+  }, [registros]);
+
+  async function handleSubmitLote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro(null);
-    setEnviando(true);
+    setMensagem(null);
+    if (!instituicaoEscolhida) return;
+
     const formData = new FormData(event.currentTarget);
-    const resultado = await salvarValorRecebidoAction(formData);
-    setEnviando(false);
+    const operacoes: OperacaoValorRecebido[] = [];
+
+    for (const u of instituicaoEscolhida.unidades) {
+      const original = registroPorUnidade.get(u.id);
+      const valorBruto = String(formData.get(`valor-${u.id}`) ?? "").trim();
+      const obsBruto = String(formData.get(`obs-${u.id}`) ?? "").trim();
+      const valorOriginal = original ? String(original.valorRecebido) : "";
+      const obsOriginal = original?.observacao ?? "";
+
+      if (valorBruto === valorOriginal && obsBruto === obsOriginal) continue;
+
+      if (valorBruto === "") {
+        if (original) operacoes.push({ unidadeId: u.id, valorRecebido: null, observacao: null });
+        continue;
+      }
+
+      const valorNumero = Number(valorBruto.replace(",", "."));
+      if (!Number.isFinite(valorNumero) || valorNumero < 0) {
+        setErro(`Valor inválido em "${u.nome}".`);
+        return;
+      }
+      operacoes.push({ unidadeId: u.id, valorRecebido: valorNumero, observacao: obsBruto || null });
+    }
+
+    if (operacoes.length === 0) {
+      setMensagem("Nada para salvar: nenhum valor foi alterado.");
+      return;
+    }
+
+    setSalvando(true);
+    const resultado = await salvarValoresRecebidosEmLoteAction(ano, operacoes);
+    setSalvando(false);
     if (!resultado.ok) {
       setErro(resultado.errorMessage ?? "Não foi possível salvar.");
       return;
     }
-    event.currentTarget.reset();
+    setMensagem(
+      `${operacoes.length} câmpus atualizado${operacoes.length > 1 ? "s" : ""} em ${instituicaoEscolhida.sigla}.`,
+    );
     router.refresh();
   }
 
@@ -99,82 +153,111 @@ export function ValoresRecebidosPainel({
         </div>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
-      >
-        <input type="hidden" name="ano" value={ano} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">Instituição</span>
-            <select
-              value={instituicaoId}
-              onChange={(e) => setInstituicaoId(Number(e.target.value))}
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
+        <div className="flex flex-wrap gap-1">
+          {instituicoes.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              onClick={() => {
+                setInstituicaoId(i.id);
+                setErro(null);
+                setMensagem(null);
+              }}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                i.id === instituicaoId
+                  ? "bg-if-green text-white"
+                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
             >
-              {instituicoes.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.sigla}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">Câmpus</span>
-            <select
-              name="unidadeId"
-              required
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            >
-              {instituicaoEscolhida?.unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">Valor recebido (R$)</span>
-            <input
-              name="valorRecebido"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              placeholder="0,00"
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">Observação (opcional)</span>
-            <input
-              name="observacao"
-              type="text"
-              placeholder="Ex.: extrato do Tesouro Gerencial de 15/03"
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            />
-          </label>
+              {i.sigla}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {erro && (
-          <p className="rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-200">{erro}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={enviando || !instituicaoEscolhida?.unidades.length}
-          className="w-fit rounded-md bg-if-green px-4 py-2 text-sm font-medium text-white hover:bg-if-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+      {instituicaoEscolhida && (
+        <form
+          key={`${ano}-${instituicaoEscolhida.id}`}
+          onSubmit={handleSubmitLote}
+          className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
         >
-          {enviando ? "Salvando..." : "Salvar"}
-        </button>
-      </form>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            {instituicaoEscolhida.sigla}, todos os câmpus, {ano}
+          </h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Preencha ou edite o valor de quantos câmpus quiser e salve tudo de uma vez. Deixar um campo
+            em branco não grava nada; apagar o valor de um câmpus que já tinha registro remove esse
+            registro ao salvar.
+          </p>
+
+          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                <tr>
+                  <th className="px-4 py-2.5 font-medium">Câmpus</th>
+                  <th className="px-4 py-2.5 font-medium">Valor recebido (R$)</th>
+                  <th className="px-4 py-2.5 font-medium">Observação</th>
+                  <th className="px-4 py-2.5 font-medium">Última atualização</th>
+                </tr>
+              </thead>
+              <tbody>
+                {instituicaoEscolhida.unidades.map((u) => {
+                  const original = registroPorUnidade.get(u.id);
+                  return (
+                    <tr key={u.id} className="border-t border-neutral-200 dark:border-neutral-800">
+                      <td className="px-4 py-2 font-medium text-neutral-900 dark:text-neutral-100">{u.nome}</td>
+                      <td className="px-4 py-2">
+                        <input
+                          name={`valor-${u.id}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          defaultValue={original ? String(original.valorRecebido) : ""}
+                          placeholder="não informado"
+                          className="w-40 rounded-md border border-neutral-300 px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          name={`obs-${u.id}`}
+                          type="text"
+                          defaultValue={original?.observacao ?? ""}
+                          placeholder="opcional"
+                          className="w-full min-w-48 rounded-md border border-neutral-300 px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-xs text-neutral-500 dark:text-neutral-400">
+                        {original ? `${original.registradoPorNome}, ${formatoData.format(new Date(original.atualizadoEm))}` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {erro && (
+            <p className="rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-200">{erro}</p>
+          )}
+          {mensagem && !erro && (
+            <p className="rounded-md bg-if-green/10 p-3 text-sm text-if-green">{mensagem}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={salvando || !instituicaoEscolhida.unidades.length}
+            className="w-fit rounded-md bg-if-green px-4 py-2 text-sm font-medium text-white hover:bg-if-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : `Salvar alterações de ${instituicaoEscolhida.sigla}`}
+          </button>
+        </form>
+      )}
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          Já informados em {ano} ({registros.length})
+          Todos os valores já informados em {ano}, rede inteira ({registros.length})
         </h2>
         {registros.length === 0 ? (
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Nenhum valor informado ainda para este ciclo.</p>

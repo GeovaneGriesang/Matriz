@@ -58,7 +58,7 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Valores recebidos</h1>
-        <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           O que a matriz da MDO gera para um câmpus (coluna &quot;Gerado pela matriz&quot; na Consulta) é o
           valor de referência, mas nem sempre é o que o Tesouro efetivamente deposita: contingenciamento,
           emenda parlamentar e outras decisões orçamentárias podem mudar o valor real, sem passar pela
