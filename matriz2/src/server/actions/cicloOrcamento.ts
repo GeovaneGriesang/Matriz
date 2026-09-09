@@ -65,6 +65,9 @@ export async function salvarCicloOrcamentoManualAction(formData: FormData): Prom
   if (!usuario) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
+  if (usuario.papel === "PADRAO") {
+    return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
+  }
 
   const ano = Number(formData.get("ano"));
   if (!anoDentroDoEscopo(ano)) {
