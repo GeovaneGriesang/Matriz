@@ -26,8 +26,17 @@ export default async function ComoFuncionaPage() {
           Todo ano, o Congresso aprova um valor total para a Rede Federal de Educação Profissional, Científica e
           Tecnológica (42 institutos e centros federais, mais de 600 câmpus). Esse valor único precisa ser
           repartido entre todas as instituições, e a MDO faz isso em blocos, cada um com uma lógica própria de
-          rateio. Praticamente todo o dinheiro é distribuído por dois grandes blocos, mais uma verba separada de
-          assistência estudantil.
+          rateio.
+        </p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          A conta acontece em duas etapas, não uma só. Primeiro, tira-se do total a{" "}
+          <Link href="#assistencia" className="hover:underline">
+            Assistência Estudantil
+          </Link>{" "}
+          (a ação orçamentária 2994, com regras próprias de rateio) e um pequeno ajuste; só então o que sobra é o
+          que de fato vira 80% Funcionamento, 10% Reitorias e 10% Qualidade e Eficiência. Por isso a Assistência
+          nunca aparece como uma fatia desses três: ela já foi separada antes de os 80/10/10 existirem, não
+          depois.
         </p>
       </div>
 
@@ -97,7 +106,7 @@ export default async function ComoFuncionaPage() {
       <Bloco
         id="assistencia"
         titulo="Assistência Estudantil"
-        fatia="Verba orçamentária separada (ação 2994), não uma fatia do Funcionamento"
+        fatia="Separada do total ANTES do 80/10/10, não uma fatia de dentro dele"
         resumo="Custeia bolsas, moradia estudantil, alimentação e outros apoios diretos ao estudante."
       >
         <p>
@@ -111,6 +120,12 @@ export default async function ComoFuncionaPage() {
           Esses dois ingredientes (faixa de renda e RIP) não vêm dos microdados públicos de matrícula da PNP;
           são levantamentos próprios da MDO/CONIF, o que é mais um motivo para este sistema nunca tentar
           recalculá-los: só a MDO tem esse dado de origem.
+        </p>
+        <p>
+          A ordem importa: a MDO separa a Assistência (e um pequeno ajuste) do valor de referência total antes
+          de dividir o restante em Funcionamento/Reitorias/Qualidade e Eficiência, não depois. Some as duas
+          etapas e o total bate: valor de referência = Assistência + ajuste + (Funcionamento + Reitorias +
+          Qualidade e Eficiência).
         </p>
       </Bloco>
 
