@@ -14,11 +14,17 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
   const usuario = await requireAcessoPlenoOrRedirect("/admin/valores-recebidos");
   const params = await searchParams;
 
-  const anosDisponiveis = await prisma.distribuicaoCiclo.findMany({
-    distinct: ["ano"],
-    select: { ano: true },
-    orderBy: { ano: "desc" },
-  });
+  // União da 6ª fase com a 5ª fase: um valor recebido faz sentido informar mesmo
+  // num ciclo que só tem 5ª fase carregada (2026 é assim, ver `carregarProposta.ts`)
+  // — sem essa união, o ano nem aparecia como opção aqui, embora os câmpus já
+  // existissem para escolher.
+  const [anosCiclo, anosCampus] = await Promise.all([
+    prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
+    prisma.distribuicaoCampus.findMany({ distinct: ["ano"], select: { ano: true } }),
+  ]);
+  const anosDisponiveis = Array.from(new Set([...anosCiclo, ...anosCampus].map((a) => a.ano)))
+    .sort((a, b) => b - a)
+    .map((ano) => ({ ano }));
   const ano = Number(params.ano) || anosDisponiveis[0]?.ano || new Date().getFullYear();
 
   const [instituicoes, registrados] = await Promise.all([
