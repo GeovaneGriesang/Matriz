@@ -1,14 +1,13 @@
 import Link from "next/link";
 import type { Papel } from "@prisma/client";
-import { logoutAction } from "@/server/actions/adminAuth";
 import type { UsuarioLogado } from "@/server/auth/session";
 
 const RANQUE: Record<Papel, number> = { PADRAO: 0, ADMIN: 1, SUPER_ADMIN: 2 };
 
 /**
- * Cabeçalho comum às telas administrativas: quem está logado, navegação entre as
- * telas (algumas exigem admin ou super-admin, outras só super-admin) e o botão de
- * sair. Existe para não repetir essa barra em cada página.
+ * Cabeçalho comum às telas administrativas: navegação entre as telas (algumas
+ * exigem admin ou super-admin, outras só super-admin) e o link para "Minha
+ * conta". Existe para não repetir essa barra em cada página.
  */
 export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual: string }) {
   const links: { href: string; rotulo: string; minimo: Papel }[] = [
@@ -39,20 +38,12 @@ export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual:
               </Link>
             ))}
         </nav>
-        <div className="flex items-center gap-3 text-sm">
-          {/* Sem rótulo de papel aqui de propósito: ninguém precisa saber que existe um
-              super-admin (decisão do usuário em 2026-09-05) — o próprio conjunto de
-              links acima já diferencia o que cada um alcança, sem nomear o nível. */}
-          <span className="text-neutral-500 dark:text-neutral-400">{usuario.nome}</span>
-          <Link href="/admin/conta" className="text-neutral-600 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
-            Minha conta
-          </Link>
-          <form action={logoutAction}>
-            <button type="submit" className="font-medium text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-100">
-              Sair
-            </button>
-          </form>
-        </div>
+        {/* Nome e "Sair" já aparecem no cabeçalho principal (`SiteHeader`, em toda
+            página, não só nas administrativas): repetir aqui era duplicado. Só
+            "Minha conta" fica, por ser um link que não existe lá em cima. */}
+        <Link href="/admin/conta" className="text-sm text-neutral-600 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
+          Minha conta
+        </Link>
       </div>
     </div>
   );
