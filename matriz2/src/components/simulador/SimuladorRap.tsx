@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { faixaRap, pesoRap, type FaixaRap } from "@/lib/qualidadeEficiencia";
+import { PROSE_LINK } from "@/lib/layoutWidths";
 
 export interface InstituicaoRap {
   sigla: string;
@@ -131,11 +132,11 @@ export function SimuladorRap({
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           RAP hoje: {decimal.format(inst.rapPresencial)} (faixa {ROTULO_FAIXA[resultado.faixaAtual]}, peso{" "}
           {decimal.format(resultado.pesoAtual)}×). Faixas e pesos explicados em{" "}
-          <Link href="/como-funciona#qualidade-eficiencia" className="underline">
+          <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
             Qualidade e Eficiência
           </Link>
           ; conferência linha a linha em{" "}
-          <Link href={`/conferencia?ano=${ano}&instituicao=${inst.sigla}`} className="underline">
+          <Link href={`/conferencia?ano=${ano}&instituicao=${inst.sigla}`} className={PROSE_LINK}>
             Conferência
           </Link>
           .

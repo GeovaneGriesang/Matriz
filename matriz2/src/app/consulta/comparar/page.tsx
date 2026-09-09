@@ -117,7 +117,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
           Comparar cursos entre câmpus
         </h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Escolha até {MAX_SLOTS} pares de câmpus e curso, de qualquer instituição da rede, para comparar
           lado a lado (duração do ciclo, carga horária, peso, matrícula equalizada e valor recebido).
         </p>

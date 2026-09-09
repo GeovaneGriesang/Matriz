@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
-import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
@@ -139,9 +139,9 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
-          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Quanto cada instituição recebe no bloco{" "}
-            <Link href="/como-funciona#funcionamento" className="underline">
+            <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
               Funcionamento
             </Link>{" "}
             da Matriz de Distribuição Orçamentária (cerca de 80% do total; não inclui Qualidade e
@@ -149,12 +149,12 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             instituição para descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela
             matriz&quot; é o valor homologado pela MDO; &quot;Recebido&quot; é o que foi de fato
             informado em{" "}
-            <Link href="/admin/valores-recebidos" className="underline">
+            <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
               Valores recebidos
             </Link>{" "}
             e pode ser diferente, porque contingenciamento e outras decisões orçamentárias não passam pela
             matriz. Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
-            <Link href={`/consulta/comparar?ano=${ano}`} className="underline">
+            <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
               Comparar entre câmpus
             </Link>
             .
@@ -178,7 +178,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
 
         {semSextaFase && (
-          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
             detalhamento por curso nem perda por evasão. Os valores abaixo vêm da 5ª fase (Funcionamento
             por câmpus).
@@ -330,10 +330,10 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           </Link>
         </div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
           valor vem. &quot;Gerado pela matriz&quot; é o bloco{" "}
-          <Link href="/como-funciona#funcionamento" className="underline">
+          <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
             Funcionamento
           </Link>{" "}
           (cerca de 80% do total, já com o Piso Mínimo aplicado), homologado pela MDO; não inclui
@@ -342,14 +342,14 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           modalidade e das taxas oficiais, para conferência: as duas colunas devem ficar bem próximas, e
           uma diferença grande é sinal de algo errado, na fórmula ou nos dados. &quot;Recebido&quot; é
           diferente dos dois: é o que foi de fato depositado, informado à mão em{" "}
-          <Link href="/admin/valores-recebidos" className="underline">
+          <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
             Valores recebidos
           </Link>
           , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
           pela matriz.
         </p>
         {semSextaFaseInstituicao && (
-          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
             detalhamento por curso nem perda por evasão para {instituicao.sigla}. Os valores abaixo vêm
             da 5ª fase (Funcionamento por câmpus).

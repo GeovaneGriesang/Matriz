@@ -158,12 +158,12 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador</h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           E se a evasão de um câmpus, de uma instituição ou de toda a rede caísse? Escolha abaixo e uma redução
           hipotética para ver quanto se deixaria de perder, a partir do que a 6ª fase já publica por ciclo de
           curso.
         </p>
-        <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <strong>É uma estimativa, não um recálculo da metodologia da CONIF.</strong> A conta é simples: valor
           recuperado = perda atual × redução simulada. Serve para dimensionar o efeito, não para prever o
           valor exato que a MDO publicaria se a evasão realmente caísse.
@@ -194,7 +194,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h2>
         {porCampusRede.length === 0 ? (
-          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
             por evasão, então não há nada para simular aqui neste ciclo.
           </p>
@@ -208,7 +208,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             Qualidade e Eficiência, RAP
           </h2>
-          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+          <p className="text-neutral-600 dark:text-neutral-400">
             E se a RAP (Relação Aluno-Professor Presencial, também chamada de RAPP) de uma instituição
             mudasse de faixa? Diferente da evasão, a RAP só existe por instituição, nunca por câmpus
             isolado.

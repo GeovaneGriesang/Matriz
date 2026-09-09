@@ -50,7 +50,7 @@ export async function SiteHeader() {
               <Link href="/conferencia" className={LINK_CLASS}>
                 Conferência
               </Link>
-              <Link href="/admin/orcamento" className={LINK_CLASS}>
+              <Link href="/" className={LINK_CLASS}>
                 Painel
               </Link>
             </>

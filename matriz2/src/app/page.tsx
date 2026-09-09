@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
-import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +106,7 @@ export default async function Home() {
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Todo número exibido carrega uma etiqueta dizendo de onde veio e de quando é.{" "}
-          <Link href="/como-funciona" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
+          <Link href="/como-funciona" className={PROSE_LINK}>
             Veja como a matriz é calculada
           </Link>
           .

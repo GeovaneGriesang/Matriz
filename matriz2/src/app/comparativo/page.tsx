@@ -162,11 +162,11 @@ export default async function ComparativoPage({
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
           Comparativo {anoA} e {anoB}
         </h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Quanto cada instituição recebeu em cada ciclo, e o que mudou entre eles. É a pergunta que a
           MDO não responde numa tela só, porque lá cada ciclo se consulta separado.
         </p>
-        <p className="max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Este bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência) só existe por
           instituição: o relatório que abre por bloco e desce a câmpus tem valores atribuídos à unidade
           errada (no IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça), então
