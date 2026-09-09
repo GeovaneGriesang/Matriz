@@ -42,7 +42,9 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
 
   const conferidas: InstituicaoConferida[] = linhas.map((l) => {
     const ieaEq = ieaEqualizadoRecalc(rede, l.ieaPonderadoRecalc);
-    const rapEq = rapEqualizadoRecalc(rede, l.rapPonderadoRecalc);
+    // Institução sem RAP confiável (ver `rapConfiavel`): não entra na conferência,
+    // pra não fingir bater um recálculo que na verdade nem foi feito para ela.
+    const rapEq = l.rapConfiavel ? rapEqualizadoRecalc(rede, l.rapPonderadoRecalc) : null;
     const iaplEq = iaplEqualizadoRecalc(
       rede,
       l.iaplTecnicoPonderadoRecalc,
@@ -77,7 +79,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       const conferida = conferidas.find((c) => c.sigla === params.instituicao)!;
 
       const ieaEqRecalc = ieaEqualizadoRecalc(rede, detalheBruto.ieaPonderadoRecalc);
-      const rapEqRecalc = rapEqualizadoRecalc(rede, detalheBruto.rapPonderadoRecalc);
+      const rapEqRecalc = detalheBruto.rapConfiavel ? rapEqualizadoRecalc(rede, detalheBruto.rapPonderadoRecalc) : null;
       const iaplEqRecalc = iaplEqualizadoRecalc(
         rede,
         detalheBruto.iaplTecnicoPonderadoRecalc,
@@ -137,16 +139,25 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
               {
                 rotulo: "RAP ponderado (× peso da faixa)",
                 oficial: detalheBruto.rapPonderadoOficial !== null ? decimal.format(detalheBruto.rapPonderadoOficial) : "não informado",
-                recalculado: decimal.format(detalheBruto.rapPonderadoRecalc),
+                recalculado: detalheBruto.rapConfiavel ? decimal.format(detalheBruto.rapPonderadoRecalc) : "não conferido",
               },
               {
                 rotulo: "RAP equalizado (fatia na rede)",
                 oficial: detalheBruto.rapEqualizadoOficial !== null ? percentual.format(detalheBruto.rapEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: rapEqRecalc !== null ? percentual.format(rapEqRecalc * 100) + "%" : "não informado",
+                recalculado: rapEqRecalc !== null ? percentual.format(rapEqRecalc * 100) + "%" : "não conferido",
               },
               { rotulo: "Valor recebido (bloco RAP)", oficial: reais.format(detalheBruto.vlRapOficial) },
             ]}
           />
+          {!detalheBruto.rapConfiavel && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              O RAP ponderado oficial desta instituição ({decimal.format(detalheBruto.rapPonderadoOficial ?? 0)}) não
+              bate com o que a fórmula de faixas prevê para RAP Presencial {decimal.format(detalheBruto.rapPresencial)}{" "}
+              ({decimal.format(detalheBruto.rapPonderadoRecalc)}): provavelmente esta instituição segue uma regra
+              própria que este sistema ainda não reproduz. Por isso o RAP dela fica de fora da conferência, para
+              não distorcer o recálculo das outras instituições também.
+            </p>
+          )}
 
           <BlocoConferencia
             titulo="IAPL, Atendimento a Percentuais Legais"
