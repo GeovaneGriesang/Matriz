@@ -232,6 +232,14 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
     const nome = texto((linha as Linha).getCell(CP.unidade).value);
     const uf = texto((linha as Linha).getCell(CP.uf).value) ?? "";
     if (!sigla || !nome) return;
+    // Já apareceu no menos uma vez (fonte alternativa de 2026, ver `caminhos.ts`) uma
+    // linha com o próprio nome de coluna do banco de origem no lugar do valor (ex.:
+    // "\instituicao_ds_abreviatura"), que virava uma "instituição fantasma" sem
+    // nenhum dado de verdade. Barra invertida no começo nunca é sigla/nome real.
+    if (sigla.startsWith("\\") || nome.startsWith("\\")) {
+      avisos.push(`Linha com sigla/nome de coluna do banco de origem, não um valor real ("${sigla}" / "${nome}"); ignorada.`);
+      return;
+    }
     linhasCompleto.push({ linha: linha as Linha, sigla, nome, uf, tipo });
   });
 
