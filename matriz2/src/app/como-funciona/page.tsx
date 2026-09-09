@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FORM_MAX_WIDTH } from "@/lib/layoutWidths";
+import { FORM_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -123,7 +123,7 @@ export default async function ComoFuncionaPage() {
           MDO tem esses dados de origem, e alguns fecham apenas no fim do ano, depois de sete etapas de
           homologação entre as instituições e o IFTM. Por isso este sistema importa diretamente o resultado que
           a MDO já homologou, em vez de tentar reproduzir a fórmula, com uma exceção: em{" "}
-          <Link href="/conferencia" className="underline">
+          <Link href="/conferencia" className={PROSE_LINK}>
             Conferência
           </Link>
           , os blocos IEA, RAP e IAPL são refeitos a partir dos mesmos componentes que a MDO publica, só para

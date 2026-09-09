@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PROSE_LINK } from "@/lib/layoutWidths";
 import type { CursoLinha } from "./ConsultaTabelaCursos";
 
 export interface CursoComparavel extends CursoLinha {
@@ -88,7 +89,7 @@ export function PainelComparacaoCursos({
       </div>
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         Os valores vêm prontos da 6ª fase da MDO; a{" "}
-        <Link href="/como-funciona#funcionamento" className="underline">
+        <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
           matrícula equalizada
         </Link>{" "}
         já considera duração do ciclo, peso do curso e carga horária, mas este sistema não refaz essa

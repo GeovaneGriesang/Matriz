@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import {
   calcularQualidadeEficienciaRede,
@@ -94,11 +94,11 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
             <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
               Conferência, {detalheBruto.nome}, {ano}
             </h1>
-            <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+            <p className="text-neutral-600 dark:text-neutral-400">
               Refaz o cálculo dos blocos IEA, RAP e IAPL a partir dos mesmos componentes que a MDO já
               publica (Conclusão, Evasão e Retenção do ciclo; RAP Presencial; %ME de cada categoria do
               IAPL), e compara com o que a MDO calculou. Veja o que cada indicador significa em{" "}
-              <Link href="/como-funciona#qualidade-eficiencia" className="underline">
+              <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
                 Qualidade e Eficiência
               </Link>
               .
@@ -202,9 +202,9 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência de cálculo</h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Refaz o cálculo dos blocos{" "}
-          <Link href="/como-funciona#qualidade-eficiencia" className="underline">
+          <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
             IEA, RAP e IAPL de Qualidade e Eficiência
           </Link>{" "}
           a partir dos mesmos componentes que a MDO já publica por instituição, e compara com o valor
@@ -213,7 +213,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
           nunca decide quanto uma instituição recebe, só serve para conferir.
         </p>
         {!temFaixaIea && (
-          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Não há tabela de faixas de IEA cadastrada para {ano} (as faixas mudam a cada ciclo, porque
             são relativas à média da rede daquele ano). O IEA fica sem conferência neste ciclo; RAP e
             IAPL usam faixas fixas e continuam conferidos normalmente.

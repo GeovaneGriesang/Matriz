@@ -44,11 +44,11 @@ export default async function DadosImportadosPage() {
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Dados importados</h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           Tudo que alimenta este sistema, com a etapa da MDO que homologou cada conjunto, a data que
           o próprio arquivo declara e o que ele abrange. Nada aqui é digitado à mão.
         </p>
-        <p className="max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           A coluna <strong>Abrange</strong> merece atenção. Metade do material da MDO cobre apenas uma
           instituição; somar conjuntos de abrangências diferentes produz um total que parece de rede,
           mas não é.

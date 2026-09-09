@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelComparacaoCursos } from "./PainelComparacaoCursos";
 
 export interface CursoLinha {
@@ -127,7 +128,7 @@ export function ConsultaTabelaCursos({
           href={`/consulta/comparar?ano=${ano}&campus1=${unidadeId}${
             comparando[0] ? `&curso1=${comparando[0].id}` : ""
           }`}
-          className="underline"
+          className={PROSE_LINK}
         >
           Comparar entre câmpus
         </Link>

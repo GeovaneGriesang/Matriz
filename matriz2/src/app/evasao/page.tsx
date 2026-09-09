@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
-import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { EvasaoTabelaCampus } from "./EvasaoTabelaCampus";
@@ -81,7 +81,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
-          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Quanto cada instituição perde por evasão, e essa perda como proporção do que recebe.
           </p>
         </div>
@@ -100,7 +100,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
             </Link>
           ))}
         </div>
-        <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
           por evasão. Não é que a evasão esteja zerada: este sistema simplesmente ainda não tem esse
           dado para {ano}.
@@ -146,7 +146,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
-          <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Quanto cada instituição perde por evasão, e essa perda como proporção do que recebe. Ordenado do
             menor para o maior percentual. Clique numa instituição para descer a câmpus e a curso.
           </p>
@@ -274,12 +274,12 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
           </Link>
         </div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
-        <p className="max-w-3xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-600 dark:text-neutral-400">
           A MDO publica, para cada ciclo de curso, quanto se perdeu por evasão. É o dado mais acionável
           da matriz: ao contrário do orçamento total, que depende de decisão federal, esta parcela
           responde ao que a instituição faz com os alunos que já tem.
         </p>
-        <p className="max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           O valor vem pronto da coluna <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Perda Evasão (R$)</code> da
           6ª fase. Este sistema não o recalcula, e a definição exata de como a MDO o apura é dela.
         </p>
@@ -352,9 +352,9 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus</h2>
         {algumNoPiso && (
-          <p className="max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Os câmpus marcados <strong>&quot;no piso&quot;</strong> já recebem o{" "}
-            <Link href="/como-funciona#funcionamento" className="underline">
+            <Link href="/como-funciona#funcionamento" className="font-semibold underline underline-offset-2">
               Piso Mínimo
             </Link>{" "}
             (R$ 700.000), não o valor calculado pela matrícula. Reduzir a evasão desses câmpus pode não
@@ -388,7 +388,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
             </Link>
           )}
         </div>
-        <p className="max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
           pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
         </p>
