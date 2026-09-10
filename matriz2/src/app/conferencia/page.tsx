@@ -263,7 +263,7 @@ function BlocoConferencia({
               <tr key={l.rotulo} className="border-t border-neutral-200 dark:border-neutral-800">
                 <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-400">{l.rotulo}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{l.oficial}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{l.recalculado ?? "—"}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{l.recalculado ?? "-"}</td>
               </tr>
             ))}
           </tbody>

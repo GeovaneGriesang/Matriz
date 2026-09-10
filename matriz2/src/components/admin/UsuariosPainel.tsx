@@ -167,7 +167,7 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
         </button>
       </form>
       <p className="-mt-3 text-xs text-neutral-500 dark:text-neutral-400">
-        Ao criar, mandamos um e-mail com o código de primeiro acesso — a pessoa escolhe a própria senha em{" "}
+        Ao criar, mandamos um e-mail com o código de primeiro acesso; a pessoa escolhe a própria senha em{" "}
         <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">/admin/definir-senha</code>.
       </p>
 

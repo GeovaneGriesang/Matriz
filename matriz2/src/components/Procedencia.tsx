@@ -56,7 +56,7 @@ export function EtiquetaProcedencia({ fonte }: { fonte: DadosProcedencia }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ${COR_ORIGEM[fonte.origem]}`}
-      title={`${fonte.arquivo}${fonte.fase ? ` — ${ROTULO_FASE[fonte.fase]}` : ""}`}
+      title={`${fonte.arquivo}${fonte.fase ? ` (${ROTULO_FASE[fonte.fase]})` : ""}`}
     >
       {ROTULO_ORIGEM[fonte.origem]}
       {fonte.geradoEm && <span className="font-normal opacity-80">{dataCurta.format(fonte.geradoEm)}</span>}

@@ -74,7 +74,7 @@ export function ComparativoTabela({
             valor: (l) => (l.a === 0 && l.b > 0 ? null : l.a),
             render: (l) => (
               <span className="text-neutral-600 dark:text-neutral-400">
-                {l.a === 0 && l.b > 0 ? "—" : reais.format(l.a)}
+                {l.a === 0 && l.b > 0 ? "-" : reais.format(l.a)}
               </span>
             ),
           },
@@ -107,7 +107,7 @@ export function ComparativoTabela({
             valor: (l) => l.participacaoB,
             render: (l) => (
               <span className="text-neutral-600 dark:text-neutral-400">
-                {l.participacaoB !== null ? `${doisDecimais.format(l.participacaoB)}%` : "—"}
+                {l.participacaoB !== null ? `${doisDecimais.format(l.participacaoB)}%` : "-"}
               </span>
             ),
           },
@@ -116,7 +116,7 @@ export function ComparativoTabela({
             rotulo: "Posição",
             alinhamento: "right",
             valor: (l) => l.posicaoB,
-            render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{l.posicaoB ?? "—"}</span>,
+            render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{l.posicaoB ?? "-"}</span>,
           },
         ] satisfies ColunaOrdenavel<LinhaComparativo>[]
       }

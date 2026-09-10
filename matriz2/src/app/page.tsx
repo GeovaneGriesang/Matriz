@@ -24,7 +24,7 @@ export default async function Home() {
           Matriz Orçamentária RFEPCT
         </h1>
         <p className="text-lg text-neutral-600 dark:text-neutral-400">
-          Sistema de acompanhamento orçamentário do IFSul e do Câmpus Venâncio Aires.
+          Sistema de acompanhamento orçamentário com foco no IFSul.
         </p>
         <Link
           href="/admin/login"
@@ -89,8 +89,7 @@ export default async function Home() {
           Matriz de Distribuição Orçamentária
         </h1>
         <p className="text-lg text-neutral-600 dark:text-neutral-400">
-          Consulta e comparação do orçamento da Rede Federal, com foco no IFSul e no Câmpus
-          Venâncio Aires.
+          Consulta e comparação do orçamento da Rede Federal, com foco no IFSul.
         </p>
       </div>
 
@@ -177,7 +176,7 @@ export default async function Home() {
                   {" · "}
                   {r.cursos > 0
                     ? `${numero.format(r.cursos)} ciclos de curso (6ª fase, valor por câmpus disponível)`
-                    : "sem 6ª fase — Consulta, Evasão e Simulador não descem a câmpus/curso neste ciclo"}
+                    : "sem 6ª fase (Consulta, Evasão e Simulador não descem a câmpus/curso neste ciclo)"}
                 </p>
               </div>
             ))}

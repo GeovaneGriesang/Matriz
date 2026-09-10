@@ -79,7 +79,7 @@ export function SiteFooter() {
             />
           </a>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Instituto Federal Sul-rio-grandense — Câmpus Venâncio Aires.
+            Instituto Federal Sul-rio-grandense, Câmpus Venâncio Aires.
           </p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">Desenvolvido por Geovane Griesang</p>
         </div>
