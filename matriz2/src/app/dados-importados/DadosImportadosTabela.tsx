@@ -76,7 +76,7 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
             rotulo: "Etapa",
             valor: (f) => (f.fase ? (ROTULO_FASE[f.fase] ?? f.fase) : ""),
             render: (f) => (
-              <span className="text-neutral-600 dark:text-neutral-400">{f.fase ? ROTULO_FASE[f.fase] : "—"}</span>
+              <span className="text-neutral-600 dark:text-neutral-400">{f.fase ? ROTULO_FASE[f.fase] : "-"}</span>
             ),
           },
           {
@@ -124,7 +124,7 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
             rotulo: "Soma",
             alinhamento: "right",
             valor: (f) => f.soma,
-            render: (f) => (f.soma !== null ? reais.format(f.soma) : "—"),
+            render: (f) => (f.soma !== null ? reais.format(f.soma) : "-"),
           },
           {
             chave: "carregado",

@@ -17,7 +17,7 @@ const ROTULO_FASE: Record<string, string> = {
 
 export default async function DadosImportadosPage() {
   await requireAcessoPlenoOrRedirect("/dados-importados");
-  const fontes = await prisma.fonteDados.findMany({
+  const fontesBrutas = await prisma.fonteDados.findMany({
     orderBy: [{ cicloOrcamento: "desc" }, { carregadoEm: "desc" }],
     include: {
       instituicao: { select: { sigla: true } },
@@ -27,6 +27,9 @@ export default async function DadosImportadosPage() {
           distribuicoesCampus: true,
           distribuicoesInstituicao: true,
           conferenciasExtracaoAluno: true,
+          conferenciasExtracao: true,
+          comparativos: true,
+          ciclosOrcamento: true,
         },
       },
     },
@@ -38,23 +41,39 @@ export default async function DadosImportadosPage() {
   });
   const somaPorFonte = new Map(somasPorFonte.map((s) => [s.fonteDadosId, Number(s._sum.valorReais ?? 0)]));
 
+  // Toda recarga (`npm run carregar`) apaga e recria as linhas da fase que está
+  // sendo carregada, deixando a `FonteDados` antiga sem NENHUM registro apontando
+  // pra ela — ela continua existindo, só não é mais usada por nada. Mostrar só a
+  // que ainda tem registro é como enxergar "a versão em uso", sem precisar de um
+  // campo "ativo" à parte: se nada aponta pra ela, ela já não alimenta o sistema.
+  //
   // `TabelaOrdenavel` é client-side: nenhuma linha pode carregar um `Map` ou algo
   // que dependa de fechar sobre uma função só existente aqui no Server Component,
   // então soma e contagem já vêm prontas em cada linha.
-  const linhasTabela = fontes.map((f) => ({
-    ...f,
-    registros: f._count.distribuicoesCiclo + f._count.distribuicoesCampus + f._count.distribuicoesInstituicao,
-    soma: somaPorFonte.get(f.id) ?? null,
-    temDadoPessoal: f._count.conferenciasExtracaoAluno > 0,
-  }));
+  const linhasTabela = fontesBrutas
+    .map((f) => ({
+      ...f,
+      registros:
+        f._count.distribuicoesCiclo +
+        f._count.distribuicoesCampus +
+        f._count.distribuicoesInstituicao +
+        f._count.conferenciasExtracaoAluno +
+        f._count.conferenciasExtracao +
+        f._count.comparativos +
+        f._count.ciclosOrcamento,
+      soma: somaPorFonte.get(f.id) ?? null,
+      temDadoPessoal: f._count.conferenciasExtracaoAluno > 0,
+    }))
+    .filter((f) => f.registros > 0);
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Dados importados</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Tudo que alimenta este sistema, com a etapa da MDO que homologou cada conjunto, a data que
-          o próprio arquivo declara e o que ele abrange. Nada aqui é digitado à mão.
+          A versão que está em uso agora em cada etapa da MDO, com a data que o próprio arquivo
+          declara e o que ele abrange. Nada aqui é digitado à mão; recargas anteriores já
+          substituídas não aparecem, só a que realmente alimenta o sistema hoje.
         </p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           A coluna <strong>Abrange</strong> merece atenção. Metade do material da MDO cobre apenas uma
@@ -64,7 +83,7 @@ export default async function DadosImportadosPage() {
         </p>
       </div>
 
-      {fontes.length === 0 ? (
+      {linhasTabela.length === 0 ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Nenhum arquivo carregado ainda.
         </div>
@@ -74,10 +93,10 @@ export default async function DadosImportadosPage() {
         </div>
       )}
 
-      {fontes.some((f) => f.ressalva) && (
+      {linhasTabela.some((f) => f.ressalva) && (
         <div className="flex flex-col gap-2">
           <h2 className="font-semibold text-neutral-900 dark:text-neutral-100">Ressalvas</h2>
-          {fontes
+          {linhasTabela
             .filter((f) => f.ressalva)
             .map((f) => (
               <p
