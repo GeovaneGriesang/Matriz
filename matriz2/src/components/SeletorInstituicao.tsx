@@ -35,7 +35,7 @@ export function SeletorInstituicao({
     >
       {instituicoes.map((i) => (
         <option key={i.sigla} value={i.sigla}>
-          {i.sigla} — {i.nome}
+          {i.sigla}, {i.nome}
         </option>
       ))}
     </select>

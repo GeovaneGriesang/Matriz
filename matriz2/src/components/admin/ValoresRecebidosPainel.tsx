@@ -261,7 +261,7 @@ export function ValoresRecebidosPainel({
                         />
                       </td>
                       <td className="px-4 py-2 text-xs text-neutral-500 dark:text-neutral-400">
-                        {original ? `${original.registradoPorNome}, ${formatoData.format(new Date(original.atualizadoEm))}` : "—"}
+                        {original ? `${original.registradoPorNome}, ${formatoData.format(new Date(original.atualizadoEm))}` : "-"}
                       </td>
                     </tr>
                   );

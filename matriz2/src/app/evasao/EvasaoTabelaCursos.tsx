@@ -36,7 +36,7 @@ export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
       colunas={
         [
           { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
-          { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "—" },
+          { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "-" },
           {
             chave: "ciclos",
             rotulo: "Ciclos",

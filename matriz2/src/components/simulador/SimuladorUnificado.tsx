@@ -226,14 +226,14 @@ export function SimuladorUnificado({
                 rotulo: "Perda por evasão",
                 alinhamento: "right",
                 valor: (i) => i.perda,
-                render: (i) => <span className="text-neutral-600 dark:text-neutral-400">{i.perda > 0 ? reais.format(i.perda) : "—"}</span>,
+                render: (i) => <span className="text-neutral-600 dark:text-neutral-400">{i.perda > 0 ? reais.format(i.perda) : "-"}</span>,
               },
               {
                 chave: "rap",
                 rotulo: "RAP Presencial",
                 alinhamento: "right",
                 valor: (i) => i.rap?.rapPresencial ?? null,
-                render: (i) => <span className="text-neutral-600 dark:text-neutral-400">{i.rap ? decimal.format(i.rap.rapPresencial) : "—"}</span>,
+                render: (i) => <span className="text-neutral-600 dark:text-neutral-400">{i.rap ? decimal.format(i.rap.rapPresencial) : "-"}</span>,
               },
               {
                 chave: "simulado",
@@ -243,7 +243,7 @@ export function SimuladorUnificado({
                 render: (i) => {
                   const total = rollups.get(i.sigla)?.total ?? 0;
                   return total === 0 ? (
-                    <span className="text-neutral-400">—</span>
+                    <span className="text-neutral-400">-</span>
                   ) : (
                     <span className={`font-medium ${corSinal(total)}`}>
                       {sinal(total)}
@@ -370,7 +370,7 @@ function PainelInstituicao({
           {(inst.rap || inst.iapl) && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {inst.rap && (
-                <MiniCartao rotulo="Faixa RAP" valor={faixaSimulada ? ROTULO_FAIXA[faixaSimulada] : "—"} pequena />
+                <MiniCartao rotulo="Faixa RAP" valor={faixaSimulada ? ROTULO_FAIXA[faixaSimulada] : "-"} pequena />
               )}
               {inst.rap && (
                 <MiniCartao rotulo="Diferença, RAP" valor={`${sinal(rollup?.rap ?? 0)}${reais.format(rollup?.rap ?? 0)}`} destaque={corSinal(rollup?.rap ?? 0)} />
@@ -429,7 +429,7 @@ function PainelInstituicao({
                     render: (c) => {
                       const efeito = c.perda * (reducaoDe(c.unidadeId) / 100) + c.recebido * (crescimentoDe(c.unidadeId) / 100);
                       return efeito === 0 ? (
-                        <span className="text-neutral-400">—</span>
+                        <span className="text-neutral-400">-</span>
                       ) : (
                         <span className={corSinal(efeito)}>
                           {sinal(efeito)}
