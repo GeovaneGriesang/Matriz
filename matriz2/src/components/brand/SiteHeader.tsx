@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { InstitutoFederalMark } from "./InstitutoFederalMark";
 import { ThemeToggle } from "./ThemeToggle";
+import { SiteNav } from "./SiteNav";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
@@ -19,7 +20,7 @@ export async function SiteHeader() {
   const acessoPleno = usuario && usuario.papel !== "PADRAO";
 
   return (
-    <header className="border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
+    <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
       <div className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-wrap items-center gap-3`}>
         <Link href="/" className="flex items-center gap-3">
           <InstitutoFederalMark size={32} />
@@ -27,52 +28,21 @@ export async function SiteHeader() {
             Matriz Orçamentária RFEPCT
           </span>
         </Link>
-        <nav className="flex items-center gap-4">
-          {/* Ordem pensada para quem acompanha o texto de "Como funciona" e vai
-              seguindo as telas na mesma sequência da conta da MDO: primeiro o manual,
-              depois de onde vêm os dados, depois o bloco Funcionamento (Consulta e o
-              que a evasão tira dele), depois o bloco Qualidade e Eficiência
-              (Conferência), depois o Simulador (que combina os dois blocos acima) e
-              só então Comparativo, que olha tudo isso ao longo de vários ciclos. */}
-          {acessoPleno && (
-            <>
-              <Link href="/como-funciona" className={LINK_CLASS}>
-                Como funciona
-              </Link>
-              <Link href="/dados-importados" className={LINK_CLASS}>
-                Dados importados
-              </Link>
-              <Link href="/consulta" className={LINK_CLASS}>
-                Consulta
-              </Link>
-              <Link href="/evasao" className={LINK_CLASS}>
-                Perda por evasão
-              </Link>
-              <Link href="/conferencia" className={LINK_CLASS}>
-                Conferência
-              </Link>
-              <Link href="/simulador" className={LINK_CLASS}>
-                Simulador
-              </Link>
-              <Link href="/comparativo" className={LINK_CLASS}>
-                Comparativo
-              </Link>
-              <Link href="/" className={LINK_CLASS}>
-                Painel
-              </Link>
-            </>
-          )}
-          {usuario && !acessoPleno && (
+        {acessoPleno && <SiteNav />}
+        {usuario && !acessoPleno && (
+          <nav>
             <Link href="/admin/inicio" className={LINK_CLASS}>
               Painel
             </Link>
-          )}
-          {!usuario && (
+          </nav>
+        )}
+        {!usuario && (
+          <nav>
             <Link href="/admin/login" className={LINK_CLASS}>
               Entrar
             </Link>
-          )}
-        </nav>
+          </nav>
+        )}
         {usuario && (
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-neutral-500 dark:text-neutral-400" title={usuario.email}>
