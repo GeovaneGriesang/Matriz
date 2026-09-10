@@ -1,11 +1,58 @@
 import Link from "next/link";
 import { FORM_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { prisma } from "@/server/db/prisma";
+import { CalculoAoVivo } from "./CalculoAoVivo";
+import { TabelaPesos } from "./TabelaPesos";
 
 export const dynamic = "force-dynamic";
 
+const reaisPorMatricula = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default async function ComoFuncionaPage() {
   await requireAcessoPlenoOrRedirect("/como-funciona");
+
+  // Pelo menos os dois últimos ciclos (pedido do usuário: "vamos vendo as coisas
+  // acontecerem" com números reais, não só descrição em texto), mais recente
+  // primeiro na consulta e depois invertido pra a barra mais antiga aparecer em
+  // cima, na ordem que se lê.
+  const ciclosBrutos = await prisma.cicloOrcamento.findMany({
+    orderBy: { ano: "desc" },
+    take: 2,
+    select: {
+      ano: true,
+      valorReferenciaSpo: true,
+      ajuste: true,
+      assistenciaTotal: true,
+      funcionamentoTotal: true,
+      reitoriasTotal: true,
+      qualidadeEficienciaTotal: true,
+      valorMatriculaPresencial: true,
+      valorMatriculaEad: true,
+      valorMatriculaEadMooc: true,
+      valorMatriculaEadFp: true,
+    },
+  });
+  const ciclos = ciclosBrutos
+    .map((c) => ({
+      ano: c.ano,
+      valorReferenciaSpo: Number(c.valorReferenciaSpo),
+      ajuste: Number(c.ajuste),
+      assistenciaTotal: Number(c.assistenciaTotal),
+      funcionamentoTotal: Number(c.funcionamentoTotal),
+      reitoriasTotal: Number(c.reitoriasTotal),
+      qualidadeEficienciaTotal: Number(c.qualidadeEficienciaTotal),
+    }))
+    .reverse();
+  const taxasModalidade = ciclosBrutos
+    .map((c) => ({
+      ano: c.ano,
+      presencial: c.valorMatriculaPresencial === null ? null : Number(c.valorMatriculaPresencial),
+      ead: c.valorMatriculaEad === null ? null : Number(c.valorMatriculaEad),
+      eadMooc: c.valorMatriculaEadMooc === null ? null : Number(c.valorMatriculaEadMooc),
+      eadFp: c.valorMatriculaEadFp === null ? null : Number(c.valorMatriculaEadFp),
+    }))
+    .reverse();
 
   return (
     <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-8 px-6 py-16`}>
@@ -30,14 +77,23 @@ export default async function ComoFuncionaPage() {
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           A conta acontece em duas etapas, não uma só. Primeiro, tira-se do total a{" "}
-          <Link href="#assistencia" className="hover:underline">
+          <Link href="#assistencia" className={PROSE_LINK}>
             Assistência Estudantil
           </Link>{" "}
-          (a ação orçamentária 2994, com regras próprias de rateio) e um pequeno ajuste; só então o que sobra é o
-          que de fato vira 80% Funcionamento, 10% Reitorias e 10% Qualidade e Eficiência. Por isso a Assistência
-          nunca aparece como uma fatia desses três: ela já foi separada antes de os 80/10/10 existirem, não
-          depois.
+          (a ação orçamentária 2994, com regras próprias de rateio, explicada mais abaixo) e um pequeno ajuste;
+          só então o que sobra é o que de fato vira 80% Funcionamento, 10% Reitorias e 10% Qualidade e
+          Eficiência. Por isso a Assistência nunca aparece como uma fatia desses três: ela já foi separada antes
+          de os 80/10/10 existirem, não depois.
         </p>
+
+        {ciclos.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              A conta acontecendo, com números reais
+            </span>
+            <CalculoAoVivo ciclos={ciclos} />
+          </div>
+        )}
       </div>
 
       <Bloco
@@ -54,10 +110,21 @@ export default async function ComoFuncionaPage() {
         </p>
         <p>
           O valor total do bloco Funcionamento é dividido pela matrícula equalizada de toda a rede, dando um
-          "valor por matrícula". Multiplicando esse valor pela matrícula equalizada de um câmpus específico
-          (com pesos diferentes para presencial, EAD, EAD MOOC e EAD com financiamento próprio; o EAD MOOC pesa
-          bem menos, cerca de 8% do peso do presencial), chega-se ao Funcionamento daquele câmpus.
+          "valor por matrícula" diferente para cada modalidade. Multiplicando o valor da modalidade certa pela
+          matrícula equalizada de um câmpus específico, chega-se ao Funcionamento daquele câmpus:
         </p>
+        {taxasModalidade.length > 0 && (
+          <TabelaPesos
+            anos={taxasModalidade.map((t) => t.ano)}
+            formatar={(v) => reaisPorMatricula.format(v)}
+            linhas={[
+              { rotulo: "Presencial", valores: taxasModalidade.map((t) => t.presencial) },
+              { rotulo: "EAD", valores: taxasModalidade.map((t) => t.ead) },
+              { rotulo: "EAD MOOC", valores: taxasModalidade.map((t) => t.eadMooc) },
+              { rotulo: "EAD com financiamento próprio", valores: taxasModalidade.map((t) => t.eadFp) },
+            ]}
+          />
+        )}
         <p>
           <strong>Piso Mínimo:</strong> câmpus criados a partir de 2018 (marcados pela MDO, não deduzido
           automaticamente pela data) têm garantia de receber pelo menos um valor mínimo fixo, mesmo que a conta
