@@ -90,7 +90,9 @@ export function TabelaOrdenavel<T>({
   return (
     <table className={className ?? "w-full text-sm"}>
       <thead
-        className={`bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 ${cabecalhoFixo ? "sticky top-0" : ""}`}
+        // `top-16` gruda logo abaixo do cabeçalho do site, que agora também é fixo
+        // (`sticky top-0 z-30` em `SiteHeader`); `top-0` aqui ficaria por baixo dele.
+        className={`bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 ${cabecalhoFixo ? "sticky top-16 z-10" : ""}`}
       >
         <tr>
           {linhaExpandida && <th className="w-8 px-2 py-2.5" aria-hidden />}
@@ -154,7 +156,7 @@ export function TabelaOrdenavel<T>({
                     key={c.chave}
                     className={`px-4 py-2.5 ${c.alinhamento === "right" ? "text-right tabular-nums" : ""}`}
                   >
-                    {c.render ? c.render(linha) : (c.valor(linha) ?? "—")}
+                    {c.render ? c.render(linha) : (c.valor(linha) ?? "-")}
                   </td>
                 ))}
               </tr>
