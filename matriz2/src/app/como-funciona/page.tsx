@@ -8,6 +8,8 @@ import { TabelaPesos } from "./TabelaPesos";
 export const dynamic = "force-dynamic";
 
 const reaisPorMatricula = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const numero = new Intl.NumberFormat("pt-BR");
+const umaCasa = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export default async function ComoFuncionaPage() {
   await requireAcessoPlenoOrRedirect("/como-funciona");
@@ -44,6 +46,25 @@ export default async function ComoFuncionaPage() {
       qualidadeEficienciaTotal: Number(c.qualidadeEficienciaTotal),
     }))
     .reverse();
+  // Distribuição real dos pesos de curso técnico no ciclo mais recente (pedido do
+  // usuário: ver o critério de laboratórios do CNCT acontecendo de verdade, não só
+  // descrito). "TÉCNICO" é o nível mais direto pra isso: os quatro pesos (1,0 a 2,5)
+  // vêm exatamente da quantidade de laboratórios do curso, sem outra regra
+  // misturada (diferente de GRADUAÇÃO, que mistura Licenciatura fixa com
+  // Tecnologia/Bacharelado por verticalização).
+  const anoMaisRecente = ciclosBrutos[0]?.ano;
+  const pesosCursoTecnico = anoMaisRecente
+    ? await prisma.distribuicaoCiclo.groupBy({
+        by: ["pesoCursoMatriz"],
+        where: { ano: anoMaisRecente, nivel: "TÉCNICO", pesoCursoMatriz: { not: null } },
+        _count: true,
+      })
+    : [];
+  const totalCursosTecnicos = pesosCursoTecnico.reduce((s, p) => s + p._count, 0);
+  const pesosCursoTecnicoOrdenado = pesosCursoTecnico
+    .map((p) => ({ peso: Number(p.pesoCursoMatriz), quantidade: p._count }))
+    .sort((a, b) => a.peso - b.peso);
+
   const taxasModalidade = ciclosBrutos
     .map((c) => ({
       ano: c.ano,
@@ -104,14 +125,95 @@ export default async function ComoFuncionaPage() {
       >
         <p>
           A MDO conta, para cada câmpus, quantos alunos ele tem em cada modalidade (presencial, EAD, EAD MOOC,
-          EAD com financiamento próprio), mas não a matrícula bruta simples: cada aluno entra com um peso
-          diferente conforme o curso (um curso técnico de carga horária longa pesa mais que um curso rápido de
-          qualificação, por exemplo), numa conta que a MDO chama de <strong>matrícula equalizada</strong>.
+          EAD com financiamento próprio), mas não a matrícula bruta simples: cada aluno entra com um valor
+          ajustado em quatro etapas, numa conta que a MDO chama de <strong>Matrícula Total</strong>. As duas
+          primeiras etapas acontecem por curso; a terceira, quando é o caso; a quarta soma tudo.
+        </p>
+
+        <p>
+          <strong>Etapa 1, Equalização:</strong> antes de qualquer peso, a matrícula de cada curso é ajustada
+          por dois fatores: a carga horária do curso em relação a uma carga horária padrão de 800 horas por
+          ano, e os dias ativos do curso dentro do "período analisado" (o ano do ciclo). Um curso com mais
+          carga horária por ano do que o padrão pesa mais; um curso que só existiu parte do ano (começou,
+          terminou, ou tem alunos retidos há muito tempo) conta proporcionalmente menos dias. O resultado é a
+          MECHDA (Matrículas Equalizadas por Carga Horária e Dias Ativos), a base sobre a qual o peso do curso
+          (Etapa 2, logo abaixo) é multiplicado.
+        </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Um detalhe pouco óbvio sobre dias ativos: se o curso já devia ter terminado mas ainda tem aluno
+          matriculado (retenção), esse aluno conta só 182,5 dias (metade do ano) se a retenção tem até 3 anos, e
+          não conta nada se passou de 3 anos, mesmo que continue matriculado oficialmente. Os campos "Início do
+          ciclo", "Término do ciclo" e "Dias do ciclo" que aparecem ao comparar cursos em Consulta vêm
+          exatamente desse cálculo.
+        </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Duas cargas horárias diferentes, não confundir: a "carga horária padrão de 800 horas" acima é só a
+          referência usada nesta conta, igual pra qualquer curso; a "CH mínima MEC" que aparece ao comparar
+          cursos em Consulta é outra coisa, o mínimo de horas que o MEC exige daquele tipo específico de curso, e
+          vem pronta da MDO, não é algo que este sistema calcule.
+        </p>
+
+        <p>
+          <strong>Etapa 2, Ponderação:</strong> a matrícula equalizada de cada curso (resultado da Etapa 1) é
+          multiplicada por um peso que depende do tipo de curso, conforme o Guia de Orçamento RFEPCT (Portaria
+          646/2022). Cursos técnicos e a graduação tecnológica/bacharelado seguem um "critério de referência": o
+          peso vem da quantidade de laboratórios previstos no Catálogo Nacional de Cursos Técnicos (CNCT,
+          edição 2014).
+        </p>
+        <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+              <tr>
+                <th className="px-3 py-2 font-medium text-neutral-600 dark:text-neutral-400">Curso ou critério</th>
+                <th className="px-3 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Peso</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tr><td className="px-3 py-2">FIC</td><td className="px-3 py-2 text-right tabular-nums">1,0</td></tr>
+              <tr><td className="px-3 py-2">Ensino Básico</td><td className="px-3 py-2 text-right tabular-nums">2,0</td></tr>
+              <tr><td className="px-3 py-2">Ensino Fundamental I</td><td className="px-3 py-2 text-right tabular-nums">2,0</td></tr>
+              <tr><td className="px-3 py-2">Ensino Fundamental II</td><td className="px-3 py-2 text-right tabular-nums">1,5</td></tr>
+              <tr><td className="px-3 py-2">Ensino Médio</td><td className="px-3 py-2 text-right tabular-nums">1,5</td></tr>
+              <tr><td className="px-3 py-2">Técnico, 1 laboratório</td><td className="px-3 py-2 text-right tabular-nums">1,0</td></tr>
+              <tr><td className="px-3 py-2">Técnico, 2 laboratórios</td><td className="px-3 py-2 text-right tabular-nums">1,5</td></tr>
+              <tr><td className="px-3 py-2">Técnico, 3 laboratórios</td><td className="px-3 py-2 text-right tabular-nums">2,0</td></tr>
+              <tr><td className="px-3 py-2">Técnico, 4 ou mais laboratórios (integrado, no mínimo 1,5)</td><td className="px-3 py-2 text-right tabular-nums">2,5</td></tr>
+              <tr><td className="px-3 py-2">Proeja</td><td className="px-3 py-2 text-right tabular-nums">2,5</td></tr>
+              <tr><td className="px-3 py-2">Superior, Tecnologia e Bacharelado</td><td className="px-3 py-2 text-right tabular-nums">1,0 a 2,5 (mesmo critério de laboratórios)</td></tr>
+              <tr><td className="px-3 py-2">Superior, Licenciatura</td><td className="px-3 py-2 text-right tabular-nums">2,5</td></tr>
+              <tr><td className="px-3 py-2">Pós-graduação Lato Sensu</td><td className="px-3 py-2 text-right tabular-nums">pelo critério de referência</td></tr>
+              <tr><td className="px-3 py-2">Pós-graduação Stricto Sensu</td><td className="px-3 py-2 text-right tabular-nums">3,75 (2,5 + bônus de 50%)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        {totalCursosTecnicos > 0 && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Isso acontece de verdade: no ciclo {anoMaisRecente}, dos {numero.format(totalCursosTecnicos)} ciclos
+            de curso técnico carregados,{" "}
+            {pesosCursoTecnicoOrdenado
+              .map((p) => `${numero.format(p.quantidade)} têm peso ${umaCasa.format(p.peso)}`)
+              .join(", ")}
+            , as quatro faixas de laboratório do guia, todas presentes.
+          </p>
+        )}
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Área/eixo tecnológico e tipo de oferta não têm peso próprio: são campos que classificam o curso (a
+          área/eixo é o que decide, por exemplo, o eixo do CNCT usado pra contar os laboratórios acima) e
+          aparecem noutros indicadores (o IAPL, no bloco Qualidade e Eficiência, mede %ME por categoria de
+          curso), mas não multiplicam a matrícula por fora do Peso do Curso já explicado.
+        </p>
+
+        <p>
+          <strong>Etapa 3, Bonificação:</strong> cursos da área de agropecuária recebem mais 50% sobre a
+          matrícula já ponderada (Etapa 2), por cima de qualquer um dos pesos acima, pela necessidade de manter
+          a fazenda em funcionamento.
         </p>
         <p>
-          O valor total do bloco Funcionamento é dividido pela matrícula equalizada de toda a rede, dando um
-          "valor por matrícula" diferente para cada modalidade. Multiplicando o valor da modalidade certa pela
-          matrícula equalizada de um câmpus específico, chega-se ao Funcionamento daquele câmpus:
+          <strong>Etapa 4, Consolidação:</strong> soma-se a matrícula de todos os cursos de um câmpus, já
+          equalizada, ponderada e bonificada, chegando à Matrícula Total daquele câmpus, separada por
+          modalidade. É essa Matrícula Total, e não a matrícula bruta, que multiplica o "valor por matrícula" de
+          cada modalidade (o valor total do bloco Funcionamento dividido pela Matrícula Total de toda a rede)
+          para chegar ao Funcionamento daquele câmpus:
         </p>
         {taxasModalidade.length > 0 && (
           <TabelaPesos
