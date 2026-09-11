@@ -14,7 +14,7 @@ export interface CursoOpcao {
   valor: number;
 }
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 /**
  * Um "slot" de comparação: escolhe um câmpus (rede inteira, agrupado por

@@ -5,7 +5,7 @@ import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const numero = new Intl.NumberFormat("pt-BR");
 
 /**

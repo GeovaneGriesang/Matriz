@@ -13,7 +13,7 @@ export interface LinhaComparativoCampus {
   variacao: number;
 }
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
