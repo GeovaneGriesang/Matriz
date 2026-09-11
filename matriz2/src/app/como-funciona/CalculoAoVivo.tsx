@@ -8,7 +8,7 @@ export interface CicloResumoCalculo {
   qualidadeEficienciaTotal: number;
 }
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const percentual = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const SEGMENTOS = [
