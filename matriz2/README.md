@@ -76,10 +76,11 @@ Depois do primeiro `npx prisma migrate dev`, rode `npm run seed:superadmin` para
 criar o primeiro usuário (super-admin), com senha gerada mostrada uma única vez no
 terminal.
 
-`.env` também precisa de `RESEND_API_KEY`, `EMAIL_REMETENTE` e `APP_URL` (ver
-"Área administrativa" abaixo) — sem eles, a criação de usuário continua funcionando,
-mas o e-mail de primeiro acesso não sai, e a tela devolve o código para repassar à
-mão.
+`.env` também precisa de `SMTP_USER`, `SMTP_PASS` (senha de app), `EMAIL_REMETENTE` e
+`APP_URL` (ver "Área administrativa" abaixo) — sem eles, a criação de usuário continua
+funcionando, mas o e-mail de primeiro acesso não sai, e a tela devolve o código para
+repassar à mão. `SMTP_HOST`/`SMTP_PORT` têm padrão `smtp.gmail.com`/`587`, cobrindo
+tanto Gmail pessoal quanto Google Workspace (caso de `va-matriz@ifsul.edu.br`).
 
 ## Login obrigatório, e por quê
 
