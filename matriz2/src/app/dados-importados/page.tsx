@@ -78,8 +78,10 @@ export default async function DadosImportadosPage() {
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           A coluna <strong>Abrange</strong> merece atenção. Metade do material da MDO cobre apenas uma
           instituição; somar conjuntos de abrangências diferentes produz um total que parece de rede,
-          mas não é. Clique no nome de um arquivo para baixar o original, exceto os que trazem dado
-          pessoal por aluno (LGPD), que só ficam disponíveis nos agregados já mostrados pelo sistema.
+          mas não é. Clique no nome de um arquivo para baixar o original. Duas exceções: os que trazem
+          dado pessoal por aluno (LGPD) só ficam disponíveis nos agregados já mostrados pelo sistema, e
+          os marcados <strong>Informado</strong> não têm arquivo nenhum (foram digitados à mão); o
+          clique leva para a tela onde o valor foi corrigido, não para um download.
         </p>
       </div>
 
