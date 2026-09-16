@@ -83,15 +83,32 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
             chave: "arquivo",
             rotulo: "Arquivo",
             valor: (f) => f.arquivo,
-            render: (f) =>
-              f.temDadoPessoal ? (
-                <span
-                  className="font-mono text-xs text-neutral-600 dark:text-neutral-400"
-                  title="Dado pessoal por aluno (LGPD): não disponível para baixar, só os agregados aparecem no sistema."
-                >
-                  {f.arquivo}
-                </span>
-              ) : (
+            render: (f) => {
+              if (f.temDadoPessoal) {
+                return (
+                  <span
+                    className="font-mono text-xs text-neutral-600 dark:text-neutral-400"
+                    title="Dado pessoal por aluno (LGPD): não disponível para baixar, só os agregados aparecem no sistema."
+                  >
+                    {f.arquivo}
+                  </span>
+                );
+              }
+              // Origem ADMINISTRADOR não tem arquivo original nenhum (foi digitado à
+              // mão em `/admin/orcamento`); apontar pra tela de download só devolveria
+              // "não encontrei o arquivo". Leva pra onde o dado foi digitado.
+              if (f.origem === "ADMINISTRADOR") {
+                return (
+                  <Link
+                    href={`/admin/orcamento?ano=${f.cicloOrcamento}`}
+                    className={`font-mono text-xs ${PROSE_LINK}`}
+                    title="Sem arquivo original: digitado à mão. Leva para a tela de correção manual."
+                  >
+                    {f.arquivo}
+                  </Link>
+                );
+              }
+              return (
                 <Link
                   href={`/api/dados-importados/${f.id}/baixar`}
                   className={`font-mono text-xs ${PROSE_LINK}`}
@@ -99,7 +116,8 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
                 >
                   {f.arquivo}
                 </Link>
-              ),
+              );
+            },
           },
           {
             chave: "abrange",
