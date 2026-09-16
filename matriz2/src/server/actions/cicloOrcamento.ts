@@ -103,6 +103,10 @@ export async function salvarCicloOrcamentoManualAction(formData: FormData): Prom
     }
   }
 
+  // A fonte da correção é opcional no formulário, mas sempre exibida ao lado do dado
+  // (ver comentário em `OrigemDados` no schema) — sem ela, "corrigido à mão" não diz
+  // de onde o número realmente veio, só que alguém digitou.
+  const fonteInformada = String(formData.get("fonte") ?? "").trim();
   const nomeArquivo = `Correção manual, ciclo ${ano}`;
   const fonte = await prisma.fonteDados.create({
     data: {
@@ -111,6 +115,7 @@ export async function salvarCicloOrcamentoManualAction(formData: FormData): Prom
       arquivo: nomeArquivo,
       abrangencia: "REDE",
       ressalva:
+        (fonteInformada ? `Fonte: ${fonteInformada}. ` : "") +
         "Estes parâmetros foram corrigidos à mão por um administrador, sobrescrevendo o que a MDO havia " +
         "publicado. Valem até a próxima carga (\"npm run carregar\") deste ciclo, que os substitui de volta " +
         "pelo valor oficial.",

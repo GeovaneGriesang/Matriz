@@ -45,9 +45,13 @@ export async function SiteHeader() {
         )}
         {usuario && (
           <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="text-neutral-500 dark:text-neutral-400" title={usuario.email}>
+            <Link
+              href="/admin/conta"
+              className="text-neutral-500 underline decoration-dotted hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+              title={`${usuario.email} · ver minha conta`}
+            >
               {usuario.nome}
-            </span>
+            </Link>
             <form action={logoutAction}>
               <button
                 type="submit"

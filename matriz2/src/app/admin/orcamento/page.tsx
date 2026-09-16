@@ -16,7 +16,7 @@ export default async function AdminOrcamentoPage({
 
   const ciclos = await prisma.cicloOrcamento.findMany({
     orderBy: { ano: "desc" },
-    include: { fonteDados: { select: { origem: true, arquivo: true, geradoEm: true, carregadoEm: true } } },
+    include: { fonteDados: { select: { origem: true, arquivo: true, geradoEm: true, carregadoEm: true, ressalva: true } } },
   });
 
   const params = await searchParams;
@@ -60,11 +60,14 @@ export default async function AdminOrcamentoPage({
 
           {ciclo && (
             <>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Origem atual: <strong>{ciclo.fonteDados.origem === "ADMINISTRADOR" ? "corrigido à mão" : "MDO"}</strong>
-                {" · "}
-                {ciclo.fonteDados.arquivo}
-              </p>
+              <div className="flex flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                <p>
+                  Origem atual: <strong>{ciclo.fonteDados.origem === "ADMINISTRADOR" ? "corrigido à mão" : "MDO"}</strong>
+                  {" · "}
+                  {ciclo.fonteDados.arquivo}
+                </p>
+                {ciclo.fonteDados.ressalva && <p>{ciclo.fonteDados.ressalva}</p>}
+              </div>
               {/* `key` força remontar ao trocar de ano: sem isso, o `useState` interno do
                   formulário guarda os valores do primeiro ciclo carregado e ignora a
                   prop `ciclo` mudando ao clicar noutro ano na aba acima. */}

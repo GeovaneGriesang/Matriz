@@ -89,6 +89,7 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
       Object.entries(ciclo).map(([chave, valor]) => [chave, valor === null ? "" : String(valor)]),
     ),
   );
+  const [fonte, setFonte] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   // Só o campo em edição no momento mostra o número puro; os demais (e este, antes de
@@ -104,6 +105,7 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
     try {
       const formData = new FormData();
       formData.set("ano", String(ciclo.ano));
+      formData.set("fonte", fonte);
       for (const [chave, valor] of Object.entries(valores)) {
         if (chave === "ano") continue;
         formData.set(chave, valor);
@@ -147,6 +149,19 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
           </div>
         </fieldset>
       ))}
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-neutral-600 dark:text-neutral-400">
+          Fonte desta correção (de onde o número veio, para quem for conferir depois)
+        </span>
+        <textarea
+          value={fonte}
+          onChange={(e) => setFonte(e.target.value)}
+          rows={2}
+          placeholder='Ex.: "LOA 2026 (Lei 15.346/2026), Ação 2994, soma das 41 UOs da Rede Federal"'
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        />
+      </label>
 
       {resultado && (
         <p
