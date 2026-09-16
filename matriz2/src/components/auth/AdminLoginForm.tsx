@@ -76,9 +76,12 @@ export function AdminLoginForm() {
         {enviando ? "Entrando..." : "Entrar"}
       </button>
 
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-sm text-neutral-700 dark:text-neutral-300">
         Primeiro acesso ou esqueceu a senha?{" "}
-        <Link href="/admin/recuperar-senha" className="underline hover:text-neutral-800 dark:hover:text-neutral-200">
+        <Link
+          href="/admin/recuperar-senha"
+          className="font-medium text-if-green underline hover:text-if-green/80 dark:text-green-400"
+        >
           Peça um código por e-mail
         </Link>
         .
