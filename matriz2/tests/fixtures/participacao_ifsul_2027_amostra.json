@@ -1,0 +1,1714 @@
+{
+ "_origem": "20260929_participacao_orcamentaria_2027_IFSul.xlsx, aba CICLOS, calculada pelo Excel em 2026-09-29. Amostra estratificada por nivel, ICQA, duracao, agropecuaria, repasse e CH abaixo do MEC.",
+ "periodo": {
+  "inicio": "2025-01-01",
+  "fim": "2025-12-31"
+ },
+ "parametros": {
+  "valorOrcamento": 3077715770,
+  "ajuste": 110685307.58,
+  "assistenciaEstudantil": 651560247.24,
+  "novosCampi": 37100000,
+  "percentualFuncionamento": 0.8,
+  "matriculasTotaisRede": {
+   "PRESENCIAL": 1391495.9144,
+   "EAD": 66294.89899,
+   "EAD_MOOC": 56490.3175,
+   "EAD_FP": 80715.188332
+  },
+  "pesos": {
+   "PRESENCIAL": 1,
+   "EAD": 0.25,
+   "EAD_MOOC": 0.08,
+   "EAD_FP": 0.8
+  }
+ },
+ "valorMatriculaEsperado": {
+  "PRESENCIAL": 1228.8952615515125,
+  "EAD": 307.2238153878781,
+  "EAD_MOOC": 98.311620924121,
+  "EAD_FP": 983.11620924121
+ },
+ "ciclos": [
+  {
+   "curso": "INGLES INTERMEDIARIO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD FP",
+   "inicio": "2024-12-01",
+   "termino": "2024-12-09",
+   "jubilamento": "2024-12-09",
+   "chMec": 160,
+   "chCiclo": 60,
+   "chMatriz": 60,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INGLES BASICO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD FP",
+   "inicio": "2024-12-01",
+   "termino": "2024-12-14",
+   "jubilamento": "2024-12-14",
+   "chMec": 160,
+   "chCiclo": 60,
+   "chMatriz": 60,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INGLES BASICO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD FP",
+   "inicio": "2025-11-11",
+   "termino": "2025-11-15",
+   "jubilamento": "2025-11-15",
+   "chMec": 160,
+   "chCiclo": 60,
+   "chMatriz": 60,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 8,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 0.6,
+    "valor": 589.8697255447261,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INGLES INTERMEDIARIO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD FP",
+   "inicio": "2025-11-06",
+   "termino": "2025-11-10",
+   "jubilamento": "2025-11-10",
+   "chMec": 160,
+   "chCiclo": 60,
+   "chMatriz": 60,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 5,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 0.375,
+    "valor": 368.6685784654538,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - DESENVOLVIMENTO EDUCACIONAL E SOCIAL",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-05-05",
+   "termino": "2025-11-28",
+   "jubilamento": "2025-11-28",
+   "chMec": 3200,
+   "chCiclo": 320,
+   "chMatriz": 320,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 40,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 16,
+    "valor": 19662.3241848242,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - DESENVOLVIMENTO EDUCACIONAL E SOCIAL",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-05-05",
+   "termino": "2025-11-27",
+   "jubilamento": "2025-11-27",
+   "chMec": 2400,
+   "chCiclo": 320,
+   "chMatriz": 320,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 32,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 12.8,
+    "valor": 15729.859347859361,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM INFORMATICA PARA INTERNET",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-03-10",
+   "termino": "2029-03-08",
+   "jubilamento": "2032-03-07",
+   "chMec": 1000,
+   "chCiclo": 3600,
+   "chMatriz": 3100,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 64,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 75.673973,
+    "valor": 92995.38684247709,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM MECATRONICA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-07-06",
+   "termino": "2025-07-15",
+   "jubilamento": "2028-07-14",
+   "chMec": 1200,
+   "chCiclo": 3800,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 55,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 97.468354,
+    "valor": 119778.39838182542,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM MECATRONICA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-07-06",
+   "termino": "2024-01-06",
+   "jubilamento": "2027-01-05",
+   "chMec": 1200,
+   "chCiclo": 1250,
+   "chMatriz": 1200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.244318,
+    "valor": 1529.136494063255,
+    "custoEvadido": 764.5682470316275
+   }
+  },
+  {
+   "curso": "TECNICO EM MECATRONICA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2020-02-10",
+   "termino": "2023-12-20",
+   "jubilamento": "2026-12-19",
+   "chMec": 1200,
+   "chCiclo": 3800,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 5,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 3.235816,
+    "valor": 3976.4789496525686,
+    "custoEvadido": 1988.2394748262843
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - DESENVOLVIMENTO EDUCACIONAL E SOCIAL",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2018-08-06",
+   "termino": "2018-12-14",
+   "jubilamento": "2018-12-14",
+   "chMec": 2400,
+   "chCiclo": 240,
+   "chMatriz": 240,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ANALISE E DESENVOLVIMENTO DE SISTEMAS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-01-10",
+   "termino": "2024-12-23",
+   "jubilamento": "2027-12-23",
+   "chMec": 2000,
+   "chCiclo": 2630,
+   "chMatriz": 2000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 15,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 4.757009,
+    "valor": 5845.865819257899,
+    "custoEvadido": 2922.9329096289493
+   }
+  },
+  {
+   "curso": "ANALISE E DESENVOLVIMENTO DE SISTEMAS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2021-07-01",
+   "termino": "2024-06-25",
+   "jubilamento": "2027-06-25",
+   "chMec": 2000,
+   "chCiclo": 2630,
+   "chMatriz": 2000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 5,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.568229,
+    "valor": 1927.189187127667,
+    "custoEvadido": 963.5945935638335
+   }
+  },
+  {
+   "curso": "ENGENHARIA AGRONOMICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-01-10",
+   "termino": "2026-12-23",
+   "jubilamento": "2029-12-22",
+   "chMec": 3600,
+   "chCiclo": 3945,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 13,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 44.26306,
+    "valor": 54394.66469577029,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA AGRONOMICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-08-21",
+   "termino": "2028-07-21",
+   "jubilamento": "2031-07-21",
+   "chMec": 3600,
+   "chCiclo": 4005,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 17,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 58.26899,
+    "valor": 71606.48570639247,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ANALISE E DESENVOLVIMENTO DE SISTEMAS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-10-17",
+   "termino": "2025-10-17",
+   "jubilamento": "2028-10-16",
+   "chMec": 2000,
+   "chCiclo": 2630,
+   "chMatriz": 2000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 19,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 18.83546,
+    "valor": 23146.80754314305,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ALIMENTOS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-05-23",
+   "termino": "2025-05-23",
+   "jubilamento": "2028-05-22",
+   "chMec": 2400,
+   "chCiclo": 2582,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 5,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.888332,
+    "valor": 6007.2480316906285,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ANALISE E DESENVOLVIMENTO DE SISTEMAS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2016-07-27",
+   "termino": "2019-07-27",
+   "jubilamento": "2022-07-26",
+   "chMec": 2000,
+   "chCiclo": 2100,
+   "chMatriz": 2000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ANALISE E DESENVOLVIMENTO DE SISTEMAS",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2018-08-13",
+   "termino": "2021-07-15",
+   "jubilamento": "2024-07-14",
+   "chMec": 2000,
+   "chCiclo": 2630,
+   "chMatriz": 2000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROPECUARIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-02-25",
+   "termino": "2022-12-23",
+   "jubilamento": "2025-12-22",
+   "chMec": 1200,
+   "chCiclo": 3600,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 1,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 0.979077,
+    "valor": 1203.18308599407,
+    "custoEvadido": 601.591542997035
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROPECUARIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2020-02-18",
+   "termino": "2023-12-23",
+   "jubilamento": "2026-12-22",
+   "chMec": 1200,
+   "chCiclo": 3600,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 3,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 2.922598,
+    "valor": 3591.566833619927,
+    "custoEvadido": 1795.7834168099635
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROPECUARIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-05-23",
+   "termino": "2026-05-21",
+   "jubilamento": "2029-05-20",
+   "chMec": 1200,
+   "chCiclo": 3600,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 23,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 86.25,
+    "valor": 105992.21630881795,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROPECUARIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-04-03",
+   "termino": "2026-12-22",
+   "jubilamento": "2029-12-21",
+   "chMec": 1200,
+   "chCiclo": 3600,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 21,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 84.540441,
+    "valor": 103891.3473543752,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - INFORMACAO E COMUNICACAO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD",
+   "inicio": "2025-09-01",
+   "termino": "2025-09-30",
+   "jubilamento": "2025-09-30",
+   "chMec": 200,
+   "chCiclo": 40,
+   "chMatriz": 40,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 16,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 0.8,
+    "valor": 245.77905231030252,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INGLES BASICO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD",
+   "inicio": "2025-07-01",
+   "termino": "2025-07-15",
+   "jubilamento": "2025-07-15",
+   "chMec": 160,
+   "chCiclo": 60,
+   "chMatriz": 60,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 1,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 0.075,
+    "valor": 23.041786154090858,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA AGRONOMICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-08-05",
+   "termino": "2024-07-17",
+   "jubilamento": "2027-07-17",
+   "chMec": 3600,
+   "chCiclo": 3885,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.702425,
+    "valor": 2092.102015646834,
+    "custoEvadido": 1046.051007823417
+   }
+  },
+  {
+   "curso": "TECNICO EM ELETROTECNICA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2016-08-24",
+   "termino": "2018-08-24",
+   "jubilamento": "2021-08-23",
+   "chMec": 1200,
+   "chCiclo": 1440,
+   "chMatriz": 1200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM ELETROTECNICA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-08-20",
+   "termino": "2021-08-20",
+   "jubilamento": "2024-08-19",
+   "chMec": 1200,
+   "chCiclo": 1440,
+   "chMatriz": 1200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2021-10-07",
+   "termino": "2025-12-31",
+   "jubilamento": "2028-12-30",
+   "chMec": 3600,
+   "chCiclo": 3600,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 22,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 58.395281,
+    "valor": 71761.68411786907,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-03-15",
+   "termino": "2027-12-31",
+   "jubilamento": "2030-12-30",
+   "chMec": 3600,
+   "chCiclo": 3600,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 40,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 93.69652,
+    "valor": 115143.20945186653,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2016-03-15",
+   "termino": "2020-12-31",
+   "jubilamento": "2023-12-31",
+   "chMec": 3600,
+   "chCiclo": 4155,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2016-08-09",
+   "termino": "2021-07-31",
+   "jubilamento": "2024-07-30",
+   "chMec": 3600,
+   "chCiclo": 4155,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2017-10-02",
+   "termino": "2022-07-29",
+   "jubilamento": "2025-07-28",
+   "chMec": 3600,
+   "chCiclo": 4155,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 3,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.747836,
+    "valor": 2147.9073783691492,
+    "custoEvadido": 1073.9536891845746
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE CONTROLE E AUTOMACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2018-09-10",
+   "termino": "2023-07-28",
+   "jubilamento": "2026-07-27",
+   "chMec": 3600,
+   "chCiclo": 4155,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 4,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 2.303001,
+    "valor": 2830.1470162483947,
+    "custoEvadido": 1415.0735081241974
+   }
+  },
+  {
+   "curso": "MESTRADO EM  EDUCACAO  PROFISSIONAL   E   TECNOLOGICA",
+   "tipoCurso": "MESTRADO PROFISSIONAL",
+   "repasse": "EAD FP",
+   "inicio": "2019-08-16",
+   "termino": "2021-08-20",
+   "jubilamento": "2024-08-19",
+   "chMec": 360,
+   "chCiclo": 480,
+   "chMatriz": 360,
+   "peso": 3.75,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "GESTAO DE MICRO E PEQUENOS NEGOCIOS",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "EAD FP",
+   "inicio": "2018-08-08",
+   "termino": "2019-12-20",
+   "jubilamento": "2022-12-19",
+   "chMec": 360,
+   "chCiclo": 380,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "MESTRADO EM  EDUCACAO  PROFISSIONAL   E   TECNOLOGICA",
+   "tipoCurso": "MESTRADO PROFISSIONAL",
+   "repasse": "EAD FP",
+   "inicio": "2021-04-08",
+   "termino": "2023-04-08",
+   "jubilamento": "2026-04-07",
+   "chMec": 360,
+   "chCiclo": 480,
+   "chMatriz": 360,
+   "peso": 3.75,
+   "agropecuaria": false,
+   "alunos": 7,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.474543,
+    "valor": 1449.6471245231617,
+    "custoEvadido": 724.8235622615808
+   }
+  },
+  {
+   "curso": "EDUCACAO E SABERES PARA OS ANOS INICIAIS DO ENSINO FUNDAMENTAL",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "EAD FP",
+   "inicio": "2022-08-01",
+   "termino": "2024-01-31",
+   "jubilamento": "2027-01-30",
+   "chMec": 360,
+   "chCiclo": 410,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 5,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 0.373975,
+    "valor": 367.6608843509815,
+    "custoEvadido": 183.83044217549076
+   }
+  },
+  {
+   "curso": "CURSO DE POS-GRADUACAO EM EDUCACAO E CONTEMPORANEIDADE",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-06-01",
+   "termino": "2023-06-01",
+   "jubilamento": "2026-05-31",
+   "chMec": 360,
+   "chCiclo": 360,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 11,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 2.468238,
+    "valor": 3033.205982581382,
+    "custoEvadido": 1516.602991290691
+   }
+  },
+  {
+   "curso": "ESPECIALIZACAO EM GESTAO DA EDUCACAO BASICA",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-04-03",
+   "termino": "2024-09-30",
+   "jubilamento": "2027-09-30",
+   "chMec": 360,
+   "chCiclo": 380,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 20,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 3.002742,
+    "valor": 3690.0554154617116,
+    "custoEvadido": 1845.0277077308558
+   }
+  },
+  {
+   "curso": "PEDAGOGIA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD",
+   "inicio": "2021-11-08",
+   "termino": "2024-12-31",
+   "jubilamento": "2027-12-31",
+   "chMec": 3200,
+   "chCiclo": 3960,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 307,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 243.597826,
+    "valor": 74839.05352391246,
+    "custoEvadido": 37419.52676195623
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - GESTAO E NEGOCIOS",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD MOOC",
+   "inicio": "2025-09-01",
+   "termino": "2025-09-30",
+   "jubilamento": "2025-09-30",
+   "chMec": 1600,
+   "chCiclo": 40,
+   "chMatriz": 40,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 265,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 13.25,
+    "valor": 1302.6289772446032,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "QUALIFICACAO PROFISSIONAL - DESENVOLVIMENTO EDUCACIONAL E SOCIAL",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "EAD MOOC",
+   "inicio": "2025-09-01",
+   "termino": "2025-09-30",
+   "jubilamento": "2025-09-30",
+   "chMec": 2400,
+   "chCiclo": 40,
+   "chMatriz": 40,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 94,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.7,
+    "valor": 462.06461834336875,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ASSISTENTE DE LOGISTICA",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-10-06",
+   "termino": "2025-12-15",
+   "jubilamento": "2025-12-15",
+   "chMec": 160,
+   "chCiclo": 200,
+   "chMatriz": 200,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 37,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 9.25,
+    "valor": 11367.28116935149,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ASSISTENTE ADMINISTRATIVO",
+   "tipoCurso": "QUALIFICACAO PROFISSIONAL (FIC)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-05-02",
+   "termino": "2025-07-31",
+   "jubilamento": "2025-07-31",
+   "chMec": 160,
+   "chCiclo": 160,
+   "chMatriz": 160,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 24,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.8,
+    "valor": 5898.6972554472595,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "PEDAGOGIA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD FP",
+   "inicio": "2023-12-03",
+   "termino": "2024-10-01",
+   "jubilamento": "2027-10-01",
+   "chMec": 3200,
+   "chCiclo": 3710,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 28,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 84.046053,
+    "valor": 82627.03702704584,
+    "custoEvadido": 41313.51851352292
+   }
+  },
+  {
+   "curso": "ESPECIALIZACAO EM GESTAO DA EDUCACAO BASICA",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-04-01",
+   "termino": "2026-09-30",
+   "jubilamento": "2029-09-29",
+   "chMec": 360,
+   "chCiclo": 380,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 30,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 13.54927,
+    "valor": 16650.63370048206,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "DOUTORADO PROFISSIONAL EM EDUCACAO E TECNOLOGIA",
+   "tipoCurso": "DOUTORADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-03-14",
+   "termino": "2026-03-06",
+   "jubilamento": "2029-03-05",
+   "chMec": 460,
+   "chCiclo": 480,
+   "chMatriz": 480,
+   "peso": 3.75,
+   "agropecuaria": false,
+   "alunos": 25,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 14.12053,
+    "valor": 17352.65240759598,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "GESTAO DE MICRO E PEQUENOS NEGOCIOS",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "EAD FP",
+   "inicio": "2025-04-01",
+   "termino": "2026-09-30",
+   "jubilamento": "2029-09-29",
+   "chMec": 360,
+   "chCiclo": 360,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 30,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 6.774635,
+    "valor": 6660.253480192825,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "EDUCACAO",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "EAD FP",
+   "inicio": "2023-12-22",
+   "termino": "2025-06-21",
+   "jubilamento": "2028-06-20",
+   "chMec": 360,
+   "chCiclo": 420,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 380,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 107.343066,
+    "valor": 105530.70813424901,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ESPECIALIZACAO EM DOCENCIA PARA A EDUCACAO PROFISSIONAL E TECNOLOGICA  DOCENTE - EPT",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "EAD",
+   "inicio": "2024-12-19",
+   "termino": "2026-08-09",
+   "jubilamento": "2029-08-08",
+   "chMec": 360,
+   "chCiclo": 360,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 458,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 125.586811,
+    "valor": 38583.25923781634,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "LICENCIATURA PARA A EDUCACAO PROFISSIONAL, CIENTIFICA E TECNOLOGICA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD",
+   "inicio": "2024-03-01",
+   "termino": "2024-12-30",
+   "jubilamento": "2027-12-30",
+   "chMec": 3200,
+   "chCiclo": 1520,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 47,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 140.614754,
+    "valor": 43200.201223707896,
+    "custoEvadido": 21600.100611853948
+   }
+  },
+  {
+   "curso": "SISTEMAS PARA INTERNET",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "EAD",
+   "inicio": "2025-05-02",
+   "termino": "2028-05-02",
+   "jubilamento": "2031-05-02",
+   "chMec": 2000,
+   "chCiclo": 2160,
+   "chMatriz": 2000,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 48,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 26.690975,
+    "valor": 8200.103175922472,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "PEDAGOGIA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD",
+   "inicio": "2023-12-02",
+   "termino": "2027-11-30",
+   "jubilamento": "2030-11-29",
+   "chMec": 3200,
+   "chCiclo": 3960,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 122,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 305,
+    "valor": 93703.26369330283,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "LICENCIATURA PARA A EDUCACAO PROFISSIONAL, CIENTIFICA E TECNOLOGICA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD",
+   "inicio": "2025-05-02",
+   "termino": "2025-12-30",
+   "jubilamento": "2028-12-29",
+   "chMec": 3200,
+   "chCiclo": 1520,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 7,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 70,
+    "valor": 21505.66707715147,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "LICENCIATURA PARA A EDUCACAO PROFISSIONAL, CIENTIFICA E TECNOLOGICA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-03-05",
+   "termino": "2027-03-05",
+   "jubilamento": "2030-03-04",
+   "chMec": 3200,
+   "chCiclo": 1437,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 14,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 25.973136,
+    "valor": 31918.263758033005,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "LICENCIATURA PARA A EDUCACAO PROFISSIONAL, CIENTIFICA E TECNOLOGICA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-07-31",
+   "termino": "2025-07-30",
+   "jubilamento": "2028-07-29",
+   "chMec": 3200,
+   "chCiclo": 1437,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 9,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 11.665796,
+    "valor": 14336.041426626589,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ADMINISTRACAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "EAD",
+   "inicio": "2025-07-01",
+   "termino": "2030-01-01",
+   "jubilamento": "2032-12-31",
+   "chMec": 3000,
+   "chCiclo": 3150,
+   "chMatriz": 3000,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 376,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 157.618469,
+    "valor": 48424.14742177599,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ENGENHARIA DE PRODUCAO",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "EAD",
+   "inicio": "2025-05-14",
+   "termino": "2030-05-14",
+   "jubilamento": "2033-05-13",
+   "chMec": 3600,
+   "chCiclo": 3705,
+   "chMatriz": 3600,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 217,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 310,
+    "valor": 95239.38277024221,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "COMPUTACAO",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2015-02-19",
+   "termino": "2018-12-21",
+   "jubilamento": "2021-12-20",
+   "chMec": 3200,
+   "chCiclo": 2950,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "COMPUTACAO",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2017-07-17",
+   "termino": "2021-07-17",
+   "jubilamento": "2024-07-16",
+   "chMec": 3200,
+   "chCiclo": 2950,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "COMPUTACAO",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2018-07-27",
+   "termino": "2022-07-25",
+   "jubilamento": "2025-07-24",
+   "chMec": 3200,
+   "chCiclo": 2950,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.152344,
+    "valor": 1416.110081277316,
+    "custoEvadido": 708.055040638658
+   }
+  },
+  {
+   "curso": "COMPUTACAO",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-02-13",
+   "termino": "2023-02-10",
+   "jubilamento": "2026-02-09",
+   "chMec": 3200,
+   "chCiclo": 2950,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.153134,
+    "valor": 1417.080908533942,
+    "custoEvadido": 708.540454266971
+   }
+  },
+  {
+   "curso": "EDUCACAO",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2018-07-27",
+   "termino": "2020-01-27",
+   "jubilamento": "2023-01-26",
+   "chMec": 360,
+   "chCiclo": 360,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "POS-GRADUACAO EM LINGUAGENS VERBAIS E VISUAIS E SUAS TECNOLOGIAS",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2017-08-01",
+   "termino": "2018-08-01",
+   "jubilamento": "2021-07-31",
+   "chMec": 360,
+   "chCiclo": 370,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "POS-GRADUACAO EM ENGENHARIA E CIENCIAS AMBIENTAIS",
+   "tipoCurso": "MESTRADO PROFISSIONAL",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-02-28",
+   "termino": "2025-02-26",
+   "jubilamento": "2028-02-26",
+   "chMec": 360,
+   "chCiclo": 345,
+   "chMatriz": 360,
+   "peso": 3.75,
+   "agropecuaria": false,
+   "alunos": 8,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 1.010188,
+    "valor": 1241.4152464761994,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "ESPECIALIZACAO EM TEMAS E METODOLOGIAS EMERGENTES NA EDUCACAO CONTEMPORANEA",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2024-09-01",
+   "termino": "2026-03-01",
+   "jubilamento": "2029-02-28",
+   "chMec": 360,
+   "chCiclo": 180,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 28,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.203839,
+    "valor": 5166.077827425449,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "AGROINDUSTRIA",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-03-21",
+   "termino": "2025-03-21",
+   "jubilamento": "2028-03-20",
+   "chMec": 2400,
+   "chCiclo": 2490,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 9,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 7.383774,
+    "valor": 9073.884880967258,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "VITICULTURA E ENOLOGIA",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-03-21",
+   "termino": "2025-03-21",
+   "jubilamento": "2028-03-20",
+   "chMec": 2400,
+   "chCiclo": 2910,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 6,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.922516,
+    "valor": 6049.2565873115045,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "AGROINDUSTRIA",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-02-11",
+   "termino": "2022-12-31",
+   "jubilamento": "2025-12-30",
+   "chMec": 2400,
+   "chCiclo": 2730,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 4,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 2.891725,
+    "valor": 3553.6271502100476,
+    "custoEvadido": 1776.8135751050238
+   }
+  },
+  {
+   "curso": "VITICULTURA E ENOLOGIA",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-02-11",
+   "termino": "2022-07-31",
+   "jubilamento": "2025-07-30",
+   "chMec": 2400,
+   "chCiclo": 2970,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.620462,
+    "valor": 1991.378073324287,
+    "custoEvadido": 995.6890366621435
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROINDUSTRIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2017-02-06",
+   "termino": "2020-02-06",
+   "jubilamento": "2023-02-05",
+   "chMec": 3200,
+   "chCiclo": 3670,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM AGROPECUARIA",
+   "tipoCurso": "TECNICO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2019-02-11",
+   "termino": "2021-12-31",
+   "jubilamento": "2024-12-30",
+   "chMec": 1200,
+   "chCiclo": 3880,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "AGROINDUSTRIA",
+   "tipoCurso": "TECNOLOGIA",
+   "repasse": "PRESENCIAL",
+   "inicio": "2017-02-06",
+   "termino": "2020-08-06",
+   "jubilamento": "2023-08-06",
+   "chMec": 2400,
+   "chCiclo": 2880,
+   "chMatriz": 2400,
+   "peso": 2.5,
+   "agropecuaria": true,
+   "alunos": 0,
+   "esperado": {
+    "icqa": 0,
+    "matriculaTotal": 0,
+    "valor": 0,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INFORMATICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2022-05-16",
+   "termino": "2024-12-20",
+   "jubilamento": "2027-12-20",
+   "chMec": 3000,
+   "chCiclo": 2205,
+   "chMatriz": 3000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 15,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 5.956764,
+    "valor": 7320.239053780633,
+    "custoEvadido": 3660.1195268903166
+   }
+  },
+  {
+   "curso": "INFORMATICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-03-10",
+   "termino": "2025-12-23",
+   "jubilamento": "2028-12-22",
+   "chMec": 3000,
+   "chCiclo": 2205,
+   "chMatriz": 3000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 32,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 180,
+    "valor": 221201.14707927225,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM ADMINISTRACAO",
+   "tipoCurso": "TECNICO",
+   "repasse": "EAD FP",
+   "inicio": "2021-11-29",
+   "termino": "2023-12-10",
+   "jubilamento": "2026-12-09",
+   "chMec": 800,
+   "chCiclo": 1005,
+   "chMatriz": 800,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 0.245957,
+    "valor": 241.80431347634033,
+    "custoEvadido": 120.90215673817016
+   }
+  },
+  {
+   "curso": "LICENCIATURA PARA A EDUCACAO PROFISSIONAL, CIENTIFICA E TECNOLOGICA",
+   "tipoCurso": "LICENCIATURA",
+   "repasse": "EAD",
+   "inicio": "2020-12-19",
+   "termino": "2022-07-31",
+   "jubilamento": "2025-07-30",
+   "chMec": 3200,
+   "chCiclo": 1520,
+   "chMatriz": 3200,
+   "peso": 2.5,
+   "agropecuaria": false,
+   "alunos": 2,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 1.46928,
+    "valor": 451.3978074731015,
+    "custoEvadido": 225.69890373655076
+   }
+  },
+  {
+   "curso": "CURSO DE ESPECIALIZACAO EM EDUCACAO: A PESQUISA COMO PRINCIPIO PEDAGOGICO",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2025-03-21",
+   "termino": "2025-12-13",
+   "jubilamento": "2028-12-12",
+   "chMec": 360,
+   "chCiclo": 369,
+   "chMatriz": 360,
+   "peso": 2,
+   "agropecuaria": false,
+   "alunos": 15,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 13.5,
+    "valor": 16590.08603094542,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM CONTABILIDADE",
+   "tipoCurso": "TECNICO",
+   "repasse": "EAD FP",
+   "inicio": "2024-02-19",
+   "termino": "2025-08-29",
+   "jubilamento": "2028-08-28",
+   "chMec": 800,
+   "chCiclo": 800,
+   "chMatriz": 800,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 10,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 4.318996,
+    "valor": 4246.07497524795,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "TECNICO EM ADMINISTRACAO",
+   "tipoCurso": "TECNICO",
+   "repasse": "EAD FP",
+   "inicio": "2024-02-01",
+   "termino": "2026-03-01",
+   "jubilamento": "2029-02-28",
+   "chMec": 800,
+   "chCiclo": 1005,
+   "chMatriz": 800,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 39,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 18.730263,
+    "valor": 18414.025158650897,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "CURSO DE ESPECIALIZACAO EM EDUCACAO: A PESQUISA COMO PRINCIPIO PEDAGOGICO",
+   "tipoCurso": "ESPECIALIZACAO (LATO SENSU)",
+   "repasse": "PRESENCIAL",
+   "inicio": "2024-02-19",
+   "termino": "2024-12-13",
+   "jubilamento": "2027-12-13",
+   "chMec": 360,
+   "chCiclo": 369,
+   "chMatriz": 360,
+   "peso": 1,
+   "agropecuaria": false,
+   "alunos": 23,
+   "esperado": {
+    "icqa": 0.5,
+    "matriculaTotal": 3.158654,
+    "valor": 3881.654933480731,
+    "custoEvadido": 1940.8274667403655
+   }
+  },
+  {
+   "curso": "INFORMATICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2024-02-19",
+   "termino": "2027-07-15",
+   "jubilamento": "2030-07-14",
+   "chMec": 3000,
+   "chCiclo": 2205,
+   "chMatriz": 3000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 14,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 16.996505,
+    "valor": 20886.924457436588,
+    "custoEvadido": 0
+   }
+  },
+  {
+   "curso": "INFORMATICA",
+   "tipoCurso": "BACHARELADO",
+   "repasse": "PRESENCIAL",
+   "inicio": "2023-04-01",
+   "termino": "2027-04-19",
+   "jubilamento": "2030-04-18",
+   "chMec": 3000,
+   "chCiclo": 2205,
+   "chMatriz": 3000,
+   "peso": 1.5,
+   "agropecuaria": false,
+   "alunos": 15,
+   "esperado": {
+    "icqa": 1,
+    "matriculaTotal": 15.294394,
+    "valor": 18795.208314901884,
+    "custoEvadido": 0
+   }
+  }
+ ]
+}

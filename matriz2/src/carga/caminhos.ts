@@ -25,6 +25,29 @@ export const RAIZ_DADOS =
 const EXPORTADOS = path.join(RAIZ_DADOS, "mdo.iftm.edu.br", "Exportados");
 
 /**
+ * A MDO reexporta a cada rodada de homologação, e quem organiza os arquivos costuma
+ * guardar a versão nova ao lado da antiga, prefixada com a data da exportação (ex.:
+ * "20262909_conferencia_...xlsx", e também "20260929_..." na 6ª fase: a ordem dia e mês
+ * não é constante). Por isso o nome de arquivo nunca é fixo: procura o nome-base com ou
+ * sem um prefixo de 8 dígitos e fica com o de modificação mais recente.
+ */
+const PREFIXO_DE_DATA = /^[0-9]{8}_/;
+
+function maisRecente(pasta: string, nomeBase: string): string | null {
+  if (!fs.existsSync(pasta)) return null;
+  const alvo = nomeBase.toLowerCase();
+  let melhor: { caminho: string; quando: number } | null = null;
+  for (const nome of fs.readdirSync(pasta)) {
+    const n = nome.toLowerCase();
+    if (n !== alvo && !(n.length === alvo.length + 9 && PREFIXO_DE_DATA.test(n) && n.endsWith(alvo))) continue;
+    const caminho = path.join(pasta, nome);
+    const quando = fs.statSync(caminho).mtimeMs;
+    if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+  }
+  return melhor?.caminho ?? null;
+}
+
+/**
  * A exportação oficial da MDO para 2026 saiu com a matrícula por câmpus zerada (ver
  * `carregarProposta.ts`), e o IFTM nunca corrigiu. Para 2026, e só para 2026, existe
  * uma fonte alternativa: um arquivo da mesma proposta, obtido por outro canal (não a
@@ -42,40 +65,68 @@ const FONTE_ALTERNATIVA_2026 = path.join(RAIZ_DADOS, "Outras fontes", "2026", "M
  * zerada e por isso `planilhaProposta` prefere a alternativa para o resto da carga.
  */
 export function planilhaPropostaOficial(ano: number): string {
-  return path.join(
+  const pasta = path.join(
     EXPORTADOS,
     "01 - Matriz orçamentária",
     "5a fase - Matriz de Distribuição Orçamentária",
     "01 - Completo proposta",
     String(ano),
-    `Matriz Distribuição Orçamentária ${ano}.xlsx`,
   );
+  const nome = `Matriz Distribuição Orçamentária ${ano}.xlsx`;
+  return maisRecente(pasta, nome) ?? path.join(pasta, nome);
 }
 
 /** 5ª fase: a proposta compilada, com todos os blocos por câmpus e instituição. */
 export function planilhaProposta(ano: number): string {
-  if (ano === 2026 && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
-  return planilhaPropostaOficial(ano);
+  // Desde a reexportação de 2026-09-29 a exportação oficial de 2026 traz a matrícula por
+  // câmpus preenchida, então a fonte alternativa só serve quando não há arquivo oficial.
+  const oficial = planilhaPropostaOficial(ano);
+  if (ano === 2026 && !fs.existsSync(oficial) && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
+  return oficial;
 }
 
 /** 6ª fase: a participação de cada ciclo de curso. Existe só para 2027 até agora. */
 export function planilhaParticipacao(ano: number): string {
-  return path.join(
-    EXPORTADOS,
-    "01 - Matriz orçamentária",
-    "6a fase - Participação Orçamentária",
-    String(ano),
-    `participacao_orcamentaria_${ano}.xlsx`,
-  );
+  const pasta = path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
+  const nome = `participacao_orcamentaria_${ano}.xlsx`;
+  return maisRecente(pasta, nome) ?? path.join(pasta, nome);
 }
 
 /**
- * Relatórios da pasta "03 - Indicadores". São interanuais: o mesmo arquivo traz 2026
- * e 2027, e as duas pastas de ano contêm cópias byte a byte idênticas. O parâmetro de
- * ano serve só para escolher de qual pasta ler.
+ * 6ª fase de UMA instituição (ex.: "participacao_orcamentaria_2027_IFSul.xlsx"). Este
+ * formato é outro: chega como planilha com fórmulas (sem os valores calculados) e traz
+ * a aba "Parâmetros" com o orçamento e as matrículas totais usados no cálculo.
+ */
+export function planilhaParticipacaoInstituicao(ano: number, sigla: string): string | null {
+  const pasta = path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
+  if (!fs.existsSync(pasta)) return null;
+  const sufixo = `_${sigla}.xlsx`.toLowerCase();
+  const prefixo = `participacao_orcamentaria_${ano}`;
+  let melhor: { caminho: string; quando: number } | null = null;
+  for (const nome of fs.readdirSync(pasta)) {
+    const n = nome.toLowerCase().replace(PREFIXO_DE_DATA, "");
+    if (!n.startsWith(prefixo) || !n.endsWith(sufixo)) continue;
+    const caminho = path.join(pasta, nome);
+    const quando = fs.statSync(caminho).mtimeMs;
+    if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+  }
+  return melhor?.caminho ?? null;
+}
+
+/**
+ * Relatórios da pasta "03 - Indicadores". Até 2026-08-31 eram interanuais: o mesmo
+ * arquivo trazia 2026 e 2027, e as duas pastas de ano continham cópias idênticas. A
+ * exportação de 2026-09-29 passou a gerar um arquivo por ano (só o ano da pasta).
  */
 export function relatorioIndicadores(pastaAno: number, arquivo: string): string {
-  return path.join(EXPORTADOS, "03 - Indicadores", String(pastaAno), arquivo);
+  // Desde 2026-09-29 os relatórios ficam numa subpasta ("1 - Visão geral"); antes ficavam
+  // direto na pasta do ano. Procura nas duas, e a versão mais recente vence.
+  const base = path.join(EXPORTADOS, "03 - Indicadores", String(pastaAno));
+  for (const sub of ["1 - Visão geral", ""]) {
+    const achado = maisRecente(path.join(base, sub), arquivo);
+    if (achado) return achado;
+  }
+  return path.join(base, arquivo);
 }
 
 /**
@@ -93,8 +144,30 @@ export function conferenciaExtracao(ciclo: number, sigla: string): string | null
     String(ciclo),
   );
   for (const base of [ciclo - 2, ciclo - 1, ciclo]) {
-    const c = path.join(pasta, `conferencia_extracao_pnp_por_unidade_${base}.xlsx`);
-    if (fs.existsSync(c)) return c;
+    const c = maisRecente(pasta, `conferencia_extracao_pnp_por_unidade_${base}.xlsx`);
+    if (c) return c;
+  }
+  return null;
+}
+
+/**
+ * 2ª fase, Conferência da Extração da PNP, POR CICLO DE CURSO: uma aba por câmpus, com
+ * a matrícula de cada ciclo aberta por situação e por faixa de renda, mais uma aba
+ * INDICADORES da rede. Só existe para o IFSul. Mesma regra de nome do arquivo por
+ * unidade: o ano no nome é o da PNP, não o do ciclo orçamentário.
+ */
+export function conferenciaExtracaoCiclos(ciclo: number, sigla: string): string | null {
+  const pasta = path.join(
+    EXPORTADOS,
+    "01 - Matriz orçamentária",
+    "2a fase - Conferência Extração PNP",
+    "02 - Por ciclo",
+    sigla,
+    String(ciclo),
+  );
+  for (const base of [ciclo - 2, ciclo - 1, ciclo]) {
+    const c = maisRecente(pasta, `conferencia_extracao_pnp_por_ciclos_${base}.xlsx`);
+    if (c) return c;
   }
   return null;
 }
@@ -116,8 +189,12 @@ export function conferenciaExtracaoAluno(ciclo: number, sigla: string): string |
     String(ciclo),
   );
   if (!fs.existsSync(pasta)) return null;
-  const arquivo = fs.readdirSync(pasta).find((f) => f.toLowerCase().endsWith(".xlsx"));
-  return arquivo ? path.join(pasta, arquivo) : null;
+  const candidatos = fs
+    .readdirSync(pasta)
+    .filter((f) => f.toLowerCase().endsWith(".xlsx"))
+    .map((f) => ({ caminho: path.join(pasta, f), quando: fs.statSync(path.join(pasta, f)).mtimeMs }))
+    .sort((a, b) => b.quando - a.quando);
+  return candidatos[0]?.caminho ?? null;
 }
 
 export function existe(caminho: string): boolean {

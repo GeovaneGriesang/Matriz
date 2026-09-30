@@ -214,6 +214,9 @@ model FonteDados {
   conferenciasExtracao      ConferenciaExtracao[]
   conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
   ciclosOrcamento           CicloOrcamento[]
+  parametrosParticipacao    ParametrosParticipacao[]
+  conferenciasCiclo         ConferenciaCiclo[]
+  indicadoresPnp            IndicadoresPnpInstituicao[]
 
   @@index([cicloOrcamento, origem])
   @@index([instituicaoId])
@@ -231,6 +234,8 @@ model Instituicao {
   fontes                   FonteDados[]
   distribuicoesInstituicao DistribuicaoInstituicao[]
   comparativos             ComparativoInstitucional[]
+  parametrosParticipacao   ParametrosParticipacao[]
+  indicadoresPnp           IndicadoresPnpInstituicao[]
 
   @@index([uf])
 }
@@ -256,6 +261,7 @@ model Unidade {
   distribuicoesCampus       DistribuicaoCampus[]
   conferenciasExtracao      ConferenciaExtracao[]
   conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
+  conferenciasCiclo         ConferenciaCiclo[]
   valoresRecebidos          ValorRecebidoCampus[]
 
   @@unique([instituicaoId, nome])
@@ -405,8 +411,22 @@ model DistribuicaoCiclo {
   valorReais       Decimal  @db.Decimal(18, 6)
   icqa             Decimal? @db.Decimal(18, 6)
   valorAluno       Decimal? @db.Decimal(18, 6)
-  /// Quanto o ciclo deixa de receber por evasão. Somou R$ 102.320.304,23 na rede em 2027.
+  /// Quanto o ciclo deixa de receber por evasão. Somou R$ 102.320.304,23 na rede em 2027
+  /// na exportação de 2026-08-31. Atenção: na 6ª fase do IFSul de 2026-09-29 esta coluna
+  /// ("Custo Evadido") mudou de definição e passou a valer, para o aluno retido, METADE
+  /// do que valia antes (valor do ciclo x alunos não contabilizados / alunos, em vez do
+  /// valor inteiro). Não some as duas versões.
   perdaEvasaoReais Decimal? @db.Decimal(18, 6)
+
+  /// Só existem na 6ª fase no formato de fórmulas (IFSul, 2026-09-29); nulos na
+  /// exportação da rede de 2026-08-31.
+  agropecuaria            Boolean?
+  /// Horas acima do mínimo do MEC (CH da matriz menos CH MEC, quando positivo).
+  chExcedente             Int?
+  alunosContabilizados    Decimal? @db.Decimal(18, 5)
+  alunosNaoContabilizados Decimal? @db.Decimal(18, 5)
+  /// Fatia do ciclo no total da instituição (0,0004 = 0,04%).
+  contribuicaoInstituicao Decimal? @db.Decimal(18, 10)
 
   @@unique([ano, unidadeId, codigoCiclo])
   @@index([ano, unidadeId])
@@ -705,5 +725,150 @@ model DistribuicaoInstituicao {
 
   @@unique([ano, instituicaoId])
   @@index([ano])
+  @@index([fonteDadosId])
+}
+
+/// Os parâmetros que a 6ª fase de UMA instituição carrega na aba "Parâmetros": o
+/// orçamento, os descontos e as matrículas totais da REDE, tudo que é preciso para
+/// transformar a Matrícula Total de um ciclo em reais (valor da matrícula x matrícula).
+///
+/// Guardar isto, e não só o resultado por ciclo, é o que permite o Simulador de curso:
+/// dado um curso hipotético, a Matrícula Total sai da regra em `lib/mdo/matriculaTotal`
+/// e o valor da matrícula sai daqui.
+///
+/// ATENÇÃO: em 2026-09-29 estes parâmetros (ajuste de R$ 110,7 mi, valor da matrícula
+/// presencial de R$ 1.228,90) NÃO coincidiam com os da 5ª fase do mesmo dia (ajuste de
+/// R$ 90,0 mi, R$ 1.154,24). São fotografias de momentos diferentes da MDO; quem compara
+/// o total do IFSul entre as fases precisa saber disso.
+model ParametrosParticipacao {
+  id            Int         @id @default(autoincrement())
+  ano           Int
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  fonteDadosId  Int
+  fonteDados    FonteDados  @relation(fields: [fonteDadosId], references: [id])
+
+  /// Período da PNP usado como ano-base (ex.: 2025-01-01 a 2025-12-31 para o ciclo 2027).
+  periodoInicio DateTime @db.Date
+  periodoFim    DateTime @db.Date
+
+  valorOrcamento          Decimal @db.Decimal(18, 2)
+  ajuste                  Decimal @db.Decimal(18, 2)
+  assistenciaEstudantil   Decimal @db.Decimal(18, 2)
+  novosCampi              Decimal @db.Decimal(18, 2)
+  percentualFuncionamento Decimal @db.Decimal(9, 6)
+
+  /// Matrícula Total da rede inteira, por modalidade de repasse.
+  matriculasPresencial Decimal @db.Decimal(18, 6)
+  matriculasEad        Decimal @db.Decimal(18, 6)
+  matriculasEadMooc    Decimal @db.Decimal(18, 6)
+  matriculasEadFp      Decimal @db.Decimal(18, 6)
+
+  /// Peso de cada modalidade sobre o presencial (1; 0,25; 0,08; 0,8).
+  pesoEad     Decimal @db.Decimal(9, 6)
+  pesoEadMooc Decimal @db.Decimal(9, 6)
+  pesoEadFp   Decimal @db.Decimal(9, 6)
+
+  /// Derivados dos campos acima (a planilha os calcula por fórmula): o valor em reais de
+  /// uma matrícula em cada modalidade.
+  valorMatriculaPresencial Decimal @db.Decimal(18, 6)
+  valorMatriculaEad        Decimal @db.Decimal(18, 6)
+  valorMatriculaEadMooc    Decimal @db.Decimal(18, 6)
+  valorMatriculaEadFp      Decimal @db.Decimal(18, 6)
+
+  @@unique([ano, instituicaoId])
+  @@index([fonteDadosId])
+}
+
+/// Conferência da Extração da PNP (2ª fase) no grão de CICLO DE CURSO: para cada ciclo
+/// de cada câmpus, a matrícula aberta por situação (concluída, retida, evadida por
+/// motivo...) e por faixa de renda familiar. Só existe para o IFSul.
+///
+/// É o que falta para explicar POR QUE um ciclo entrou na matriz com o valor que entrou:
+/// a 6ª fase diz quanto o ciclo recebe; esta diz quantos concluíram, ficaram retidos ou
+/// evadiram, e de que faixa de renda são. Liga-se à `DistribuicaoCiclo` pelo
+/// `codigoCiclo`.
+///
+/// O ano do arquivo é o da PNP (2024 para o ciclo 2026, 2025 para o 2027), e agora existe
+/// um arquivo para cada, o que a extração por unidade e por aluno não tinha (as duas
+/// pastas traziam o mesmo arquivo).
+model ConferenciaCiclo {
+  id           Int        @id @default(autoincrement())
+  ano          Int
+  unidadeId    Int
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id])
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  codigoCiclo   String
+  nomeCiclo     String  @db.Text
+  modalidade    String
+  financiamento String
+  tipoCurso     String
+  curso         String
+  areaEixo      String?
+  agropecuaria  Boolean @default(false)
+  tipoOferta    String?
+
+  inicio          DateTime?
+  previstoTermino DateTime?
+  chHoraria       Int?
+  chHorariaMec    Int?
+  chMatriz        Int?
+
+  /// Situação da matrícula, em quantidade de alunos.
+  concluida     Decimal @default(0) @db.Decimal(18, 4)
+  integralizada Decimal @default(0) @db.Decimal(18, 4)
+  emFluxo       Decimal @default(0) @db.Decimal(18, 4)
+  retido        Decimal @default(0) @db.Decimal(18, 4)
+  abandono      Decimal @default(0) @db.Decimal(18, 4)
+  cancelada     Decimal @default(0) @db.Decimal(18, 4)
+  desligada     Decimal @default(0) @db.Decimal(18, 4)
+  reprovada     Decimal @default(0) @db.Decimal(18, 4)
+  substituido   Decimal @default(0) @db.Decimal(18, 4)
+  transfExterna Decimal @default(0) @db.Decimal(18, 4)
+  transfInterna Decimal @default(0) @db.Decimal(18, 4)
+  qtdMatriculas Decimal @default(0) @db.Decimal(18, 4)
+
+  /// Faixa de renda familiar per capita, em salários mínimos.
+  rendaNaoDeclarada Decimal @default(0) @db.Decimal(18, 4)
+  rendaAte05        Decimal @default(0) @db.Decimal(18, 4)
+  renda05a10        Decimal @default(0) @db.Decimal(18, 4)
+  renda10a15        Decimal @default(0) @db.Decimal(18, 4)
+  renda15a25        Decimal @default(0) @db.Decimal(18, 4)
+  renda25a35        Decimal @default(0) @db.Decimal(18, 4)
+  rendaAcima35      Decimal @default(0) @db.Decimal(18, 4)
+
+  @@unique([ano, unidadeId, codigoCiclo, financiamento])
+  @@index([ano, unidadeId])
+  @@index([fonteDadosId])
+}
+
+/// Indicadores da PNP por instituição, da aba INDICADORES do arquivo de ciclos da 2ª fase.
+/// Cobre a REDE inteira (42 instituições), mesmo o arquivo sendo do IFSul: é a única
+/// aba que não filtra por instituição. Não substitui `DistribuicaoInstituicao` (que vem
+/// da 5ª fase e é a que fecha com o orçamento); serve para conferir os dois.
+model IndicadoresPnpInstituicao {
+  id            Int         @id @default(autoincrement())
+  ano           Int
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  fonteDadosId  Int
+  fonteDados    FonteDados  @relation(fields: [fonteDadosId], references: [id])
+
+  ieaConclusao  Decimal? @db.Decimal(9, 4)
+  ieaEvasao     Decimal? @db.Decimal(9, 4)
+  ieaRetencao   Decimal? @db.Decimal(9, 4)
+  ieaEficiencia Decimal? @db.Decimal(9, 4)
+
+  rapPresencial        Decimal? @db.Decimal(12, 4)
+  matriculaEqRap       Decimal? @db.Decimal(18, 4)
+  professorEquivalente Decimal? @db.Decimal(18, 4)
+
+  meTecnicos Decimal? @db.Decimal(9, 4)
+  meFormacao Decimal? @db.Decimal(9, 4)
+  meProeja   Decimal? @db.Decimal(9, 4)
+
+  @@unique([ano, instituicaoId])
   @@index([fonteDadosId])
 }

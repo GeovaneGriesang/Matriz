@@ -19,6 +19,7 @@ const LINKS = [
   { href: "/conferencia", rotulo: "Conferência" },
   { href: "/simulador", rotulo: "Simulador" },
   { href: "/comparativo", rotulo: "Comparativo" },
+  { href: "/situacao-dos-dados", rotulo: "Situação dos dados" },
   { href: "/", rotulo: "Painel" },
 ];
 

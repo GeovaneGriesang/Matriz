@@ -151,8 +151,11 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
   const avisos: string[] = [];
 
   // Ver comentário de DB_2026: o layout de DADOS BASE (e a coluna de sigla em
-  // INDICADORES) mudou entre os ciclos 2026 e 2027.
-  const layout2026 = ano === 2026;
+  // INDICADORES) mudou entre os ciclos 2026 e 2027. O layout NÃO acompanha o ano do
+  // ciclo: a reexportação oficial de 2026 (2026-09-29) já vem no layout de 2027. Por isso
+  // ele é detectado pelo conteúdo, logo depois de abrir a planilha (a célula do valor de
+  // referência da SPO só tem um número de bilhões no lugar novo).
+  let layout2026 = false;
   function db(chave: keyof typeof DB): string | undefined {
     return layout2026 ? DB_2026[chave] : DB[chave];
   }
@@ -166,6 +169,7 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
   if (!completo || !resumo || !indicadores || !dadosBase) {
     throw new Error("A planilha não tem as quatro abas esperadas (DADOS BASE, COMPLETO PROPOSTA, RESUMO PROPOSTA, INDICADORES).");
   }
+  layout2026 = !((numero(dadosBase.getCell(DB.valorReferenciaSpo).value) ?? 0) > 1e9);
 
   // A data de geração vive num texto solto do cabeçalho ("Gerado em 30/08/2026, 12:07:47").
   const geradoEm =
@@ -417,7 +421,13 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
       valorMatriculaPresencial: celula(dadosBase, db("valorMatriculaPresencial")),
       valorMatriculaEad: celula(dadosBase, db("valorMatriculaEad")),
       valorMatriculaEadFp: celula(dadosBase, db("valorMatriculaEadFp")),
-      valorMatriculaEadMooc: celula(dadosBase, db("valorMatriculaEadMooc")),
+      // Regra do usuário (2026-09-30): o MOOC vale 0,8 do presencial em 2026 e 0,08 de 2027 em
+      // diante. A célula da planilha NÃO é confiável para isso: a 5ª fase de 2027 exportada em
+      // 2026-09-29 traz 0,8 nela (e nos valores por câmpus), contra 0,08 na 6ª fase.
+      valorMatriculaEadMooc: (() => {
+        const presencial = celula(dadosBase, db("valorMatriculaPresencial"));
+        return presencial === null ? celula(dadosBase, db("valorMatriculaEadMooc")) : presencial * (ano <= 2026 ? 0.8 : 0.08);
+      })(),
       percentualAnuidade: celula(dadosBase, db("percentualAnuidade")) ?? 0,
     },
   });

@@ -139,6 +139,21 @@ export default async function ComoFuncionaPage() {
           MECHDA (Matrículas Equalizadas por Carga Horária e Dias Ativos), a base sobre a qual o peso do curso
           (Etapa 2, logo abaixo) é multiplicado.
         </p>
+        <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-900">
+          <strong>A conta exata, por ciclo de curso:</strong> Matrícula Total = alunos × ICQA × peso do curso × bônus de
+          agropecuária (1,5) × (CH que conta ÷ 800) × (dias do ciclo dentro do ano-base ÷ dias do ciclo). A CH que conta é a
+          menor entre a do ciclo e a da matriz (nos ciclos de até um ano, é a da matriz), e o ICQA é 1 para o aluno regular,
+          0,5 para o retido dentro do prazo (que ainda conta só 182,5 dias) e 0 para o jubilado. Esta regra reproduz, ao centavo,
+          os 1.352 ciclos do IFSul de 2027. Para ver a conta de cada turma, abra{" "}
+          <Link href="/consulta/valor-do-aluno" className={PROSE_LINK}>
+            Quanto vale um aluno
+          </Link>
+          ; para comparar formas de ofertar um curso (por exemplo 3 ou 4 anos), o{" "}
+          <Link href="/simulador/curso" className={PROSE_LINK}>
+            Simulador de curso
+          </Link>
+          .
+        </p>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           Um detalhe pouco óbvio sobre dias ativos: se o curso já devia ter terminado mas ainda tem aluno
           matriculado (retenção), esse aluno conta só 182,5 dias (metade do ano) se a retenção tem até 3 anos, e
