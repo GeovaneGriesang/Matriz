@@ -31,6 +31,25 @@ const EXPORTADOS = path.join(RAIZ_DADOS, "mdo.iftm.edu.br", "Exportados");
  * não é constante). Por isso o nome de arquivo nunca é fixo: procura o nome-base com ou
  * sem um prefixo de 8 dígitos e fica com o de modificação mais recente.
  */
+/**
+ * Como `path.join`, mas casa cada trecho com o nome real da pasta sem diferenciar
+ * maiúsculas de minúsculas. No Windows isso é automático; no Linux da VM, a sigla
+ * "IFSUL" não achava a pasta "IFSul" e a carga pulava a 2ª fase em silêncio.
+ */
+function caixaCerta(...partes: string[]): string {
+  let atual = partes[0]!;
+  for (const parte of partes.slice(1)) {
+    const direto = path.join(atual, parte);
+    if (fs.existsSync(direto) || !fs.existsSync(atual)) {
+      atual = direto;
+      continue;
+    }
+    const achada = fs.readdirSync(atual).find((nome) => nome.toLowerCase() === parte.toLowerCase());
+    atual = path.join(atual, achada ?? parte);
+  }
+  return atual;
+}
+
 const PREFIXO_DE_DATA = /^[0-9]{8}_/;
 
 function maisRecente(pasta: string, nomeBase: string): string | null {
@@ -65,7 +84,7 @@ const FONTE_ALTERNATIVA_2026 = path.join(RAIZ_DADOS, "Outras fontes", "2026", "M
  * zerada e por isso `planilhaProposta` prefere a alternativa para o resto da carga.
  */
 export function planilhaPropostaOficial(ano: number): string {
-  const pasta = path.join(
+  const pasta = caixaCerta(
     EXPORTADOS,
     "01 - Matriz orçamentária",
     "5a fase - Matriz de Distribuição Orçamentária",
@@ -87,7 +106,7 @@ export function planilhaProposta(ano: number): string {
 
 /** 6ª fase: a participação de cada ciclo de curso. Existe só para 2027 até agora. */
 export function planilhaParticipacao(ano: number): string {
-  const pasta = path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
+  const pasta = caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
   const nome = `participacao_orcamentaria_${ano}.xlsx`;
   return maisRecente(pasta, nome) ?? path.join(pasta, nome);
 }
@@ -98,7 +117,7 @@ export function planilhaParticipacao(ano: number): string {
  * a aba "Parâmetros" com o orçamento e as matrículas totais usados no cálculo.
  */
 export function planilhaParticipacaoInstituicao(ano: number, sigla: string): string | null {
-  const pasta = path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
+  const pasta = caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
   if (!fs.existsSync(pasta)) return null;
   const sufixo = `_${sigla}.xlsx`.toLowerCase();
   const prefixo = `participacao_orcamentaria_${ano}`;
@@ -135,7 +154,7 @@ export function relatorioIndicadores(pastaAno: number, arquivo: string): string 
  * (N-2, N-1 e N) e devolve o primeiro que existir.
  */
 export function conferenciaExtracao(ciclo: number, sigla: string): string | null {
-  const pasta = path.join(
+  const pasta = caixaCerta(
     EXPORTADOS,
     "01 - Matriz orçamentária",
     "2a fase - Conferência Extração PNP",
@@ -157,7 +176,7 @@ export function conferenciaExtracao(ciclo: number, sigla: string): string | null
  * unidade: o ano no nome é o da PNP, não o do ciclo orçamentário.
  */
 export function conferenciaExtracaoCiclos(ciclo: number, sigla: string): string | null {
-  const pasta = path.join(
+  const pasta = caixaCerta(
     EXPORTADOS,
     "01 - Matriz orçamentária",
     "2a fase - Conferência Extração PNP",
@@ -180,7 +199,7 @@ export function conferenciaExtracaoCiclos(ciclo: number, sigla: string): string 
  * Por isso a busca é pelo único .xlsx que existir na pasta, não por um nome fixo.
  */
 export function conferenciaExtracaoAluno(ciclo: number, sigla: string): string | null {
-  const pasta = path.join(
+  const pasta = caixaCerta(
     EXPORTADOS,
     "01 - Matriz orçamentária",
     "2a fase - Conferência Extração PNP",
