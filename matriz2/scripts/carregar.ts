@@ -16,6 +16,8 @@ import { carregarExpansaoPiso } from "../src/carga/carregarExpansaoPiso";
 import { carregarComparativo } from "../src/carga/carregarComparativo";
 import { carregarConferencia } from "../src/carga/carregarConferencia";
 import { carregarConferenciaAluno } from "../src/carga/carregarConferenciaAluno";
+import { carregarConferenciaCiclos } from "../src/carga/carregarConferenciaCiclos";
+import { carregarParticipacaoInstituicao } from "../src/carga/carregarParticipacaoInstituicao";
 import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
 import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "../src/lib/escopoTemporal";
 
@@ -86,6 +88,34 @@ async function carregarCiclo(ano: number) {
     console.log(`     soma de Perda Evasão ..... ${reais.format(r.somaPerdaEvasao)}`);
     if (r.ignoradas > 0) console.log(`     ${r.ignoradas} linha(s) ignorada(s)`);
   }
+
+  // 6ª fase de UMA instituição (formato com fórmulas, exportado a partir de 2026-09-29).
+  // Vem DEPOIS da 6ª fase da rede: ela só substitui o que é da instituição, e a da rede
+  // apaga o ciclo inteiro ao recarregar.
+  const pi = await carregarParticipacaoInstituicao(ano, "IFSUL");
+  if (!pi) {
+    console.log(`  6ª fase, IFSul (formato com fórmulas): sem arquivo para ${ano}, pulando.`);
+  } else {
+    console.log(`  6ª fase, IFSul (formato com fórmulas, refeito pelo motor de cálculo)...`);
+    console.log(`     ${inteiro.format(pi.ciclos)} ciclos, ${pi.campus} câmpus`);
+    console.log(`     valor da matrícula presencial .... ${reais.format(pi.valorMatricula.PRESENCIAL)}`);
+    console.log(`     soma de Matrícula Total .......... ${inteiro.format(pi.somaMatriculaTotal)}`);
+    console.log(`     soma de Valor (R$) ............... ${reais.format(pi.somaValor)}`);
+    console.log(`     soma de Custo Evadido ............ ${reais.format(pi.somaPerdaEvasao)}`);
+    if (pi.ignoradas > 0) console.log(`     ${pi.ignoradas} linha(s) ignorada(s)`);
+    for (const a of pi.avisos) console.log(`     AVISO: ${a}`);
+  }
+
+  // 2ª fase por ciclo de curso: liga-se à 6ª fase pelo código do ciclo, então roda depois dela.
+  const cc = await carregarConferenciaCiclos(ano, "IFSUL");
+  if (!cc) {
+    console.log(`  2ª fase (Conferência da Extração, por ciclo): sem arquivo do IFSul para ${ano}, pulando.`);
+  } else {
+    console.log(`  2ª fase (Conferência da Extração, por ciclo, IFSul)...`);
+    console.log(`     ${cc.arquivo}`);
+    console.log(`     ${inteiro.format(cc.ciclos)} ciclos, ${cc.campus} câmpus, ${inteiro.format(cc.somaQtdMatriculas)} matrículas, ${cc.indicadores} instituições nos indicadores`);
+    for (const a of cc.avisos) console.log(`     AVISO: ${a}`);
+  }
 }
 
 async function main() {
@@ -103,18 +133,20 @@ async function main() {
     await carregarCiclo(ano);
   }
 
-  // Os relatórios de Indicadores são interanuais: um arquivo só cobre todos os
-  // ciclos, então roda uma vez ao final, a partir da pasta do ano mais recente.
-  const maisRecente = Math.max(...anos);
+  // Relatórios de Indicadores: até 2026-08-31 um arquivo cobria os dois ciclos; desde
+  // 2026-09-29 há um arquivo por ano, na pasta do próprio ano. O carregador descobre pelo
+  // cabeçalho quais ciclos cada arquivo traz, então roda uma vez por ciclo pedido.
   console.log(`
 ${"=".repeat(72)}
-RELATORIOS DE INDICADORES (interanuais)
+RELATORIOS DE INDICADORES
 ${"=".repeat(72)}`);
-  if (!existe(relatorioIndicadores(maisRecente, "comparativo-institucional.xlsx"))) {
-    console.log(`  pasta "03 - Indicadores/${maisRecente}" sem o comparativo institucional, pulando.`);
-  } else {
-    const c = await carregarComparativo(maisRecente);
-    console.log(`  ${c.registros} registros, ciclos ${c.anos.join(" e ")}`);
+  for (const ano of anos) {
+    if (!existe(relatorioIndicadores(ano, "comparativo-institucional.xlsx"))) {
+      console.log(`  pasta "03 - Indicadores/${ano}" sem o comparativo institucional, pulando.`);
+      continue;
+    }
+    const c = await carregarComparativo(ano);
+    console.log(`  ${ano}: ${c.registros} registros, ciclo(s) ${c.anos.join(" e ")}`);
     for (const s of c.somaPorAno) {
       console.log(`     ${s.ano}: Funcionamento ${reais.format(s.matriculas)} | IQE ${reais.format(s.iqe)} | Assistencia ${reais.format(s.ae)} | participacao ${s.participacao.toFixed(2)}%`);
     }

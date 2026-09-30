@@ -41,11 +41,44 @@ const CMP = {
 /** Colunas de `participacao-percentual.xlsx`. */
 const PAR = { ano: 1, sigla: 2, percentual: 4, ranking: 5 } as const;
 
-/** Os dois ciclos que o comparativo cobre, na ordem das colunas. */
-const CICLOS = [
-  { ano: 2026, matriculas: CMP.matriculas26, iqe: CMP.iqe26, ae: CMP.ae26, total: CMP.total26 },
-  { ano: 2027, matriculas: CMP.matriculas27, iqe: CMP.iqe27, ae: CMP.ae27, total: CMP.total27 },
-] as const;
+interface ColunasCiclo {
+  ano: number;
+  matriculas: number;
+  iqe: number;
+  ae: number;
+  total: number;
+}
+
+/**
+ * Descobre, pelo cabeçalho, quais ciclos o arquivo traz e em que colunas. O formato
+ * mudou em 2026-09-29: o arquivo interanual (11 colunas, 2026 e 2027) deu lugar a um
+ * arquivo por ano (7 colunas), então nada aqui presume a posição de um ciclo.
+ */
+function descobrirCiclos(ws: ExcelJS.Worksheet): ColunasCiclo[] {
+  let cabecalho: ExcelJS.Row | null = null;
+  ws.eachRow((linha) => {
+    if (!cabecalho && texto(linha.getCell(CMP.sigla).value)?.toUpperCase() === "SIGLA") cabecalho = linha;
+  });
+  if (!cabecalho) throw new Error("A planilha não tem a linha de cabeçalho com \"Sigla\".");
+  const porAno = new Map<number, Partial<ColunasCiclo>>();
+  (cabecalho as ExcelJS.Row).eachCell((celula, coluna) => {
+    const m = (texto(celula.value) ?? "").match(/^(Matr[ií]culas|IQE|AE|Total SPO)\s+(\d{4})$/i);
+    if (!m) return;
+    const ano = Number(m[2]);
+    const atual = porAno.get(ano) ?? { ano };
+    const tipo = m[1]!.toLowerCase();
+    if (tipo.startsWith("matr")) atual.matriculas = coluna;
+    else if (tipo === "iqe") atual.iqe = coluna;
+    else if (tipo === "ae") atual.ae = coluna;
+    else atual.total = coluna;
+    porAno.set(ano, atual);
+  });
+  const ciclos = [...porAno.values()].filter(
+    (c): c is ColunasCiclo => !!c.matriculas && !!c.iqe && !!c.ae && !!c.total,
+  );
+  if (ciclos.length === 0) throw new Error("Não achei colunas de Matrículas/IQE/AE/Total SPO com o ano no cabeçalho.");
+  return ciclos.sort((a, b) => a.ano - b.ano);
+}
 
 export interface ResultadoComparativo {
   anos: number[];
@@ -70,6 +103,7 @@ export async function carregarComparativo(pastaAno: number): Promise<ResultadoCo
   const ws = wb.getWorksheet("Comparativo");
   if (!ws) throw new Error('A planilha não tem a aba "Comparativo".');
 
+  const CICLOS = descobrirCiclos(ws);
   const instituicoes = await prisma.instituicao.findMany({ select: { id: true, sigla: true } });
   const idPorSigla = new Map(instituicoes.map((i) => [i.sigla, i.id]));
 
@@ -89,8 +123,10 @@ export async function carregarComparativo(pastaAno: number): Promise<ResultadoCo
         abrangencia: "REDE",
         checksum,
         ressalva:
-          "Relatório interanual: o mesmo arquivo traz 2026 e 2027, e é idêntico nas pastas dos dois anos. " +
-          "Só o nível de instituição é carregado; o arquivo que desce a câmpus tem valores trocados de unidade.",
+          (CICLOS.length > 1
+            ? "Relatório interanual: o mesmo arquivo traz mais de um ciclo. "
+            : "Relatório de um único ciclo (formato de 2026-09-29). ") +
+          "Só o nível de instituição é carregado; o arquivo que desce a câmpus tinha valores trocados de unidade.",
       },
     });
     fontePorAno.set(c.ano, f.id);
@@ -119,6 +155,7 @@ export async function carregarComparativo(pastaAno: number): Promise<ResultadoCo
     }
     const posicao = numero(l.getCell(CMP.posicao).value);
     for (const c of CICLOS) {
+      const posicaoDoCiclo = CICLOS.length === 1 ? posicao : null;
       const matriculas = numero(l.getCell(c.matriculas).value);
       const iqe = numero(l.getCell(c.iqe).value);
       const ae = numero(l.getCell(c.ae).value);
@@ -135,7 +172,7 @@ export async function carregarComparativo(pastaAno: number): Promise<ResultadoCo
         iqe,
         ae,
         totalSpo: total,
-        posicaoRede: posicao ? Math.round(posicao) : null,
+        posicaoRede: posicaoDoCiclo ? Math.round(posicaoDoCiclo) : null,
       });
     }
   });

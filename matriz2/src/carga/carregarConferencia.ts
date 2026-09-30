@@ -92,10 +92,14 @@ export async function carregarConferencia(ano: number, sigla: string): Promise<R
       abrangencia: "INSTITUICAO",
       instituicaoId: instituicao.id,
       checksum: checksumArquivo(caminho),
+      // Até a reexportação de 2026-09-29, as pastas de 2026 e 2027 traziam o MESMO arquivo
+      // (PNP 2025). Agora o de 2026 usa a PNP de 2024; a ressalva só vale para o caso antigo.
       ressalva:
-        "As pastas de 2026 e 2027 contêm o MESMO arquivo, ambos nomeados \"..._2025\", quando o ciclo " +
-        "2026 deveria usar a PNP de 2024. O seletor de ano não pegou nesta exportação, então os dois " +
-        "ciclos ficam com os números da PNP de 2025 até uma reexportação.",
+        ano === 2026 && /_2025\.xlsx$/.test(nomeArquivo)
+          ? "As pastas de 2026 e 2027 contêm o MESMO arquivo, ambos nomeados \"..._2025\", quando o ciclo " +
+            "2026 deveria usar a PNP de 2024. O seletor de ano não pegou nesta exportação, então os dois " +
+            "ciclos ficam com os números da PNP de 2025 até uma reexportação."
+          : null,
     },
   });
 

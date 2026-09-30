@@ -96,9 +96,8 @@ export async function carregarConferenciaAluno(ano: number, sigla: string): Prom
       checksum: checksumArquivo(caminho),
       ressalva:
         "Dado pessoal (LGPD): um registro por matrícula de aluno. Nunca exposto em tela pública, só para " +
-        "auditoria interna. A pasta de 2027 traz, por engano da MDO, um arquivo com o nome de outro " +
-        "relatório (conteúdo correto). O conteúdo é idêntico ao de 2026 — mesmo bug do seletor de ano que " +
-        "afeta outras exportações da 2ª fase e os relatórios de Indicadores.",
+        "auditoria interna. Na exportação de 2026-08-31 os arquivos de 2026 e 2027 eram idênticos (bug do " +
+        "seletor de ano da MDO); na de 2026-09-29 os dois têm o mesmo nome (PNP 2025) e conteúdos distintos.",
     },
   });
 

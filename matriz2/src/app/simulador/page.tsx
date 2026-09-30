@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SimuladorUnificado, type NoInstituicaoSimulavel } from "@/components/simulador/SimuladorUnificado";
+import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { calcularQualidadeEficienciaRede } from "@/server/queries/qualidadeEficienciaRede";
 import { campusEstaNoPiso, carregarTaxasFuncionamento } from "@/server/queries/funcionamentoCampus";
@@ -155,6 +156,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
+      <SubmenuSimulador />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador</h1>
         <p className="text-neutral-600 dark:text-neutral-400">

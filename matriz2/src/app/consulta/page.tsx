@@ -157,6 +157,10 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
               Comparar entre câmpus
             </Link>
+            . Para saber quanto um aluno de cada curso vale no orçamento de um câmpus, em reais e em percentual, veja{" "}
+            <Link href={`/consulta/valor-do-aluno?ano=${ano}`} className={PROSE_LINK}>
+              Quanto vale um aluno
+            </Link>
             .
           </p>
         </div>

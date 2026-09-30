@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
@@ -103,10 +104,13 @@ export default async function ComparativoPage({
   // centavo com o Total da instituição acima. Carregado para a rede inteira de uma
   // vez (não só a instituição escolhida): expandir uma linha é instantâneo, sem
   // recarregar a página.
-  const [porCampusA, porCampusB] = await Promise.all([
+  const [porCampusA, porCampusB, recebidos] = await Promise.all([
     prisma.distribuicaoCampus.findMany({ where: { ano: anoA }, select: { unidadeId: true, vlMatrFinal: true } }),
     prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: { unidadeId: true, vlMatrFinal: true } }),
+    // O informado: o que cada campus de fato recebeu, digitado em Valores recebidos.
+    prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true } }),
   ]);
+  const informadoPorAnoEId = new Map(recebidos.map((r) => [`${r.ano}::${r.unidadeId}`, Number(r.valorRecebido)]));
   const unidadeIdsComCampus = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
   const unidadesComCampus = await prisma.unidade.findMany({
     where: { id: { in: unidadeIdsComCampus } },
@@ -129,6 +133,8 @@ export default async function ComparativoPage({
       a,
       b,
       variacao: a > 0 ? (b / a - 1) * 100 : Number.NaN,
+      informadoA: informadoPorAnoEId.get(`${anoA}::${id}`) ?? null,
+      informadoB: informadoPorAnoEId.get(`${anoB}::${id}`) ?? null,
     });
   }
   for (const campi of Object.values(camposPorSigla)) {
@@ -161,6 +167,8 @@ export default async function ComparativoPage({
           <strong>+</strong> de um câmpus para ver os cursos dele.
         </p>
       </div>
+
+      <PainelConfianca ids={["comparativo-institucional", "valor-informado", "piso-2026", "mooc-2027", "explicacao-variacao"]} />
 
       <div className="flex flex-wrap gap-1">
         {BLOCOS.map((b) => (
