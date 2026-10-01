@@ -15,6 +15,7 @@ interface Busca {
   instituicao?: string;
   orgao?: string;
   ano?: string;
+  edicao?: string;
 }
 
 const LIMITE = 600;
@@ -46,10 +47,15 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
   await requireAcessoPlenoOrRedirect("/pnp/orcamento");
   const params = await searchParams;
 
-  const fontes = await prisma.fonteDados.findMany({
+  const todasAsFontes = await prisma.fonteDados.findMany({
     where: { origem: "PNP_MANUAL", arquivo: { startsWith: PREFIXO } },
     orderBy: { arquivo: "asc" },
   });
+  // Cada edição da PNP é uma carga separada (a de 2026 traz só o ano-base 2024; a de 2027, 2013 a 2025). A tela mostra uma
+  // por vez para não somar o mesmo ano-base duas vezes.
+  const edicoes = [...new Set(todasAsFontes.map((f) => f.cicloOrcamento))].sort((a, b) => b - a);
+  const edicao = edicoes.includes(Number(params.edicao)) ? Number(params.edicao) : (edicoes[0] ?? 0);
+  const fontes = todasAsFontes.filter((f) => f.cicloOrcamento === edicao);
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <AbasPnp ativa="orcamento" />
@@ -83,12 +89,12 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
     subabas[0]!.rotulo;
   const escolhida = subabas.find((s) => s.rotulo === subaba)!;
 
-  const dimensoes = (await prisma.pnpOrcamentoFato.groupBy({ by: ["dimensao"], where: { aba: escolhida.aba, subaba: escolhida.subaba } }))
+  const dimensoes = (await prisma.pnpOrcamentoFato.groupBy({ by: ["dimensao"], where: { aba: escolhida.aba, subaba: escolhida.subaba, fonteDados: { cicloOrcamento: edicao } } }))
     .map((d) => d.dimensao)
     .sort((a, b) => a.localeCompare(b));
   const dimensao = dimensoes.includes(params.dimensao ?? "") ? params.dimensao! : "";
 
-  const orgaos = (await prisma.pnpOrcamentoFato.groupBy({ by: ["relacaoOrgao"], where: { aba: escolhida.aba, subaba: escolhida.subaba } }))
+  const orgaos = (await prisma.pnpOrcamentoFato.groupBy({ by: ["relacaoOrgao"], where: { aba: escolhida.aba, subaba: escolhida.subaba, fonteDados: { cicloOrcamento: edicao } } }))
     .map((o) => o.relacaoOrgao)
     .filter(Boolean)
     .sort();
@@ -98,14 +104,16 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
   const instituicoes = await prisma.pnpEstrutura.findMany({ where: { nivel: "INSTITUICAO" }, orderBy: { instituicao: "asc" }, select: { instituicao: true } });
   const sigla = params.instituicao === "TODAS" ? "TODAS" : (instituicoes.find((i) => i.instituicao === params.instituicao)?.instituicao ?? "IFSUL");
 
-  const anos = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013];
-  const ano = anos.includes(Number(params.ano)) ? Number(params.ano) : 2025;
+  // A edição mais recente traz toda a série; as anteriores, só o ano-base que lhes corresponde (ciclo menos 2).
+  const anos = edicao === edicoes[0] ? [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013] : [edicao - 2];
+  const ano = anos.includes(Number(params.ano)) ? Number(params.ano) : anos[0]!;
 
   const onde: Prisma.PnpOrcamentoFatoWhereInput = {
     aba: escolhida.aba,
     subaba: escolhida.subaba,
     dimensao,
     anoBase: ano,
+    fonteDados: { cicloOrcamento: edicao },
     ...(orgao ? { relacaoOrgao: orgao } : {}),
     estrutura: nivel === "INSTITUICAO" && sigla !== "TODAS" ? { nivel, instituicao: sigla } : { nivel },
   };
@@ -168,6 +176,16 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
             {instituicoes.map((i) => (
               <option key={i.instituicao} value={i.instituicao}>
                 {i.instituicao}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1" title="A PNP revisa os números a cada edição. A edição 2026 traz só o ano-base 2024, como publicado em 2026; a 2027 traz 2013 a 2025.">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Edição da PNP</span>
+          <select name="edicao" defaultValue={String(edicao)} className={selectClasse}>
+            {edicoes.map((e) => (
+              <option key={e} value={e}>
+                {e} (ano-base {e === edicoes[0] ? "2013 a 2025" : e - 2})
               </option>
             ))}
           </select>
