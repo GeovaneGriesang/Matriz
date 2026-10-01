@@ -144,7 +144,9 @@ export async function carregarPnpOrcamento(
         // e refeita, e uma carga interrompida no meio não é confundida com uma carga completa.
         checksum: null,
         ressalva:
-          "PNP - Extração manual: painel Dados Orçamentários da PNP (valores em reais, de 2013 a 2025), por instituição, " +
+          "PNP - Extração manual: painel Dados Orçamentários da PNP (valores em reais, " +
+          (ciclo >= 2027 ? "de 2013 a 2025" : `edição ${ciclo}, só o ano-base ${ciclo - 2}`) +
+          "), por instituição, " +
           "região, estado e rede; não existe por câmpus. É o orçamento executado e descentralizado como a PNP o registra, " +
           "e não a matriz de distribuição da MDO.",
       },

@@ -16,6 +16,7 @@ interface Busca {
   instituicao?: string;
   campus?: string;
   ano?: string;
+  edicao?: string;
 }
 
 const LIMITE = 600;
@@ -45,13 +46,19 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
   const params = await searchParams;
 
   // Uma fonte por subaba: o nome traz "aba / subaba", e assim a lista de subabas não precisa varrer milhões de linhas.
-  const fontes = await prisma.fonteDados.findMany({
+  const todasAsFontes = await prisma.fonteDados.findMany({
     where: {
       origem: "PNP_MANUAL",
       OR: [{ arquivo: { startsWith: "PNP Dados de Ensino: " } }, { arquivo: { startsWith: "PNP Dados de Pessoal: " } }],
     },
     orderBy: { arquivo: "asc" },
   });
+  // A PNP revisa os números a cada edição: a de 2026 traz só o ano-base 2024 como foi publicado em 2026, e a de 2027 traz
+  // 2017 a 2025 (inclusive um 2024 possivelmente revisado). Cada edição é uma carga separada, e a tela mostra uma por vez
+  // para não somar o mesmo ano-base duas vezes.
+  const edicoes = [...new Set(todasAsFontes.map((f) => f.cicloOrcamento))].sort((a, b) => b - a);
+  const edicao = edicoes.includes(Number(params.edicao)) ? Number(params.edicao) : (edicoes[0] ?? 0);
+  const fontes = todasAsFontes.filter((f) => f.cicloOrcamento === edicao);
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <AbasPnp ativa="ensino" />
@@ -83,7 +90,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
   });
   const subaba = subabas.find((s) => s.subaba === params.subaba)?.subaba ?? subabas.find((s) => s.subaba === "Situação de Matrícula")?.subaba ?? subabas[0]!.subaba;
 
-  const dimensoesBrutas = await prisma.pnpFato.groupBy({ by: ["dimensao"], where: { subaba } });
+  const dimensoesBrutas = await prisma.pnpFato.groupBy({ by: ["dimensao"], where: { subaba, fonteDados: { cicloOrcamento: edicao } } });
   const dimensoes = dimensoesBrutas.map((d) => d.dimensao).sort((a, b) => a.localeCompare(b));
   const dimensao = dimensoes.includes(params.dimensao ?? "") ? params.dimensao! : "";
 
@@ -108,8 +115,9 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
       : [];
   const campusId = campi.find((c) => String(c.id) === params.campus)?.id ?? null;
 
-  const anos = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017];
-  const ano = anos.includes(Number(params.ano)) ? Number(params.ano) : 2025;
+  // A edição mais recente traz toda a série; as anteriores, só o ano-base que lhes corresponde (ciclo menos 2).
+  const anos = edicao === edicoes[0] ? [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017] : [edicao - 2];
+  const ano = anos.includes(Number(params.ano)) ? Number(params.ano) : anos[0]!;
 
   const estruturaFiltro: Prisma.PnpEstruturaWhereInput =
     nivelEfetivo === "REDE"
@@ -122,6 +130,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
     subaba,
     dimensao,
     anoBase: ano,
+    fonteDados: { cicloOrcamento: edicao },
     estrutura: nivelEfetivo === "INSTITUICAO" && params.instituicao === "TODAS" ? { nivel: "INSTITUICAO" } : estruturaFiltro,
   };
 
@@ -145,7 +154,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
 
   function href(m: Partial<Busca>) {
     const q = new URLSearchParams();
-    const atual: Busca = { subaba, dimensao, nivel: nivelEfetivo, instituicao: params.instituicao ?? siglaInstituicao, ano: String(ano), ...m };
+    const atual: Busca = { subaba, dimensao, nivel: nivelEfetivo, instituicao: params.instituicao ?? siglaInstituicao, ano: String(ano), edicao: String(edicao), ...m };
     for (const [k, v] of Object.entries(atual)) if (v) q.set(k, v);
     return `/pnp?${q.toString()}`;
   }
@@ -196,6 +205,16 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
             {instituicoes.map((i) => (
               <option key={i.instituicao} value={i.instituicao}>
                 {i.instituicao}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1" title="A PNP revisa os números a cada edição. A edição 2026 traz só o ano-base 2024, como publicado em 2026; a 2027 traz 2017 a 2025.">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Edição da PNP</span>
+          <select name="edicao" defaultValue={String(edicao)} className={selectClasse}>
+            {edicoes.map((e) => (
+              <option key={e} value={e}>
+                {e} (ano-base {e === edicoes[0] ? "2017 a 2025" : e - 2})
               </option>
             ))}
           </select>

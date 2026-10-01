@@ -194,7 +194,10 @@ export async function carregarPnpManual(
         ressalva:
           `PNP - Extração manual: tabelas do painel ${rotuloPainel} baixadas à mão,`+
           " em três níveis (rede, instituição, câmpus) " +
-          "e com anos-base de 2017 a 2025. Os indicadores do painel (por exemplo, a Eficiência Acadêmica) são os da PNP e " +
+          (ciclo >= 2027
+            ? "e com anos-base de 2017 a 2025. "
+            : `da edição ${ciclo}, só com o ano-base ${ciclo - 2}, como publicado naquela edição (a PNP revisa os números: o mesmo ano-base na edição de 2027 pode ter valores um pouco diferentes). `) +
+          "Os indicadores do painel (por exemplo, a Eficiência Acadêmica) são os da PNP e " +
           "não são os que a MDO usa na matriz: no IFSul, a PNP mostra 98% e o IEA da MDO é 45%.",
       },
     });
