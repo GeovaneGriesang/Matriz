@@ -15,6 +15,7 @@ const LINKS = [
   { href: "/como-funciona", rotulo: "Como funciona" },
   { href: "/dados-importados", rotulo: "Dados importados" },
   { href: "/pnp", rotulo: "Dados da PNP" },
+  { href: "/peso-efetivo", rotulo: "Peso por curso" },
   { href: "/consulta", rotulo: "Consulta" },
   { href: "/evasao", rotulo: "Perda por evasão" },
   { href: "/conferencia", rotulo: "Conferência" },

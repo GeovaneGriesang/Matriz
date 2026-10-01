@@ -14,6 +14,7 @@
     "prisma:studio": "prisma studio",
     "carregar": "tsx scripts/carregar.ts",
     "carregar:pnp": "tsx scripts/carregarPnp.ts",
+    "carregar:peso-efetivo": "tsx scripts/carregarPesoEfetivo.ts",
     "seed:superadmin": "tsx scripts/seedSuperAdmin.ts"
   },
   "dependencies": {

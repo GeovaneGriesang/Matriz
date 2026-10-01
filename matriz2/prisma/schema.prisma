@@ -220,6 +220,7 @@ model FonteDados {
   ciclosOrcamento           CicloOrcamento[]
   parametrosParticipacao    ParametrosParticipacao[]
   conferenciasCiclo         ConferenciaCiclo[]
+  pesosEfetivos             PesoEfetivoCurso[]
   indicadoresPnp            IndicadoresPnpInstituicao[]
   pnpFatos                  PnpFato[]
   pnpOrcamentoFatos         PnpOrcamentoFato[]
@@ -1131,4 +1132,33 @@ model PnpMicrodadoServidor {
 
   @@index([anoBase, instituicao])
   @@index([fonteDadosId])
+}
+
+/// Peso efetivo por curso: o peso que a MDO realmente aplicou (já com o bônus de agropecuária), deduzido da Matrícula
+/// Total publicada. Não é a coluna "Peso do Curso" da exportação, que erra em ~3% dos ciclos. Uma linha por
+/// (ano de referência, tipo de curso, oferta, curso, CH mínima do MEC); a regra do FIC usa "*" em oferta e curso.
+/// Cada linha guarda a fonte: de que arquivo foi deduzida e em quantos ciclos a dedução concorda.
+model PesoEfetivoCurso {
+  id                 Int         @id @default(autoincrement())
+  /// Ciclo orçamentário da 6ª fase de onde a tabela foi deduzida (2027).
+  anoReferencia      Int
+  tipoCurso          String
+  tipoOferta         String
+  curso              String
+  chMinimaMec        Int
+  pesoEfetivo        Decimal     @db.Decimal(10, 4)
+  /// O peso mais frequente na coluna "Peso do Curso" para esta chave, para mostrar onde a coluna difere.
+  pesoColuna         Decimal     @db.Decimal(10, 4)
+  ciclosObservados   Int
+  ciclosConcordantes Int
+  /// DEDUZIDO_DA_MATRICULA_TOTAL ou REGRA_FIC_SEM_CATALOGO.
+  origem             String      @db.VarChar(40)
+  /// Texto da fonte, mostrado na tela: arquivo, fase, quantos ciclos.
+  fonte              String      @db.Text
+  fonteDadosId       Int?
+  fonteDados         FonteDados? @relation(fields: [fonteDadosId], references: [id])
+  criadoEm           DateTime    @default(now())
+
+  @@unique([anoReferencia, tipoCurso, tipoOferta, curso, chMinimaMec])
+  @@index([anoReferencia, tipoCurso])
 }
