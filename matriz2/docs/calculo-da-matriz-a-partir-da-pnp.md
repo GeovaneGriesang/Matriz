@@ -4,9 +4,9 @@ Análise de 2026-09-30, com os microdados da PNP de 2025 (ciclo orçamentário 2
 
 ## Resposta curta
 
-**Dá, em grande parte.** Os microdados de matrículas da PNP trazem, para todas as 42 instituições, o que antes só existia na MDO: o ciclo de curso, a carga horária, as datas, a carga horária mínima regulamentada e a situação de cada matrícula. Com isso, a Matrícula Total de um ciclo se reconstrói sem a MDO em **96,7% dos 58.242 ciclos** (a soma erra 0,7%), usando só duas tabelas pequenas de apoio (peso do curso e carga horária mínima do MEC).
+**Dá, em grande parte.** Os microdados de matrículas da PNP trazem, para todas as 42 instituições, o que antes só existia na MDO: o ciclo de curso, a carga horária, as datas, a carga horária mínima regulamentada e a situação de cada matrícula. Com isso, a Matrícula Total de um ciclo se reconstrói em **99,6% dos 58.242 ciclos** quando se dispõe da tabela de peso efetivo e da carga horária mínima do MEC (a soma erra 0,2%), e em 94,3% se a mínima do MEC for prevista a partir da PNP (a soma erra 2,8%).
 
-O que ainda não se calcula sozinho: o **peso do curso**, a **carga horária mínima do MEC** de alguns cursos e quatro regras de exceção que ainda não decifrei (abaixo).
+O que ainda não se calcula sozinho: o **peso do curso** (que tem de vir de uma tabela por curso e carga horária mínima) e a **carga horária mínima do MEC**, sobretudo a do FIC. Os "resíduos" que pareciam regras de exceção eram o peso (abaixo).
 
 ## O que bate com a MDO (conferido)
 
@@ -47,14 +47,30 @@ Três níveis de ajuda da MDO, comparados com a Matrícula Total publicada (soma
 
 O erro de soma é pequeno porque os ciclos errados são, em geral, pequenos. Mesmo assim, ele muda o valor de uma matrícula em cerca de 1%.
 
-## Resíduos ainda sem regra (1.909 ciclos no nível A)
+## Os resíduos: eram o peso, não regras novas
 
-- **FIC "não se aplica" e concomitante com mínima de 3.200 h** (cerca de 1.485 ciclos): a MDO publica 2,5 vezes o que a regra dá; o peso gravado nas colunas da 6ª fase da rede parece não ser o que entrou na conta.
-- **Especialização lato sensu** (cerca de 240 ciclos): a MDO publica 40% do que a regra dá.
-- **Doutorado e mestrado profissional** (cerca de 35 ciclos): a MDO publica 26,7% do que a regra dá.
-- **Cursos com mais de 4 anos de carga horária** (ensino fundamental I e alguns bacharelados, cerca de 115 ciclos): o teto parece ser 4.000 h, e não a carga horária da matriz.
+Dos 58.242 ciclos, 1.909 não fechavam no nível A. Todos os grupos tinham a mesma causa: **o peso que a MDO aplicou não é o que a coluna "Peso do Curso" da exportação antiga da rede mostra.** Deduzindo o peso da própria Matrícula Total publicada (o "peso efetivo", já com o bônus de agropecuária), cada grupo se explica:
 
-No formato novo da 6ª fase (IFSul, calculado pelo Excel), nenhum desses resíduos aparece: os 1.352 ciclos fecham. Isso sugere que são resíduos da exportação antiga da rede, e que a 6ª fase nova de todas as instituições os dissolveria.
+| Grupo (ciclos) | O que a MDO aplicou | O que a coluna diz |
+|---|---|---|
+| FIC com mínima de 3.200 h (1.488) | peso **2,5**, em todos os 3.129 ciclos do FIC com essa mínima | 1 |
+| Especialização lato sensu (242) | peso **1** | 2,5 ou 1,5 |
+| Mestrado e doutorado (42) | peso **1** | 3,75 |
+| Ensino fundamental I e bacharelados (122) | peso **2,5**, com 3.200 h (a "razão 1,25" era 2,5 x 3.200 = 2 x 4.000) | 2 ou 1 |
+
+O FIC é uma regra: o curso que a MDO não achou no catálogo recebe a carga horária mínima "padrão" de 3.200 h e o peso 2,5. Os demais são específicos de curso: com a carga horária mínima do MEC na chave, **o peso efetivo é função de (tipo de curso, tipo de oferta, curso, CH mínima) em 99,77% dos 49.391 ciclos** (115 erros). Sem a CH mínima na chave são 93,5%; só por (tipo, curso), 89,8%. Em `src/lib/mdo/regrasCiclo.ts`.
+
+### Reconstrução da Matrícula Total depois disso
+
+| Nível | Peso | CH mínima do MEC | Ciclos exatos | Soma contra a MDO |
+|---|---|---|---|---|
+| A | da coluna | da MDO | 96,72% | −0,70% |
+| **A2** | **efetivo, por tabela** | da MDO | **99,57%** | **+0,23%** |
+| B2 | efetivo, por tabela | prevista por tabela com a mínima da PNP | 94,32% | −2,77% |
+
+(Medidas na própria amostra: as tabelas foram aprendidas da 6ª fase de 2027, então servem para dizer se a regra se sustenta, não como teste fora da amostra.)
+
+A diferença entre A2 e B2 é a **carga horária mínima do MEC**. A PNP traz uma mínima própria, que difere da usada pela MDO em 29% dos ciclos. O que dá para prever: Técnico e Bacharelado, por curso (99,8% e 99,9%); Licenciatura, pela carga horária do ciclo (99,7%). O que **não** dá: o FIC (77% por qualquer campo da PNP), porque o curso FIC específico, que é o que a MDO consulta no catálogo, não está nos microdados (só o nome genérico do eixo).
 
 ## O que falta para calcular a matriz inteira
 
