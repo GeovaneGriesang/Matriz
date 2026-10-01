@@ -231,6 +231,32 @@ describe("conferência da carga da MDO", () => {
     }
   });
 
+  it("a PNP - Extração manual bate com a 2ª fase da MDO no IFSul (mesma extração da PNP)", async () => {
+    if (!(await bancoDisponivel())) return;
+    const instituicao = await prisma.pnpEstrutura.findFirst({ where: { nivel: "INSTITUICAO", instituicao: "IFSUL" } });
+    if (!instituicao) return; // a extração manual ainda não foi carregada
+    const linhas = await prisma.pnpFato.findMany({
+      where: { subaba: "Situação de Matrícula", dimensao: "", anoBase: 2025, estruturaId: instituicao.id },
+      select: { categoria: true, valores: true },
+    });
+    if (linhas.length === 0) return;
+    const soma = (filtro: (categoria: string) => boolean) =>
+      linhas.filter((l) => filtro(l.categoria)).reduce((t, l) => t + num((l.valores as Record<string, unknown>)["Matrículas"]), 0);
+    const evadidosPnp = soma((c) => c.startsWith("Evadidos"));
+
+    // A 2ª fase de 2027 é o painel da PNP de 2025, câmpus a câmpus.
+    const conferencia = await prisma.conferenciaExtracao.findMany({
+      where: { ano: 2027, unidade: { instituicao: { sigla: "IFSUL" } } },
+      select: { abandono: true, desligado: true, reprovado: true, transfExterna: true, transfInterna: true },
+    });
+    if (conferencia.length === 0) return;
+    const evadidosMdo = conferencia.reduce(
+      (t, c) => t + num(c.abandono) + num(c.desligado) + num(c.reprovado) + num(c.transfExterna) + num(c.transfInterna),
+      0,
+    );
+    expect(evadidosPnp).toBe(evadidosMdo);
+  });
+
   it("nenhum câmpus aparece duas vezes no mesmo ciclo", async () => {
     if (!(await bancoDisponivel())) return;
     const duplicados = await prisma.$queryRaw<{ n: bigint }[]>`

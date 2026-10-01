@@ -10,6 +10,7 @@ import type { Abrangencia, FaseMdo, OrigemDados } from "@prisma/client";
 
 const ROTULO_ORIGEM: Record<OrigemDados, string> = {
   PNP: "PNP",
+  PNP_MANUAL: "PNP - Extração manual",
   MDO_IFTM: "MDO",
   CALCULADO: "Calculado",
   ADMINISTRADOR: "Informado",
@@ -19,6 +20,7 @@ const ROTULO_ORIGEM: Record<OrigemDados, string> = {
  *  oficial, âmbar para o derivado, vermelho para o digitado à mão. */
 const COR_ORIGEM: Record<OrigemDados, string> = {
   PNP: "border-if-green/40 bg-if-green/10 text-if-green dark:text-green-400",
+  PNP_MANUAL: "border-sky-400/60 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
   MDO_IFTM: "border-if-green/40 bg-if-green/10 text-if-green dark:text-green-400",
   CALCULADO: "border-amber-400/50 bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   ADMINISTRADOR: "border-if-red/40 bg-if-red/10 text-if-red dark:text-red-400",

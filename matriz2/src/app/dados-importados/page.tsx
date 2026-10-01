@@ -30,6 +30,11 @@ export default async function DadosImportadosPage() {
           conferenciasExtracao: true,
           comparativos: true,
           ciclosOrcamento: true,
+          conferenciasCiclo: true,
+          parametrosParticipacao: true,
+          indicadoresPnp: true,
+          pnpFatos: true,
+          pnpOrcamentoFatos: true,
         },
       },
     },
@@ -60,7 +65,12 @@ export default async function DadosImportadosPage() {
         f._count.conferenciasExtracaoAluno +
         f._count.conferenciasExtracao +
         f._count.comparativos +
-        f._count.ciclosOrcamento,
+        f._count.ciclosOrcamento +
+        f._count.conferenciasCiclo +
+        f._count.parametrosParticipacao +
+        f._count.indicadoresPnp +
+        f._count.pnpFatos +
+        f._count.pnpOrcamentoFatos,
       soma: somaPorFonte.get(f.id) ?? null,
       temDadoPessoal: f._count.conferenciasExtracaoAluno > 0,
     }))
