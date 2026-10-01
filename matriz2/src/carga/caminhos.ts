@@ -216,6 +216,24 @@ export function conferenciaExtracaoAluno(ciclo: number, sigla: string): string |
   return candidatos[0]?.caminho ?? null;
 }
 
+/**
+ * Painel "Dados de Ensino" da PNP baixado à mão: `CSV da PNP/Manual/<ciclo>/Dados do Ensino`.
+ * O ano da pasta é o ciclo orçamentário (2027), não o ano-base: cada CSV traz 2017 a 2025.
+ */
+export function pastaPnpManual(ciclo: number, painel = "Dados do Ensino"): string {
+  return caixaCerta(RAIZ_DADOS, "CSV da PNP", "Manual", String(ciclo), painel);
+}
+
+/** Microdados e Extrator da PNP: `CSV da PNP/Manual/<ciclo>/Produtos de dados/<produto>`. */
+export function pastaPnpProduto(ciclo: number, produto: "Microdados" | "Extrator"): string {
+  return caixaCerta(RAIZ_DADOS, "CSV da PNP", "Manual", String(ciclo), "Produtos de dados", produto);
+}
+
+/** Painel "Dados Orçamentários" da PNP baixado à mão: `CSV da PNP/Manual/<ciclo>/Dados Orçamentários`. */
+export function pastaPnpOrcamento(ciclo: number): string {
+  return caixaCerta(RAIZ_DADOS, "CSV da PNP", "Manual", String(ciclo), "Dados Orçamentários");
+}
+
 export function existe(caminho: string): boolean {
   return fs.existsSync(caminho);
 }

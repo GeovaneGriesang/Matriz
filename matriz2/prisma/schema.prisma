@@ -146,6 +146,10 @@ model RegistroAuditoria {
 enum OrigemDados {
   /// Microdados públicos da Plataforma Nilo Peçanha.
   PNP
+  /// Tabelas do painel "Dados de Ensino" da PNP, baixadas à mão por um administrador (um
+  /// arquivo por aba, subaba e detalhamento). Rótulo na tela: "PNP - Extração manual".
+  /// Não são os microdados e não são números da MDO: são os cubos que a própria PNP publica.
+  PNP_MANUAL
   /// Exportações da Matriz de Distribuição Orçamentária, operada pelo IFTM para a RFEPCT.
   MDO_IFTM
   /// Derivado pelo próprio Matriz2 (somas, variações, simulações). Sempre rastreável às parcelas.
@@ -217,6 +221,12 @@ model FonteDados {
   parametrosParticipacao    ParametrosParticipacao[]
   conferenciasCiclo         ConferenciaCiclo[]
   indicadoresPnp            IndicadoresPnpInstituicao[]
+  pnpFatos                  PnpFato[]
+  pnpOrcamentoFatos         PnpOrcamentoFato[]
+  pnpExtratorFatos          PnpExtratorFato[]
+  pnpMicrodadoCiclos        PnpMicrodadoCiclo[]
+  pnpMicrodadoFinanceiro    PnpMicrodadoFinanceiro[]
+  pnpMicrodadoServidores    PnpMicrodadoServidor[]
 
   @@index([cicloOrcamento, origem])
   @@index([instituicaoId])
@@ -236,6 +246,7 @@ model Instituicao {
   comparativos             ComparativoInstitucional[]
   parametrosParticipacao   ParametrosParticipacao[]
   indicadoresPnp           IndicadoresPnpInstituicao[]
+  pnpEstruturas            PnpEstrutura[]
 
   @@index([uf])
 }
@@ -262,6 +273,7 @@ model Unidade {
   conferenciasExtracao      ConferenciaExtracao[]
   conferenciasExtracaoAluno ConferenciaExtracaoAluno[]
   conferenciasCiclo         ConferenciaCiclo[]
+  pnpEstruturas             PnpEstrutura[]
   valoresRecebidos          ValorRecebidoCampus[]
 
   @@unique([instituicaoId, nome])
@@ -870,5 +882,253 @@ model IndicadoresPnpInstituicao {
   meProeja   Decimal? @db.Decimal(9, 4)
 
   @@unique([ano, instituicaoId])
+  @@index([fonteDadosId])
+}
+
+// ---------- PNP, extração manual ----------
+
+enum NivelPnp {
+  REDE
+  /// Só no painel orçamentário, que também agrega por região do país.
+  REGIAO
+  /// Só no painel orçamentário, que também agrega por estado.
+  ESTADO
+  INSTITUICAO
+  CAMPUS
+}
+
+/// Um nó da hierarquia que o painel da PNP usa: a rede, uma instituição ou um câmpus
+/// (ou estrutura, como reitoria). Os nomes vêm como o painel escreve ("Campus Venâncio
+/// Aires", "IF FARROUPILHA"), por isso o vínculo com `Instituicao` e `Unidade` do
+/// sistema é por nome normalizado e pode ficar vazio quando não casa: os dados da PNP
+/// valem sozinhos, o vínculo só serve para cruzar com a matriz.
+model PnpEstrutura {
+  id                   Int      @id @default(autoincrement())
+  nivel                NivelPnp
+  /// Sigla como a PNP escreve; vazia na rede.
+  instituicao          String   @default("")
+  organizacaoAcademica String   @default("")
+  regiao               String   @default("")
+  estado               String   @default("")
+  campus               String   @default("")
+  municipio            String   @default("")
+
+  instituicaoId  Int?
+  instituicaoRef Instituicao? @relation(fields: [instituicaoId], references: [id])
+  unidadeId      Int?
+  unidade        Unidade?     @relation(fields: [unidadeId], references: [id])
+
+  fatos          PnpFato[]
+  fatosOrcamento PnpOrcamentoFato[]
+
+  @@unique([nivel, instituicao, campus, municipio])
+  @@index([instituicaoId])
+  @@index([unidadeId])
+}
+
+/// Uma linha de um CSV do painel "Dados de Ensino" da PNP, como veio.
+///
+/// Em vez de uma tabela por arquivo (são 169, de 14 subabas, com colunas diferentes),
+/// guarda-se o que é comum em colunas e o que é específico do arquivo em `valores`, com os
+/// rótulos das colunas como a PNP escreve. Decimais com vírgula e percentuais em fração
+/// (0,7258 = 72,58%) já estão convertidos em número.
+///
+/// Um mesmo indicador aparece em mais de uma subaba com o mesmo valor (a matrícula
+/// total, por exemplo); cada linha guarda de qual subaba veio.
+model PnpFato {
+  id           BigInt       @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados   @relation(fields: [fonteDadosId], references: [id])
+  estruturaId  Int
+  estrutura    PnpEstrutura @relation(fields: [estruturaId], references: [id])
+
+  /// "Dados Gerais", "Indicadores Acadêmicos", "Indicadores Legais" ou "Perfis de Matrículas".
+  aba           String @db.VarChar(40)
+  /// "Situação de Matrícula", "Eficiência Acadêmica", "Raça e Renda"...
+  subaba        String @db.VarChar(80)
+  /// A abertura ("Renda Familiar", "Eixo Tecnológico"...); vazia na tabela principal.
+  dimensao      String @default("") @db.VarChar(80)
+  valorDimensao String @default("") @db.VarChar(255)
+  /// Colunas categóricas da linha juntas por " | " (ex.: "Evadidos | Abandono | Em fluxo").
+  categoria     String @default("") @db.VarChar(255)
+  anoBase       Int    @db.SmallInt
+  /// Colunas numéricas (e textos como "(+3,66)") do arquivo, pelo rótulo original.
+  valores       Json
+
+  @@index([subaba, dimensao, anoBase, estruturaId])
+  @@index([estruturaId, anoBase])
+  @@index([fonteDadosId])
+}
+
+/// Uma linha de um CSV do painel "Dados Orçamentários" da PNP (execução, programação,
+/// restos a pagar, descentralizações, gastos por matrícula equivalente...), como veio.
+///
+/// Mesmo desenho de `PnpFato`, com as colunas que só este painel tem: a "Relação do Órgão"
+/// (órgão da UO, da UGE, TED's...), o mês e o tipo de valor da série mensal. Os valores estão
+/// em reais e os percentuais em fração. O painel é por instituição (UO), região, estado e
+/// rede: NÃO existe por câmpus.
+model PnpOrcamentoFato {
+  id           BigInt       @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados   @relation(fields: [fonteDadosId], references: [id])
+  estruturaId  Int
+  estrutura    PnpEstrutura @relation(fields: [estruturaId], references: [id])
+
+  /// "Explorar Dados", "Gastos Totais da Rede", "Indicadores Orçamentários", "Panorama Orçamentário" ou "Série Histórica".
+  aba           String @db.VarChar(60)
+  /// Em "Explorar Dados" é o contexto (Execução do Exercício, Descentralizações...); nas demais repete a aba.
+  subaba        String @db.VarChar(80)
+  /// A abertura ("Ação Orçamentária", "Grupo de Despesas (GND)"...); vazia na tabela principal.
+  dimensao      String @default("") @db.VarChar(120)
+  valorDimensao String @default("") @db.VarChar(255)
+  /// Órgão da UO, Órgão da UGE, TED's ou TED's do MEC.
+  relacaoOrgao  String @default("") @db.VarChar(40)
+  /// Só na série mensal.
+  mes           String @default("") @db.VarChar(20)
+  tipoValor     String @default("") @db.VarChar(40)
+  anoBase       Int    @db.SmallInt
+  valores       Json
+
+  @@index([subaba, dimensao, anoBase, estruturaId])
+  @@index([estruturaId, anoBase])
+  @@index([fonteDadosId])
+}
+
+/// Uma linha de uma tabela do "Extrator" da PNP: os arquivos planos que a plataforma oferece para baixar
+/// (dados gerais por curso e câmpus, situação de matrícula, evasão por curso, indicadores de gestão, pessoal,
+/// panorama orçamentário). Cada arquivo tem colunas próprias; as de texto vão em \`dimensoes\` e as numéricas em
+/// \`valores\`, pelo rótulo original. Diferente do painel (\`PnpFato\`), aqui os percentuais vêm em pontos
+/// (38,55 = 38,55%) e o câmpus vem pelo nome ("nomeUnidadeRecente").
+model PnpExtratorFato {
+  id           BigInt     @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  /// Pasta do arquivo no Extrator: "Dados acadêmicos", "Indicadores Acadêmicos"...
+  grupo         String @db.VarChar(80)
+  /// Nome do arquivo sem extensão: "DadosGerais", "TaxaEvasao"...
+  tabela        String @db.VarChar(80)
+  anoBase       Int    @db.SmallInt
+  /// Sigla da instituição como a PNP escreve; vazia nas tabelas de rede.
+  instituicao   String @default("") @db.VarChar(60)
+  /// Câmpus ou estrutura; vazio quando a tabela é por instituição.
+  unidade       String @default("") @db.VarChar(191)
+  instituicaoId Int?
+  unidadeId     Int?
+  dimensoes     Json
+  valores       Json
+
+  @@index([tabela, anoBase, instituicao])
+  @@index([instituicaoId, anoBase])
+  @@index([unidadeId, anoBase])
+  @@index([fonteDadosId])
+}
+
+/// Os microdados de matrículas (ou de eficiência acadêmica) da PNP, AGREGADOS POR CICLO DE CURSO.
+///
+/// O arquivo original tem uma linha por estudante (79 colunas, mais de 2,3 milhões por ano). O sistema não
+/// guarda essas linhas: guarda o que o cálculo da matriz usa (ciclo, carga horária, datas, quantidade de
+/// matrículas por situação e por faixa de renda). Isso preserva a análise e não leva dado pessoal para o
+/// banco. O mesmo \`ciclo\` é o "Código ciclo" da 6ª fase da MDO, então os dois se cruzam diretamente (no IFSul
+/// de 2025, os 1.352 ciclos, as cargas horárias e as datas coincidem em 100%).
+model PnpMicrodadoCiclo {
+  id           BigInt     @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  /// "MATRICULAS" ou "EFICIENCIA".
+  tipo    String @db.VarChar(20)
+  anoBase Int    @db.SmallInt
+  ciclo   String @db.VarChar(20)
+
+  coInst              String  @default("") @db.VarChar(20)
+  codUnidade          String  @default("") @db.VarChar(20)
+  codUnidadeSistec    String  @default("") @db.VarChar(20)
+  instituicao         String  @default("") @db.VarChar(60)
+  unidadeEnsino       String  @default("") @db.VarChar(191)
+  uf                  String  @default("") @db.VarChar(4)
+  codMunicipio        String  @default("") @db.VarChar(12)
+  cursoEmec           String  @default("") @db.VarChar(20)
+  nomeCurso           String  @default("") @db.VarChar(255)
+  tipoCurso           String  @default("") @db.VarChar(80)
+  tipoOferta          String  @default("") @db.VarChar(60)
+  modalidade          String  @default("") @db.VarChar(60)
+  fonteFinanciamento  String  @default("") @db.VarChar(100)
+  programa            String  @default("") @db.VarChar(150)
+  eixo                String  @default("") @db.VarChar(120)
+  subeixo             String  @default("") @db.VarChar(120)
+  turno               String  @default("") @db.VarChar(30)
+  formacaoProfessores Boolean @default(false)
+
+  cargaHoraria       Int?
+  cargaHorariaMinima Int?
+  /// Fator de Esforço do Curso (Portaria Setec 146/2021); NÃO é o peso do curso da MDO.
+  fatorEsforco       Decimal?  @db.Decimal(10, 4)
+  inicio             DateTime? @db.Date
+  fimPrevisto        DateTime? @db.Date
+  vagas              Int?
+  inscritos          Int?
+
+  matriculas  Int
+  atendidas   Int
+  /// Matrículas por "Categoria da Situação | Situação": {"Concluintes | Concluída": 8186, ...}.
+  porSituacao Json
+  /// Matrículas por faixa de renda familiar per capita.
+  porRenda    Json
+
+  instituicaoId Int?
+  unidadeId     Int?
+
+  @@index([tipo, anoBase, instituicao])
+  @@index([ciclo])
+  @@index([unidadeId, anoBase])
+  @@index([instituicaoId, anoBase])
+  @@index([fonteDadosId])
+}
+
+/// Microdado financeiro da PNP: liquidações por unidade orçamentária, ação de governo e grupo de natureza de
+/// despesa (soma das linhas repetidas). Não tem dado pessoal.
+model PnpMicrodadoFinanceiro {
+  id           BigInt     @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  anoBase             Int     @db.SmallInt
+  unidadeOrcamentaria String  @db.VarChar(20)
+  acao                String  @db.VarChar(20)
+  gnd                 String  @db.VarChar(10)
+  /// Liquidações totais (exercício e restos a pagar não processados), em reais.
+  liquidacoes         Decimal @db.Decimal(18, 2)
+
+  @@index([anoBase, unidadeOrcamentaria])
+  @@index([fonteDadosId])
+}
+
+/// Microdado de servidores da PNP, AGRUPADO por lotação, classe, jornada, titulação, carreira e vínculo (a
+/// quantidade de servidores de cada grupo fica em \`registros\`). O arquivo original traz uma linha por
+/// servidor, sem nome; o agrupamento impede reconhecer uma pessoa em lotações pequenas.
+model PnpMicrodadoServidor {
+  id           BigInt     @id @default(autoincrement())
+  fonteDadosId Int
+  fonteDados   FonteDados @relation(fields: [fonteDadosId], references: [id])
+
+  anoBase          Int    @db.SmallInt
+  codUnidade       String @default("") @db.VarChar(20)
+  codUnidadeSistec String @default("") @db.VarChar(20)
+  instituicao      String @default("") @db.VarChar(60)
+  unidadeLotacao   String @default("") @db.VarChar(191)
+  municipio        String @default("") @db.VarChar(120)
+  codMunicipio     String @default("") @db.VarChar(12)
+  regiao           String @default("") @db.VarChar(30)
+  classe           String @default("") @db.VarChar(20)
+  jornada          String @default("") @db.VarChar(20)
+  rsc              String @default("") @db.VarChar(40)
+  titulacao        String @default("") @db.VarChar(60)
+  vinculoCarreira  String @default("") @db.VarChar(40)
+  vinculoContrato  String @default("") @db.VarChar(40)
+  vinculoProfessor String @default("") @db.VarChar(10)
+  registros        Int
+
+  @@index([anoBase, instituicao])
   @@index([fonteDadosId])
 }

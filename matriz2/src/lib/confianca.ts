@@ -110,6 +110,25 @@ export const CONFIANCA = {
       "O valor informado é digitado por um administrador em Valores recebidos. Onde não há registro, a coluna aparece vazia e a transição usa a matriz do ano anterior no lugar.",
     paraResolver: "Cadastrar o valor recebido por câmpus em Admin, Valores recebidos.",
   },
+  "pnp-manual-confere": {
+    nivel: "CONFERIDO",
+    titulo: "PNP - Extração manual bate com a 2ª fase do IFSul",
+    porque:
+      "Para o IFSul em 2025, as tabelas da PNP trazem 141.815 matrículas e 2.794 evadidos, exatamente os números da 2ª fase da MDO (e o total de matrículas é o mesmo do arquivo por aluno). Ou seja, a 2ª fase parte desta mesma extração da PNP.",
+  },
+  "pnp-indicador-diferente-mdo": {
+    nivel: "ATENCAO",
+    titulo: "Indicadores do painel da PNP não são os da MDO",
+    porque:
+      "Os indicadores prontos do painel usam outra base que a matriz: a Eficiência Acadêmica do IFSul é 98% no painel e o IEA que a MDO usa é 45%. Os números de contagem (matrículas, evadidos, concluintes) são comparáveis; os índices não. Não use o índice do painel para estimar o valor da matriz.",
+    paraResolver: "Comparar sempre contagem com contagem, ou recalcular o índice com a regra da MDO.",
+  },
+  "pnp-orcamento-por-instituicao": {
+    nivel: "ESTIMADO",
+    titulo: "Orçamento da PNP não é a matriz da MDO",
+    porque:
+      "O painel Dados Orçamentários mostra o que a PNP registra de dotação, execução e descentralização por instituição (e por região, estado e rede), nunca por câmpus. Não é a distribuição da matriz, e a relação do órgão (UO, UGE, TED's) muda o total: compare sempre dentro da mesma opção.",
+  },
   "custo-evadido": {
     nivel: "ATENCAO",
     titulo: "Perda por evasão mudou de definição",

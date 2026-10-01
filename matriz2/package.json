@@ -13,6 +13,7 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "carregar": "tsx scripts/carregar.ts",
+    "carregar:pnp": "tsx scripts/carregarPnp.ts",
     "seed:superadmin": "tsx scripts/seedSuperAdmin.ts"
   },
   "dependencies": {

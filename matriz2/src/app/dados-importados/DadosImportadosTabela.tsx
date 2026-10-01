@@ -97,6 +97,17 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
               // Origem ADMINISTRADOR não tem arquivo original nenhum (foi digitado à
               // mão em `/admin/orcamento`); apontar pra tela de download só devolveria
               // "não encontrei o arquivo". Leva pra onde o dado foi digitado.
+              if (f.origem === "PNP_MANUAL") {
+                return (
+                  <Link
+                    href={f.arquivo.startsWith("PNP Dados Orçamentários") ? "/pnp/orcamento" : "/pnp"}
+                    className={`font-mono text-xs ${PROSE_LINK}`}
+                    title="Tabelas do painel da PNP baixadas à mão. Leva para a tela que as consulta."
+                  >
+                    {f.arquivo}
+                  </Link>
+                );
+              }
               if (f.origem === "ADMINISTRADOR") {
                 return (
                   <Link
