@@ -129,6 +129,13 @@ export const CONFIANCA = {
     porque:
       "O painel Dados Orçamentários mostra o que a PNP registra de dotação, execução e descentralização por instituição (e por região, estado e rede), nunca por câmpus. Não é a distribuição da matriz, e a relação do órgão (UO, UGE, TED's) muda o total: compare sempre dentro da mesma opção.",
   },
+  "peso-efetivo-tabela": {
+    nivel: "ESTIMADO",
+    titulo: "Tabela de peso efetivo por curso",
+    porque:
+      "A MDO não publica o peso que realmente aplica. Ele foi deduzido da Matrícula Total publicada, curso a curso, e a dedução concorda com 99,77% dos 49.391 ciclos da 6ª fase de 2027 (rede sem o IFSul). Funciona como regra de leitura, mas foi medida na mesma amostra de onde saiu: em curso novo ou em outro ano ela pode não achar a linha.",
+    paraResolver: "Pedir à MDO a tabela oficial de pesos por curso e carga horária mínima, ou conferir a tabela com a 6ª fase de outro ano.",
+  },
   "custo-evadido": {
     nivel: "ATENCAO",
     titulo: "Perda por evasão mudou de definição",
