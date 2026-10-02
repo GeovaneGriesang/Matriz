@@ -74,7 +74,8 @@ export function SeletorSlotCurso({
   function navegar(mudanca: Record<string, string | undefined>) {
     const q = new URLSearchParams();
     for (const [chave, valor] of Object.entries({ ...paramsAtuais, ...mudanca })) if (valor !== undefined) q.set(chave, valor);
-    router.push(`/consulta/comparar?${q.toString()}`);
+    // scroll: false mantém a página onde está, em vez de voltar ao topo a cada escolha.
+    router.push(`/consulta/comparar?${q.toString()}`, { scroll: false });
   }
 
   const campiDaInstituicao = campi.filter((c) => c.instituicaoSigla === instituicaoEscolhida);
