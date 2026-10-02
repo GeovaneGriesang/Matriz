@@ -136,6 +136,8 @@ export function SeletorSlotCurso({
           value={cursoEscolhido ?? ""}
           onChange={(e) => navegar({ [`curso${indice}`]: e.target.value })}
           className={classeSelect}
+          // A altura e a letra vêm dos ajustes da tela (AjustesDaSelecao); sem eles, valem estes padrões.
+          style={{ height: "var(--lista-altura, 11rem)", fontSize: "var(--lista-fonte, 14px)" }}
           aria-label={`Curso do slot ${indice}`}
         >
           {cursosVisiveis.map((c) => (

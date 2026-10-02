@@ -7,6 +7,7 @@ import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { carregarCampiComCursosAfins, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
 import type { CursoLinha } from "../ConsultaTabelaCursos";
 import { PainelComparacaoCursos, type CursoComparavel } from "../PainelComparacaoCursos";
+import { AjustesDaSelecao } from "./AjustesDaSelecao";
 import { FiltroComparacao } from "./FiltroComparacao";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
 
@@ -192,7 +193,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         <FiltroComparacao modo={filtro} mesmoCampus={mesmoCampus} paramsAtuais={paramsAtuais} rotuloPrincipal={principal.curso} pesoPrincipal={principal.peso} />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <AjustesDaSelecao>
         {slots.map((slot) => (
           <SeletorSlotCurso
             key={slot.indice}
@@ -210,7 +211,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
             aviso={slot.aviso}
           />
         ))}
-      </div>
+      </AjustesDaSelecao>
 
       {quantosSlots < MAX_SLOTS && proximoCampusPadrao !== undefined && (
         <Link
