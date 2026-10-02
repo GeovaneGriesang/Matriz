@@ -5,14 +5,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { PROSE_LINK } from "@/lib/layoutWidths";
+import { faixaRap, type FaixaRap } from "@/lib/qualidadeEficiencia";
 import {
-  faixaRap,
-  pesoRap,
-  pesoIaplTecnicos,
-  pesoIaplFormacaoProfessores,
-  pesoIaplProeja,
-  type FaixaRap,
-} from "@/lib/qualidadeEficiencia";
+  diferencaIapl,
+  diferencaRap,
+  type IaplInstituicao,
+  type RapInstituicao,
+  type ValoresIapl,
+} from "@/lib/simulacaoIndicadores";
+
+export type { IaplInstituicao, RapInstituicao };
 
 export interface NoCampusSimulavel {
   unidadeId: number;
@@ -20,22 +22,6 @@ export interface NoCampusSimulavel {
   recebido: number;
   perda: number;
   estaNoPiso: boolean;
-}
-
-export interface RapInstituicao {
-  rapPresencial: number;
-  /** Soma do RAP ponderado recalculado de TODAS as outras instituições da rede (a
-   * desta fica de fora, porque é o que muda ao simular). */
-  restoRedeRapPonderado: number;
-}
-
-export interface IaplInstituicao {
-  aplTecnico: number;
-  restoRedeTecnico: number;
-  aplFormacaoProfessor: number;
-  restoRedeFormacao: number;
-  aplProeja: number;
-  restoRedeProeja: number;
 }
 
 export interface NoInstituicaoSimulavel {
@@ -47,12 +33,6 @@ export interface NoInstituicaoSimulavel {
   rap: RapInstituicao | null;
   iapl: IaplInstituicao | null;
   campi: NoCampusSimulavel[];
-}
-
-interface ValoresIapl {
-  tecnico: number;
-  formacao: number;
-  proeja: number;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -75,36 +55,6 @@ function sinal(v: number): string {
 
 function corSinal(v: number): string {
   return v >= 0 ? "text-if-green" : "text-if-red dark:text-red-400";
-}
-
-/** Diferença em reais que simular uma nova RAP causaria no bloco RAP desta instituição. */
-function diferencaRap(rap: RapInstituicao, rapSimulada: number, totalBlocoRap: number): number {
-  const pesoAtual = pesoRap(faixaRap(rap.rapPresencial));
-  const ponderadoAtual = rap.rapPresencial * pesoAtual;
-  const pesoSimulado = pesoRap(faixaRap(rapSimulada));
-  const ponderadoSimulado = rapSimulada * pesoSimulado;
-  const somaAtual = rap.restoRedeRapPonderado + ponderadoAtual;
-  const somaSimulada = rap.restoRedeRapPonderado + ponderadoSimulado;
-  const equalizadoAtual = somaAtual > 0 ? ponderadoAtual / somaAtual : 0;
-  const equalizadoSimulado = somaSimulada > 0 ? ponderadoSimulado / somaSimulada : 0;
-  return (equalizadoSimulado - equalizadoAtual) * totalBlocoRap;
-}
-
-/** Mesma ideia da RAP, mas com as três categorias do IAPL (0,7/0,2/0,1 de peso cada). */
-function diferencaIapl(iapl: IaplInstituicao, simulada: ValoresIapl, totalBlocoIapl: number): number {
-  function fatia(atual: number, sim: number, resto: number, peso: (x: number) => number, participacao: number) {
-    const ponderadoAtual = atual * peso(atual);
-    const ponderadoSim = sim * peso(sim);
-    const somaAtual = resto + ponderadoAtual;
-    const somaSim = resto + ponderadoSim;
-    const eqAtual = somaAtual > 0 ? (ponderadoAtual / somaAtual) * participacao : 0;
-    const eqSim = somaSim > 0 ? (ponderadoSim / somaSim) * participacao : 0;
-    return eqSim - eqAtual;
-  }
-  const tecnico = fatia(iapl.aplTecnico, simulada.tecnico, iapl.restoRedeTecnico, pesoIaplTecnicos, 0.7);
-  const formacao = fatia(iapl.aplFormacaoProfessor, simulada.formacao, iapl.restoRedeFormacao, pesoIaplFormacaoProfessores, 0.2);
-  const proeja = fatia(iapl.aplProeja, simulada.proeja, iapl.restoRedeProeja, pesoIaplProeja, 0.1);
-  return (tecnico + formacao + proeja) * totalBlocoIapl;
 }
 
 /**

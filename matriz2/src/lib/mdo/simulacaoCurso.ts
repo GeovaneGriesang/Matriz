@@ -18,6 +18,11 @@ export interface OpcaoCurso {
   rotulo: string;
   /** Duração da turma, em anos (3 ou 4 no caso do ensino médio integrado). */
   anosDuracao: number;
+  /**
+   * Duração em meses, para o que dura menos de um ano (uma turma de FIC de 160 h, por exemplo, dura uns 4 meses). Quando
+   * informada, vale no lugar de `anosDuracao`.
+   */
+  mesesDuracao?: number;
   /** Carga horária total prevista para a turma. */
   chTotalCiclo: number;
   /** Teto que a MDO aceita para a matriz (3.000, 3.100 ou 3.200 h no integrado, conforme o eixo). */
@@ -87,6 +92,17 @@ export interface ResultadoOpcaoCurso {
 
 const UM_DIA = 86_400_000;
 
+/** Quantos anos do calendário a turma ocupa (uma turma de 4 meses ocupa 1 ano). */
+export function anosOcupados(opcao: OpcaoCurso): number {
+  return opcao.mesesDuracao ? Math.max(1, Math.ceil(opcao.mesesDuracao / 12)) : opcao.anosDuracao;
+}
+
+/** Último dia de uma turma que começa no dia 1 do mês `mes` de `ano`, `extraMeses` meses depois do fim previsto. */
+function fimDaTurma(ano: number, mes: number, opcao: OpcaoCurso, extraMeses = 0): Date {
+  const meses = opcao.mesesDuracao ?? opcao.anosDuracao * 12;
+  return new Date(Date.UTC(ano, mes - 1 + meses + extraMeses, 1) - UM_DIA);
+}
+
 function ciclosDaTurma(
   anoDeInicio: number,
   mesInicio: number,
@@ -95,12 +111,12 @@ function ciclosDaTurma(
 ): Omit<CicloParaCalculo, "alunos"> {
   const inicio = new Date(Date.UTC(anoDeInicio, mesInicio - 1, 1));
   // Último dia do curso: a véspera do mesmo dia, `anosDuracao` anos depois.
-  const termino = new Date(Date.UTC(anoDeInicio + opcao.anosDuracao, mesInicio - 1, 1) - UM_DIA);
+  const termino = fimDaTurma(anoDeInicio, mesInicio, opcao);
   return {
     inicio,
     termino,
     // Prazo de jubilamento: três anos depois do término (não influi enquanto o ciclo está em curso).
-    jubilamento: new Date(Date.UTC(anoDeInicio + opcao.anosDuracao + 3, mesInicio - 1, 1) - UM_DIA),
+    jubilamento: fimDaTurma(anoDeInicio, mesInicio, opcao, 36),
     chCiclo: opcao.chTotalCiclo,
     chMec: 0,
     chMatriz: opcao.chMatriz,
@@ -151,10 +167,10 @@ export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso
   const periodoRegime = { inicio: new Date(Date.UTC(anoRegime, 0, 1)), fim: new Date(Date.UTC(anoRegime, 11, 31)) };
   let mtRegime = 0;
   let alunosRegime = 0;
-  for (let idade = 0; idade < opcao.anosDuracao; idade++) {
+  for (let idade = 0; idade < anosOcupados(opcao); idade++) {
     const n = opcao.vagasPorAno * Math.pow(1 - opcao.evasaoAnual, idade);
     const inicio = new Date(Date.UTC(anoRegime - idade, 0, 1));
-    const termino = new Date(Date.UTC(anoRegime - idade + opcao.anosDuracao, 0, 1) - UM_DIA);
+    const termino = fimDaTurma(anoRegime - idade, 1, opcao);
     alunosRegime += n;
     mtRegime += matriculaTotalDoCiclo(
       {
@@ -175,11 +191,11 @@ export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso
 
   // Uma turma do ingresso à formatura, alinhada ao ano civil, por aluno que ingressou.
   let mtTurma = 0;
-  for (let idade = 0; idade < opcao.anosDuracao; idade++) {
+  for (let idade = 0; idade < anosOcupados(opcao); idade++) {
     const ano = anoRegime + idade;
     const periodo = { inicio: new Date(Date.UTC(ano, 0, 1)), fim: new Date(Date.UTC(ano, 11, 31)) };
     const inicio = new Date(Date.UTC(anoRegime, 0, 1));
-    const termino = new Date(Date.UTC(anoRegime + opcao.anosDuracao, 0, 1) - UM_DIA);
+    const termino = fimDaTurma(anoRegime, 1, opcao);
     mtTurma += matriculaTotalDoCiclo(
       {
         inicio,
@@ -202,7 +218,7 @@ export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso
     chDesperdicada: Math.max(0, opcao.chTotalCiclo - opcao.chMatriz),
     linhas,
     regime: {
-      turmas: opcao.anosDuracao,
+      turmas: anosOcupados(opcao),
       alunosAtivos: alunosRegime,
       matriculaTotal: mtRegime,
       valor: valorRegime,

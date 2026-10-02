@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { simularOpcaoCurso, type OpcaoCurso } from "@/lib/mdo/simulacaoCurso";
+import { anosOcupados, simularOpcaoCurso, type OpcaoCurso } from "@/lib/mdo/simulacaoCurso";
+import type { PadroesDoCurso } from "@/lib/mdo/padroesCurso";
 
 export interface CursoNovoBase {
   /** Nome do curso de referência, de onde vieram o peso e a CH mínima. */
@@ -10,6 +11,8 @@ export interface CursoNovoBase {
   peso: number;
   /** Teto de CH da matriz para este tipo de curso e oferta (3.200 h no integrado de CH mínima 1.200 h). */
   chMatriz: number;
+  /** Duração, CH e vagas sugeridas para o tipo de curso (a tela deixa mudar tudo). */
+  padroes: PadroesDoCurso;
   /** CH mínima do MEC, só para mostrar. */
   chMinimaMec: number;
   /** Valor de uma matrícula no ciclo base, tirado dos ciclos do câmpus. */
@@ -31,9 +34,10 @@ const percentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFra
 export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: string; base: CursoNovoBase; campusNoPiso: boolean }) {
   const [nome, setNome] = useState(base.rotulo);
   const [primeiroAno, setPrimeiroAno] = useState(base.anoDoValor + 1);
-  const [duracao, setDuracao] = useState(4);
-  const [chTotal, setChTotal] = useState(4200);
-  const [vagas, setVagas] = useState(40);
+  const [duracao, setDuracao] = useState(base.padroes.anosDuracao);
+  const [meses, setMeses] = useState<number | undefined>(base.padroes.mesesDuracao);
+  const [chTotal, setChTotal] = useState(base.padroes.chTotal);
+  const [vagas, setVagas] = useState(base.padroes.vagasPorAno);
   const [evasao, setEvasao] = useState(0);
   const [peso, setPeso] = useState(base.peso);
   const [teto, setTeto] = useState(base.chMatriz);
@@ -42,7 +46,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
   const [horizonte, setHorizonte] = useState(8);
   const [diluir, setDiluir] = useState(false);
 
-  const opcao: OpcaoCurso = { rotulo: nome, anosDuracao: duracao, chTotalCiclo: chTotal, chMatriz: teto, vagasPorAno: vagas, evasaoAnual: evasao };
+  const opcao: OpcaoCurso = { rotulo: nome, anosDuracao: duracao, mesesDuracao: meses, chTotalCiclo: chTotal, chMatriz: teto, vagasPorAno: vagas, evasaoAnual: evasao };
   const parametros = useMemo(
     () => ({
       peso,
@@ -56,14 +60,15 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
     }),
     [peso, valorMatricula, primeiroAno, horizonte, reajuste, base.anoDoValor, diluir, base.matriculasRede],
   );
-  const r = useMemo(() => simularOpcaoCurso(opcao, parametros), [nome, duracao, chTotal, teto, vagas, evasao, parametros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const r = useMemo(() => simularOpcaoCurso(opcao, parametros), [nome, duracao, meses, chTotal, teto, vagas, evasao, parametros]); // eslint-disable-line react-hooks/exhaustive-deps
   // O mesmo curso com a CH limitada ao teto: se der igual, a CH acima do teto não rende nada.
   const noTeto = useMemo(
     () => simularOpcaoCurso({ ...opcao, chTotalCiclo: Math.min(chTotal, teto) }, parametros),
-    [nome, duracao, chTotal, teto, vagas, evasao, parametros], // eslint-disable-line react-hooks/exhaustive-deps
+    [nome, duracao, meses, chTotal, teto, vagas, evasao, parametros], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const maxValor = Math.max(...r.linhas.map((l) => l.valor), 1);
-  const anoRegime = primeiroAno + duracao - 1;
+  const anosNoCalendario = anosOcupados(opcao);
+  const anoRegime = primeiroAno + anosNoCalendario - 1;
   const linhaRegime = r.linhas.find((l) => l.ano === anoRegime);
 
   return (
@@ -82,11 +87,43 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
           <input value={nome} onChange={(e) => setNome(e.target.value)} className="rounded-md border border-neutral-300 px-3 py-1.5 dark:border-neutral-700 dark:bg-neutral-900" />
         </label>
         <Numero rotulo="Primeiro ano de entrada" valor={primeiroAno} passo={1} min={base.anoDoValor} max={base.anoDoValor + 10} onChange={(v) => setPrimeiroAno(Math.round(v))} ajuda="A primeira turma entra em março" />
-        <Numero rotulo="Duração (anos)" valor={duracao} passo={1} min={1} max={6} onChange={(v) => setDuracao(Math.max(1, Math.round(v)))} />
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-neutral-900 dark:text-neutral-100">Duração</span>
+          <div className="flex gap-1">
+            <input
+              type="number"
+              min={1}
+              max={meses !== undefined ? 36 : 8}
+              value={meses !== undefined ? meses : duracao}
+              onChange={(e) => {
+                const v = Math.max(1, Math.round(Number(e.target.value)));
+                if (meses !== undefined) {
+                  setMeses(v);
+                  setDuracao(Math.max(1, Math.ceil(v / 12)));
+                } else setDuracao(v);
+              }}
+              className="w-full rounded-md border border-neutral-300 px-3 py-1.5 tabular-nums dark:border-neutral-700 dark:bg-neutral-900"
+            />
+            <select
+              value={meses !== undefined ? "meses" : "anos"}
+              onChange={(e) => {
+                if (e.target.value === "meses") setMeses(duracao * 12);
+                else {
+                  setDuracao(Math.max(1, Math.ceil((meses ?? 12) / 12)));
+                  setMeses(undefined);
+                }
+              }}
+              className="rounded-md border border-neutral-300 px-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <option value="anos">anos</option>
+              <option value="meses">meses</option>
+            </select>
+          </div>
+        </label>
         <Numero rotulo="CH total da turma (h)" valor={chTotal} passo={50} min={100} max={6000} onChange={setChTotal} ajuda={chTotal > teto ? `${inteiro.format(chTotal - teto)} h acima do teto da matriz não rendem` : undefined} />
         <Numero rotulo="Vagas por ano" valor={vagas} passo={5} min={1} max={400} onChange={setVagas} />
         <Numero rotulo="Evasão por ano (%)" valor={Math.round(evasao * 100)} passo={1} min={0} max={60} onChange={(v) => setEvasao(Math.min(0.9, Math.max(0, v / 100)))} />
-        <Numero rotulo="Anos a simular" valor={horizonte} passo={1} min={duracao} max={15} onChange={(v) => setHorizonte(Math.round(v))} />
+        <Numero rotulo="Anos a simular" valor={horizonte} passo={1} min={Math.max(3, anosNoCalendario)} max={15} onChange={(v) => setHorizonte(Math.round(v))} />
       </section>
 
       <section className="grid gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
@@ -112,7 +149,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
       )}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Cartao titulo={`Repasse por ano em regime (${anoRegime})`} valor={linhaRegime ? reais.format(linhaRegime.valor) : "-"} nota={`${duracao} turmas em andamento, ano completo`} />
+        <Cartao titulo={`Repasse por ano em regime (${anoRegime})`} valor={linhaRegime ? reais.format(linhaRegime.valor) : "-"} nota={`${anosNoCalendario} ${anosNoCalendario === 1 ? "turma" : "turmas"} em andamento, ano completo`} />
         <Cartao titulo="Um aluno por ano, em regime" valor={reais2.format(r.regime.valorPorAlunoAno)} nota={`${inteiro.format(r.regime.alunosAtivos)} alunos em regime`} />
         <Cartao titulo={`Acumulado em ${horizonte} anos`} valor={reais.format(r.valorAcumuladoHorizonte)} nota={`de ${primeiroAno} a ${primeiroAno + horizonte - 1}`} />
         <Cartao
@@ -160,7 +197,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
           </table>
         </div>
         <p className="text-xs text-neutral-500">
-          A linha em verde é o primeiro ano em que as {duracao} turmas estão em andamento (regime). Antes dele o repasse cresce a cada turma nova;
+          A linha em verde é o primeiro ano em que as {anosNoCalendario} {anosNoCalendario === 1 ? "turma está" : "turmas estão"} em andamento (regime). Antes dele o repasse cresce a cada turma nova;
           depois, só muda se mudarem as vagas, a evasão ou o valor da matrícula. A coluna Turmas pode mostrar uma a mais por pouco tempo: a turma que
           termina em fevereiro ainda conta nos meses que sobram do ano.
         </p>
