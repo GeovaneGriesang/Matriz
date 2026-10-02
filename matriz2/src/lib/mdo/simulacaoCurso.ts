@@ -46,6 +46,13 @@ export interface ParametrosSimulacaoCurso {
    * só, mas superestima o ganho de um câmpus que abre muitos.
    */
   diluicao?: { matriculasEquivalentesRede: number };
+  /**
+   * Reajuste anual do valor da matrícula (0,05 = 5% ao ano), contado a partir de `anoDoValor`. O valor real de cada ano só
+   * é conhecido quando a MDO fecha o ciclo, então o padrão é zero (valor constante, a hipótese conservadora).
+   */
+  reajusteAnual?: number;
+  /** Ano a que `valorMatricula` se refere (o ciclo de onde veio). Padrão: `anoInicial`. */
+  anoDoValor?: number;
 }
 
 export interface LinhaAnoSimulada {
@@ -53,6 +60,8 @@ export interface LinhaAnoSimulada {
   turmasAtivas: number;
   alunosAtivos: number;
   matriculaTotal: number;
+  /** Valor de uma matrícula naquele ano (com reajuste e diluição, se ligados). */
+  valorMatricula: number;
   valor: number;
   valorAcumulado: number;
 }
@@ -100,11 +109,13 @@ function ciclosDaTurma(
   };
 }
 
-/** Valor da matrícula naquele ano, já com a diluição opcional. */
-function valorMatriculaNoAno(p: ParametrosSimulacaoCurso, matriculaTotalDoCurso: number): number {
-  if (!p.diluicao || p.diluicao.matriculasEquivalentesRede <= 0) return p.valorMatricula;
+/** Valor da matrícula do ano `ano` (quando informado), com o reajuste e a diluição opcionais. */
+export function valorMatriculaNoAno(p: ParametrosSimulacaoCurso, matriculaTotalDoCurso: number, ano?: number): number {
+  const anos = ano === undefined ? 0 : ano - (p.anoDoValor ?? p.anoInicial);
+  const reajustado = p.valorMatricula * Math.pow(1 + (p.reajusteAnual ?? 0), Math.max(0, anos));
+  if (!p.diluicao || p.diluicao.matriculasEquivalentesRede <= 0) return reajustado;
   const m = p.diluicao.matriculasEquivalentesRede;
-  return (p.valorMatricula * m) / (m + matriculaTotalDoCurso);
+  return (reajustado * m) / (m + matriculaTotalDoCurso);
 }
 
 export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso): ResultadoOpcaoCurso {
@@ -128,9 +139,10 @@ export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso
       alunos += n;
       mt += matriculaTotalDoCiclo({ ...base, alunos: n }, periodo);
     }
-    const valor = mt * valorMatriculaNoAno(p, mt);
+    const valorMatricula = valorMatriculaNoAno(p, mt, ano);
+    const valor = mt * valorMatricula;
     acumulado += valor;
-    linhas.push({ ano, turmasAtivas: turmas, alunosAtivos: alunos, matriculaTotal: mt, valor, valorAcumulado: acumulado });
+    linhas.push({ ano, turmasAtivas: turmas, alunosAtivos: alunos, matriculaTotal: mt, valorMatricula, valor, valorAcumulado: acumulado });
   }
 
   // Regime: um ano "cheio" com as `anosDuracao` turmas em andamento. Cada turma é
