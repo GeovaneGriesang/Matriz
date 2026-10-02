@@ -34,22 +34,22 @@ export function FiltroDeModalidade({
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href={href({ modalidade: undefined })} className={chip(modalidade === undefined)} aria-current={modalidade === undefined ? "true" : undefined}>
+        <Link href={href({ modalidade: undefined })} scroll={false} className={chip(modalidade === undefined)} aria-current={modalidade === undefined ? "true" : undefined}>
           Todas
         </Link>
         {MODALIDADES.map((m) => (
-          <Link key={m.chave} href={href({ modalidade: m.chave })} title={m.ajuda} className={chip(modalidade === m.chave)} aria-current={modalidade === m.chave ? "true" : undefined}>
+          <Link key={m.chave} href={href({ modalidade: m.chave })} scroll={false} title={m.ajuda} className={chip(modalidade === m.chave)} aria-current={modalidade === m.chave ? "true" : undefined}>
             {m.rotulo}
           </Link>
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Forma de ensino</span>
-        <Link href={href({ ensino: undefined })} className={chip(ensino === undefined)}>
+        <Link href={href({ ensino: undefined })} scroll={false} className={chip(ensino === undefined)}>
           Todas
         </Link>
         {(["presencial", "ead"] as const).map((f) => (
-          <Link key={f} href={href({ ensino: f })} className={chip(ensino === f)}>
+          <Link key={f} href={href({ ensino: f })} scroll={false} className={chip(ensino === f)}>
             {ROTULO_FORMA_DE_ENSINO[f]}
           </Link>
         ))}

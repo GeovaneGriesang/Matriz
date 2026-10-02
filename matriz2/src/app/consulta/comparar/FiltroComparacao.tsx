@@ -26,7 +26,8 @@ export function FiltroComparacao({
   function ir(mudanca: Record<string, string | undefined>) {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...paramsAtuais, ...mudanca })) if (v !== undefined) q.set(k, v);
-    router.push(`/consulta/comparar?${q.toString()}`);
+    // scroll: false mantém a página onde está (por padrão a navegação volta ao topo, e a pessoa teria de descer de novo).
+    router.push(`/consulta/comparar?${q.toString()}`, { scroll: false });
   }
 
   const opcoes: { valor: ModoFiltro; rotulo: string; ajuda: string }[] = [

@@ -255,6 +255,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
       {quantosSlots < MAX_SLOTS && proximoCampusPadrao !== undefined && (
         <Link
           href={`/consulta/comparar?${new URLSearchParams({ ...paramsAtuais, [`campus${quantosSlots + 1}`]: String(proximoCampusPadrao) }).toString()}`}
+          scroll={false}
           className="w-fit text-sm text-if-green underline hover:text-if-green/80"
         >
           + adicionar outro curso
@@ -266,6 +267,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
           <strong>Atenção: estes cursos são de modalidades diferentes</strong> ({modalidadesDiferentes.join(", ")}). Peso, carga horária e duração não são comparáveis entre elas.{" "}
           <Link
             href={`/consulta/comparar?${new URLSearchParams({ ...paramsAtuais, modalidade: principal.modalidade }).toString()}`}
+            scroll={false}
             className="font-medium underline"
           >
             Ver só {principal.modalidadeRotulo?.toLowerCase()}
