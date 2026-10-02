@@ -136,7 +136,10 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const usados = new Set<number>([campus1]);
   for (let i = 1; i < quantosSlots && principal; i++) {
     const pedido = Number(campusParam[i]);
-    const permitido = (id: number) => campiOutros.some((c) => c.id === id);
+    // No filtro "só o mesmo curso" cada câmpus entra uma vez só: o mesmo curso tem várias turmas num câmpus, e duas colunas do
+    // mesmo câmpus pareceriam uma comparação repetida. Para comparar turmas de um câmpus, use "Só o mesmo câmpus".
+    const umPorCampus = filtro === "curso" && !mesmoCampus;
+    const permitido = (id: number) => campiOutros.some((c) => c.id === id) && !(umPorCampus && usados.has(id));
     let unidadeId: number | undefined;
     if (mesmoCampus) unidadeId = campus1;
     else if (permitido(pedido)) unidadeId = pedido;
@@ -163,6 +166,14 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
       travado: mesmoCampus,
       aviso: cursos.length === 0 ? "Este câmpus não tem curso comparável com o principal." : undefined,
     });
+  }
+
+  // As opções de câmpus de cada bloco não repetem câmpus já usados em outro bloco (quando o filtro é "só o mesmo curso").
+  if (filtro === "curso" && !mesmoCampus) {
+    for (const s of slots) {
+      const dosOutros = new Set(slots.filter((o) => o.indice !== s.indice).map((o) => o.unidadeId));
+      s.campi = s.campi.filter((c) => c.id === s.unidadeId || !dosOutros.has(c.id));
+    }
   }
 
   const paramsAtuais: Record<string, string> = { ano: String(ano) };
