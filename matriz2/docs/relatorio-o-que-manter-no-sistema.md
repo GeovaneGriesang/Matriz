@@ -1,5 +1,7 @@
 # O que realmente precisa ficar no sistema e no banco de dados
 
+**Atualização de 2026-10-02:** o cache do Docker foi limpo (10,7 GB liberados) e a primeira versão do sistema foi removida (banco antigo, código da raiz do repositório e restos na máquina virtual e no computador local). O que continua em aberto, aguardando sua decisão, são os dois itens da seção 3 marcados como candidatos (Extrator e dado por aluno). As seções 4 e 5 abaixo descrevem o que foi encontrado antes da limpeza.
+
 Levantamento de 2026-10-01, feito sobre o banco de produção (`matriz2_prod`), a máquina virtual e o repositório. Nada foi apagado: este relatório só propõe, e cada decisão que mexe em produção fica com você.
 
 ## Resumo
@@ -7,7 +9,7 @@ Levantamento de 2026-10-01, feito sobre o banco de produção (`matriz2_prod`), 
 - O banco de produção tem **4,0 GB**. **Quase 80% (3,2 GB) são só duas tabelas**: os painéis de ensino e pessoal da PNP (2,2 GB) e o painel orçamentário da PNP (0,9 GB). As telas "PNP: ensino e pessoal" e "PNP: orçamento" usam essas duas, então elas ficam.
 - O que realmente faz a matriz funcionar (usuários, fontes, instituições, câmpus, ciclos, valores por curso, conferência, pesos) ocupa **menos de 100 MB**. Isso é o núcleo e não se mexe.
 - Há **cerca de 0,8 GB carregado que nenhuma tela mostra**: o Extrator da PNP (280 MB), os microdados de matrículas por ciclo de curso (335 MB), o microdado por aluno da 2ª fase (180 MB) e o de servidores e financeiro (27 MB). Parte é base da análise de calcular a matriz pela PNP (vale manter), parte é candidata a sair.
-- Fora do banco atual, há **um banco antigo de 0,8 GB** (`matriz_prod`, do Matriz antigo parado) e **8,4 GB de cache de construção do Docker** que podem ser limpos sem risco.
+- Fora do banco atual havia **um banco antigo de 0,8 GB** (`matriz_prod`, do Matriz antigo parado) e **8,4 GB de cache de construção do Docker**. Os dois já foram removidos (2026-10-02).
 
 ## 1. O núcleo: manter sempre (menos de 100 MB)
 
@@ -53,14 +55,14 @@ Se as duas candidatas saírem, o banco cai de 4,0 GB para cerca de 3,5 GB, e o M
 
 ## 4. Fora do banco atual
 
-- **`matriz_prod` (0,8 GB)**: banco do Matriz antigo, que está parado. Guardado como rede de segurança desde a virada. Como ninguém usa o Matriz antigo (não há usuário real em nenhum dos dois), a proposta é **gerar um arquivo de cópia (dump) compactado, guardá-lo fora da máquina virtual e remover o banco** quando você se sentir seguro com o novo.
+- **`matriz_prod` (0,8 GB)**: banco do Matriz antigo, que está parado. Guardado como rede de segurança desde a virada. Como ninguém usa o Matriz antigo (não há usuário real em nenhum dos dois), a proposta era **gerar uma cópia (dump) compactada e remover o banco**. Feito em 2026-10-02: a cópia está em `/root/backups/matriz_prod_primeira_versao_20261002.sql.gz` na máquina virtual (28 MB, validada) e o banco foi apagado.
 - **Cache de construção do Docker (10,7 GB, dos quais 8,4 GB recuperáveis)**: lixo de compilações antigas. Limpar (`docker builder prune`) não afeta nenhum site. O disco está em 65% (47 GB de 72 GB), então não é urgente.
 - **Arquivos originais em disco (`/opt/matriz-dados`, 2 GB)**: **manter**. São os CSVs que permitem recarregar qualquer tabela acima.
 - **Registros de carga em `/root` (alguns KB cada)**: podem ser apagados quando quiser, sem efeito.
 
 ## 5. No repositório
 
-- **A raiz do repositório ainda tem o Matriz antigo** (cerca de 145 arquivos em `src`, mais `prisma`, `tests` e `docker`), e a pasta `matriz2` é o sistema que está no ar. Enquanto o antigo ficar como rede de segurança, vale manter; quando o banco antigo for removido, o código antigo perde a razão de existir.
+- **A raiz do repositório tinha o Matriz antigo** (209 arquivos). Foi removida em 2026-10-02; o último commit que a continha está na etiqueta git `matriz-v1-ultimo-commit`, então nada se perde.
 - **15 scripts de análise** (`matriz2/scripts/_analise_*.ts`): são exploratórios, não fazem parte do sistema. Os de resíduos, peso e reconstrução (cinco de resíduo, três de peso, dois de reconstrução, mais o de carga horária) já cumpriram o papel e estão documentados em `docs/calculo-da-matriz-a-partir-da-pnp.md`. Podem ir para uma pasta `scripts/analises` ou ser apagados, mantendo só os três de edições da PNP e o de microdados.
 - **`docs/pnp-matriz`**: manter. São os valores de referência (planilhas oficiais da CONIF) contra os quais o cálculo é conferido.
 
@@ -70,8 +72,8 @@ Nada a cortar agora. O menu foi reorganizado em quatro grupos (Consultar, Simula
 
 ## O que eu faria, em ordem
 
-1. **Agora, sem risco:** limpar o cache do Docker (recupera 8,4 GB).
+1. ~~Limpar o cache do Docker.~~ Feito em 2026-10-02 (10,7 GB liberados).
 2. **Quando você decidir:** tirar `ConferenciaExtracaoAluno` e `PnpExtratorFato` da produção (cerca de 0,5 GB, e reduz o risco de dado pessoal no servidor).
-3. **Quando se sentir seguro com o novo sistema:** dump do `matriz_prod` e remoção do banco antigo.
+3. ~~Dump do `matriz_prod` e remoção do banco antigo.~~ Feito em 2026-10-02.
 4. **Só se o espaço apertar:** cortar a edição 2026 dos painéis (12%) e as aberturas mais finas de "Situação de Matrícula".
 5. **Nunca:** os microdados por ciclo (`PnpMicrodadoCiclo`) e a tabela de peso efetivo, que são a base de calcular a matriz sem depender da MDO.
