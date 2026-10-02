@@ -118,3 +118,29 @@ describe("curso novo a partir de 2028, ano a ano", () => {
     for (const l of r.linhas) expect(l.valorMatricula).toBeCloseTo(1228.9, 6);
   });
 });
+
+describe("turma curta em meses (FIC)", () => {
+  const fic = opcao({ anosDuracao: 1, mesesDuracao: 4, chTotalCiclo: 160, chMatriz: 160, vagasPorAno: 40 });
+  const p: ParametrosSimulacaoCurso = { peso: 1, agropecuaria: false, valorMatricula: 1228.9, anoInicial: 2028, horizonteAnos: 4, anoDoValor: 2027 };
+
+  it("uma turma de 160 h rende peso x (160 ÷ 800) x valor por aluno, no próprio ano", () => {
+    const r = simularOpcaoCurso(fic, p);
+    // 40 alunos x 1 x 0,2 = 8 de Matrícula Total, a R$ 1.228,90.
+    expect(r.linhas[0]!.matriculaTotal).toBeCloseTo(8, 6);
+    expect(r.linhas[0]!.valor).toBeCloseTo(8 * 1228.9, 2);
+    expect(r.valorPorIngressante).toBeCloseTo(0.2 * 1228.9, 2);
+  });
+
+  it("a turma termina no mesmo ano e não conta nos seguintes: cada ano rende igual", () => {
+    const r = simularOpcaoCurso(fic, p);
+    for (const l of r.linhas) expect(l.valor).toBeCloseTo(8 * 1228.9, 2);
+    expect(r.linhas.map((l) => l.turmasAtivas)).toEqual([1, 1, 1, 1]);
+    expect(r.valorAcumuladoHorizonte).toBeCloseTo(4 * 8 * 1228.9, 2);
+  });
+
+  it("os cursos em anos continuam como antes (duração inteira em anos)", () => {
+    const quatro = simularOpcaoCurso(opcao({ anosDuracao: 4 }), parametros);
+    expect(quatro.regime.turmas).toBe(4);
+    expect(quatro.valorPorIngressante).toBeCloseTo(4 * 1.5 * 1200, 2);
+  });
+});
