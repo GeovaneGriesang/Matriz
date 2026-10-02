@@ -20,6 +20,13 @@ export interface CursoLinha {
   chMinimaMec: number | null;
   chMatriz: number | null;
   alunos: number | null;
+  /** Modalidade do curso (técnico integrado, Proeja, superior...), ver `lib/modalidadeCurso.ts`. */
+  modalidade?: string;
+  modalidadeRotulo?: string;
+  /** Tipo do curso por extenso (bacharelado, licenciatura, FIC...), para distinguir dentro de uma modalidade. */
+  tipoCursoLegivel?: string;
+  /** Presencial ou a distância. */
+  ensino?: "presencial" | "ead";
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });

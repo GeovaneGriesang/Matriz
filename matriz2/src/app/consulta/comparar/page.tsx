@@ -3,12 +3,14 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { ehInstituicaoDestaque } from "@/lib/destaque";
 import { modoDoParametro, passaNoFiltro } from "@/lib/compararCursos";
+import { ehChaveDeModalidade, ehFormaDeEnsino, rotuloDaModalidade, type ChaveModalidade } from "@/lib/modalidadeCurso";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
-import { carregarCampiComCursosAfins, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import { carregarCampiComCursosAfins, carregarCampiComFiltro, carregarCursosDoCampus, type FiltroDeCursos } from "@/server/queries/cursosCampus";
 import type { CursoLinha } from "../ConsultaTabelaCursos";
 import { PainelComparacaoCursos, type CursoComparavel } from "../PainelComparacaoCursos";
 import { AjustesDaSelecao } from "./AjustesDaSelecao";
 import { FiltroComparacao } from "./FiltroComparacao";
+import { FiltroDeModalidade } from "./FiltroDeModalidade";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +21,8 @@ interface Busca {
   ano?: string;
   filtro?: string;
   mesmoCampus?: string;
+  modalidade?: string;
+  ensino?: string;
   campus1?: string; curso1?: string;
   campus2?: string; curso2?: string;
   campus3?: string; curso3?: string;
@@ -45,6 +49,10 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const ano = Number(params.ano) || 2027;
   const filtro = modoDoParametro(params.filtro);
   const mesmoCampus = params.mesmoCampus === "1";
+  // O recorte por modalidade (técnico integrado, Proeja, superior...) e por forma de ensino (presencial ou a distância): vale para todos os blocos.
+  const modalidade = ehChaveDeModalidade(params.modalidade) ? params.modalidade : undefined;
+  const ensino = ehFormaDeEnsino(params.ensino) ? params.ensino : undefined;
+  const filtroDeCursos: FiltroDeCursos | undefined = modalidade || ensino ? { modalidade, ensino } : undefined;
 
   // Os ciclos que têm a 6ª fase carregada: são os únicos que fazem sentido como opção, e a escolha do ciclo precisa
   // continuar à vista mesmo quando o ciclo da URL não tem dado (senão a pessoa fica sem como voltar).
@@ -95,8 +103,12 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const nomePorCampus = new Map(campiRede.map((c) => [c.id, c]));
   const valorPorCampus = new Map(porCampusRede.map((r) => [r.unidadeId, Number(r._sum.valorReais ?? 0)]));
 
+  // Só os câmpus que têm curso no recorte escolhido (modalidade e forma de ensino) entram nas opções.
+  const comFiltro = filtroDeCursos ? await carregarCampiComFiltro(ano, filtroDeCursos) : null;
+  const campiBase = comFiltro ? campiRede.filter((c) => comFiltro.has(c.id)) : campiRede;
+
   // Sem nada escolhido, abre comparando os dois câmpus do IFSul que mais recebem (o foco do sistema).
-  const maisRecebem = [...campiRede].sort((a, b) => (valorPorCampus.get(b.id) ?? 0) - (valorPorCampus.get(a.id) ?? 0));
+  const maisRecebem = [...campiBase].sort((a, b) => (valorPorCampus.get(b.id) ?? 0) - (valorPorCampus.get(a.id) ?? 0));
   const doIfsul = maisRecebem.filter((c) => ehInstituicaoDestaque(c.instituicaoSigla));
   const base = doIfsul.length >= 2 ? doIfsul : maisRecebem;
   const padraoCampus1 = base[0]?.id;
@@ -109,17 +121,17 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   for (let i = 2; i < MAX_SLOTS; i++) if (campusParam[i]) quantosSlots = i + 1;
 
   // O curso principal (slot 1).
-  const campus1 = nomePorCampus.has(Number(campusParam[0])) ? Number(campusParam[0]) : padraoCampus1!;
-  const cursos1 = await carregarCursosDoCampus(ano, campus1);
+  const campus1 = campiBase.some((c) => c.id === Number(campusParam[0])) ? Number(campusParam[0]) : padraoCampus1;
+  const cursos1 = campus1 === undefined ? [] : await carregarCursosDoCampus(ano, campus1, filtroDeCursos);
   const principal: CursoLinha | undefined = cursos1.find((c) => c.id === Number(cursoParam[0])) ?? cursos1[0];
 
   // Câmpus que servem para os outros slots, segundo o filtro: os que têm o mesmo curso ou curso de mesmo peso.
-  const afins = principal && filtro !== "todos" ? await carregarCampiComCursosAfins(ano, { curso: principal.curso, peso: principal.peso }, filtro) : null;
+  const afins = principal && filtro !== "todos" ? await carregarCampiComCursosAfins(ano, { curso: principal.curso, peso: principal.peso }, filtro, filtroDeCursos) : null;
   const campiOutros: CampusOpcao[] = mesmoCampus
-    ? campiRede.filter((c) => c.id === campus1)
+    ? campiBase.filter((c) => c.id === campus1)
     : afins
-      ? campiRede.filter((c) => afins.has(c.id))
-      : campiRede;
+      ? campiBase.filter((c) => afins.has(c.id))
+      : campiBase;
 
   interface Slot {
     indice: number;
@@ -131,9 +143,10 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
     aviso?: string;
   }
   const slots: Slot[] = [];
-  if (principal) slots.push({ indice: 1, unidadeId: campus1, cursos: cursos1, cursoEscolhido: principal, campi: campiRede, travado: false });
+  if (principal && campus1 !== undefined) slots.push({ indice: 1, unidadeId: campus1, cursos: cursos1, cursoEscolhido: principal, campi: campiBase, travado: false });
 
-  const usados = new Set<number>([campus1]);
+  // Dentro do laço há principal e, portanto, campus1.
+  const usados = new Set<number>(campus1 === undefined ? [] : [campus1]);
   for (let i = 1; i < quantosSlots && principal; i++) {
     const pedido = Number(campusParam[i]);
     // No filtro "só o mesmo curso" cada câmpus entra uma vez só: o mesmo curso tem várias turmas num câmpus, e duas colunas do
@@ -141,7 +154,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
     const umPorCampus = filtro === "curso" && !mesmoCampus;
     const permitido = (id: number) => campiOutros.some((c) => c.id === id) && !(umPorCampus && usados.has(id));
     let unidadeId: number | undefined;
-    if (mesmoCampus) unidadeId = campus1;
+    if (mesmoCampus) unidadeId = campus1!;
     else if (permitido(pedido)) unidadeId = pedido;
     else if (i === 1 && padraoCampus2 !== undefined && permitido(padraoCampus2)) unidadeId = padraoCampus2;
     else {
@@ -150,11 +163,11 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
       unidadeId = (candidatos.find((c) => ehInstituicaoDestaque(c.instituicaoSigla)) ?? candidatos[0] ?? campiOutros[0])?.id;
     }
     if (unidadeId === undefined) {
-      slots.push({ indice: i + 1, unidadeId: campus1, cursos: [], cursoEscolhido: undefined, campi: campiOutros, travado: mesmoCampus, aviso: "Nenhum câmpus tem curso comparável com o principal." });
+      slots.push({ indice: i + 1, unidadeId: campus1!, cursos: [], cursoEscolhido: undefined, campi: campiOutros, travado: mesmoCampus, aviso: "Nenhum câmpus tem curso comparável com o principal." });
       continue;
     }
     usados.add(unidadeId);
-    const todos = await carregarCursosDoCampus(ano, unidadeId);
+    const todos = await carregarCursosDoCampus(ano, unidadeId, filtroDeCursos);
     const cursos = todos.filter((c) => c.id !== principal.id && passaNoFiltro(filtro, principal, c));
     const escolhido = cursos.find((c) => c.id === Number(cursoParam[i])) ?? cursos[0];
     slots.push({
@@ -179,6 +192,8 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const paramsAtuais: Record<string, string> = { ano: String(ano) };
   if (filtro !== "todos") paramsAtuais.filtro = filtro;
   if (mesmoCampus) paramsAtuais.mesmoCampus = "1";
+  if (modalidade) paramsAtuais.modalidade = modalidade;
+  if (ensino) paramsAtuais.ensino = ensino;
   for (const s of slots) {
     paramsAtuais[`campus${s.indice}`] = String(s.unidadeId);
     if (s.cursoEscolhido) paramsAtuais[`curso${s.indice}`] = String(s.cursoEscolhido.id);
@@ -190,6 +205,8 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
       const campus = nomePorCampus.get(s.unidadeId)!;
       return { ...s.cursoEscolhido, campus: campus.nome, instituicaoSigla: campus.instituicaoSigla };
     });
+
+  const modalidadesDiferentes = Array.from(new Set(comparaveis.map((c) => c.modalidadeRotulo).filter((m): m is string => Boolean(m))));
 
   const proximoCampusPadrao = campiOutros.find((c) => !slots.some((s) => s.unidadeId === c.id))?.id ?? campiOutros[0]?.id;
 
@@ -209,6 +226,8 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
 
       {seletorDeAno}
 
+      <FiltroDeModalidade modalidade={modalidade} ensino={ensino} paramsAtuais={paramsAtuais} />
+
       {principal && (
         <FiltroComparacao modo={filtro} mesmoCampus={mesmoCampus} paramsAtuais={paramsAtuais} rotuloPrincipal={principal.curso} pesoPrincipal={principal.peso} />
       )}
@@ -224,7 +243,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
             instituicaoEscolhida={nomePorCampus.get(slot.unidadeId)?.instituicaoSigla ?? ""}
             campusEscolhido={slot.unidadeId}
             campusTravado={slot.travado}
-            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio }))}
+            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio, modalidade: c.modalidadeRotulo ?? "", tipoCurso: c.tipoCursoLegivel ?? "" }))}
             cursoEscolhido={slot.cursoEscolhido?.id ?? null}
             paramsAtuais={paramsAtuais}
             podeRemover={quantosSlots > 2 && slot.indice === quantosSlots}
@@ -242,11 +261,26 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         </Link>
       )}
 
+      {modalidadesDiferentes.length > 1 && principal?.modalidade && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <strong>Atenção: estes cursos são de modalidades diferentes</strong> ({modalidadesDiferentes.join(", ")}). Peso, carga horária e duração não são comparáveis entre elas.{" "}
+          <Link
+            href={`/consulta/comparar?${new URLSearchParams({ ...paramsAtuais, modalidade: principal.modalidade }).toString()}`}
+            className="font-medium underline"
+          >
+            Ver só {principal.modalidadeRotulo?.toLowerCase()}
+          </Link>
+          , a modalidade do curso principal.
+        </p>
+      )}
+
       {comparaveis.length >= 2 ? (
         <PainelComparacaoCursos cursos={comparaveis} principalId={principal?.id} />
       ) : (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          Escolha pelo menos dois cursos para comparar. Se o filtro estiver marcado, talvez nenhum outro câmpus tenha curso comparável com o principal: tente &quot;Todos os cursos&quot;.
+          {modalidade || ensino
+            ? `Nenhum câmpus tem dois cursos ${modalidade ? `da modalidade "${rotuloDaModalidade(modalidade as ChaveModalidade)}"` : ""}${modalidade && ensino ? " " : ""}${ensino ? (ensino === "ead" ? "a distância" : "presenciais") : ""} para comparar em ${ano}. Escolha outra modalidade ou "Todas".`
+            : "Escolha pelo menos dois cursos para comparar. Se o filtro estiver marcado, talvez nenhum outro câmpus tenha curso comparável com o principal: tente \"Todos os cursos\"."}
         </p>
       )}
     </main>

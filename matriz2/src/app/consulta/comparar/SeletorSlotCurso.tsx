@@ -18,6 +18,9 @@ export interface CursoOpcao {
   repasse: string;
   /** Início do ciclo (ISO), para distinguir turmas do mesmo curso na lista. */
   inicio: string | null;
+  /** Modalidade (técnico integrado, Proeja, superior...) e tipo do curso (bacharelado, licenciatura...). */
+  modalidade: string;
+  tipoCurso: string;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -143,6 +146,7 @@ export function SeletorSlotCurso({
           {cursosVisiveis.map((c) => (
             <option key={c.id} value={c.id}>
               {c.curso}
+              {c.modalidade ? ` [${c.modalidade}${c.modalidade === "Superior" && c.tipoCurso ? `, ${c.tipoCurso}` : ""}]` : ""}
               {c.peso !== null ? `, peso ${c.peso.toString().replace(".", ",")}` : ""}
               {c.repasse !== "PRESENCIAL" ? `, ${c.repasse.replace("_", " ")}` : ""}
               {mesAno(c.inicio)} ({reais.format(c.valor)})
