@@ -6,6 +6,7 @@ import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdena
 import { carregarCursosComparativoCampusAction } from "@/server/actions/comparativoCursos";
 import { explicarVariacaoCampusAction, type ResultadoExplicacao } from "@/server/actions/explicarVariacao";
 import type { CursoLinha } from "@/app/consulta/ConsultaTabelaCursos";
+import { VARIACOES, totalDaVariacao, variacaoDoCampus, type ValoresDoCampus, type Variacao } from "@/lib/variacoesComparativo";
 
 export interface LinhaComparativoCampus {
   unidadeId: number;
@@ -21,9 +22,33 @@ export interface LinhaComparativoCampus {
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Um valor de variação para a célula: "+R$ 1.234 (+4,5%)", verde se subiu e vermelho se caiu (quase zero fica cinza). */
+function CelulaVariacao({ v }: { v: Variacao | null }) {
+  if (v === null) return <span className="text-xs text-neutral-400">-</span>;
+  const classe = Math.abs(v.absoluta) < 1 ? "text-neutral-500" : v.absoluta > 0 ? "text-if-green" : "text-if-red dark:text-red-400";
+  const sinal = v.absoluta >= 0 ? "+" : "-";
+  return (
+    <span className={classe}>
+      {sinal}
+      {reais.format(Math.abs(v.absoluta))}
+      {v.percentual !== null && (
+        <span className="block text-xs">
+          {v.absoluta >= 0 ? "+" : ""}
+          {doisDecimais.format(v.percentual * 100)}%
+        </span>
+      )}
+    </span>
+  );
+}
+
+function rotuloDoPonto(p: { tipo: "calculado" | "informado"; ciclo: "A" | "B" }, anoA: number, anoB: number): string {
+  return `${p.tipo === "calculado" ? "Calculado" : "Informado"} ${p.ciclo === "A" ? anoA : anoB}`;
+}
+
 /**
- * Client Component só para hospedar `colunas` (com funções `valor`/`render`), pelo
- * mesmo motivo de sempre: `TabelaOrdenavel` é "use client".
+ * O comparativo por câmpus, com os dois valores de cada ciclo, o CALCULADO (a matriz) e o INFORMADO (o que o câmpus de fato recebeu),
+ * e as cinco variações entre eles (ver `variacoesComparativo.ts`). Client Component só para hospedar `colunas` (com funções
+ * `valor`/`render`), pelo mesmo motivo de sempre: `TabelaOrdenavel` é "use client".
  */
 export function ComparativoTabelaCampus({
   linhas,
@@ -34,85 +59,103 @@ export function ComparativoTabelaCampus({
   anoA: number;
   anoB: number;
 }) {
+  const valores = (l: LinhaComparativoCampus): ValoresDoCampus => ({ calculadoA: l.a, informadoA: l.informadoA, calculadoB: l.b, informadoB: l.informadoB });
+  const totais = VARIACOES.map((def) => totalDaVariacao(def, linhas.map(valores)));
+  const somaInformadoA = linhas.reduce((s, l) => s + (l.informadoA ?? 0), 0);
+  const somaInformadoB = linhas.reduce((s, l) => s + (l.informadoB ?? 0), 0);
+  const comInformadoA = linhas.filter((l) => l.informadoA !== null).length;
+  const comInformadoB = linhas.filter((l) => l.informadoB !== null).length;
+
+  const celulaInformado = (v: number | null) =>
+    v === null ? (
+      <span className="text-xs text-neutral-400" title="Ninguém cadastrou o valor recebido em Valores recebidos">
+        sem registro
+      </span>
+    ) : (
+      <span className="text-neutral-600 dark:text-neutral-400">{reais.format(v)}</span>
+    );
+
+  const colunasDeVariacao: ColunaOrdenavel<LinhaComparativoCampus>[] = VARIACOES.map((def) => ({
+    chave: def.chave,
+    rotulo: (
+      <span className="block leading-tight">
+        {rotuloDoPonto(def.de, anoA, anoB)}
+        <span className="block text-neutral-400">para {rotuloDoPonto(def.para, anoA, anoB).toLowerCase()}</span>
+      </span>
+    ),
+    alinhamento: "right",
+    valor: (l) => variacaoDoCampus(def, valores(l))?.absoluta ?? null,
+    render: (l) =>
+      def.chave === "calcA_calcB" && l.a === 0 && l.b > 0 ? (
+        <span className="text-xs text-neutral-500">novo no ciclo</span>
+      ) : (
+        <CelulaVariacao v={variacaoDoCampus(def, valores(l))} />
+      ),
+  }));
+
   return (
-    <TabelaOrdenavel
-      linhas={linhas}
-      chaveLinha={(l) => l.unidadeId}
-      linhaExpandida={(l) => (
-        <div className="flex flex-col gap-4">
-          <ExplicacaoVariacao unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} nome={l.nome} />
-          <CursosDoCampus unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} />
-        </div>
-      )}
-      colunas={
-        [
+    <div className="flex flex-col gap-2">
+      <TabelaOrdenavel
+        linhas={linhas}
+        chaveLinha={(l) => l.unidadeId}
+        linhaExpandida={(l) => (
+          <div className="flex flex-col gap-4">
+            <ExplicacaoVariacao unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} nome={l.nome} />
+            <CursosDoCampus unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} />
+          </div>
+        )}
+        colunas={[
           { chave: "nome", rotulo: "Câmpus", valor: (l) => l.nome },
           {
-            chave: "anoA",
-            rotulo: String(anoA),
+            chave: "calculadoA",
+            rotulo: `Calculado ${anoA}`,
             alinhamento: "right",
             valor: (l) => (l.a === 0 && l.b > 0 ? null : l.a),
-            render: (l) => (
-              <span className="text-neutral-600 dark:text-neutral-400">
-                {l.a === 0 && l.b > 0 ? "não havia" : reais.format(l.a)}
-              </span>
-            ),
+            render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{l.a === 0 && l.b > 0 ? "não havia" : reais.format(l.a)}</span>,
           },
-          {
-            chave: "informadoA",
-            rotulo: `Informado ${anoA}`,
-            alinhamento: "right",
-            valor: (l) => l.informadoA,
-            render: (l) =>
-              l.informadoA === null ? (
-                <span className="text-xs text-neutral-400" title="Ninguem cadastrou o valor recebido em Valores recebidos">sem registro</span>
-              ) : (
-                <span className="text-neutral-600 dark:text-neutral-400">{reais.format(l.informadoA)}</span>
-              ),
-          },
-          {
-            chave: "anoB",
-            rotulo: String(anoB),
-            alinhamento: "right",
-            valor: (l) => l.b,
-            render: (l) => reais.format(l.b),
-          },
-          {
-            chave: "variacao",
-            rotulo: "Variação",
-            alinhamento: "right",
-            valor: (l) => (l.a === 0 && l.b > 0 ? null : l.variacao),
-            render: (l) =>
-              l.a === 0 && l.b > 0 ? (
-                <span className="text-xs text-neutral-500">novo no ciclo</span>
-              ) : (
-                <span className={l.variacao >= 0 ? "text-if-green" : "text-if-red dark:text-red-400"}>
-                  {l.variacao >= 0 ? "+" : ""}
-                  {doisDecimais.format(l.variacao)}%
+          { chave: "informadoA", rotulo: `Informado ${anoA}`, alinhamento: "right", valor: (l) => l.informadoA, render: (l) => celulaInformado(l.informadoA) },
+          { chave: "calculadoB", rotulo: `Calculado ${anoB}`, alinhamento: "right", valor: (l) => l.b, render: (l) => reais.format(l.b) },
+          { chave: "informadoB", rotulo: `Informado ${anoB}`, alinhamento: "right", valor: (l) => l.informadoB, render: (l) => celulaInformado(l.informadoB) },
+          ...colunasDeVariacao,
+        ]}
+        rodape={
+          <tfoot>
+            <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
+              <td className="px-2 py-2.5" />
+              <td className="px-4 py-2.5">Soma dos {linhas.length} câmpus</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.a, 0))}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">
+                {reais.format(somaInformadoA)}
+                <span className="block text-xs font-normal text-neutral-500">
+                  {comInformadoA} de {linhas.length} com registro
                 </span>
-              ),
-          },
-          {
-            chave: "contraInformado",
-            rotulo: `Matriz ${anoB} contra o informado ${anoA}`,
-            alinhamento: "right",
-            valor: (l) => (l.informadoA === null || l.informadoA === 0 ? null : l.b - l.informadoA),
-            render: (l) => {
-              if (l.informadoA === null || l.informadoA === 0) return <span className="text-xs text-neutral-400">-</span>;
-              const dif = l.b - l.informadoA;
-              const pct = (l.b / l.informadoA - 1) * 100;
-              return (
-                <span className={dif >= 0 ? "text-if-green" : "text-if-red dark:text-red-400"}>
-                  {dif >= 0 ? "+" : "-"}
-                  {reais.format(Math.abs(dif))} ({dif >= 0 ? "+" : ""}
-                  {doisDecimais.format(pct)}%)
+              </td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.b, 0))}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">
+                {reais.format(somaInformadoB)}
+                <span className="block text-xs font-normal text-neutral-500">
+                  {comInformadoB} de {linhas.length} com registro
                 </span>
-              );
-            },
-          },
-        ] satisfies ColunaOrdenavel<LinhaComparativoCampus>[]
-      }
-    />
+              </td>
+              {totais.map((t, i) => (
+                <td key={VARIACOES[i]!.chave} className="px-4 py-2.5 text-right tabular-nums">
+                  <CelulaVariacao v={t?.variacao ?? null} />
+                  {t && t.comparados < t.total && (
+                    <span className="block text-xs font-normal text-neutral-500">
+                      em {t.comparados} de {t.total} câmpus
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        }
+      />
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe; <strong>Informado</strong> é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor).
+        Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença.
+      </p>
+    </div>
   );
 }
 

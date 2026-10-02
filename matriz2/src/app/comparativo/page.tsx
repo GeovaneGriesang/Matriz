@@ -166,6 +166,12 @@ export default async function ComparativoPage({
           câmpus dela (o Total por câmpus vem de outra fonte, a mesma da Consulta); clique no{" "}
           <strong>+</strong> de um câmpus para ver os cursos dele.
         </p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          Na lista de câmpus, cada ciclo tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o{" "}
+          <strong>informado</strong> (o que ele de fato recebeu, cadastrado em Valores recebidos). Ao lado deles estão as cinco variações:
+          calculado {anoA} para informado {anoA}; calculado {anoA} para calculado {anoB}; informado {anoA} para calculado {anoB}; informado{" "}
+          {anoA} para informado {anoB}; e calculado {anoB} para informado {anoB}. Onde falta o informado, a variação fica vazia.
+        </p>
       </div>
 
       <PainelConfianca ids={["comparativo-institucional", "valor-informado", "piso-2026", "mooc-2027", "explicacao-variacao"]} />
