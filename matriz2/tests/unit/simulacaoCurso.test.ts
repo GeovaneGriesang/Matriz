@@ -71,3 +71,50 @@ describe("simulação de curso, 3 anos contra 4 anos", () => {
     expect(r.linhas[0]!.matriculaTotal).toBeCloseTo(40 * 1.5 * 4 * (306 / 1096), 4);
   });
 });
+
+describe("curso novo a partir de 2028, ano a ano", () => {
+  // Técnico em Eletromecânica integrado: peso efetivo 2,5, teto de CH da matriz de 3.200 h, matrícula de R$ 1.228,90 no ciclo 2027.
+  const novo = opcao({ anosDuracao: 4, chTotalCiclo: 4200, chMatriz: 3200, vagasPorAno: 40 });
+  const p: ParametrosSimulacaoCurso = {
+    peso: 2.5,
+    agropecuaria: false,
+    valorMatricula: 1228.9,
+    anoInicial: 2028,
+    horizonteAnos: 8,
+    anoDoValor: 2027,
+  };
+
+  it("a CH acima do teto não rende: 4.200 h rende o mesmo que 3.200 h", () => {
+    const com4200 = simularOpcaoCurso(novo, p);
+    const com3200 = simularOpcaoCurso({ ...novo, chTotalCiclo: 3200 }, p);
+    expect(com4200.chDesperdicada).toBe(1000);
+    expect(com4200.valorAcumuladoHorizonte).toBeCloseTo(com3200.valorAcumuladoHorizonte, 2);
+  });
+
+  it("a primeira turma entra em 2028 e o curso chega ao regime com 4 turmas em 2031", () => {
+    const r = simularOpcaoCurso(novo, p);
+    expect(r.linhas[0]!.ano).toBe(2028);
+    // Em 2032 aparece uma quinta turma: a de 2028 só termina em fevereiro de 2032 e ainda conta nesses meses.
+    expect(r.linhas.map((l) => l.turmasAtivas).slice(0, 5)).toEqual([1, 2, 3, 4, 5]);
+    // Um aluno rende, por ano, peso x (CH efetiva ÷ 800) ÷ anos x valor = 2,5 x 4 ÷ 4 x R$ 1.228,90 = R$ 3.072,25; 160 alunos, R$ 491.560.
+    // A turma que entra em março conta só dez meses no primeiro ano, então o regime fica um pouco abaixo disso.
+    const regime = r.linhas.find((l) => l.ano === 2031)!;
+    expect(regime.alunosAtivos).toBe(160);
+    expect(regime.valor).toBeLessThanOrEqual(160 * 3072.25 + 1);
+    expect(regime.valor).toBeGreaterThan(160 * 3072.25 * 0.9);
+    // Por ingressante, do ingresso à formatura: 2,5 x 4 x R$ 1.228,90 = R$ 12.289.
+    expect(r.valorPorIngressante).toBeCloseTo(2.5 * 4 * 1228.9, 2);
+  });
+
+  it("o reajuste anual sobe o valor da matrícula a partir do ano do valor", () => {
+    const r = simularOpcaoCurso(novo, { ...p, reajusteAnual: 0.05 });
+    // O valor é de 2027 e a primeira linha é 2028: um ano de reajuste.
+    expect(r.linhas[0]!.valorMatricula).toBeCloseTo(1228.9 * 1.05, 4);
+    expect(r.linhas[2]!.valorMatricula).toBeCloseTo(1228.9 * 1.05 ** 3, 4);
+  });
+
+  it("sem reajuste o valor da matrícula fica constante", () => {
+    const r = simularOpcaoCurso(novo, p);
+    for (const l of r.linhas) expect(l.valorMatricula).toBeCloseTo(1228.9, 6);
+  });
+});

@@ -53,6 +53,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
     pergunta: "E se mudar?",
     itens: [
       {
+        href: "/simulador/novo-curso",
+        rotulo: "Abrir um curso novo",
+        descricao: "Quanto um curso novo rende ano a ano no câmpus, do primeiro ano de entrada até chegar ao regime.",
+      },
+      {
         href: "/simulador/curso",
         rotulo: "Curso de 3 ou 4 anos",
         descricao: "Quanto um curso rende em 3 anos contra 4, ano a ano, no câmpus escolhido.",
