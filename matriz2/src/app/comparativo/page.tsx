@@ -208,7 +208,7 @@ export default async function ComparativoPage({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ComparativoTabela
           linhas={linhas}
           anoA={anoA}

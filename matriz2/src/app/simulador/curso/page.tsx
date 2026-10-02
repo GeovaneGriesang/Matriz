@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -29,7 +30,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
   const ano = Number(params.ano) || 2027;
   const sigla = params.instituicao ?? "IFSUL";
 
-  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } });
+  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla));
   const instituicao = instituicoes.find((i) => i.sigla === sigla) ?? instituicoes[0];
   if (!instituicao) {
     return (

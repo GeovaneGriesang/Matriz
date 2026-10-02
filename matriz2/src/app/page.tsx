@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
+import { GRUPOS_MENU } from "@/lib/menu";
 import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +92,33 @@ export default async function Home() {
         <p className="text-lg text-neutral-600 dark:text-neutral-400">
           Consulta e comparação do orçamento da Rede Federal, com foco no IFSul.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {GRUPOS_MENU.map((g) => (
+            <section
+              key={g.id}
+              className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
+            >
+              <div>
+                <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">{g.rotulo}</h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{g.pergunta}</p>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {g.itens.map((i) => (
+                  <li key={i.href}>
+                    <Link href={i.href} className={`text-sm font-medium ${PROSE_LINK}`}>
+                      {i.rotulo}
+                    </Link>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{i.descricao}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">

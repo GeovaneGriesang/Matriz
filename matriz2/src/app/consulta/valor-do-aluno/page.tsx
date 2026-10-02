@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -30,7 +31,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
   const ano = Number(params.ano) || 2027;
   const sigla = params.instituicao ?? "IFSUL";
 
-  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } });
+  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla));
   const instituicao = instituicoes.find((i) => i.sigla === sigla) ?? instituicoes[0];
   const urlPorSigla = Object.fromEntries(
     instituicoes.map((i) => [i.sigla, `/consulta/valor-do-aluno?ano=${ano}&instituicao=${encodeURIComponent(i.sigla)}`]),
@@ -223,7 +224,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
             <tr>
@@ -242,7 +243,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                 <td className="px-3 py-2 font-medium text-neutral-900 dark:text-neutral-100">
                   <details>
                     <summary className="cursor-pointer">{c.rotulo}</summary>
-                    <div className="mt-2 overflow-x-auto rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+                    <div className="mt-2 tabela-rolavel rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                       <table className="w-full text-xs font-normal">
                         <thead className="bg-neutral-50 text-left uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
                           <tr>

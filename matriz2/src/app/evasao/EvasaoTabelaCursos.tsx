@@ -25,7 +25,6 @@ export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
     <TabelaOrdenavel
       linhas={cursos}
       chaveLinha={(c) => `${c.curso}-${c.nivel}-${cursos.indexOf(c)}`}
-      cabecalhoFixo
       corpoVazio={
         <tr>
           <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">

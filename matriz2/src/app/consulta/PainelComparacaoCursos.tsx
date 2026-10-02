@@ -95,7 +95,7 @@ export function PainelComparacaoCursos({
         já considera duração do ciclo, peso do curso e carga horária, mas este sistema não refaz essa
         conta, só mostra os componentes que a própria MDO publica por ciclo de curso.
       </p>
-      <div className="overflow-x-auto">
+      <div className="tabela-rolavel">
         <table className="w-full text-sm">
           <thead className="bg-white/60 text-left dark:bg-neutral-950/40">
             <tr>

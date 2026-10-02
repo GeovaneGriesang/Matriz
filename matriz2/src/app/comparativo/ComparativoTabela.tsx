@@ -1,5 +1,6 @@
 "use client";
 
+import { ehInstituicaoDestaque } from "@/lib/destaque";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { ComparativoTabelaCampus, type LinhaComparativoCampus } from "./ComparativoTabelaCampus";
 
@@ -48,6 +49,7 @@ export function ComparativoTabela({
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(l) => l.sigla}
+      linhaDestaque={(l) => ehInstituicaoDestaque(l.sigla)}
       linhaClasse={(l) => (l.sigla === destaqueSigla ? "bg-if-green/5 font-medium" : "")}
       linhaExpandida={(l) => {
         const campi = camposPorSigla[l.sigla];

@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Tabela que rola dentro da própria caixa, com o cabeçalho sempre visível. O cabeçalho só gruda quando a tabela tem uma
+ * caixa de rolagem própria (um contêiner com overflow é o "referencial" do sticky), e por isso o limite de altura: sem
+ * ele, a caixa nunca rola e o cabeçalho sairia da tela junto com a página.
+ */
+@layer components {
+  .tabela-rolavel {
+    overflow: auto;
+    max-height: calc(100vh - 9rem);
+  }
+  .tabela-rolavel thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: rgb(250 250 250);
+    box-shadow: inset 0 -1px 0 rgb(229 229 229);
+  }
+  .dark .tabela-rolavel thead th {
+    background-color: rgb(23 23 23);
+    box-shadow: inset 0 -1px 0 rgb(38 38 38);
+  }
+}

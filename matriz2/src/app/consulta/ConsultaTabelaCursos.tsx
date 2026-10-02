@@ -60,7 +60,6 @@ export function ConsultaTabelaCursos({
       <TabelaOrdenavel
         linhas={cursos}
         chaveLinha={(c) => c.id}
-        cabecalhoFixo
         colunas={
           [
             {

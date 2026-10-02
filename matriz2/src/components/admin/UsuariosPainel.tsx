@@ -171,7 +171,7 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
         <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">/admin/definir-senha</code>.
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <TabelaOrdenavel
           className="w-full min-w-[720px] text-sm"
           linhas={usuarios}

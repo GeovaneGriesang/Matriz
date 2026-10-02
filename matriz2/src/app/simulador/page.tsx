@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -24,7 +25,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   const [anosCiclo, anosIndicadores, instituicoes] = await Promise.all([
     prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.distribuicaoInstituicao.findMany({ distinct: ["ano"], select: { ano: true } }),
-    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
+    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla)),
   ]);
   const anos = Array.from(new Set([...anosCiclo, ...anosIndicadores].map((a) => a.ano)))
     .sort((a, b) => b - a)

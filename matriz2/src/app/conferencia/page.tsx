@@ -232,7 +232,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ConferenciaTabela linhas={conferidas} ano={ano} />
       </div>
     </main>
@@ -249,7 +249,7 @@ function BlocoConferencia({
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
             <tr>

@@ -117,7 +117,7 @@ export function SimuladorCursoAnos({
 
       <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">O que cada opção rende</h2>
-        <div className="overflow-x-auto">
+        <div className="tabela-rolavel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -150,7 +150,7 @@ export function SimuladorCursoAnos({
           <span><Marca cor={COR_A} /> A ({a.anosDuracao} anos)</span>
           <span><Marca cor={COR_B} /> B ({b.anosDuracao} anos)</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="tabela-rolavel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
               <tr>

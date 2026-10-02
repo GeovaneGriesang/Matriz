@@ -216,7 +216,7 @@ export function ValoresRecebidosPainel({
             registro ao salvar.
           </p>
 
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
                 <tr>
@@ -294,7 +294,7 @@ export function ValoresRecebidosPainel({
         {registros.length === 0 ? (
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Nenhum valor informado ainda para este ciclo.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
             <TabelaOrdenavel
               linhas={registros}
               chaveLinha={(r) => r.id}
