@@ -1,5 +1,6 @@
 "use client";
 
+import { ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
@@ -35,6 +36,7 @@ export function ConsultaTabelaInstituicoes({
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(l) => l.sigla}
+      linhaDestaque={(l) => ehInstituicaoDestaque(l.sigla)}
       colunas={
         [
           {

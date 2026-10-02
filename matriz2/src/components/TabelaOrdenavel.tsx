@@ -30,7 +30,7 @@ export function TabelaOrdenavel<T>({
   linhaClasse,
   rodape,
   corpoVazio,
-  cabecalhoFixo,
+  linhaDestaque,
   linhaExpandida,
 }: {
   linhas: T[];
@@ -40,8 +40,11 @@ export function TabelaOrdenavel<T>({
   linhaClasse?: (linha: T) => string;
   rodape?: ReactNode;
   corpoVazio?: ReactNode;
-  /** Para tabelas longas dentro de um contêiner com rolagem própria. */
-  cabecalhoFixo?: boolean;
+  /**
+   * Linhas que o usuário quer achar sem procurar (o IFSul): ficam fixas no topo, em qualquer ordenação, com fundo verde
+   * claro e uma barra na lateral. O cabeçalho fixo vem do CSS `.tabela-rolavel`, que o chamador põe no contêiner.
+   */
+  linhaDestaque?: (linha: T) => boolean;
   /**
    * Conteúdo do "+/-" em frente à linha (pedido do usuário, versão antiga do
    * Matriz): quando presente, cada linha ganha uma coluna de expandir/recolher à
@@ -64,11 +67,16 @@ export function TabelaOrdenavel<T>({
   }
 
   const linhasOrdenadas = useMemo(() => {
-    if (!ordenacao) return linhas;
+    // As linhas em destaque sobem para o topo, mantendo a ordem relativa que tinham.
+    const comDestaque = (lista: T[]) => {
+      if (!linhaDestaque) return lista;
+      return [...lista.filter((l) => linhaDestaque(l)), ...lista.filter((l) => !linhaDestaque(l))];
+    };
+    if (!ordenacao) return comDestaque(linhas);
     const coluna = colunas.find((c) => c.chave === ordenacao.chave);
-    if (!coluna) return linhas;
+    if (!coluna) return comDestaque(linhas);
     const sinal = ordenacao.direcao === "asc" ? 1 : -1;
-    return [...linhas].sort((a, b) => {
+    return comDestaque([...linhas].sort((a, b) => {
       const va = coluna.valor(a);
       const vb = coluna.valor(b);
       if (va === null && vb === null) return 0;
@@ -76,8 +84,8 @@ export function TabelaOrdenavel<T>({
       if (vb === null) return -1;
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * sinal;
       return String(va).localeCompare(String(vb), "pt-BR") * sinal;
-    });
-  }, [linhas, ordenacao, colunas]);
+    }));
+  }, [linhas, ordenacao, colunas, linhaDestaque]);
 
   function alternar(chave: string) {
     setOrdenacao((atual) => {
@@ -90,9 +98,7 @@ export function TabelaOrdenavel<T>({
   return (
     <table className={className ?? "w-full text-sm"}>
       <thead
-        // `top-16` gruda logo abaixo do cabeçalho do site, que agora também é fixo
-        // (`sticky top-0 z-30` em `SiteHeader`); `top-0` aqui ficaria por baixo dele.
-        className={`bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 ${cabecalhoFixo ? "sticky top-16 z-10" : ""}`}
+        className="bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400"
       >
         <tr>
           {linhaExpandida && <th className="w-8 px-2 py-2.5" aria-hidden />}
@@ -134,7 +140,7 @@ export function TabelaOrdenavel<T>({
           return (
             <Fragment key={chave}>
               <tr
-                className={`border-t border-neutral-200 dark:border-neutral-800 ${linhaClasse?.(linha) ?? ""}`}
+                className={`border-t border-neutral-200 dark:border-neutral-800 ${linhaDestaque?.(linha) ? "bg-if-green/10 font-semibold" : ""} ${linhaClasse?.(linha) ?? ""}`}
               >
                 {linhaExpandida && (
                   <td className="px-2 py-2.5 text-center">
@@ -151,10 +157,10 @@ export function TabelaOrdenavel<T>({
                     )}
                   </td>
                 )}
-                {colunas.map((c) => (
+                {colunas.map((c, i) => (
                   <td
                     key={c.chave}
-                    className={`px-4 py-2.5 ${c.alinhamento === "right" ? "text-right tabular-nums" : ""}`}
+                    className={`px-4 py-2.5 ${c.alinhamento === "right" ? "text-right tabular-nums" : ""} ${i === 0 && !linhaExpandida && linhaDestaque?.(linha) ? "shadow-[inset_4px_0_0_0_#2f9e41]" : ""}`}
                   >
                     {c.render ? c.render(linha) : (c.valor(linha) ?? "-")}
                   </td>

@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import type { NivelPnp, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -101,7 +102,7 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
   const orgao = orgaos.includes(params.orgao ?? "") ? params.orgao! : (orgaos.find((o) => o.includes("UO")) ?? orgaos[0] ?? "");
 
   const nivel = (NIVEIS.find((n) => n.valor === params.nivel)?.valor ?? "INSTITUICAO") as NivelPnp;
-  const instituicoes = await prisma.pnpEstrutura.findMany({ where: { nivel: "INSTITUICAO" }, orderBy: { instituicao: "asc" }, select: { instituicao: true } });
+  const instituicoes = destaqueNaFrente(await prisma.pnpEstrutura.findMany({ where: { nivel: "INSTITUICAO" }, orderBy: { instituicao: "asc" }, select: { instituicao: true } }), (i) => i.instituicao);
   const sigla = params.instituicao === "TODAS" ? "TODAS" : (instituicoes.find((i) => i.instituicao === params.instituicao)?.instituicao ?? "IFSUL");
 
   // A edição mais recente traz toda a série; as anteriores, só o ano-base que lhes corresponde (ciclo menos 2).
@@ -243,7 +244,7 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
           Nenhuma linha para esse recorte. Confira o nível: a tabela de gastos por matrícula equivalente existe por região e estado, e as demais só por rede e instituição.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
               <tr>

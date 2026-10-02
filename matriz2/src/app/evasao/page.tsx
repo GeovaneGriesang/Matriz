@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -39,7 +40,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const [anosCiclo, anosCampus, instituicoes] = await Promise.all([
     prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.distribuicaoCampus.findMany({ distinct: ["ano"], select: { ano: true } }),
-    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
+    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla)),
   ]);
   const anos = Array.from(new Set([...anosCiclo, ...anosCampus].map((a) => a.ano)))
     .sort((a, b) => b - a)
@@ -173,7 +174,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
           <Cartao rotulo="Média da rede" valor={`${doisDecimais.format(redePct)}%`} />
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <EvasaoTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} redePct={redePct} />
         </div>
       </main>
@@ -362,7 +363,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
             ultrapassar o piso.
           </p>
         )}
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <EvasaoTabelaCampus
             linhas={campusLinhas}
             campusId={campusId}
@@ -392,7 +393,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
           Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
           pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
         </p>
-        <div className="max-h-[36rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <EvasaoTabelaCursos cursos={cursos} />
         </div>
       </div>

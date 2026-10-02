@@ -1,5 +1,6 @@
 "use client";
 
+import { ehInstituicaoDestaque } from "@/lib/destaque";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
@@ -188,10 +189,11 @@ export function SimuladorUnificado({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <TabelaOrdenavel
           linhas={instituicoes}
           chaveLinha={(i) => i.sigla}
+          linhaDestaque={(i) => ehInstituicaoDestaque(i.sigla)}
           linhaExpandida={(inst) => (
             <PainelInstituicao
               inst={inst}
@@ -391,7 +393,7 @@ function PainelInstituicao({
       {inst.campi.length > 0 ? (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Câmpus</span>
-          <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="tabela-rolavel rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             <TabelaOrdenavel
               linhas={inst.campi}
               chaveLinha={(c) => c.unidadeId}

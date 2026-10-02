@@ -140,7 +140,7 @@ export default async function PesoEfetivoPage({ searchParams }: { searchParams: 
         .
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
             <tr>

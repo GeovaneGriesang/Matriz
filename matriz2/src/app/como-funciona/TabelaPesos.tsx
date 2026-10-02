@@ -28,7 +28,7 @@ export function TabelaPesos({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-md border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
             <tr>

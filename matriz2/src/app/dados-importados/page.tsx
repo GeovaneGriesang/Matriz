@@ -100,7 +100,7 @@ export default async function DadosImportadosPage() {
           Nenhum arquivo carregado ainda.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <DadosImportadosTabela fontes={linhasTabela} />
         </div>
       )}

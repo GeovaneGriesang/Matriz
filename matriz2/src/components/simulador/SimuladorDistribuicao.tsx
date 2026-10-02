@@ -120,7 +120,7 @@ export function SimuladorDistribuicao({
             </button>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <div className="tabela-rolavel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -162,7 +162,7 @@ export function SimuladorDistribuicao({
       {resultado && (
         <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Quanto cada câmpus recebe</h2>
-          <div className="overflow-x-auto">
+          <div className="tabela-rolavel">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
                 <tr>

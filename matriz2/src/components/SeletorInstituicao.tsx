@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ehInstituicaoDestaque } from "@/lib/destaque";
 
 interface Instituicao {
   sigla: string;
@@ -35,6 +36,7 @@ export function SeletorInstituicao({
     >
       {instituicoes.map((i) => (
         <option key={i.sigla} value={i.sigla}>
+          {ehInstituicaoDestaque(i.sigla) ? "★ " : ""}
           {i.sigla}, {i.nome}
         </option>
       ))}

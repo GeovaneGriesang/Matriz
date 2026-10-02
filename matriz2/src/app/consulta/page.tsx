@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -36,7 +37,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   const [anosCiclo, anosCampus, instituicoes] = await Promise.all([
     prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true } }),
     prisma.distribuicaoCampus.findMany({ distinct: ["ano"], select: { ano: true } }),
-    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }),
+    prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla)),
   ]);
   const anosDisponiveis = Array.from(new Set([...anosCiclo, ...anosCampus].map((a) => a.ano)))
     .sort((a, b) => b - a)
@@ -194,7 +195,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             Nenhuma instituição com dado de Funcionamento (5ª ou 6ª fase) neste ciclo ainda.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
             <ConsultaTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} totalRede={totalRede} />
           </div>
         )}
@@ -414,7 +415,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ConsultaTabelaCampus
           linhas={linhas}
           campusEscolhido={campusEscolhido}
@@ -453,7 +454,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
               curso) carregada.
             </p>
           ) : (
-            <div className="max-h-[32rem] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
               <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
             </div>
           )}

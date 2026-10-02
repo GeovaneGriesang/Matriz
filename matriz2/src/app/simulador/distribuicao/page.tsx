@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -24,7 +25,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
   const anoBase = anoAlvo - 1;
   const sigla = params.instituicao ?? "IFSUL";
 
-  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } });
+  const instituicoes = await prisma.instituicao.findMany({ orderBy: { sigla: "asc" }, select: { id: true, sigla: true, nome: true } }).then((l) => destaqueNaFrente(l, (i) => i.sigla));
   const instituicao = instituicoes.find((i) => i.sigla === sigla) ?? instituicoes[0];
   const urlPorSigla = Object.fromEntries(
     instituicoes.map((i) => [i.sigla, `/simulador/distribuicao?ano=${anoAlvo}&instituicao=${encodeURIComponent(i.sigla)}`]),

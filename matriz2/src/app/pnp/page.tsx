@@ -1,3 +1,4 @@
+import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
 import type { NivelPnp, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
@@ -98,11 +99,10 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
   // A abertura por nome de curso só existe no nível de câmpus.
   const nivelEfetivo: NivelPnp = dimensao === "Nome do Curso" || dimensao === "Carga Horária" ? "CAMPUS" : nivel;
 
-  const instituicoes = await prisma.pnpEstrutura.findMany({
+  const instituicoes = destaqueNaFrente(await prisma.pnpEstrutura.findMany({
     where: { nivel: "INSTITUICAO" },
     orderBy: { instituicao: "asc" },
-    select: { instituicao: true },
-  });
+    select: { instituicao: true } }), (i) => i.instituicao);
   const siglaInstituicao = instituicoes.find((i) => i.instituicao === params.instituicao)?.instituicao ?? (instituicoes.find((i) => i.instituicao === "IFSUL")?.instituicao ?? "");
 
   const campi =
@@ -278,7 +278,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
           Nenhuma linha para esse recorte. Nem toda tabela existe em todos os níveis (o nome do curso só existe por câmpus, por exemplo).
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
               <tr>
