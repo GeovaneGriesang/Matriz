@@ -16,7 +16,8 @@ const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const percentual = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 0 });
-const data = new Intl.DateTimeFormat("pt-BR");
+// As datas do ciclo são dias do calendário guardados à meia-noite UTC: formatar no fuso do navegador (Brasil, UTC-3) mostraria o dia anterior.
+const data = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 
 function formatarData(iso: string | null): string {
   return iso ? data.format(new Date(iso)) : "não informado";
@@ -37,9 +38,13 @@ type Linha = {
   melhor?: "mais" | "menos";
 };
 
+/** Abaixo disto (0,5%) a diferença é só arredondamento: não vale pintar de verde nem de vermelho. */
+const LIMIAR_DE_IGUAL = 0.005;
+
 function textoDaDiferenca(abs: number, pct: number | null, formatar: (n: number) => string): string {
   const sinal = abs > 0 ? "+" : abs < 0 ? "−" : "";
-  const parte = pct !== null && abs !== 0 ? ` (${sinal}${percentual.format(Math.abs(pct))})` : "";
+  const quase = pct !== null && Math.abs(pct) < LIMIAR_DE_IGUAL;
+  const parte = pct !== null && abs !== 0 ? (quase ? " (≈0%)" : ` (${sinal}${percentual.format(Math.abs(pct))})`) : "";
   return `${sinal}${formatar(Math.abs(abs))}${parte}`;
 }
 
@@ -75,13 +80,13 @@ export function PainelComparacaoCursos({
       },
     },
     { rotulo: "CH mínima MEC", valor: (c) => (c.chMinimaMec !== null ? `${c.chMinimaMec} h` : "não informado") },
-    { rotulo: "CH Matriz", valor: (c) => (c.chMatriz !== null ? `${c.chMatriz} h` : "não informado"), numero: (c) => c.chMatriz, formatar: (n) => `${inteiro.format(n)} h` },
+    { rotulo: "CH Matriz", valor: (c) => (c.chMatriz !== null ? `${c.chMatriz} h` : "não informado"), numero: (c) => c.chMatriz, formatar: (n) => `${inteiro.format(n)} h`, melhor: "mais" },
     {
       rotulo: "CH Matriz ÷ CH mínima MEC",
       valor: (c) => (c.chMatriz !== null && c.chMinimaMec ? decimal.format(c.chMatriz / c.chMinimaMec) : "não informado"),
     },
-    { rotulo: "Peso do curso na matriz", valor: (c) => (c.peso !== null ? decimal.format(c.peso) : "não informado"), numero: (c) => c.peso, formatar: (n) => decimal.format(n) },
-    { rotulo: "Alunos (matriz)", valor: (c) => (c.alunos !== null ? decimal.format(c.alunos) : "não informado"), numero: (c) => c.alunos, formatar: (n) => decimal.format(n) },
+    { rotulo: "Peso do curso na matriz", valor: (c) => (c.peso !== null ? decimal.format(c.peso) : "não informado"), numero: (c) => c.peso, formatar: (n) => decimal.format(n), melhor: "mais" },
+    { rotulo: "Alunos (matriz)", valor: (c) => (c.alunos !== null ? decimal.format(c.alunos) : "não informado"), numero: (c) => c.alunos, formatar: (n) => decimal.format(n), melhor: "mais" },
     { rotulo: "Matrícula equalizada gerada", valor: (c) => decimal.format(c.matricula), numero: (c) => c.matricula, formatar: (n) => decimal.format(n), melhor: "mais" },
     {
       rotulo: "Matrícula equalizada por aluno",
@@ -108,7 +113,8 @@ export function PainelComparacaoCursos({
     if (!d) return null;
     if (d.absoluta === 0) return { texto: "igual ao principal", classe: "text-neutral-400" };
     const texto = textoDaDiferenca(d.absoluta, d.percentual, linha.formatar);
-    const bom = linha.melhor === undefined ? null : linha.melhor === "mais" ? d.absoluta > 0 : d.absoluta < 0;
+    const quaseIgual = d.percentual !== null && Math.abs(d.percentual) < LIMIAR_DE_IGUAL;
+    const bom = linha.melhor === undefined || quaseIgual ? null : linha.melhor === "mais" ? d.absoluta > 0 : d.absoluta < 0;
     const classe = bom === null ? "text-neutral-500" : bom ? "text-if-green dark:text-green-400" : "text-if-red dark:text-red-400";
     return { texto: `principal ${texto}`, classe };
   }

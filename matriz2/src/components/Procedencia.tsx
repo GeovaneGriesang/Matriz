@@ -53,6 +53,8 @@ export interface DadosProcedencia {
 }
 
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+// "Gerado em" é um dia do calendário (a planilha diz "30/08/2026"), guardado à meia-noite UTC: sem fixar o fuso, quem está no Brasil veria o dia anterior.
+const dataDoCalendario = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 export function EtiquetaProcedencia({ fonte }: { fonte: DadosProcedencia }) {
   return (
@@ -61,7 +63,7 @@ export function EtiquetaProcedencia({ fonte }: { fonte: DadosProcedencia }) {
       title={`${fonte.arquivo}${fonte.fase ? ` (${ROTULO_FASE[fonte.fase]})` : ""}`}
     >
       {ROTULO_ORIGEM[fonte.origem]}
-      {fonte.geradoEm && <span className="font-normal opacity-80">{dataCurta.format(fonte.geradoEm)}</span>}
+      {fonte.geradoEm && <span className="font-normal opacity-80">{dataDoCalendario.format(fonte.geradoEm)}</span>}
     </span>
   );
 }
@@ -87,7 +89,7 @@ export function PainelProcedencia({ fonte }: { fonte: DadosProcedencia }) {
         </div>
         <div className="flex gap-2">
           <dt className="font-medium text-neutral-800 dark:text-neutral-200">Data do dado</dt>
-          <dd>{fonte.geradoEm ? dataCurta.format(fonte.geradoEm) : "a planilha não informa"}</dd>
+          <dd>{fonte.geradoEm ? dataDoCalendario.format(fonte.geradoEm) : "a planilha não informa"}</dd>
         </div>
         <div className="flex gap-2">
           <dt className="font-medium text-neutral-800 dark:text-neutral-200">Carregado em</dt>
