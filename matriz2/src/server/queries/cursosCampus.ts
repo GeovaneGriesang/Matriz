@@ -34,3 +34,21 @@ export async function carregarCursosDoCampus(ano: number, unidadeId: number): Pr
     alunos: c.qtdAlunosMatriz ? Number(c.qtdAlunosMatriz) : null,
   }));
 }
+
+/**
+ * Câmpus que têm pelo menos um curso parecido com o principal, para a comparação entre câmpus mostrar só instituições e
+ * câmpus que servem: o mesmo curso (mesmo nome) ou cursos de mesmo peso. A comparação de texto do MySQL ignora maiúsculas
+ * e acento.
+ */
+export async function carregarCampiComCursosAfins(
+  ano: number,
+  principal: { curso: string; peso: number | null },
+  modo: "curso" | "peso",
+): Promise<Set<number>> {
+  if (modo === "peso" && principal.peso === null) return new Set();
+  const linhas = await prisma.distribuicaoCiclo.groupBy({
+    by: ["unidadeId"],
+    where: modo === "curso" ? { ano, curso: principal.curso } : { ano, pesoCursoMatriz: principal.peso! },
+  });
+  return new Set(linhas.map((l) => l.unidadeId));
+}
