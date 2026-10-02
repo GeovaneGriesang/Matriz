@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { ehInstituicaoDestaque } from "@/lib/destaque";
+import { modoDoParametro, passaNoFiltro } from "@/lib/compararCursos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
-import { carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import { carregarCampiComCursosAfins, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import type { CursoLinha } from "../ConsultaTabelaCursos";
 import { PainelComparacaoCursos, type CursoComparavel } from "../PainelComparacaoCursos";
+import { FiltroComparacao } from "./FiltroComparacao";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
 
 export const dynamic = "force-dynamic";
@@ -12,21 +16,37 @@ const MAX_SLOTS = 4;
 
 interface Busca {
   ano?: string;
+  filtro?: string;
+  mesmoCampus?: string;
   campus1?: string; curso1?: string;
   campus2?: string; curso2?: string;
   campus3?: string; curso3?: string;
   campus4?: string; curso4?: string;
 }
 
+/** O IFSul primeiro, depois as demais instituições e câmpus em ordem alfabética. */
+function ordenarCampi(campi: CampusOpcao[]): CampusOpcao[] {
+  return [...campi].sort(
+    (a, b) =>
+      Number(ehInstituicaoDestaque(b.instituicaoSigla)) - Number(ehInstituicaoDestaque(a.instituicaoSigla)) ||
+      a.instituicaoSigla.localeCompare(b.instituicaoSigla) ||
+      a.nome.localeCompare(b.nome),
+  );
+}
+
+function instituicoesDos(campi: CampusOpcao[]): string[] {
+  return Array.from(new Set(campi.map((c) => c.instituicaoSigla)));
+}
+
 export default async function CompararCursosPage({ searchParams }: { searchParams: Promise<Busca> }) {
   await requireAcessoPlenoOrRedirect("/consulta/comparar");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
+  const filtro = modoDoParametro(params.filtro);
+  const mesmoCampus = params.mesmoCampus === "1";
 
-  // Câmpus da rede inteira com curso carregado neste ano, agrupados por instituição,
-  // igual ao seletor de câmpus do Simulador. Só nome e sigla: os cursos de cada um só
-  // são buscados quando esse câmpus está de fato num dos slots, para não carregar os
-  // cursos de mais de 600 câmpus de uma vez.
+  // Câmpus da rede inteira com curso carregado neste ano. Só nome e sigla: os cursos de cada um só são buscados quando
+  // esse câmpus está de fato num dos slots, para não carregar os cursos de mais de 600 câmpus de uma vez.
   const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
     where: { ano },
@@ -36,9 +56,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
         <h1 className="text-2xl font-semibold">Comparar cursos entre câmpus</h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
-          Depende da 6ª fase da MDO, que ainda não foi carregada para {ano}.
-        </p>
+        <p className="mt-3 text-neutral-600 dark:text-neutral-400">Depende da 6ª fase da MDO, que ainda não foi carregada para {ano}.</p>
       </main>
     );
   }
@@ -46,62 +64,96 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
     where: { id: { in: porCampusRede.map((c) => c.unidadeId) } },
     select: { id: true, nome: true, instituicao: { select: { sigla: true } } },
   });
-  const campiRede: CampusOpcao[] = unidades
-    .map((u) => ({ id: u.id, nome: u.nome, instituicaoSigla: u.instituicao.sigla }))
-    .sort((a, b) => a.instituicaoSigla.localeCompare(b.instituicaoSigla) || a.nome.localeCompare(b.nome));
+  const campiRede = ordenarCampi(unidades.map((u) => ({ id: u.id, nome: u.nome, instituicaoSigla: u.instituicao.sigla })));
   const nomePorCampus = new Map(campiRede.map((c) => [c.id, c]));
+  const valorPorCampus = new Map(porCampusRede.map((r) => [r.unidadeId, Number(r._sum.valorReais ?? 0)]));
 
-  // Sem nada escolhido ainda, abre já comparando os dois câmpus que mais recebem na
-  // rede, para a tela não abrir vazia.
-  const rankeados = [...porCampusRede].sort(
-    (a, b) => Number(b._sum.valorReais ?? 0) - Number(a._sum.valorReais ?? 0),
-  );
-  const padraoCampus1 = rankeados[0]?.unidadeId;
-  const padraoCampus2 = rankeados.find((r) => r.unidadeId !== padraoCampus1)?.unidadeId;
+  // Sem nada escolhido, abre comparando os dois câmpus do IFSul que mais recebem (o foco do sistema).
+  const maisRecebem = [...campiRede].sort((a, b) => (valorPorCampus.get(b.id) ?? 0) - (valorPorCampus.get(a.id) ?? 0));
+  const doIfsul = maisRecebem.filter((c) => ehInstituicaoDestaque(c.instituicaoSigla));
+  const base = doIfsul.length >= 2 ? doIfsul : maisRecebem;
+  const padraoCampus1 = base[0]?.id;
+  const padraoCampus2 = base.find((c) => c.id !== padraoCampus1)?.id;
 
-  const campusPorSlot: (number | undefined)[] = [
-    Number(params.campus1) || padraoCampus1,
-    Number(params.campus2) || padraoCampus2,
-    params.campus3 ? Number(params.campus3) : undefined,
-    params.campus4 ? Number(params.campus4) : undefined,
-  ];
+  const campusParam = [params.campus1, params.campus2, params.campus3, params.campus4];
+  const cursoParam = [params.curso1, params.curso2, params.curso3, params.curso4];
   // Quantidade de slots visíveis: contíguos a partir do 1, sempre pelo menos 2.
   let quantosSlots = 2;
-  for (let i = 2; i < MAX_SLOTS; i++) {
-    if (campusPorSlot[i] !== undefined) quantosSlots = i + 1;
+  for (let i = 2; i < MAX_SLOTS; i++) if (campusParam[i]) quantosSlots = i + 1;
+
+  // O curso principal (slot 1).
+  const campus1 = nomePorCampus.has(Number(campusParam[0])) ? Number(campusParam[0]) : padraoCampus1!;
+  const cursos1 = await carregarCursosDoCampus(ano, campus1);
+  const principal: CursoLinha | undefined = cursos1.find((c) => c.id === Number(cursoParam[0])) ?? cursos1[0];
+
+  // Câmpus que servem para os outros slots, segundo o filtro: os que têm o mesmo curso ou curso de mesmo peso.
+  const afins = principal && filtro !== "todos" ? await carregarCampiComCursosAfins(ano, { curso: principal.curso, peso: principal.peso }, filtro) : null;
+  const campiOutros: CampusOpcao[] = mesmoCampus
+    ? campiRede.filter((c) => c.id === campus1)
+    : afins
+      ? campiRede.filter((c) => afins.has(c.id))
+      : campiRede;
+
+  interface Slot {
+    indice: number;
+    unidadeId: number;
+    cursos: CursoLinha[];
+    cursoEscolhido: CursoLinha | undefined;
+    campi: CampusOpcao[];
+    travado: boolean;
+    aviso?: string;
+  }
+  const slots: Slot[] = [];
+  if (principal) slots.push({ indice: 1, unidadeId: campus1, cursos: cursos1, cursoEscolhido: principal, campi: campiRede, travado: false });
+
+  const usados = new Set<number>([campus1]);
+  for (let i = 1; i < quantosSlots && principal; i++) {
+    const pedido = Number(campusParam[i]);
+    const permitido = (id: number) => campiOutros.some((c) => c.id === id);
+    let unidadeId: number | undefined;
+    if (mesmoCampus) unidadeId = campus1;
+    else if (permitido(pedido)) unidadeId = pedido;
+    else if (i === 1 && padraoCampus2 !== undefined && permitido(padraoCampus2)) unidadeId = padraoCampus2;
+    else {
+      // O primeiro câmpus permitido ainda não usado, preferindo o IFSul.
+      const candidatos = campiOutros.filter((c) => !usados.has(c.id));
+      unidadeId = (candidatos.find((c) => ehInstituicaoDestaque(c.instituicaoSigla)) ?? candidatos[0] ?? campiOutros[0])?.id;
+    }
+    if (unidadeId === undefined) {
+      slots.push({ indice: i + 1, unidadeId: campus1, cursos: [], cursoEscolhido: undefined, campi: campiOutros, travado: mesmoCampus, aviso: "Nenhum câmpus tem curso comparável com o principal." });
+      continue;
+    }
+    usados.add(unidadeId);
+    const todos = await carregarCursosDoCampus(ano, unidadeId);
+    const cursos = todos.filter((c) => c.id !== principal.id && passaNoFiltro(filtro, principal, c));
+    const escolhido = cursos.find((c) => c.id === Number(cursoParam[i])) ?? cursos[0];
+    slots.push({
+      indice: i + 1,
+      unidadeId,
+      cursos,
+      cursoEscolhido: escolhido,
+      campi: campiOutros,
+      travado: mesmoCampus,
+      aviso: cursos.length === 0 ? "Este câmpus não tem curso comparável com o principal." : undefined,
+    });
   }
 
-  const cursoParamPorSlot = [params.curso1, params.curso2, params.curso3, params.curso4];
-
-  const slots = await Promise.all(
-    campusPorSlot.slice(0, quantosSlots).map(async (unidadeId, i) => {
-      if (unidadeId === undefined || !nomePorCampus.has(unidadeId)) return null;
-      const cursos = await carregarCursosDoCampus(ano, unidadeId);
-      if (cursos.length === 0) return null;
-      const cursoIdParam = cursoParamPorSlot[i] ? Number(cursoParamPorSlot[i]) : null;
-      const cursoEscolhido = cursos.find((c) => c.id === cursoIdParam) ?? cursos[0]!;
-      return { indice: i + 1, unidadeId, cursos, cursoEscolhido };
-    }),
-  );
-
   const paramsAtuais: Record<string, string> = { ano: String(ano) };
-  for (let i = 0; i < quantosSlots; i++) {
-    const slot = slots[i];
-    if (!slot) continue;
-    paramsAtuais[`campus${i + 1}`] = String(slot.unidadeId);
-    paramsAtuais[`curso${i + 1}`] = String(slot.cursoEscolhido.id);
+  if (filtro !== "todos") paramsAtuais.filtro = filtro;
+  if (mesmoCampus) paramsAtuais.mesmoCampus = "1";
+  for (const s of slots) {
+    paramsAtuais[`campus${s.indice}`] = String(s.unidadeId);
+    if (s.cursoEscolhido) paramsAtuais[`curso${s.indice}`] = String(s.cursoEscolhido.id);
   }
 
   const comparaveis: CursoComparavel[] = slots
-    .filter((s): s is NonNullable<typeof s> => s !== null)
+    .filter((s): s is Slot & { cursoEscolhido: CursoLinha } => s.cursoEscolhido !== undefined)
     .map((s) => {
       const campus = nomePorCampus.get(s.unidadeId)!;
       return { ...s.cursoEscolhido, campus: campus.nome, instituicaoSigla: campus.instituicaoSigla };
     });
 
-  const proximoCampusPadrao = campiRede.find(
-    (c) => !slots.some((s) => s?.unidadeId === c.id),
-  )?.id;
+  const proximoCampusPadrao = campiOutros.find((c) => !slots.some((s) => s.unidadeId === c.id))?.id ?? campiOutros[0]?.id;
 
   function hrefAno(novoAno: number) {
     const q = new URLSearchParams({ ...paramsAtuais, ano: String(novoAno) });
@@ -114,12 +166,11 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         <Link href={`/consulta?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
           ← Consulta
         </Link>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-          Comparar cursos entre câmpus
-        </h1>
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Comparar cursos entre câmpus</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Escolha até {MAX_SLOTS} pares de câmpus e curso, de qualquer instituição da rede, para comparar
-          lado a lado (duração do ciclo, carga horária, peso, matrícula equalizada e valor recebido).
+          Escolha até {MAX_SLOTS} cursos, de qualquer instituição da rede (o IFSul vem primeiro), para comparar lado a lado: duração do ciclo, carga horária, peso, matrícula equalizada e valor
+          recebido. Em cada um, escolha primeiro a instituição, depois o câmpus e então o curso. <strong>O primeiro é o principal</strong>: a tela mostra o que ele ganha ou perde em relação aos
+          outros.
         </p>
       </div>
 
@@ -129,9 +180,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
             key={a}
             href={hrefAno(a)}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
-              a === ano
-                ? "bg-if-green text-white"
-                : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              a === ano ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             }`}
           >
             {a}
@@ -139,40 +188,44 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         ))}
       </div>
 
+      {principal && (
+        <FiltroComparacao modo={filtro} mesmoCampus={mesmoCampus} paramsAtuais={paramsAtuais} rotuloPrincipal={principal.curso} pesoPrincipal={principal.peso} />
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {slots.map((slot, i) =>
-          slot ? (
-            <SeletorSlotCurso
-              key={i}
-              indice={i + 1}
-              campiRede={campiRede}
-              campusEscolhido={slot.unidadeId}
-              cursosDoCampus={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor }))}
-              cursoEscolhido={slot.cursoEscolhido.id}
-              paramsAtuais={paramsAtuais}
-              podeRemover={quantosSlots > 2 && i === quantosSlots - 1}
-            />
-          ) : null,
-        )}
+        {slots.map((slot) => (
+          <SeletorSlotCurso
+            key={slot.indice}
+            indice={slot.indice}
+            ehPrincipal={slot.indice === 1}
+            instituicoes={instituicoesDos(slot.campi)}
+            campi={slot.campi}
+            instituicaoEscolhida={nomePorCampus.get(slot.unidadeId)?.instituicaoSigla ?? ""}
+            campusEscolhido={slot.unidadeId}
+            campusTravado={slot.travado}
+            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio }))}
+            cursoEscolhido={slot.cursoEscolhido?.id ?? null}
+            paramsAtuais={paramsAtuais}
+            podeRemover={quantosSlots > 2 && slot.indice === quantosSlots}
+            aviso={slot.aviso}
+          />
+        ))}
       </div>
 
       {quantosSlots < MAX_SLOTS && proximoCampusPadrao !== undefined && (
         <Link
-          href={`/consulta/comparar?${new URLSearchParams({
-            ...paramsAtuais,
-            [`campus${quantosSlots + 1}`]: String(proximoCampusPadrao),
-          }).toString()}`}
+          href={`/consulta/comparar?${new URLSearchParams({ ...paramsAtuais, [`campus${quantosSlots + 1}`]: String(proximoCampusPadrao) }).toString()}`}
           className="w-fit text-sm text-if-green underline hover:text-if-green/80"
         >
-          + adicionar outro câmpus
+          + adicionar outro curso
         </Link>
       )}
 
       {comparaveis.length >= 2 ? (
-        <PainelComparacaoCursos cursos={comparaveis} />
+        <PainelComparacaoCursos cursos={comparaveis} principalId={principal?.id} />
       ) : (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          Escolha pelo menos dois câmpus com curso carregado para comparar.
+          Escolha pelo menos dois cursos para comparar. Se o filtro estiver marcado, talvez nenhum outro câmpus tenha curso comparável com o principal: tente &quot;Todos os cursos&quot;.
         </p>
       )}
     </main>
