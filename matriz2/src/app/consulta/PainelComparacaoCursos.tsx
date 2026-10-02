@@ -68,6 +68,12 @@ export function PainelComparacaoCursos({
   const outros = principal ? cursos.filter((c) => c.id !== principal.id) : [];
 
   const linhas: Linha[] = [
+    {
+      rotulo: "Modalidade",
+      valor: (c) =>
+        c.modalidadeRotulo ? `${c.modalidadeRotulo}${c.modalidade === "superior" && c.tipoCursoLegivel ? ` (${c.tipoCursoLegivel})` : ""}` : "não informada",
+    },
+    { rotulo: "Forma de ensino", valor: (c) => (c.ensino === "ead" ? "A distância (EAD)" : c.ensino === "presencial" ? "Presencial" : "não informada") },
     { rotulo: "Nível", valor: (c) => c.nivel ?? "não informado" },
     { rotulo: "Repasse", valor: (c) => c.repasse.replace("_", " ") },
     { rotulo: "Início do ciclo", valor: (c) => formatarData(c.inicio) },
