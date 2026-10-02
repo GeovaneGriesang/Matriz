@@ -46,6 +46,28 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const filtro = modoDoParametro(params.filtro);
   const mesmoCampus = params.mesmoCampus === "1";
 
+  // Os ciclos que têm a 6ª fase carregada: são os únicos que fazem sentido como opção, e a escolha do ciclo precisa
+  // continuar à vista mesmo quando o ciclo da URL não tem dado (senão a pessoa fica sem como voltar).
+  const anosComCiclo = (await prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } })).map((a) => a.ano);
+  const seletorDeAno = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+      <div className="flex gap-1">
+        {anosComCiclo.map((a) => (
+          <Link
+            key={a}
+            href={`/consulta/comparar?${new URLSearchParams({ ano: String(a) }).toString()}`}
+            className={`rounded px-3 py-1.5 text-sm font-medium ${
+              a === ano ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            }`}
+          >
+            {a}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
   // Câmpus da rede inteira com curso carregado neste ano. Só nome e sigla: os cursos de cada um só são buscados quando
   // esse câmpus está de fato num dos slots, para não carregar os cursos de mais de 600 câmpus de uma vez.
   const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
@@ -57,7 +79,11 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
         <h1 className="text-2xl font-semibold">Comparar cursos entre câmpus</h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">Depende da 6ª fase da MDO, que ainda não foi carregada para {ano}.</p>
+        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+          Esta tela depende da 6ª fase da MDO, que ainda não foi carregada para {ano}.
+          {anosComCiclo.length > 0 ? " Escolha um dos ciclos que têm dado:" : " Nenhum ciclo tem a 6ª fase carregada."}
+        </p>
+        <div className="mt-4">{seletorDeAno}</div>
       </main>
     );
   }
@@ -156,11 +182,6 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
 
   const proximoCampusPadrao = campiOutros.find((c) => !slots.some((s) => s.unidadeId === c.id))?.id ?? campiOutros[0]?.id;
 
-  function hrefAno(novoAno: number) {
-    const q = new URLSearchParams({ ...paramsAtuais, ano: String(novoAno) });
-    return `/consulta/comparar?${q.toString()}`;
-  }
-
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
@@ -175,19 +196,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         </p>
       </div>
 
-      <div className="flex gap-1">
-        {[2026, 2027].map((a) => (
-          <Link
-            key={a}
-            href={hrefAno(a)}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${
-              a === ano ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            }`}
-          >
-            {a}
-          </Link>
-        ))}
-      </div>
+      {seletorDeAno}
 
       {principal && (
         <FiltroComparacao modo={filtro} mesmoCampus={mesmoCampus} paramsAtuais={paramsAtuais} rotuloPrincipal={principal.curso} pesoPrincipal={principal.peso} />
