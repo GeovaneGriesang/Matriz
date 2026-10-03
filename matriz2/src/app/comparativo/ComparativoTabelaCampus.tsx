@@ -54,13 +54,17 @@ export function ComparativoTabelaCampus({
   linhas,
   anoA,
   anoB,
+  comInformado = true,
 }: {
   linhas: LinhaComparativoCampus[];
   anoA: number;
   anoB: number;
+  /** O valor informado existe só para o IFSul; nas outras instituições as colunas e variações que dependem dele não aparecem. */
+  comInformado?: boolean;
 }) {
   const valores = (l: LinhaComparativoCampus): ValoresDoCampus => ({ calculadoA: l.a, informadoA: l.informadoA, calculadoB: l.b, informadoB: l.informadoB });
-  const totais = VARIACOES.map((def) => totalDaVariacao(def, linhas.map(valores)));
+  const variacoesUsadas = comInformado ? VARIACOES : VARIACOES.filter((v) => v.chave === "calcA_calcB");
+  const totais = variacoesUsadas.map((def) => totalDaVariacao(def, linhas.map(valores)));
   const somaInformadoA = linhas.reduce((s, l) => s + (l.informadoA ?? 0), 0);
   const somaInformadoB = linhas.reduce((s, l) => s + (l.informadoB ?? 0), 0);
   const comInformadoA = linhas.filter((l) => l.informadoA !== null).length;
@@ -75,7 +79,7 @@ export function ComparativoTabelaCampus({
       <span className="text-neutral-600 dark:text-neutral-400">{reais.format(v)}</span>
     );
 
-  const colunasDeVariacao: ColunaOrdenavel<LinhaComparativoCampus>[] = VARIACOES.map((def) => ({
+  const colunasDeVariacao: ColunaOrdenavel<LinhaComparativoCampus>[] = variacoesUsadas.map((def) => ({
     chave: def.chave,
     rotulo: (
       <span className="block leading-tight">
@@ -113,9 +117,13 @@ export function ComparativoTabelaCampus({
             valor: (l) => (l.a === 0 && l.b > 0 ? null : l.a),
             render: (l) => <span className="text-neutral-600 dark:text-neutral-400">{l.a === 0 && l.b > 0 ? "não havia" : reais.format(l.a)}</span>,
           },
-          { chave: "informadoA", rotulo: `Informado ${anoA}`, alinhamento: "right", valor: (l) => l.informadoA, render: (l) => celulaInformado(l.informadoA) },
+          ...(comInformado
+            ? [{ chave: "informadoA", rotulo: `Informado ${anoA}`, alinhamento: "right" as const, valor: (l: LinhaComparativoCampus) => l.informadoA, render: (l: LinhaComparativoCampus) => celulaInformado(l.informadoA) }]
+            : []),
           { chave: "calculadoB", rotulo: `Calculado ${anoB}`, alinhamento: "right", valor: (l) => l.b, render: (l) => reais.format(l.b) },
-          { chave: "informadoB", rotulo: `Informado ${anoB}`, alinhamento: "right", valor: (l) => l.informadoB, render: (l) => celulaInformado(l.informadoB) },
+          ...(comInformado
+            ? [{ chave: "informadoB", rotulo: `Informado ${anoB}`, alinhamento: "right" as const, valor: (l: LinhaComparativoCampus) => l.informadoB, render: (l: LinhaComparativoCampus) => celulaInformado(l.informadoB) }]
+            : []),
           ...colunasDeVariacao,
         ]}
         rodape={
@@ -124,21 +132,25 @@ export function ComparativoTabelaCampus({
               <td className="px-2 py-2.5" />
               <td className="px-4 py-2.5">Soma dos {linhas.length} câmpus</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.a, 0))}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">
-                {reais.format(somaInformadoA)}
-                <span className="block text-xs font-normal text-neutral-500">
-                  {comInformadoA} de {linhas.length} com registro
-                </span>
-              </td>
+              {comInformado && (
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {reais.format(somaInformadoA)}
+                  <span className="block text-xs font-normal text-neutral-500">
+                    {comInformadoA} de {linhas.length} com registro
+                  </span>
+                </td>
+              )}
               <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.b, 0))}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">
-                {reais.format(somaInformadoB)}
-                <span className="block text-xs font-normal text-neutral-500">
-                  {comInformadoB} de {linhas.length} com registro
-                </span>
-              </td>
+              {comInformado && (
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {reais.format(somaInformadoB)}
+                  <span className="block text-xs font-normal text-neutral-500">
+                    {comInformadoB} de {linhas.length} com registro
+                  </span>
+                </td>
+              )}
               {totais.map((t, i) => (
-                <td key={VARIACOES[i]!.chave} className="px-4 py-2.5 text-right tabular-nums">
+                <td key={variacoesUsadas[i]!.chave} className="px-4 py-2.5 text-right tabular-nums">
                   <CelulaVariacao v={t?.variacao ?? null} />
                   {t && t.comparados < t.total && (
                     <span className="block text-xs font-normal text-neutral-500">
@@ -152,8 +164,10 @@ export function ComparativoTabelaCampus({
         }
       />
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe; <strong>Informado</strong> é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor).
-        Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença.
+        <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe.
+        {comInformado
+          ? " Informado é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor). Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença."
+          : " O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul, por isso aqui só há a variação entre os dois ciclos calculados."}
       </p>
     </div>
   );

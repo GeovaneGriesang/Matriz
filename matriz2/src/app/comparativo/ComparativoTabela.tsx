@@ -54,7 +54,7 @@ export function ComparativoTabela({
       linhaExpandida={(l) => {
         const campi = camposPorSigla[l.sigla];
         if (!campi || campi.length === 0) return null;
-        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} />;
+        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} comInformado={ehInstituicaoDestaque(l.sigla)} />;
       }}
       colunas={
         [

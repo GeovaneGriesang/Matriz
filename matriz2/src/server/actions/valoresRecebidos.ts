@@ -3,6 +3,10 @@
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
+import { ehInstituicaoDestaque } from "@/lib/destaque";
+
+/** O valor informado é só do IFSul: a gravação recusa câmpus de qualquer outra instituição. */
+const MENSAGEM_SO_IFSUL = "O valor informado existe só para o IFSul: este câmpus é de outra instituição.";
 
 export interface SalvarValorRecebidoResult {
   ok: boolean;
@@ -42,9 +46,12 @@ export async function salvarValorRecebidoAction(formData: FormData): Promise<Sal
     return { ok: false, errorMessage: "Informe um valor recebido válido." };
   }
 
-  const unidade = await prisma.unidade.findUnique({ where: { id: unidadeId } });
+  const unidade = await prisma.unidade.findUnique({ where: { id: unidadeId }, select: { id: true, instituicao: { select: { sigla: true } } } });
   if (!unidade) {
     return { ok: false, errorMessage: "Câmpus não encontrado." };
+  }
+  if (!ehInstituicaoDestaque(unidade.instituicao.sigla)) {
+    return { ok: false, errorMessage: MENSAGEM_SO_IFSUL };
   }
 
   await prisma.valorRecebidoCampus.upsert({
@@ -101,11 +108,16 @@ export async function salvarValoresRecebidosEmLoteAction(
   }
 
   const unidadeIds = operacoes.map((o) => o.unidadeId);
-  const unidades = await prisma.unidade.findMany({ where: { id: { in: unidadeIds } }, select: { id: true } });
+  const unidades = await prisma.unidade.findMany({ where: { id: { in: unidadeIds } }, select: { id: true, instituicao: { select: { sigla: true } } } });
   const idsValidos = new Set(unidades.map((u) => u.id));
+  const idsDoIfsul = new Set(unidades.filter((u) => ehInstituicaoDestaque(u.instituicao.sigla)).map((u) => u.id));
   for (const op of operacoes) {
     if (!idsValidos.has(op.unidadeId)) {
       return { ok: false, errorMessage: "Câmpus não encontrado." };
+    }
+    // Apagar um registro (valor nulo) de câmpus de fora também passa: é limpeza, não cadastro.
+    if (op.valorRecebido !== null && !idsDoIfsul.has(op.unidadeId)) {
+      return { ok: false, errorMessage: MENSAGEM_SO_IFSUL };
     }
     if (op.valorRecebido !== null && (!Number.isFinite(op.valorRecebido) || op.valorRecebido < 0)) {
       return { ok: false, errorMessage: "Valor recebido inválido." };
