@@ -1,4 +1,4 @@
-import { destaqueNaFrente } from "@/lib/destaque";
+import { destaqueNaFrente, ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -148,13 +148,13 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             da Matriz de Distribuição Orçamentária (cerca de 80% do total; não inclui Qualidade e
             Eficiência, Reitorias nem Assistência, que não são valores por câmpus). Clique numa
             instituição para descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela
-            matriz&quot; é o valor homologado pela MDO; &quot;Recebido&quot; é o que foi de fato
+            matriz&quot; é o valor homologado pela MDO. Para o IFSul, ao abri-lo, aparece também o &quot;Recebido&quot;, o que foi de fato
             informado em{" "}
             <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
               Valores recebidos
-            </Link>{" "}
-            e pode ser diferente, porque contingenciamento e outras decisões orçamentárias não passam pela
-            matriz. O recebido existe só para o IFSul. Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
+            </Link>
+            , que pode ser diferente porque contingenciamento e outras decisões orçamentárias não passam pela
+            matriz (só o IFSul tem esse valor). Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
             <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
               Comparar entre câmpus
             </Link>
@@ -316,6 +316,9 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     orderBy: { carregadoEm: "desc" },
   });
 
+  // O valor recebido (informado) existe só para o IFSul.
+  const ehIfsul = ehInstituicaoDestaque(instituicao.sigla);
+
   function href(mudanca: Partial<Busca>) {
     const q = new URLSearchParams({
       ano: String(ano),
@@ -345,13 +348,18 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           Qualidade e Eficiência, Reitorias nem Assistência, que não são valores por câmpus. A coluna
           &quot;Funcionamento calculado&quot; refaz esse mesmo bloco a partir da matrícula equalizada por
           modalidade e das taxas oficiais, para conferência: as duas colunas devem ficar bem próximas, e
-          uma diferença grande é sinal de algo errado, na fórmula ou nos dados. &quot;Recebido&quot; é
-          diferente dos dois: é o que foi de fato depositado, informado à mão em{" "}
-          <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
-            Valores recebidos
-          </Link>
-          , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
-          pela matriz.
+          uma diferença grande é sinal de algo errado, na fórmula ou nos dados.
+          {ehIfsul && (
+            <>
+              {" "}
+              &quot;Recebido&quot; é diferente dos dois: é o que foi de fato depositado, informado à mão em{" "}
+              <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
+                Valores recebidos
+              </Link>
+              , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
+              pela matriz.
+            </>
+          )}
         </p>
         {semSextaFaseInstituicao && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -393,12 +401,14 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className={`grid gap-4 sm:grid-cols-2 ${ehIfsul ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
         <Cartao rotulo="Gerado pela matriz" valor={reais.format(total.valor)} />
-        <Cartao
-          rotulo="Recebido (real)"
-          valor={total.campusComRecebido > 0 ? reais.format(total.recebidoReal) : "não informado"}
-        />
+        {ehIfsul && (
+          <Cartao
+            rotulo="Recebido (real)"
+            valor={total.campusComRecebido > 0 ? reais.format(total.recebidoReal) : "não informado"}
+          />
+        )}
         <Cartao
           rotulo="Funcionamento calculado"
           valor={total.campusComFuncionamento > 0 ? reais.format(total.funcionamentoCalculado) : "não informado"}
@@ -427,6 +437,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           totalPerda={total.perda}
           totalMatricula={total.matricula}
           totalRecebidoReal={total.campusComRecebido > 0 ? total.recebidoReal : null}
+          comRecebido={ehIfsul}
           totalFuncionamentoCalculado={total.campusComFuncionamento > 0 ? total.funcionamentoCalculado : null}
         />
       </div>
