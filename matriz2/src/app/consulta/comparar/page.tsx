@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
-import { ehInstituicaoDestaque } from "@/lib/destaque";
+import { ehCampusDestaque, ehInstituicaoDestaque } from "@/lib/destaque";
 import { modoDoParametro, passaNoFiltro } from "@/lib/compararCursos";
 import { ehChaveDeModalidade, ehFormaDeEnsino, rotuloDaModalidade, type ChaveModalidade } from "@/lib/modalidadeCurso";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
@@ -35,6 +35,7 @@ function ordenarCampi(campi: CampusOpcao[]): CampusOpcao[] {
     (a, b) =>
       Number(ehInstituicaoDestaque(b.instituicaoSigla)) - Number(ehInstituicaoDestaque(a.instituicaoSigla)) ||
       a.instituicaoSigla.localeCompare(b.instituicaoSigla) ||
+      Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) ||
       a.nome.localeCompare(b.nome),
   );
 }
@@ -111,7 +112,8 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const maisRecebem = [...campiBase].sort((a, b) => (valorPorCampus.get(b.id) ?? 0) - (valorPorCampus.get(a.id) ?? 0));
   const doIfsul = maisRecebem.filter((c) => ehInstituicaoDestaque(c.instituicaoSigla));
   const base = doIfsul.length >= 2 ? doIfsul : maisRecebem;
-  const padraoCampus1 = base[0]?.id;
+  // O principal padrão é o Venâncio Aires, quando está nas opções; senão, o câmpus que mais recebe.
+  const padraoCampus1 = (base.find((c) => ehCampusDestaque(c.nome)) ?? base[0])?.id;
   const padraoCampus2 = base.find((c) => c.id !== padraoCampus1)?.id;
 
   const campusParam = [params.campus1, params.campus2, params.campus3, params.campus4];

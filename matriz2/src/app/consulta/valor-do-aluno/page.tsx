@@ -1,4 +1,4 @@
-import { destaqueNaFrente } from "@/lib/destaque";
+import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -73,6 +73,8 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     select: { id: true, nome: true },
     orderBy: { nome: "asc" },
   });
+  // O Venâncio Aires vem primeiro, e é o câmpus padrão quando nenhum foi escolhido.
+  unidades.sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)));
 
   const seletorInstituicao = (
     <div className="flex flex-col gap-1">
@@ -93,7 +95,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     );
   }
 
-  const campusId = Number(params.campus) || unidades.find((u) => /VEN[ÂA]NCIO AIRES/i.test(u.nome))?.id || unidades[0]!.id;
+  const campusId = Number(params.campus) || unidades.find((u) => ehCampusDestaque(u.nome))?.id || unidades[0]!.id;
   const campus = unidades.find((u) => u.id === campusId) ?? unidades[0]!;
 
   const [ciclos, fonteParametros] = await Promise.all([

@@ -1,4 +1,4 @@
-import { destaqueNaFrente, ehInstituicaoDestaque } from "@/lib/destaque";
+import { destaqueNaFrente, ehCampusDestaque, ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -113,7 +113,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
           : null,
       };
     })
-    .sort((a, b) => b.matriz - a.matriz);
+    .sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) || b.matriz - a.matriz);
 
   const temIndices = campi.every((c) => c.indices !== null);
   const totalPadrao = campi.reduce((s, c) => s + c.matriz, 0);

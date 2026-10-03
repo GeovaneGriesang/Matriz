@@ -1,5 +1,6 @@
 "use client";
 
+import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
@@ -67,6 +68,7 @@ export function EvasaoTabelaCampus({
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(c) => c.unidadeId}
+      linhaDestaque={(c) => ehCampusDestaque(c.nome)}
       linhaClasse={(c) => (c.unidadeId === campusId ? "bg-if-green/5" : "")}
       colunas={
         [

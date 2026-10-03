@@ -1,4 +1,4 @@
-import { destaqueNaFrente } from "@/lib/destaque";
+import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -133,7 +133,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   const arvore: NoInstituicaoSimulavel[] = instituicoes
     .filter((i) => siglasComDado.has(i.sigla))
     .map((i) => {
-      const campi = (campiPorSigla.get(i.sigla) ?? []).sort((a, b) => b.perda - a.perda);
+      const campi = (campiPorSigla.get(i.sigla) ?? []).sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) || b.perda - a.perda);
       const indicadores = indicadoresPorSigla.get(i.sigla);
       return {
         sigla: i.sigla,
