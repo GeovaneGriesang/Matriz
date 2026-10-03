@@ -37,6 +37,7 @@ export function ConsultaTabelaCampus({
   totalMatricula,
   totalRecebidoReal,
   totalFuncionamentoCalculado,
+  comRecebido,
 }: {
   linhas: CampusLinha[];
   campusEscolhido: number | null;
@@ -49,6 +50,8 @@ export function ConsultaTabelaCampus({
   totalMatricula: number;
   totalRecebidoReal: number | null;
   totalFuncionamentoCalculado: number | null;
+  /** O valor recebido (informado) existe só para o IFSul; nas outras instituições a coluna não aparece. */
+  comRecebido: boolean;
 }) {
   return (
     <TabelaOrdenavel
@@ -92,18 +95,22 @@ export function ConsultaTabelaCampus({
             valor: (l) => l.valor,
             render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
           },
-          {
-            chave: "recebidoReal",
-            rotulo: "Recebido (real)",
-            alinhamento: "right",
-            valor: (l) => l.recebidoReal,
-            render: (l) =>
-              l.recebidoReal !== null ? (
-                <span className="font-medium text-if-green">{reais.format(l.recebidoReal)}</span>
-              ) : (
-                <span className="text-xs text-neutral-400">não informado</span>
-              ),
-          },
+          ...(comRecebido
+            ? [
+                {
+                  chave: "recebidoReal",
+                  rotulo: "Recebido (real)",
+                  alinhamento: "right" as const,
+                  valor: (l: CampusLinha) => l.recebidoReal,
+                  render: (l: CampusLinha) =>
+                    l.recebidoReal !== null ? (
+                      <span className="font-medium text-if-green">{reais.format(l.recebidoReal)}</span>
+                    ) : (
+                      <span className="text-xs text-neutral-400">não informado</span>
+                    ),
+                },
+              ]
+            : []),
           {
             chave: "funcionamentoCalculado",
             rotulo: "Funcionamento calculado",
@@ -134,9 +141,11 @@ export function ConsultaTabelaCampus({
             <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(totalCiclos)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{numero.format(totalMatricula)}</td>
             <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(totalValor)}</td>
-            <td className="px-4 py-2.5 text-right tabular-nums">
-              {totalRecebidoReal !== null ? reais.format(totalRecebidoReal) : "não informado"}
-            </td>
+            {comRecebido && (
+              <td className="px-4 py-2.5 text-right tabular-nums">
+                {totalRecebidoReal !== null ? reais.format(totalRecebidoReal) : "não informado"}
+              </td>
+            )}
             <td className="px-4 py-2.5 text-right tabular-nums">
               {totalFuncionamentoCalculado !== null ? reais.format(totalFuncionamentoCalculado) : "não informado"}
             </td>

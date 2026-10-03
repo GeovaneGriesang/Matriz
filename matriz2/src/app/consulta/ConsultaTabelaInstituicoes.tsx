@@ -72,18 +72,6 @@ export function ConsultaTabelaInstituicoes({
             render: (l) => <span className="font-medium">{reais.format(l.valor)}</span>,
           },
           {
-            chave: "recebidoReal",
-            rotulo: "Recebido (real)",
-            alinhamento: "right",
-            valor: (l) => l.recebidoReal,
-            render: (l) =>
-              l.recebidoReal !== null ? (
-                <span className="font-medium text-if-green">{reais.format(l.recebidoReal)}</span>
-              ) : (
-                <span className="text-xs text-neutral-400">não informado</span>
-              ),
-          },
-          {
             chave: "participacao",
             rotulo: "Fatia da rede",
             alinhamento: "right",
