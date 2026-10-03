@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/prisma";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { SIGLA_DESTAQUE } from "@/lib/destaque";
 import { ValoresRecebidosPainel } from "@/components/admin/ValoresRecebidosPainel";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
   const ano = Number(params.ano) || anosDisponiveis[0]?.ano || new Date().getFullYear();
 
   const [instituicoes, registrados] = await Promise.all([
+    // O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul: é a única instituição que o cadastra.
     prisma.instituicao.findMany({
+      where: { sigla: SIGLA_DESTAQUE },
       orderBy: { sigla: "asc" },
       select: {
         id: true,
@@ -38,7 +41,7 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
       },
     }),
     prisma.valorRecebidoCampus.findMany({
-      where: { ano },
+      where: { ano, unidade: { instituicao: { sigla: SIGLA_DESTAQUE } } },
       include: {
         unidade: { select: { nome: true, instituicao: { select: { sigla: true } } } },
         registradoPor: { select: { nome: true } },
@@ -70,6 +73,9 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
           emenda parlamentar e outras decisões orçamentárias podem mudar o valor real, sem passar pela
           matriz. Informe aqui o valor de fato recebido por câmpus e ano; ele passa a aparecer ao lado do
           gerado na Consulta, sem apagar nem ser apagado pela carga da MDO.
+        </p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          O valor informado é só do <strong>IFSul</strong>: as outras instituições não têm esse cadastro, e por isso as colunas &quot;Informado&quot; só aparecem para o IFSul no resto do sistema.
         </p>
       </div>
 

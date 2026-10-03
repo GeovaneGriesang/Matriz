@@ -1,4 +1,4 @@
-import { destaqueNaFrente } from "@/lib/destaque";
+import { destaqueNaFrente, ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -122,7 +122,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
       {cabecalho}
-      <PainelConfianca ids={["distribuicao-indices", ...(temInformado ? [] : (["valor-informado"] as const)), "piso-79-53"]} />
+      <PainelConfianca ids={["distribuicao-indices", ...(temInformado || !ehInstituicaoDestaque(instituicao.sigla) ? [] : (["valor-informado"] as const)), "piso-79-53"]} />
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex min-w-72 flex-1 flex-col gap-1">
@@ -158,6 +158,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         temIndices={temIndices}
         totalPadrao={totalPadrao}
         instituicao={instituicao.sigla}
+        valorInformadoExiste={ehInstituicaoDestaque(instituicao.sigla)}
       />
     </main>
   );

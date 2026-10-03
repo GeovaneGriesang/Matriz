@@ -177,6 +177,7 @@ export function ValoresRecebidosPainel({
         </div>
       </div>
 
+      {instituicoes.length > 1 && (
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
         <div className="flex flex-wrap gap-1">
@@ -200,6 +201,7 @@ export function ValoresRecebidosPainel({
           ))}
         </div>
       </div>
+      )}
 
       {instituicaoEscolhida && (
         <form
@@ -289,7 +291,7 @@ export function ValoresRecebidosPainel({
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          Todos os valores já informados em {ano}, rede inteira ({registros.length})
+          Todos os valores já informados em {ano}, do IFSul ({registros.length})
         </h2>
         {registros.length === 0 ? (
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Nenhum valor informado ainda para este ciclo.</p>

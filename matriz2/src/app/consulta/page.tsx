@@ -154,7 +154,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
               Valores recebidos
             </Link>{" "}
             e pode ser diferente, porque contingenciamento e outras decisões orçamentárias não passam pela
-            matriz. Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
+            matriz. O recebido existe só para o IFSul. Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
             <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
               Comparar entre câmpus
             </Link>

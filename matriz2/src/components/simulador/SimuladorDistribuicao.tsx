@@ -32,6 +32,7 @@ export function SimuladorDistribuicao({
   temIndices,
   totalPadrao,
   instituicao,
+  valorInformadoExiste,
 }: {
   campi: CampusEntrada[];
   anoBase: number;
@@ -40,6 +41,8 @@ export function SimuladorDistribuicao({
   temIndices: boolean;
   totalPadrao: number;
   instituicao: string;
+  /** O valor informado existe só para o IFSul; nas outras instituições a base é sempre a matriz do ano anterior. */
+  valorInformadoExiste: boolean;
 }) {
   const [mantido, setMantido] = useState(80);
   const [anos, setAnos] = useState(3);
@@ -147,10 +150,15 @@ export function SimuladorDistribuicao({
         {!planoOk && <p className="text-sm text-if-red">Em algum ano o mantido e o índice passam de 100%. Reduza um dos dois.</p>}
       </section>
 
-      {fonteInformado === "matriz-anterior" && (
+      {fonteInformado === "matriz-anterior" && valorInformadoExiste && (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Ninguém cadastrou o valor informado de {anoBase} para {instituicao} (em <em>Admin, Valores recebidos</em>). Enquanto isso, o
           &quot;informado&quot; é a matriz de {anoBase} de cada câmpus.
+        </p>
+      )}
+      {fonteInformado === "matriz-anterior" && !valorInformadoExiste && (
+        <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+          O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul. Para {instituicao}, a base da transição é a matriz de {anoBase} de cada câmpus.
         </p>
       )}
       {somaInformado === 0 && (

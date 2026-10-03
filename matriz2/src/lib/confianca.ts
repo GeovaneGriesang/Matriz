@@ -107,7 +107,7 @@ export const CONFIANCA = {
     nivel: "ATENCAO",
     titulo: "Valor informado (o que o câmpus recebeu) sem cadastro",
     porque:
-      "O valor informado é digitado por um administrador em Valores recebidos. Onde não há registro, a coluna aparece vazia e a transição usa a matriz do ano anterior no lugar.",
+      "O valor informado existe só para o IFSul e é digitado por um administrador em Valores recebidos. Onde não há registro, a coluna aparece vazia e a transição usa a matriz do ano anterior no lugar.",
     paraResolver: "Cadastrar o valor recebido por câmpus em Admin, Valores recebidos.",
   },
   "pnp-manual-confere": {
