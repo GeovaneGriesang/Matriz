@@ -5,6 +5,7 @@
  *   npm run carregar -- 2027            carrega tudo que existir do ciclo 2027
  *   npm run carregar -- 2027 2026       carrega os dois ciclos
  *   npm run carregar -- 2027 --so=proposta   recarrega só a 5ª fase (Completo proposta) do ciclo
+ *   npm run carregar -- 2026 --so=ifsul      carrega só a 6ª fase do IFSul (planilha com fórmulas) do ciclo
  *
  * Este script é a única porta de entrada de dado no sistema, e roda a partir do
  * repositório, versionado. Não existe importador na tela por enquanto: os arquivos
@@ -25,7 +26,31 @@ import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "../src/lib/escopoTemporal
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
 
-async function carregarCiclo(ano: number, soProposta: boolean) {
+/** A 6ª fase de uma instituição (IFSul), em planilha com fórmulas. Roda depois da 6ª fase da rede: só substitui o que é da instituição. */
+async function etapaSextaFaseIfsul(ano: number) {
+  const pi = await carregarParticipacaoInstituicao(ano, "IFSUL");
+  if (!pi) {
+    console.log(`  6ª fase, IFSul (formato com fórmulas): sem arquivo para ${ano}, pulando.`);
+  } else {
+    console.log(`  6ª fase, IFSul (formato com fórmulas, refeito pelo motor de cálculo)...`);
+    console.log(`     ${inteiro.format(pi.ciclos)} ciclos, ${pi.campus} câmpus`);
+    console.log(`     valor da matrícula presencial .... ${reais.format(pi.valorMatricula.PRESENCIAL)}`);
+    console.log(`     soma de Matrícula Total .......... ${inteiro.format(pi.somaMatriculaTotal)}`);
+    console.log(`     soma de Valor (R$) ............... ${reais.format(pi.somaValor)}`);
+    console.log(`     soma de Custo Evadido ............ ${reais.format(pi.somaPerdaEvasao)}`);
+    if (pi.ignoradas > 0) console.log(`     ${pi.ignoradas} linha(s) ignorada(s)`);
+    for (const a of pi.avisos) console.log(`     AVISO: ${a}`);
+  }
+}
+
+async function carregarCiclo(ano: number, soProposta: boolean, soIfsul: boolean) {
+  // `--so=ifsul`: só a 6ª fase do IFSul (planilha com fórmulas). Serve quando só esse arquivo chegou.
+  if (soIfsul) {
+    console.log(`\n${"=".repeat(72)}\nCICLO ${ano} (só a 6ª fase do IFSul)\n${"=".repeat(72)}`);
+    await etapaSextaFaseIfsul(ano);
+    return;
+  }
+
   console.log(`\n${"=".repeat(72)}\nCICLO ${ano}\n${"=".repeat(72)}`);
 
   // A 5ª fase vem primeiro: é ela que traz a UF das instituições, o tipo de cada
@@ -102,19 +127,7 @@ async function carregarCiclo(ano: number, soProposta: boolean) {
   // 6ª fase de UMA instituição (formato com fórmulas, exportado a partir de 2026-09-29).
   // Vem DEPOIS da 6ª fase da rede: ela só substitui o que é da instituição, e a da rede
   // apaga o ciclo inteiro ao recarregar.
-  const pi = await carregarParticipacaoInstituicao(ano, "IFSUL");
-  if (!pi) {
-    console.log(`  6ª fase, IFSul (formato com fórmulas): sem arquivo para ${ano}, pulando.`);
-  } else {
-    console.log(`  6ª fase, IFSul (formato com fórmulas, refeito pelo motor de cálculo)...`);
-    console.log(`     ${inteiro.format(pi.ciclos)} ciclos, ${pi.campus} câmpus`);
-    console.log(`     valor da matrícula presencial .... ${reais.format(pi.valorMatricula.PRESENCIAL)}`);
-    console.log(`     soma de Matrícula Total .......... ${inteiro.format(pi.somaMatriculaTotal)}`);
-    console.log(`     soma de Valor (R$) ............... ${reais.format(pi.somaValor)}`);
-    console.log(`     soma de Custo Evadido ............ ${reais.format(pi.somaPerdaEvasao)}`);
-    if (pi.ignoradas > 0) console.log(`     ${pi.ignoradas} linha(s) ignorada(s)`);
-    for (const a of pi.avisos) console.log(`     AVISO: ${a}`);
-  }
+  await etapaSextaFaseIfsul(ano);
 
   // 2ª fase por ciclo de curso: liga-se à 6ª fase pelo código do ciclo, então roda depois dela.
   const cc = await carregarConferenciaCiclos(ano, "IFSUL");
@@ -140,10 +153,11 @@ async function main() {
     process.exit(1);
   }
   const soProposta = process.argv.includes("--so=proposta");
+  const soIfsul = process.argv.includes("--so=ifsul");
   for (const ano of anos) {
-    await carregarCiclo(ano, soProposta);
+    await carregarCiclo(ano, soProposta, soIfsul);
   }
-  if (soProposta) {
+  if (soProposta || soIfsul) {
     await prisma.$disconnect();
     console.log("\nCarga concluída.\n");
     return;

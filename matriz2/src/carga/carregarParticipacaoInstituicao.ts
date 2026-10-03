@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import type { CategoriaRepasse, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
-import { exigirArquivo, planilhaParticipacaoInstituicao } from "./caminhos";
+import { candidatosResumoDaRede, exigirArquivo, planilhaParticipacaoInstituicao } from "./caminhos";
 import { checksumArquivo, data, numero, numeroOuZero, texto } from "./planilha";
 import {
   icqaDoCiclo,
@@ -84,16 +84,80 @@ export interface ResultadoCargaInstituicao {
   fonteDadosId: number;
 }
 
-/** Lê a aba Parâmetros: células soltas num painel, então as coordenadas são fixas. */
-function lerParametros(ws: ExcelJS.Worksheet): { periodo: PeriodoPnp; parametros: ParametrosValorMatricula } {
+const COLUNA_RESUMO = { repasse: 10, matriculaTotal: 13 } as const;
+
+/**
+ * As matrículas totais da rede por forma de repasse, somadas do relatório RESUMIDO da rede do mesmo ciclo (soma da Matrícula Total por repasse).
+ * Em 2027 essa soma bate com os parâmetros do arquivo do IFSul (1.594.996,32); serve quando o arquivo traz marcadores de texto no lugar deles
+ * (o de 2026 trouxe "MT_PRESENCIAL"...). Confere o layout do relatório (primeira coluna "Instituição", com "% Participação") e usa o mais novo que serve.
+ */
+async function matriculasTotaisDoResumo(ano: number): Promise<{ totais: Record<CategoriaRepasse, number>; arquivo: string } | null> {
+  for (const caminho of candidatosResumoDaRede(ano)) {
+    const leitor = new ExcelJS.stream.xlsx.WorkbookReader(caminho, { entries: "emit", worksheets: "emit", sharedStrings: "cache", styles: "ignore" });
+    const totais: Record<CategoriaRepasse, number> = { PRESENCIAL: 0, EAD: 0, EAD_MOOC: 0, EAD_FP: 0 };
+    let primeira = true;
+    let servePorLayout = false;
+    for await (const planilha of leitor) {
+      for await (const linha of planilha) {
+        const v = (linha.values as unknown[]).slice(1);
+        if (primeira) {
+          primeira = false;
+          const cab = v.map((c) => String(c ?? "").trim().toLowerCase());
+          servePorLayout = cab[0] === "instituição" && cab.includes("% participação") && !cab.includes("código ciclo");
+          if (!servePorLayout) break;
+          continue;
+        }
+        const repasse = REPASSE[String(v[COLUNA_RESUMO.repasse] ?? "").toUpperCase()];
+        if (repasse) totais[repasse] += Number(v[COLUNA_RESUMO.matriculaTotal] ?? 0);
+      }
+      break; // só a primeira aba, a detalhada
+    }
+    if (servePorLayout) return { totais, arquivo: caminho.split(/[\\/]/).pop() ?? caminho };
+  }
+  return null;
+}
+
+/**
+ * Lê a aba Parâmetros: células soltas num painel, então as coordenadas são fixas. O arquivo de 2026 chegou com três problemas, tratados aqui e
+ * devolvidos como notas (que vão para a ressalva da fonte): matrículas totais da rede em texto (derivadas do resumo da rede), período da PNP no
+ * ano errado (o ano-base do ciclo é o ano menos 2) e peso do MOOC a 0,08 (a regra é 0,8 até 2026).
+ */
+async function lerParametros(
+  ws: ExcelJS.Worksheet,
+  ano: number,
+): Promise<{ periodo: PeriodoPnp; parametros: ParametrosValorMatricula; notas: string[] }> {
+  const notas: string[] = [];
   const n = (ref: string) => {
     const v = numero(ws.getCell(ref).value);
     if (v === null) throw new Error(`Aba Parâmetros sem número em ${ref}; o layout mudou?`);
     return v;
   };
-  const inicio = data(ws.getCell("C3").value);
-  const fim = data(ws.getCell("D3").value);
+  let inicio = data(ws.getCell("C3").value);
+  let fim = data(ws.getCell("D3").value);
   if (!inicio || !fim) throw new Error("Aba Parâmetros sem o período da PNP em C3:D3; o layout mudou?");
+  const anoBase = ano - 2;
+  if (inicio.getUTCFullYear() !== anoBase) {
+    notas.push(
+      `O período da PNP do arquivo era ${inicio.toISOString().slice(0, 10)} a ${fim.toISOString().slice(0, 10)}; para o ciclo ${ano} o ano-base é ${anoBase}, e foi usado 01/01/${anoBase} a 31/12/${anoBase}.`,
+    );
+    inicio = new Date(Date.UTC(anoBase, 0, 1));
+    fim = new Date(Date.UTC(anoBase, 11, 31));
+  }
+
+  const mtTexto = ["B10", "B11", "B12", "B13"].some((ref) => numero(ws.getCell(ref).value) === null);
+  let mtRede: Record<CategoriaRepasse, number>;
+  if (mtTexto) {
+    const resumo = await matriculasTotaisDoResumo(ano);
+    if (!resumo) {
+      throw new Error(
+        "Aba Parâmetros sem as matrículas totais da rede (B10:B13 são texto) e nenhum relatório resumido da rede do mesmo ciclo para derivá-las.",
+      );
+    }
+    mtRede = resumo.totais;
+    notas.push(`As matrículas totais da rede não estavam preenchidas no arquivo (marcadores de texto); foram somadas do relatório resumido da rede (${resumo.arquivo}).`);
+  } else {
+    mtRede = { PRESENCIAL: n("B10"), EAD: n("B11"), EAD_MOOC: n("B12"), EAD_FP: n("B13") };
+  }
 
   // Os rótulos da coluna C guardam a modalidade de cada peso; conferir evita trocar
   // MOOC por FP em silêncio caso a MDO reordene as linhas.
@@ -103,6 +167,11 @@ function lerParametros(ws: ExcelJS.Worksheet): { periodo: PeriodoPnp; parametros
     throw new Error(`Aba Parâmetros com modalidades em outra ordem (${rotulos.join(", ")}); ajuste a leitura.`);
   }
 
+  // O MOOC vale 0,8 do presencial até 2026 e 0,08 depois (regra do usuário, a mesma de `carregarProposta`); o arquivo de 2026 trouxe 0,08.
+  const pesoMoocArquivo = n("B17");
+  const pesoMoocDoAno = ano <= 2026 ? 0.8 : pesoMoocArquivo;
+  if (pesoMoocDoAno !== pesoMoocArquivo) notas.push(`O peso do MOOC no arquivo era ${pesoMoocArquivo}; a regra para ${ano} é ${pesoMoocDoAno}, e esta foi usada.`);
+
   return {
     periodo: { inicio, fim },
     parametros: {
@@ -111,14 +180,10 @@ function lerParametros(ws: ExcelJS.Worksheet): { periodo: PeriodoPnp; parametros
       assistenciaEstudantil: n("B6"),
       novosCampi: n("B7"),
       percentualFuncionamento: n("B8"),
-      matriculasTotaisRede: {
-        PRESENCIAL: n("B10"),
-        EAD: n("B11"),
-        EAD_MOOC: n("B12"),
-        EAD_FP: n("B13"),
-      },
-      pesos: { PRESENCIAL: n("B15"), EAD: n("B16"), EAD_MOOC: n("B17"), EAD_FP: n("B18") },
+      matriculasTotaisRede: mtRede,
+      pesos: { PRESENCIAL: n("B15"), EAD: n("B16"), EAD_MOOC: pesoMoocDoAno, EAD_FP: n("B18") },
     },
+    notas,
   };
 }
 
@@ -141,7 +206,7 @@ export async function carregarParticipacaoInstituicao(
     throw new Error("A planilha não tem as abas CICLOS e Parâmetros esperadas.");
   }
 
-  const { periodo, parametros } = lerParametros(wsParametros);
+  const { periodo, parametros, notas } = await lerParametros(wsParametros, ano);
   const valorMatricula = valorPorMatricula(parametros);
 
   const siglaEmCaixaAlta = sigla.toUpperCase();
@@ -177,7 +242,8 @@ export async function carregarParticipacaoInstituicao(
         valorMatricula.PRESENCIAL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
         ") diferem dos da 5ª fase exportada no mesmo dia. " +
         "A coluna Custo Evadido mudou de definição em relação à exportação da rede de 2026-08-31 " +
-        "(o aluno retido passou a valer metade), então a perda por evasão não é comparável entre as duas.",
+        "(o aluno retido passou a valer metade), então a perda por evasão não é comparável entre as duas." +
+        (notas.length > 0 ? " Ajustes feitos por este sistema ao ler o arquivo: " + notas.join(" ") : ""),
     },
   });
 
