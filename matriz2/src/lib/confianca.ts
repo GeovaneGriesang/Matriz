@@ -98,9 +98,10 @@ export const CONFIANCA = {
   },
   "sem-sexta-fase-2026": {
     nivel: "ATENCAO",
-    titulo: "Não existe 6ª fase de 2026",
-    porque: "O detalhe por curso de 2026 não foi publicado pela MDO. Em 2026 só se vai até o câmpus.",
-    paraResolver: "Pedir a 6ª fase de 2026, ou estimar o detalhe a partir dos CSVs da PNP (seria marcado como estimado).",
+    titulo: "6ª fase de 2026 só existe para o IFSul, com parâmetros derivados",
+    porque:
+      "Para 2026 só chegou a 6ª fase do IFSul (03/10), e o arquivo veio com as matrículas totais da rede em texto e o período da PNP em 2025. O sistema usou as matrículas somadas do relatório resumido da rede, o período de 2024 e o MOOC a 0,8, e o resultado fecha ao centavo com o 'calculado 2026' que já mostrávamos por câmpus (R$ 39,34 mi, matrícula presencial de R$ 1.173,93). Nas outras 41 instituições, 2026 só vai até o câmpus. A Matrícula Total de 537 ciclos difere da regra do motor (a de 2027): vale o número da planilha. O relatório resumido da MDO de 03/10 usa matrícula presencial de R$ 1.220,35 (3,9% a mais).",
+    paraResolver: "Pedir ao IFTM o arquivo do IFSul de 2026 com as matrículas totais da rede preenchidas e o período da PNP em 2024, e o ajuste válido de 2026.",
   },
   "valor-informado": {
     nivel: "ATENCAO",

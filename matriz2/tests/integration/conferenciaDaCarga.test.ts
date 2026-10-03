@@ -65,6 +65,9 @@ describe("conferência da carga da MDO", () => {
       const distribuido = num(soma._sum.valorReais);
       // Só faz sentido nos ciclos que têm a 6ª fase carregada.
       if (distribuido === 0) continue;
+      // E só quando a 6ª fase cobre a REDE: em 2026 só o IFSul tem 6ª fase (planilha por ciclo), e somar um câmpus contra o bloco da rede inteira não fecha.
+      const comSextaDaRede = await prisma.fonteDados.count({ where: { cicloOrcamento: c.ano, fase: "F6_PARTICIPACAO", abrangencia: "REDE" } });
+      if (comSextaDaRede === 0) continue;
 
       // A CONIF reserva o piso de dentro dos 80% e rateia o restante por matrícula.
       // Esta é a identidade central de toda a metodologia.

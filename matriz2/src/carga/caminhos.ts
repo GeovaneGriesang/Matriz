@@ -140,19 +140,39 @@ export function planilhaParticipacao(ano: number): string {
  * a aba "Parâmetros" com o orçamento e as matrículas totais usados no cálculo.
  */
 export function planilhaParticipacaoInstituicao(ano: number, sigla: string): string | null {
-  const pasta = caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
-  if (!fs.existsSync(pasta)) return null;
   const sufixo = `_${sigla}.xlsx`.toLowerCase();
   const prefixo = `participacao_orcamentaria_${ano}`;
   let melhor: { caminho: string; quando: number } | null = null;
-  for (const nome of fs.readdirSync(pasta)) {
-    const n = nome.toLowerCase().replace(PREFIXO_DE_DATA, "");
-    if (!n.startsWith(prefixo) || !n.endsWith(sufixo)) continue;
-    const caminho = path.join(pasta, nome);
-    const quando = fs.statSync(caminho).mtimeMs;
-    if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+  // O arquivo da 6ª fase de uma instituição já chegou salvo na pasta da 5ª fase ("Completo proposta") em 2026: procura nas duas.
+  for (const pasta of pastasDeParticipacao(ano)) {
+    if (!fs.existsSync(pasta)) continue;
+    for (const nome of fs.readdirSync(pasta)) {
+      const n = nome.toLowerCase().replace(PREFIXO_DE_DATA, "");
+      if (!n.startsWith(prefixo) || !n.endsWith(sufixo)) continue;
+      const caminho = path.join(pasta, nome);
+      const quando = fs.statSync(caminho).mtimeMs;
+      if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+    }
   }
   return melhor?.caminho ?? null;
+}
+
+/** As pastas em que os relatórios de participação de um ciclo já apareceram: a da 6ª fase e a da 5ª fase ("Completo proposta"). */
+function pastasDeParticipacao(ano: number): string[] {
+  return [
+    caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano)),
+    caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "5a fase - Matriz de Distribuição Orçamentária", "01 - Completo proposta", String(ano)),
+  ];
+}
+
+/**
+ * Candidatos a relatório RESUMIDO da rede de um ciclo (por curso, sem código de ciclo), do mais novo para o mais antigo. O nome é o mesmo
+ * da 6ª fase por ciclo, então quem chama confere o layout.
+ */
+export function candidatosResumoDaRede(ano: number): string[] {
+  return pastasDeParticipacao(ano)
+    .flatMap((p) => candidatosPorData(p, `participacao_orcamentaria_${ano}.xlsx`))
+    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
 }
 
 /**
