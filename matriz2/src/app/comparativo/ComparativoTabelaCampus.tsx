@@ -343,7 +343,7 @@ function ExplicacaoVariacao({ unidadeId, anoA, anoB, nome }: { unidadeId: number
               </tr>
               <tr>
                 <td className="py-1.5 pr-3 align-top">
-                  <strong>Piso Mínimo e ajustes da fonte:</strong> mudança no quanto o câmpus foi elevado ao piso (em 2027 inclui a diferença de precificação do MOOC, que a 5ª fase publicou a 0,8 em vez de 0,08)
+                  <strong>Piso Mínimo e ajustes da fonte:</strong> mudança no quanto o câmpus foi elevado ao piso e demais ajustes da fonte
                 </td>
                 <td className="py-1.5 text-right align-top tabular-nums">
                   <Sinal v={e.efeitoPiso} />

@@ -4,6 +4,7 @@
  * Uso:
  *   npm run carregar -- 2027            carrega tudo que existir do ciclo 2027
  *   npm run carregar -- 2027 2026       carrega os dois ciclos
+ *   npm run carregar -- 2027 --so=proposta   recarrega só a 5ª fase (Completo proposta) do ciclo
  *
  * Este script é a única porta de entrada de dado no sistema, e roda a partir do
  * repositório, versionado. Não existe importador na tela por enquanto: os arquivos
@@ -24,7 +25,7 @@ import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "../src/lib/escopoTemporal
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
 
-async function carregarCiclo(ano: number) {
+async function carregarCiclo(ano: number, soProposta: boolean) {
   console.log(`\n${"=".repeat(72)}\nCICLO ${ano}\n${"=".repeat(72)}`);
 
   // A 5ª fase vem primeiro: é ela que traz a UF das instituições, o tipo de cada
@@ -52,6 +53,12 @@ async function carregarCiclo(ano: number) {
     console.log(`  Correção do Piso Mínimo (aba EXPANSÃO, arquivo oficial)...`);
     console.log(`     ${exp.total} câmpus na lista, ${exp.jaExistiam} já cadastrados, ${exp.criados} novos`);
     for (const a of exp.avisos) console.log(`     AVISO: ${a}`);
+  }
+
+  // `--so=proposta`: recarrega só a 5ª fase (e a correção do Piso), sem tocar na 6ª fase nem na 2ª. Serve quando a MDO reexporta só a 5ª.
+  if (soProposta) {
+    console.log("  (só a 5ª fase, como pedido: 2ª e 6ª fases não foram tocadas)");
+    return;
   }
 
   // 2ª fase: só existe para o IFSul. Depende da 5ª, que cria as unidades.
@@ -87,6 +94,9 @@ async function carregarCiclo(ano: number) {
     console.log(`     soma de Valor (R$) ....... ${reais.format(r.somaValor)}`);
     console.log(`     soma de Perda Evasão ..... ${reais.format(r.somaPerdaEvasao)}`);
     if (r.ignoradas > 0) console.log(`     ${r.ignoradas} linha(s) ignorada(s)`);
+    for (const p of r.arquivosPulados) {
+      console.log(`     AVISO: ${p} é mais novo, mas tem outro layout (não é por ciclo de curso) e foi pulado.`);
+    }
   }
 
   // 6ª fase de UMA instituição (formato com fórmulas, exportado a partir de 2026-09-29).
@@ -129,8 +139,14 @@ async function main() {
     console.error("Informe ao menos um ciclo. Exemplo: npm run carregar -- 2027");
     process.exit(1);
   }
+  const soProposta = process.argv.includes("--so=proposta");
   for (const ano of anos) {
-    await carregarCiclo(ano);
+    await carregarCiclo(ano, soProposta);
+  }
+  if (soProposta) {
+    await prisma.$disconnect();
+    console.log("\nCarga concluída.\n");
+    return;
   }
 
   // Relatórios de Indicadores: até 2026-08-31 um arquivo cobria os dois ciclos; desde
