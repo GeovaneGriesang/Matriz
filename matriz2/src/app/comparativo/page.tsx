@@ -4,6 +4,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { ComparativoTabela } from "./ComparativoTabela";
+import { OpcaoInformados } from "./OpcaoInformados";
 import type { LinhaComparativoCampus } from "./ComparativoTabelaCampus";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
@@ -28,10 +29,12 @@ interface Linha {
 export default async function ComparativoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bloco?: string }>;
+  searchParams: Promise<{ bloco?: string; informados?: string }>;
 }) {
   await requireAcessoPlenoOrRedirect("/comparativo");
   const params = await searchParams;
+  // Por padrão só os valores calculados; `informados=1` acrescenta, para o IFSul, o que os câmpus de fato receberam.
+  const comInformados = params.informados === "1";
   const bloco = (["matriculas", "iqe", "ae", "totalSpo"] as const).includes(params.bloco as never)
     ? (params.bloco as "matriculas" | "iqe" | "ae" | "totalSpo")
     : "totalSpo";
@@ -108,7 +111,9 @@ export default async function ComparativoPage({
     prisma.distribuicaoCampus.findMany({ where: { ano: anoA }, select: { unidadeId: true, vlMatrFinal: true } }),
     prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: { unidadeId: true, vlMatrFinal: true } }),
     // O informado: o que cada campus de fato recebeu, digitado em Valores recebidos.
-    prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true } }),
+    comInformados
+      ? prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true } })
+      : Promise.resolve([] as { ano: number; unidadeId: number; valorRecebido: unknown }[]),
   ]);
   const informadoPorAnoEId = new Map(recebidos.map((r) => [`${r.ano}::${r.unidadeId}`, Number(r.valorRecebido)]));
   const unidadeIdsComCampus = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
@@ -166,21 +171,25 @@ export default async function ComparativoPage({
           câmpus dela (o Total por câmpus vem de outra fonte, a mesma da Consulta); clique no{" "}
           <strong>+</strong> de um câmpus para ver os cursos dele.
         </p>
+        {comInformados && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Na lista de câmpus, cada ciclo tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o{" "}
+          Na lista de câmpus do IFSul, cada ciclo tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o{" "}
           <strong>informado</strong> (o que ele de fato recebeu, cadastrado em Valores recebidos). Ao lado deles estão as cinco variações:
           calculado {anoA} para informado {anoA}; calculado {anoA} para calculado {anoB}; informado {anoA} para calculado {anoB}; informado{" "}
           {anoA} para informado {anoB}; e calculado {anoB} para informado {anoB}. Onde falta o informado, a variação fica vazia.
         </p>
+        )}
       </div>
 
-      <PainelConfianca ids={["comparativo-institucional", "valor-informado", "piso-2026", "mooc-2027", "explicacao-variacao"]} />
+      <PainelConfianca ids={["comparativo-institucional", ...(comInformados ? (["valor-informado"] as const) : []), "piso-2026", "mooc-2027", "explicacao-variacao"]} />
+
+      <OpcaoInformados marcado={comInformados} bloco={bloco} />
 
       <div className="flex flex-wrap gap-1">
         {BLOCOS.map((b) => (
           <Link
             key={b.chave}
-            href={`/comparativo?bloco=${b.chave}`}
+            href={`/comparativo?bloco=${b.chave}${comInformados ? "&informados=1" : ""}`}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
               b.chave === bloco
                 ? "bg-if-green text-white"
@@ -225,6 +234,7 @@ export default async function ComparativoPage({
           totalA={totalA}
           totalB={totalB}
           camposPorSigla={camposPorSigla}
+          comInformadoIfsul={comInformados}
         />
       </div>
 
