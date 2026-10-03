@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import type { CategoriaRepasse, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
-import { exigirArquivo, planilhaParticipacao } from "./caminhos";
+import { candidatosParticipacao, exigirArquivo, planilhaParticipacao } from "./caminhos";
 import { checksumArquivo, data, numero, numeroOuZero, texto } from "./planilha";
 
 /**
@@ -56,7 +56,40 @@ const REPASSE: Record<string, CategoriaRepasse> = {
   "EAD FP": "EAD_FP",
 };
 
+/**
+ * A planilha da 6ª fase por ciclo tem a coluna "Sigla" na primeira posição e traz "Código Ciclo". Outros relatórios da MDO com nome parecido
+ * (a participação resumida por curso, com 17 colunas e sem código de ciclo) não servem, e carregá-los apagaria os ciclos sem pôr nada no lugar.
+ */
+async function temLayoutPorCiclo(caminho: string): Promise<boolean> {
+  const leitor = new ExcelJS.stream.xlsx.WorkbookReader(caminho, { entries: "emit", worksheets: "emit", sharedStrings: "cache", styles: "ignore" });
+  for await (const planilha of leitor) {
+    for await (const linha of planilha) {
+      const cabecalho = (linha.values as unknown[]).slice(1).map((c) => String(c ?? "").trim().toLowerCase());
+      return cabecalho[0] === "sigla" && cabecalho.includes("código ciclo") && cabecalho.includes("valor (r$)");
+    }
+    return false;
+  }
+  return false;
+}
+
+/** O primeiro arquivo, do mais novo para o mais antigo, que tem o layout por ciclo; os que foram pulados vêm junto, para avisar. */
+async function escolherPlanilha(ano: number): Promise<{ caminho: string; pulados: string[] }> {
+  const pulados: string[] = [];
+  const candidatos = candidatosParticipacao(ano);
+  for (const c of candidatos) {
+    if (await temLayoutPorCiclo(c)) return { caminho: c, pulados };
+    pulados.push(c.split(/[\/]/).pop() ?? c);
+  }
+  if (candidatos.length === 0) exigirArquivo(planilhaParticipacao(ano), `a planilha da 6ª fase (Participação Orçamentária) de ${ano}`);
+  throw new Error(
+    `Nenhum arquivo da 6ª fase de ${ano} tem o layout por ciclo de curso (colunas "Sigla" e "Código Ciclo"): ${pulados.join(", ")}. ` +
+      "Nada foi apagado do banco.",
+  );
+}
+
 export interface ResultadoCarga {
+  /** Arquivos mais novos que foram pulados por terem outro layout. */
+  arquivosPulados: string[];
   ciclos: number;
   instituicoes: number;
   campus: number;
@@ -69,10 +102,8 @@ export interface ResultadoCarga {
 const LOTE = 2_000;
 
 export async function carregarParticipacao(ano: number): Promise<ResultadoCarga> {
-  const caminho = exigirArquivo(
-    planilhaParticipacao(ano),
-    `a planilha da 6ª fase (Participação Orçamentária) de ${ano}`,
-  );
+  // Escolhe e confere o arquivo ANTES de apagar qualquer coisa do banco.
+  const { caminho, pulados } = await escolherPlanilha(ano);
 
   // Recarregar o mesmo ciclo substitui o que estava lá: a MDO reexporta a cada rodada
   // de homologação, e manter as duas versões dobraria os totais em silêncio.
@@ -222,6 +253,7 @@ export async function carregarParticipacao(ano: number): Promise<ResultadoCarga>
     somaValor,
     somaPerdaEvasao,
     ignoradas,
+    arquivosPulados: pulados,
     fonteDadosId: fonte.id,
   };
 }

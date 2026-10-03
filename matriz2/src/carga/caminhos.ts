@@ -52,6 +52,20 @@ function caixaCerta(...partes: string[]): string {
 
 const PREFIXO_DE_DATA = /^[0-9]{8}_/;
 
+/** Todos os arquivos da pasta com esse nome (com ou sem o prefixo de data), do mais novo para o mais antigo. */
+function candidatosPorData(pasta: string, nomeBase: string): string[] {
+  if (!fs.existsSync(pasta)) return [];
+  const alvo = nomeBase.toLowerCase();
+  return fs
+    .readdirSync(pasta)
+    .filter((nome) => {
+      const n = nome.toLowerCase();
+      return n === alvo || (n.length === alvo.length + 9 && PREFIXO_DE_DATA.test(n) && n.endsWith(alvo));
+    })
+    .map((nome) => path.join(pasta, nome))
+    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+}
+
 function maisRecente(pasta: string, nomeBase: string): string | null {
   if (!fs.existsSync(pasta)) return null;
   const alvo = nomeBase.toLowerCase();
@@ -102,6 +116,15 @@ export function planilhaProposta(ano: number): string {
   const oficial = planilhaPropostaOficial(ano);
   if (ano === 2026 && !fs.existsSync(oficial) && fs.existsSync(FONTE_ALTERNATIVA_2026)) return FONTE_ALTERNATIVA_2026;
   return oficial;
+}
+
+/**
+ * Os arquivos que podem ser a 6ª fase da rede de um ciclo, do mais novo para o mais antigo. A MDO tem outros relatórios com nome
+ * parecido (a "Participação" resumida por curso, sem código de ciclo): a carga confere o layout de cada um e usa o primeiro que serve.
+ */
+export function candidatosParticipacao(ano: number): string[] {
+  const pasta = caixaCerta(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária", String(ano));
+  return candidatosPorData(pasta, `participacao_orcamentaria_${ano}.xlsx`);
 }
 
 /** 6ª fase: a participação de cada ciclo de curso. Existe só para 2027 até agora. */
