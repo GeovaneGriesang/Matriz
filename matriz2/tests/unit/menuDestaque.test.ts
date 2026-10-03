@@ -41,3 +41,18 @@ describe("menu", () => {
     expect(itemAtivo("/admin/inicio")).toBeNull();
   });
 });
+
+describe("câmpus em destaque (Venâncio Aires)", () => {
+  it("reconhece o Venâncio Aires com ou sem acento e em qualquer caixa", async () => {
+    const { ehCampusDestaque } = await import("@/lib/destaque");
+    expect(ehCampusDestaque("CAMPUS VENÂNCIO AIRES")).toBe(true);
+    expect(ehCampusDestaque("Campus Venancio Aires")).toBe(true);
+    expect(ehCampusDestaque("CAMPUS PELOTAS")).toBe(false);
+  });
+
+  it("põe o Venâncio Aires na frente e mantém a ordem dos outros câmpus", async () => {
+    const { campusDestaqueNaFrente } = await import("@/lib/destaque");
+    const lista = [{ n: "CAMPUS BAGÉ" }, { n: "CAMPUS PELOTAS" }, { n: "CAMPUS VENÂNCIO AIRES" }, { n: "CAMPUS CAMAQUÃ" }];
+    expect(campusDestaqueNaFrente(lista, (i) => i.n).map((i) => i.n)).toEqual(["CAMPUS VENÂNCIO AIRES", "CAMPUS BAGÉ", "CAMPUS PELOTAS", "CAMPUS CAMAQUÃ"]);
+  });
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { ehCampusDestaque } from "@/lib/destaque";
 import { useEffect, useState } from "react";
 import { SeloConfianca } from "@/components/Confianca";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
@@ -102,6 +103,7 @@ export function ComparativoTabelaCampus({
       <TabelaOrdenavel
         linhas={linhas}
         chaveLinha={(l) => l.unidadeId}
+        linhaDestaque={(l) => ehCampusDestaque(l.nome)}
         linhaExpandida={(l) => (
           <div className="flex flex-col gap-4">
             <ExplicacaoVariacao unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} nome={l.nome} />

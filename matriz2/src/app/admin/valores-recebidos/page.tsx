@@ -2,7 +2,7 @@ import { prisma } from "@/server/db/prisma";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
-import { SIGLA_DESTAQUE } from "@/lib/destaque";
+import { SIGLA_DESTAQUE, campusDestaqueNaFrente } from "@/lib/destaque";
 import { ValoresRecebidosPainel } from "@/components/admin/ValoresRecebidosPainel";
 
 export const dynamic = "force-dynamic";
@@ -82,7 +82,7 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
       <ValoresRecebidosPainel
         ano={ano}
         anosDisponiveis={anosDisponiveis.map((a) => a.ano)}
-        instituicoes={instituicoes}
+        instituicoes={instituicoes.map((i) => ({ ...i, unidades: campusDestaqueNaFrente(i.unidades, (u) => u.nome) }))}
         registros={registrosLinhas}
       />
     </main>

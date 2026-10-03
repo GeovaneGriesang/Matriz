@@ -1,5 +1,6 @@
 "use client";
 
+import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
@@ -53,6 +54,7 @@ export function ConsultaTabelaCampus({
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(l) => l.unidadeId}
+      linhaDestaque={(l) => ehCampusDestaque(l.nome)}
       linhaClasse={(l) => (l.unidadeId === campusEscolhido ? "bg-if-green/5" : "")}
       colunas={
         [

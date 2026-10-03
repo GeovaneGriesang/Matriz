@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
-import { destaqueNaFrente } from "@/lib/destaque";
+import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import { padroesDoCurso } from "@/lib/mdo/padroesCurso";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
@@ -80,6 +80,8 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
     select: { id: true, nome: true },
     orderBy: { nome: "asc" },
   });
+  // O Venâncio Aires vem primeiro, e é o câmpus padrão quando nenhum foi escolhido.
+  unidades.sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)));
   if (unidades.length === 0) {
     return (
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
@@ -95,7 +97,7 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const campusId = Number(params.campus) || unidades.find((u) => /VEN[ÂA]NCIO AIRES/i.test(u.nome))?.id || unidades[0]!.id;
+  const campusId = Number(params.campus) || unidades.find((u) => ehCampusDestaque(u.nome))?.id || unidades[0]!.id;
   const campus = unidades.find((u) => u.id === campusId) ?? unidades[0]!;
 
   // Catálogo de pesos: a edição mais recente da tabela de peso efetivo.
