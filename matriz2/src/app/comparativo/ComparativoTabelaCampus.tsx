@@ -169,7 +169,7 @@ export function ComparativoTabelaCampus({
         <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe.
         {comInformado
           ? " Informado é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor). Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença."
-          : " O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul, por isso aqui só há a variação entre os dois ciclos calculados."}
+          : " Aqui só há a variação entre os dois ciclos calculados. O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul e aparece quando a opção \"Considerar dados informados para o IFSul\" está marcada."}
       </p>
     </div>
   );

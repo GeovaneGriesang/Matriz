@@ -33,6 +33,7 @@ export function ComparativoTabela({
   totalA,
   totalB,
   camposPorSigla,
+  comInformadoIfsul,
 }: {
   linhas: LinhaComparativo[];
   anoA: number;
@@ -44,6 +45,8 @@ export function ComparativoTabela({
   totalB: number;
   /** Câmpus de cada instituição, para o "+/-" em frente à sigla (nível 1). */
   camposPorSigla: Record<string, LinhaComparativoCampus[]>;
+  /** Mostrar, para o IFSul, o valor informado e as variações que dependem dele (opção da tela). */
+  comInformadoIfsul: boolean;
 }) {
   return (
     <TabelaOrdenavel
@@ -54,7 +57,7 @@ export function ComparativoTabela({
       linhaExpandida={(l) => {
         const campi = camposPorSigla[l.sigla];
         if (!campi || campi.length === 0) return null;
-        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} comInformado={ehInstituicaoDestaque(l.sigla)} />;
+        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} comInformado={comInformadoIfsul && ehInstituicaoDestaque(l.sigla)} />;
       }}
       colunas={
         [
