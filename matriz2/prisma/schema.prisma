@@ -248,6 +248,9 @@ model Instituicao {
   parametrosParticipacao   ParametrosParticipacao[]
   indicadoresPnp           IndicadoresPnpInstituicao[]
   pnpEstruturas            PnpEstrutura[]
+  orcamentoLoaLinhas       OrcamentoLoaLinha[]
+  orcamentoLoaTotais       OrcamentoLoaTotal[]
+  emendasParlamentares     EmendaParlamentar[]
 
   @@index([uf])
 }
@@ -1161,4 +1164,78 @@ model PesoEfetivoCurso {
 
   @@unique([anoReferencia, tipoCurso, tipoOferta, curso, chMinimaMec])
   @@index([anoReferencia, tipoCurso])
+}
+
+// ---------- Orçamento da União (LOA, PLOA e emendas) ----------
+
+/// Um crédito orçamentário de uma instituição (uma linha do "Quadro dos Créditos Orçamentários" da LOA ou do PLOA, volume
+/// de Detalhamento das Ações): ação, grupo de despesa, resultado primário, modalidade e fonte, com o valor. A LOA e o PLOA
+/// só detalham até a instituição e o estado (localizador "No Estado do Rio Grande do Sul"): não existe valor por câmpus.
+model OrcamentoLoaLinha {
+  id                Int         @id @default(autoincrement())
+  instituicaoId     Int
+  instituicao       Instituicao @relation(fields: [instituicaoId], references: [id])
+  /// "LOA" ou "PLOA".
+  documento         String      @db.VarChar(10)
+  /// Exercício a que o crédito se refere (2026 para a LOA 2026, 2027 para o PLOA 2027).
+  exercicio         Int
+  programa          String      @db.VarChar(10)
+  /// Código da ação orçamentária (20RL, 2994, 21B3...).
+  acao              String      @db.VarChar(10)
+  acaoDescricao     String      @db.VarChar(255)
+  localizador       String      @db.VarChar(10)
+  /// Grupo de despesa: 1 pessoal, 3 outras despesas correntes, 4 investimentos.
+  gnd               Int
+  /// Resultado primário: 2 discricionária, 1 obrigatória, 6 emenda individual, 7 emenda de bancada, 8 emenda de comissão.
+  resultadoPrimario Int
+  modalidade        Int
+  fonteRecurso      Int
+  valor             Decimal     @db.Decimal(18, 2)
+  /// Produto e meta física da ação ("Estudante matriculado (unidade)": 22.429).
+  produto           String?     @db.VarChar(120)
+  meta              Int?
+  /// Texto da fonte, mostrado na tela: documento, volume e páginas.
+  fonte             String      @db.Text
+  criadoEm          DateTime    @default(now())
+
+  @@index([instituicaoId, documento, exercicio, acao])
+}
+
+/// Total de uma instituição por documento e exercício, do "Quadro Síntese" (PLOA, LOA, Lei mais créditos, Empenhado).
+model OrcamentoLoaTotal {
+  id            Int         @id @default(autoincrement())
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  /// "PLOA", "LOA", "LEI_CREDITOS" ou "EMPENHADO".
+  documento     String      @db.VarChar(20)
+  exercicio     Int
+  valor         Decimal     @db.Decimal(18, 2)
+  fonte         String      @db.Text
+  criadoEm      DateTime    @default(now())
+
+  @@unique([instituicaoId, documento, exercicio])
+}
+
+/// Emenda parlamentar individual com a instituição como unidade orçamentária ou beneficiária, do relatório do SIOP
+/// ("Emendas Individuais", com valores indicados e impedidos). Uma linha por linha do relatório.
+model EmendaParlamentar {
+  id              Int         @id @default(autoincrement())
+  instituicaoId   Int
+  instituicao     Instituicao @relation(fields: [instituicaoId], references: [id])
+  exercicio       Int
+  autor           String      @db.VarChar(120)
+  numeroEmenda    String      @db.VarChar(20)
+  acao            String      @db.VarChar(10)
+  acaoDescricao   String      @db.VarChar(255)
+  localizador     String      @db.VarChar(120)
+  beneficiario    String      @db.VarChar(255)
+  valorAprovado   Decimal     @db.Decimal(18, 2)
+  valorIndicado   Decimal     @db.Decimal(18, 2)
+  valorImpedido   Decimal     @db.Decimal(18, 2)
+  tipoImpedimento String      @db.VarChar(255)
+  justificativa   String?     @db.Text
+  fonte           String      @db.Text
+  criadoEm        DateTime    @default(now())
+
+  @@index([instituicaoId, exercicio])
 }

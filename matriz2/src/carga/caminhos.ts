@@ -366,3 +366,8 @@ export function parametrosMdoCsv(ano: number): string | null {
   }
   return melhor?.caminho ?? null;
 }
+
+/** Pasta dos documentos do orçamento da União (LOA, PLOA e relatórios de emendas): `PLOA e LOA/<ano>/...`. */
+export function pastaLoa(...partes: string[]): string {
+  return caixaCerta(RAIZ_DADOS, "PLOA e LOA", ...partes);
+}

@@ -122,6 +122,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         descricao: "Dotação, execução e descentralização como a PNP registra.",
       },
       {
+        href: "/orcamento-da-uniao",
+        rotulo: "Orçamento da União (LOA)",
+        descricao: "O IFSul na LOA e no PLOA, ação por ação, com as emendas parlamentares e a fonte de cada número.",
+      },
+      {
         href: "/peso-efetivo",
         rotulo: "Peso por curso",
         descricao: "O peso que a MDO aplicou a cada curso, com a fonte de cada linha.",

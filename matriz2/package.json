@@ -15,6 +15,7 @@
     "carregar": "tsx scripts/carregar.ts",
     "carregar:pnp": "tsx scripts/carregarPnp.ts",
     "carregar:peso-efetivo": "tsx scripts/carregarPesoEfetivo.ts",
+    "carregar:orcamento-loa": "tsx scripts/carregarOrcamentoLoa.ts",
     "seed:superadmin": "tsx scripts/seedSuperAdmin.ts"
   },
   "dependencies": {
