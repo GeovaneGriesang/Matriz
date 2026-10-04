@@ -33,8 +33,8 @@ export default async function ComparativoPage({
 }) {
   await requireAcessoPlenoOrRedirect("/comparativo");
   const params = await searchParams;
-  // Por padrão só os valores calculados; `informados=1` acrescenta, para o IFSul, o que os câmpus de fato receberam.
-  const comInformados = params.informados === "1";
+  // Por padrão os valores calculados mais, para o IFSul, o que os câmpus de fato receberam; `informados=0` mostra só os calculados.
+  const comInformados = params.informados !== "0";
   const bloco = (["matriculas", "iqe", "ae", "totalSpo"] as const).includes(params.bloco as never)
     ? (params.bloco as "matriculas" | "iqe" | "ae" | "totalSpo")
     : "totalSpo";
@@ -189,7 +189,7 @@ export default async function ComparativoPage({
         {BLOCOS.map((b) => (
           <Link
             key={b.chave}
-            href={`/comparativo?bloco=${b.chave}${comInformados ? "&informados=1" : ""}`}
+            href={`/comparativo?bloco=${b.chave}${comInformados ? "" : "&informados=0"}`}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
               b.chave === bloco
                 ? "bg-if-green text-white"

@@ -3,15 +3,15 @@
 import { useRouter } from "next/navigation";
 
 /**
- * A opção do comparativo: ver as comparações só com os valores CALCULADOS pela matriz (padrão) ou também com os INFORMADOS do IFSul (o que
- * os câmpus de fato receberam). Fica na URL (`informados=1`), então vale ao trocar de bloco e dá para mandar o link.
+ * A opção do comparativo: ver as comparações também com os valores INFORMADOS do IFSul (padrão) ou só com os CALCULADOS pela matriz (o que
+ * os câmpus de fato receberam). Fica na URL (`informados=0` quando desmarcada), então vale ao trocar de bloco e dá para mandar o link.
  */
 export function OpcaoInformados({ marcado, bloco }: { marcado: boolean; bloco: string }) {
   const router = useRouter();
 
   function mudar(ligar: boolean) {
     const q = new URLSearchParams({ bloco });
-    if (ligar) q.set("informados", "1");
+    if (!ligar) q.set("informados", "0");
     // scroll: false mantém a página onde está.
     router.push(`/comparativo?${q.toString()}`, { scroll: false });
   }
