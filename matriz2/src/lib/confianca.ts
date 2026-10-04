@@ -63,11 +63,11 @@ export const CONFIANCA = {
     porque: "A participação de cada instituição soma 100% nos dois anos, como a MDO publica.",
   },
   "ifsul-5a-vs-6a": {
-    nivel: "ATENCAO",
-    titulo: "5ª e 6ª fase do IFSul divergem 0,9% no valor da matrícula",
+    nivel: "CONFERIDO",
+    titulo: "5ª e 6ª fase do IFSul alinhadas aos parâmetros de 03/10",
     porque:
-      "A MDO reexportou a 5ª fase em 03/10: a matrícula total do IFSul agora é igual nas duas (37.079,91) e o MOOC foi corrigido. Falta o valor da matrícula: a 5ª usa ajuste de R$ 90,7 mi e matrícula presencial de R$ 1.239,71; a 6ª do IFSul (a de fórmulas, de 29/09) usa R$ 110,7 mi e R$ 1.228,90, 0,9% menor. Por isso o total de um câmpus ainda muda cerca de 0,9% conforme a tela.",
-    paraResolver: "Pedir ao IFTM a 6ª fase do IFSul (a de fórmulas) regenerada com os parâmetros de 03/10, ou confirmar qual ajuste vale.",
+      "A planilha de fórmulas do IFSul (29/09) foi gerada com ajuste de R$ 110,7 mi e matrícula presencial de R$ 1.228,90. O IFTM publicou os parâmetros vigentes de 03/10 (ajuste de R$ 90.708.325,32 e R$ 1.239,7143839 por aluno presencial) e este sistema passou a usá-los no lugar dos do arquivo. O resultado fecha com a 5ª fase: R$ 39.668.716,09 para o IFSul (diferença de 2 centavos), com no máximo 1 centavo por câmpus. O MOOC está a R$ 99,18, o critério da 5ª fase; a 6ª fase online do IFTM ainda o valora a R$ 991,77 (R$ 1,42 mi a mais, em Gravataí, Passo Fundo, Pelotas e Sapiranga).",
+    paraResolver: "Pedir ao IFTM que confirme o valor do EAD MOOC na 6ª fase online (R$ 99,18 ou R$ 991,77) e que regenere a planilha de fórmulas do IFSul com os parâmetros de 03/10.",
   },
   "rede-sexta-fase": {
     nivel: "ATENCAO",
