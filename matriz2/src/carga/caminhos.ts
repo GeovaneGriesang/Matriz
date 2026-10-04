@@ -348,3 +348,21 @@ export function exigirArquivo(caminho: string, oQueEra: string): string {
   }
   return caminho;
 }
+
+/**
+ * Parâmetros da matriz do ciclo que o IFTM publicou depois de um arquivo já ter sido exportado, num CSV baixado à mão
+ * (`mdo.iftm.edu.br/Manual/parametros_matriz_<ciclo>_MDO_*.csv`; ponto e vírgula, vírgula decimal). O mais novo vence.
+ */
+export function parametrosMdoCsv(ano: number): string | null {
+  const pasta = caixaCerta(RAIZ_DADOS, "mdo.iftm.edu.br", "Manual");
+  if (!fs.existsSync(pasta)) return null;
+  const prefixo = `parametros_matriz_${ano}_mdo`;
+  let melhor: { caminho: string; quando: number } | null = null;
+  for (const nome of fs.readdirSync(pasta)) {
+    if (!nome.toLowerCase().startsWith(prefixo) || !nome.toLowerCase().endsWith(".csv")) continue;
+    const caminho = path.join(pasta, nome);
+    const quando = fs.statSync(caminho).mtimeMs;
+    if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+  }
+  return melhor?.caminho ?? null;
+}

@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import type { CategoriaRepasse, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
-import { candidatosResumoDaRede, exigirArquivo, planilhaParticipacaoInstituicao } from "./caminhos";
+import fs from "node:fs";
+import { candidatosResumoDaRede, exigirArquivo, parametrosMdoCsv, planilhaParticipacaoInstituicao } from "./caminhos";
 import { checksumArquivo, data, numero, numeroOuZero, texto } from "./planilha";
 import {
   icqaDoCiclo,
@@ -189,6 +190,50 @@ async function lerParametros(
 
 const LOTE = 1_000;
 
+/** Lê o CSV de parâmetros do IFTM (constante;parametro;valor;...) para um mapa constante → número. */
+function lerCsvDeParametros(caminho: string): Map<string, number> {
+  const conteudo = fs.readFileSync(caminho, "utf8").replace(/^﻿/, "");
+  const mapa = new Map<string, number>();
+  for (const linha of conteudo.split(/\r?\n/).slice(1)) {
+    const c = linha.split(";");
+    if (c.length < 3) continue;
+    const valor = Number(c[2]!.trim().replace(/\./g, "").replace(",", "."));
+    if (Number.isFinite(valor)) mapa.set(c[0]!.trim(), valor);
+  }
+  return mapa;
+}
+
+/**
+ * Quando o IFTM publica os parâmetros do ciclo num CSV (mais novos que os do arquivo do IFSul), eles valem: ajuste, matrículas totais da rede e
+ * valor por aluno de cada repasse. O MOOC fica a 0,08 do presencial (VL_MOOC), que é o critério da 5ª fase.
+ */
+function aplicarParametrosDoCsv(
+  parametros: ParametrosValorMatricula,
+  valorMatricula: Record<Repasse, number>,
+  csv: Map<string, number>,
+  nomeArquivo: string,
+): { parametros: ParametrosValorMatricula; valorMatricula: Record<Repasse, number>; nota: string } {
+  const pega = (k: string) => {
+    const v = csv.get(k);
+    if (v === undefined) throw new Error(`O CSV de parâmetros ${nomeArquivo} não tem a constante ${k}.`);
+    return v;
+  };
+  const vl: Record<Repasse, number> = { PRESENCIAL: pega("VL_PRESENCIAL"), EAD: pega("VL_EAD"), EAD_MOOC: pega("VL_MOOC"), EAD_FP: pega("VL_FP") };
+  const novos: ParametrosValorMatricula = {
+    ...parametros,
+    ajuste: pega("AJUSTE"),
+    matriculasTotaisRede: { PRESENCIAL: pega("MT_PRESENCIAL"), EAD: pega("MT_EAD"), EAD_MOOC: pega("MT_MOOC"), EAD_FP: pega("MT_FP") },
+    pesos: { PRESENCIAL: 1, EAD: vl.EAD / vl.PRESENCIAL, EAD_MOOC: vl.EAD_MOOC / vl.PRESENCIAL, EAD_FP: vl.EAD_FP / vl.PRESENCIAL },
+  };
+  return {
+    parametros: novos,
+    valorMatricula: vl,
+    nota:
+      `Os parâmetros do arquivo (ajuste de R$ ${parametros.ajuste.toLocaleString("pt-BR")}, matrícula presencial de R$ ${valorMatricula.PRESENCIAL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) ` +
+      `foram trocados pelos do IFTM em ${nomeArquivo} (ajuste de R$ ${novos.ajuste.toLocaleString("pt-BR")}, matrícula presencial de R$ ${vl.PRESENCIAL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, MOOC a R$ ${vl.EAD_MOOC.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`,
+  };
+}
+
 export async function carregarParticipacaoInstituicao(
   ano: number,
   sigla: string,
@@ -206,8 +251,17 @@ export async function carregarParticipacaoInstituicao(
     throw new Error("A planilha não tem as abas CICLOS e Parâmetros esperadas.");
   }
 
-  const { periodo, parametros, notas } = await lerParametros(wsParametros, ano);
-  const valorMatricula = valorPorMatricula(parametros);
+  const lidos = await lerParametros(wsParametros, ano);
+  const { periodo, notas } = lidos;
+  let parametros = lidos.parametros;
+  let valorMatricula = valorPorMatricula(parametros);
+  const csvParametros = parametrosMdoCsv(ano);
+  if (csvParametros) {
+    const r = aplicarParametrosDoCsv(parametros, valorMatricula, lerCsvDeParametros(csvParametros), csvParametros.split(/[\\/]/).pop() ?? csvParametros);
+    parametros = r.parametros;
+    valorMatricula = r.valorMatricula;
+    notas.push(r.nota);
+  }
 
   const siglaEmCaixaAlta = sigla.toUpperCase();
   const instituicao = await prisma.instituicao.findUnique({ where: { sigla: siglaEmCaixaAlta } });
@@ -240,7 +294,7 @@ export async function carregarParticipacaoInstituicao(
         parametros.ajuste.toLocaleString("pt-BR") +
         ", valor da matrícula presencial de R$ " +
         valorMatricula.PRESENCIAL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
-        ") diferem dos da 5ª fase exportada no mesmo dia. " +
+        (csvParametros ? ")" : ") diferem dos da 5ª fase exportada no mesmo dia") + ". " +
         "A coluna Custo Evadido mudou de definição em relação à exportação da rede de 2026-08-31 " +
         "(o aluno retido passou a valer metade), então a perda por evasão não é comparável entre as duas." +
         (notas.length > 0 ? " Ajustes feitos por este sistema ao ler o arquivo: " + notas.join(" ") : ""),
