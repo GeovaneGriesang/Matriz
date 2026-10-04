@@ -30,7 +30,8 @@ export function SeletorInstituicao({
       value={siglaEscolhida}
       onChange={(e) => {
         const url = urlPorSigla[e.target.value];
-        if (url) router.push(url);
+        // scroll: false mantém a página onde está ao trocar de instituição.
+        if (url) router.push(url, { scroll: false });
       }}
       className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
     >
