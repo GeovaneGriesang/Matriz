@@ -17,6 +17,33 @@ export interface CampusLinha {
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const numero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Quanto o câmpus recebeu a mais (ou a menos) do que a matriz gerou: recebido menos gerado, e a proporção sobre o gerado. null sem valor recebido. */
+function variacaoRecebido(valor: number, recebido: number | null): { absoluta: number; percentual: number | null } | null {
+  if (recebido === null) return null;
+  const absoluta = recebido - valor;
+  return { absoluta, percentual: valor !== 0 ? absoluta / valor : null };
+}
+
+/** "+R$ 1.234" com a porcentagem embaixo; verde se recebeu mais, vermelho se recebeu menos (quase zero fica cinza). */
+function CelulaVariacao({ v }: { v: { absoluta: number; percentual: number | null } | null }) {
+  if (v === null) return <span className="text-xs text-neutral-400">-</span>;
+  const classe = Math.abs(v.absoluta) < 1 ? "text-neutral-500" : v.absoluta > 0 ? "text-if-green" : "text-if-red dark:text-red-400";
+  const sinal = v.absoluta >= 0 ? "+" : "-";
+  return (
+    <span className={classe}>
+      {sinal}
+      {reais.format(Math.abs(v.absoluta))}
+      {v.percentual !== null && (
+        <span className="block text-xs">
+          {v.absoluta >= 0 ? "+" : ""}
+          {doisDecimais.format(v.percentual * 100)}%
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * Client Component só para hospedar `colunas` (com funções `valor`/`render`):
@@ -53,6 +80,7 @@ export function ConsultaTabelaCampus({
   /** O valor recebido (informado) existe só para o IFSul; nas outras instituições a coluna não aparece. */
   comRecebido: boolean;
 }) {
+  const totalValorComRecebido = linhas.filter((l) => l.recebidoReal !== null).reduce((a, l) => a + l.valor, 0);
   return (
     <TabelaOrdenavel
       linhas={linhas}
@@ -109,6 +137,13 @@ export function ConsultaTabelaCampus({
                       <span className="text-xs text-neutral-400">não informado</span>
                     ),
                 },
+                {
+                  chave: "variacaoRecebido",
+                  rotulo: "Variação (recebido − gerado)",
+                  alinhamento: "right" as const,
+                  valor: (l: CampusLinha) => variacaoRecebido(l.valor, l.recebidoReal)?.absoluta ?? null,
+                  render: (l: CampusLinha) => <CelulaVariacao v={variacaoRecebido(l.valor, l.recebidoReal)} />,
+                },
               ]
             : []),
           {
@@ -144,6 +179,11 @@ export function ConsultaTabelaCampus({
             {comRecebido && (
               <td className="px-4 py-2.5 text-right tabular-nums">
                 {totalRecebidoReal !== null ? reais.format(totalRecebidoReal) : "não informado"}
+              </td>
+            )}
+            {comRecebido && (
+              <td className="px-4 py-2.5 text-right tabular-nums">
+                <CelulaVariacao v={variacaoRecebido(totalValorComRecebido, totalRecebidoReal)} />
               </td>
             )}
             <td className="px-4 py-2.5 text-right tabular-nums">
