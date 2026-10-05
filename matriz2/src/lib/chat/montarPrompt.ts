@@ -13,6 +13,8 @@ export interface EntradaChat {
   historico: TurnoChat[];
   /** Números e filtros que a tela está mostrando, em texto. */
   contexto?: string;
+  /** Nome do modelo de linguagem em uso, para ele saber dizer que IA é. */
+  modelo?: string;
 }
 
 export interface MensagemOllama {
@@ -44,6 +46,7 @@ export function montarMensagens(entrada: EntradaChat): MensagemOllama[] {
   const tela = itemAtivo(entrada.rota);
   const partes = [INSTRUCOES, `CONHECIMENTO GERAL:\n${CONHECIMENTO_GERAL}`];
   if (tela) partes.push(`TELA ABERTA: "${tela.rotulo}". ${tela.descricao} ${conhecimentoDaTela(entrada.rota)}`.trim());
+  if (entrada.modelo) partes.push(`MODELO DE LINGUAGEM EM USO: ${entrada.modelo}. Se perguntarem que IA você é, diga isto.`);
   if (entrada.contexto?.trim()) partes.push(`DADOS DA TELA (o que a pessoa está vendo agora):\n${cortar(entrada.contexto.trim(), LIMITES_CHAT.contexto)}`);
 
   const historico = entrada.historico.slice(-LIMITES_CHAT.turnosDeHistorico).map<MensagemOllama>((t) => ({

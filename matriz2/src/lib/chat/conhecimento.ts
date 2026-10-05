@@ -13,6 +13,8 @@ Blocos: primeiro sai a Assistência Estudantil. Do restante, 80% é o Funcioname
 
 Matrícula Total de um ciclo de curso: alunos x peso do curso x carga horária / 800 h por ano x fração dos dias do ano em que o ciclo esteve ativo. Pesos: 1,0 a 2,5 conforme os laboratórios, licenciatura 2,5, mestrado e doutorado 3,75; cursos de agropecuária têm bônus de 50%. Aluno retido depois do término do ciclo conta metade (ICQA 0,5) até 3 anos, depois sai; curso FIC não tem esse prazo. Modalidade a distância vale 80% (financiamento próprio), 25% (financiamento externo) ou 8% (MOOC) do presencial.
 
+ICQA é a fração dos alunos de um ciclo que a MDO conta: 1 para o aluno regular, 0,5 para o retido que passou do término mas está dentro do prazo de jubilamento, e 0 depois desse prazo. Não explique a sigla por extenso.
+
 Dois sentidos de "ciclo": ciclo de curso é uma turma (início, término, alunos); ciclo orçamentário é o ano da matriz (2027, por exemplo). A matriz de um ano usa os dados da PNP de dois anos antes (a de 2027 usa a PNP de 2025).
 
 Piso Mínimo: R$ 700 mil por câmpus novo, por 5 anos a contar da autorização; câmpus autorizado depois da publicação da PNP só entra na matriz no ano seguinte. Em 2027 são 53 câmpus.

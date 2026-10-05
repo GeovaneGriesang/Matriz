@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/brand/SiteHeader";
 import { SiteFooter } from "@/components/brand/SiteFooter";
 import { ChatDaTela, ChatProvider } from "@/components/chat/ChatDaTela";
 import { getAdminSession } from "@/server/auth/session";
+import { rotuloDoModelo } from "@/lib/chat/modelo";
 
 const openSans = Open_Sans({
   subsets: ["latin"],
@@ -44,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteHeader />
           <div className="flex-1">{children}</div>
           <SiteFooter />
-          {comChat && <ChatDaTela />}
+          {comChat && <ChatDaTela modelo={rotuloDoModelo()} />}
         </ChatProvider>
       </body>
     </html>

@@ -15,6 +15,11 @@ describe("montarMensagens", () => {
     expect(m.at(-1)).toEqual({ role: "user", content: "Quanto cai em 2031?" });
   });
 
+  it("inclui o nome do modelo quando vem, para o assistente saber dizer que IA é", () => {
+    const m = montarMensagens({ rota: "/", pergunta: "Que IA é você?", historico: [], modelo: "Modelo Teste" });
+    expect(m[0]!.content).toContain("MODELO DE LINGUAGEM EM USO: Modelo Teste");
+  });
+
   it("sem dados da tela, não cria a seção", () => {
     const m = montarMensagens({ rota: "/", pergunta: "Oi", historico: [] });
     expect(m[0]!.content).not.toContain("DADOS DA TELA");

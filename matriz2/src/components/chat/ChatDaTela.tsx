@@ -37,7 +37,7 @@ export function ContextoDaTela({ texto }: { texto: string }) {
 const SUGESTOES = ["O que esta tela mostra?", "Como o valor é calculado?", "O que significa a marca Estimado?"];
 
 /** Botão flutuante e painel de conversa com o assistente. Só é montado para quem tem acesso pleno e quando o chat está ligado. */
-export function ChatDaTela() {
+export function ChatDaTela({ modelo }: { modelo: string }) {
   const pathname = usePathname();
   const contexto = useContext(TextoDoContexto);
   const tela = itemAtivo(pathname);
@@ -115,6 +115,7 @@ export function ChatDaTela() {
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Assistente da matriz</span>
           <span className="text-xs text-neutral-500">{tela ? `Tela: ${tela.rotulo}` : "Pergunte sobre o sistema"}</span>
+          <span className="text-xs text-neutral-500">Modelo: {modelo}</span>
         </div>
         <button
           type="button"

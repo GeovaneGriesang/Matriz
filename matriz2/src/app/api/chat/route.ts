@@ -3,12 +3,13 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
+import { idDoModelo, rotuloDoModelo } from "@/lib/chat/modelo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
-const MODELO = process.env.OLLAMA_MODEL ?? "qwen2.5:3b-instruct";
+const MODELO = idDoModelo();
 /** Uma pessoa pode fazer 12 perguntas a cada 10 minutos. */
 const limite = new LimitePorUsuario(12, 10 * 60_000);
 /** Uma resposta por vez no servidor; se uma travar, a vez expira sozinha em 3 minutos. */
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODELO,
-        messages: montarMensagens(entrada),
+        messages: montarMensagens({ ...entrada, modelo: rotuloDoModelo() }),
         stream: true,
         keep_alive: "5m",
         options: { num_ctx: 4096, num_predict: 450, temperature: 0.2 },
