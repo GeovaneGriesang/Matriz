@@ -371,3 +371,22 @@ export function parametrosMdoCsv(ano: number): string | null {
 export function pastaLoa(...partes: string[]): string {
   return caixaCerta(RAIZ_DADOS, "PLOA e LOA", ...partes);
 }
+
+/**
+ * Lista dos câmpus que a 5ª fase ONLINE do MDO paga o Piso Mínimo num ciclo, em CSV baixado à mão
+ * (`mdo.iftm.edu.br/Manual/piso_minimo_<ciclo>_MDO_5a_fase.csv`, com ou sem prefixo de data; ponto e vírgula; colunas instituicao e campus).
+ * Quando existe, ela manda: a aba EXPANSÃO da planilha traz mais câmpus do que o MDO de fato paga.
+ */
+export function listaPisoMdoCsv(ano: number): string | null {
+  const pasta = caixaCerta(RAIZ_DADOS, "mdo.iftm.edu.br", "Manual");
+  if (!fs.existsSync(pasta)) return null;
+  const alvo = `piso_minimo_${ano}_mdo_5a_fase.csv`;
+  let melhor: { caminho: string; quando: number } | null = null;
+  for (const nome of fs.readdirSync(pasta)) {
+    if (nome.toLowerCase().replace(PREFIXO_DE_DATA, "") !== alvo) continue;
+    const caminho = path.join(pasta, nome);
+    const quando = fs.statSync(caminho).mtimeMs;
+    if (!melhor || quando > melhor.quando) melhor = { caminho, quando };
+  }
+  return melhor?.caminho ?? null;
+}

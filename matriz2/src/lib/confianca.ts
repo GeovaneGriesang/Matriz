@@ -77,18 +77,18 @@ export const CONFIANCA = {
     paraResolver: "Pedir ao IFTM a 6ª fase por ciclo de curso (a de 28 colunas, com Código Ciclo) da rede inteira, com os parâmetros de 03/10.",
   },
   "piso-79-53": {
-    nivel: "ATENCAO",
-    titulo: "Piso Mínimo: 79 câmpus marcados, piso de 53",
+    nivel: "CONFERIDO",
+    titulo: "Piso Mínimo de 2027: 53 câmpus, como na 5ª fase online do MDO",
     porque:
-      "A 5ª fase de 2027 marca 79 câmpus no piso (todos em R$ 700 mil), mas reserva o piso de só 53 (R$ 37,1 mi). Os valores por câmpus passam do bloco reservado.",
-    paraResolver: "Confirmar com o IFTM qual é a lista correta de câmpus no piso.",
+      "A planilha oficial marca 79 câmpus no piso, mas a 5ª fase online do MDO (consultada em 05/10/2026) paga R$ 700 mil a 53, igual aos 53 do parâmetro e à reserva de R$ 37,1 mi. O sistema usa a lista do MDO. Dos 65 câmpus da aba EXPANSÃO, 24 não estão nela (entre eles Triunfo e Rosário do Sul, do IFSul, que nem aparecem na 5ª fase do MDO). No IFSul só São Leopoldo tem piso em 2027, e o total do IFSul fica em R$ 40.368.716,10, igual ao do MDO. Restam 2 unidades repetidas do IFRJ, com o nome digitado errado na planilha, que o sistema ainda conta (55 marcadas, 53 pagas).",
+    paraResolver: "Se o IFTM publicar a portaria dos câmpus novos, conferir se Triunfo e Rosário do Sul entram em 2027.",
   },
   "piso-2026": {
-    nivel: "ATENCAO",
-    titulo: "Piso Mínimo de 2026 aparece zerado",
+    nivel: "CONFERIDO",
+    titulo: "Piso Mínimo de 2026: nenhum câmpus recebeu",
     porque:
-      "Na 5ª fase de 2026 a fórmula do piso não veio calculada, então nenhum câmpus aparece no piso e o valor reservado é zero.",
-    paraResolver: "Reexportar a 5ª fase de 2026 com as fórmulas calculadas.",
+      "A 5ª fase online do MDO de 2026 não paga o piso a nenhum câmpus (os 43 criados em 2026 aparecem sem valor). A aba EXPANSÃO da planilha lista 65 câmpus com R$ 700 mil, mas eles foram criados por portaria no próprio ano e não estavam na matriz. O sistema não conta esse piso em 2026, e o total do IFSul fica em R$ 39.343.070,44, igual ao da 6ª fase.",
+    paraResolver: "Nada pendente. Se o IFTM mostrar valor de piso para algum câmpus de 2026, incluir a lista em Manual.",
   },
   "mooc-2027": {
     nivel: "CONFERIDO",
