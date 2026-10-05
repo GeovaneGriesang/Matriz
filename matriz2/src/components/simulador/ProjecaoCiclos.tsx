@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 import type { Repasse } from "@/lib/mdo/matriculaTotal";
 import { projetarMatriculados, situacaoDoCiclo, somarProjecao, type CicloProjetavel, type Premissas, type ResumoAno } from "@/lib/mdo/projecaoCiclos";
 
@@ -150,8 +151,19 @@ export function ProjecaoCiclos({
   const maxValor = Math.max(...resumo.map((r) => r.valor + r.valorReposicao), 1);
   const cursosVisiveis = verTodosOsCursos ? cursos : cursos.slice(0, 25);
 
+  const textoParaOChat = [
+    `Projeção de ${nomeDoRecorte}, ciclos orçamentários ${anoCiclo} a ${anoCiclo + anos - 1}.`,
+    `Evasão anual: ${decimal.format(evPresencial)}% presencial e ${decimal.format(evEad)}% a distância. Retidos depois do término, de cada 100 alunos: ${retencao.retencao.map((r) => Math.round(r * 100)).join(", ")} em um, dois e três anos.`,
+    ...resumo.map(
+      (r) =>
+        `${r.anoCiclo}: só os matriculados hoje ${reais.format(r.valor)} (${primeiro > 0 ? decimal.format((r.valor / primeiro) * 100) : "-"}% do primeiro ano), turmas novas estimadas ${reais.format(r.valorReposicao)}, ${inteiro.format(Math.round(r.alunosContados))} alunos contados.`,
+    ),
+    `Soma para todos terminarem: ${reais.format(totalHorizonte)}. Último ciclo regular termina em ${ultimoTermino || "nenhum"}. Ciclos atrasados: ${atrasados.length}.`,
+  ].join("\n");
+
   return (
     <div className="flex flex-col gap-6">
+      <ContextoDaTela texto={textoParaOChat} />
       <section className="grid gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
         <h2 className="col-span-full text-sm font-semibold text-neutral-900 dark:text-neutral-100">O que a projeção supõe</h2>
         <label className="flex flex-col gap-1 text-sm">

@@ -73,6 +73,7 @@ model Usuario {
   auditorias         RegistroAuditoria[]
   codigosVerificacao CodigoVerificacao[]
   valoresRecebidos   ValorRecebidoCampus[]
+  conversasChat      ConversaChat[]
 }
 
 /// Tipo de código enviado por e-mail.
@@ -1287,4 +1288,26 @@ model OrcamentoDespesaAcao {
   criadoEm      DateTime    @default(now())
 
   @@unique([instituicaoId, exercicio, acao])
+}
+
+// ---------- Chat de apoio ----------
+
+/// Uma pergunta feita ao assistente do chat e a resposta que ele deu, para a equipe ver o que as pessoas querem saber e onde o modelo erra.
+/// Guarda a tela em que a pergunta foi feita. Só quem tem acesso pleno usa o chat.
+model ConversaChat {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  /// Caminho da tela aberta, sem o prefixo do subcaminho.
+  rota       String   @db.VarChar(120)
+  pergunta   String   @db.Text
+  resposta   String   @db.MediumText
+  modelo     String   @db.VarChar(60)
+  duracaoMs  Int
+  /// "ok", "interrompida" ou "erro".
+  situacao   String   @db.VarChar(20)
+  criadoEm   DateTime @default(now())
+
+  @@index([usuarioId, criadoEm])
+  @@index([criadoEm])
 }
