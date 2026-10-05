@@ -39,8 +39,8 @@ const num = (v: unknown) => Number(v ?? 0);
  * piorar), o teste falha e obriga a revisar esta lista.
  */
 const DIVERGENCIAS_CONHECIDAS = {
-  /** A 5ª fase de 2027 marca 79 câmpus com "S" no piso, mas o cabeçalho reserva o piso de 53 (R$ 37,1 mi). */
-  camposMarcadosNoPiso: { 2027: 79 } as Record<number, number>,
+  /** O MDO online paga o piso a 53 câmpus em 2027, mas a planilha tem 2 unidades repetidas do IFRJ (nome digitado errado), também marcadas com "S". */
+  camposMarcadosNoPiso: { 2027: 55 } as Record<number, number>,
   /** Comparativo (relatório de Indicadores) contra a 5ª fase, em fração: gerados em momentos diferentes. */
   comparativoContra5a: { 2026: 0.06, 2027: 0.01 } as Record<number, number>,
 };

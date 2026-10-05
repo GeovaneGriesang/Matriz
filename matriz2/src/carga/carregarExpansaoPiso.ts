@@ -1,6 +1,7 @@
+import fs from "node:fs";
 import ExcelJS from "exceljs";
 import { prisma } from "@/server/db/prisma";
-import { existe, planilhaPropostaOficial } from "./caminhos";
+import { existe, listaPisoMdoCsv, planilhaPropostaOficial } from "./caminhos";
 
 /**
  * A aba EXPANSÃO da planilha oficial da 5ª fase é uma lista fixa (sem fórmula, sem
@@ -27,7 +28,29 @@ export interface CampusExpansao {
   valor: number;
 }
 
+/** Instituição e câmpus sem acento, caixa alta e só letras e números, para casar nomes escritos de jeitos diferentes. */
+function normalizar(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Lê o CSV da lista do piso (colunas instituicao e campus) como um conjunto de chaves "INSTITUICAO|CAMPUS" normalizadas. */
+export function lerListaPiso(csv: string): Set<string> {
+  const linhas = csv.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
+  const cab =linhas[0]!.split(";").map((c) => c.trim().toLowerCase());
+  const iInst = cab.indexOf("instituicao");
+  const iCampus = cab.indexOf("campus");
+  if (iInst < 0 || iCampus < 0) throw new Error("O CSV da lista do piso precisa das colunas instituicao e campus.");
+  const chaves = new Set<string>();
+  for (const l of linhas.slice(1)) {
+    const c = l.split(";");
+    chaves.add(`${normalizar(c[iInst] ?? "")}|${normalizar(c[iCampus] ?? "")}`);
+  }
+  return chaves;
+}
+
 export interface ResultadoExpansaoPiso {
+  /** Câmpus da lista da aba EXPANSÃO que não recebem o piso neste ciclo (fora da lista do MDO, ou criados no próprio ano do ciclo). */
+  foraDoPiso: number;
   total: number;
   jaExistiam: number;
   criados: number;
@@ -93,7 +116,26 @@ export async function carregarExpansaoPiso(ano: number): Promise<ResultadoExpans
     },
   });
 
+  // Quem recebe o piso, em ordem de confiança: (1) a lista que a 5ª fase ONLINE do MDO mostra (CSV baixado à mão); (2) sem ela, só os câmpus
+  // criados ANTES do ciclo (um câmpus criado por portaria no próprio ano do ciclo ainda não estava na matriz: em 2026 o MDO mostra os 43 criados
+  // em 2026 sem valor nenhum). A aba EXPANSÃO lista mais câmpus do que o MDO paga.
+  const caminhoLista = listaPisoMdoCsv(ano);
+  const lista = caminhoLista ? lerListaPiso(fs.readFileSync(caminhoLista, "utf8")) : null;
+  let foraDoPiso = 0;
+
   for (const linha of linhas) {
+    if (lista) {
+      if (!lista.has(`${normalizar(linha.siglaInstituicao)}|${normalizar(linha.nomeCampus)}`)) {
+        foraDoPiso++;
+        continue;
+      }
+    } else {
+      const criadoEm = anoDaPortaria(linha.portaria);
+      if (criadoEm !== null && criadoEm >= ano) {
+        foraDoPiso++;
+        continue;
+      }
+    }
     const instituicao = await prisma.instituicao.findUnique({ where: { sigla: linha.siglaInstituicao } });
     if (!instituicao) {
       avisos.push(`Instituição "${linha.siglaInstituicao}" não encontrada; câmpus "${linha.nomeCampus}" ignorado.`);
@@ -137,5 +179,12 @@ export async function carregarExpansaoPiso(ano: number): Promise<ResultadoExpans
     });
   }
 
-  return { total: linhas.length, jaExistiam, criados, avisos };
+  if (foraDoPiso > 0) {
+    avisos.push(
+      `${foraDoPiso} câmpus da aba EXPANSÃO ficaram sem o piso: ${
+        lista ? "não constam na lista do piso da 5ª fase online do MDO" : "foram criados no próprio ano do ciclo, quando a matriz já estava montada"
+      }.`,
+    );
+  }
+  return { foraDoPiso, total: linhas.length, jaExistiam, criados, avisos };
 }
