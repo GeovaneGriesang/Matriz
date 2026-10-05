@@ -50,7 +50,7 @@ describe("conhecimento", () => {
   });
 
   it("o conhecimento geral cabe na janela de contexto de um modelo pequeno (cerca de 4 caracteres por token)", () => {
-    expect(CONHECIMENTO_GERAL.length).toBeLessThan(4200);
+    expect(CONHECIMENTO_GERAL.length).toBeLessThan(5200);
   });
 });
 

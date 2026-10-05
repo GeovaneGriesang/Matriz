@@ -7,6 +7,17 @@
  */
 
 export const CONHECIMENTO_GERAL = `
+FATOS PRINCIPAIS (use estes números exatamente como estão):
+- Bloco Funcionamento: 80% do orçamento, depois de tirar a Assistência Estudantil.
+- Bloco Reitoria/Direção-Geral: 10%. Bloco Qualidade e Eficiência: 10%.
+- Assistência Estudantil: sai antes da divisão em blocos (é a ação orçamentária 2994).
+- Piso Mínimo de câmpus novo: R$ 700 mil, por 5 anos a contar da autorização.
+- Educação a distância vale, em relação ao presencial: 80% (financiamento próprio), 25% (financiamento externo) e 8% (MOOC).
+- Pesos de curso: 1,0 a 2,5 (laboratórios), licenciatura 2,5, mestrado e doutorado 3,75; agropecuária tem bônus de 50%.
+- ICQA: 1 para aluno regular, 0,5 para retido até 3 anos depois do término, 0 depois disso.
+- A matriz de um ano usa a PNP de dois anos antes (a de 2027 usa a de 2025).
+- Ações do orçamento: 20RL funcionamento, 2994 assistência estudantil, 20RG reestruturação.
+
 O que é: a Matriz de Distribuição Orçamentária (MDO) reparte o orçamento da Rede Federal (IFs, Cefets e Colégio Pedro II) entre as instituições e os câmpus. Está na Portaria MEC 243/2026, que revogou a 646/2022. Quem calcula e homologa é a MDO, coordenada pelo IFTM com a Comissão Paritária. Este sistema NÃO recalcula a matriz: importa o resultado oficial, deixa conferir, comparar e simular.
 
 Blocos: primeiro sai a Assistência Estudantil. Do restante, 80% é o Funcionamento (por câmpus, pela Matrícula Total), 10% é a Reitoria/Direção-Geral (mesma base, por instituição) e 10% é Qualidade e Eficiência (indicadores IEA, RAPP e IAML, por instituição).
