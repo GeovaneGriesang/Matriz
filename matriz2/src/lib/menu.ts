@@ -63,6 +63,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         descricao: "Quanto um curso novo rende ano a ano no câmpus, do primeiro ano de entrada até chegar ao regime.",
       },
       {
+        href: "/simulador/projecao",
+        rotulo: "Cinco anos à frente",
+        descricao: "O quanto os ciclos em andamento ainda rendem nos próximos anos, até todos os alunos terminarem, com a evasão média do instituto.",
+      },
+      {
         href: "/simulador/curso",
         rotulo: "Curso de 3 ou 4 anos",
         descricao: "Quanto um curso rende em 3 anos contra 4, ano a ano, no câmpus escolhido.",

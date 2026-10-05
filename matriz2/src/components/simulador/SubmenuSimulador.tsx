@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ABAS = [
   { href: "/simulador/alternativas", rotulo: "O que rende mais?" },
   { href: "/simulador/novo-curso", rotulo: "Curso novo, ano a ano" },
+  { href: "/simulador/projecao", rotulo: "Cinco anos à frente" },
   { href: "/simulador/curso", rotulo: "Curso: 3 ou 4 anos" },
   { href: "/simulador/oportunidades", rotulo: "Onde há ganho" },
   { href: "/simulador/distribuicao", rotulo: "Distribuição entre câmpus" },
