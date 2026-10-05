@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import ExcelJS from "exceljs";
 import { prisma } from "@/server/db/prisma";
 import { existe, listaPisoMdoCsv, planilhaPropostaOficial } from "./caminhos";
@@ -142,7 +143,7 @@ export async function carregarExpansaoPiso(ano: number): Promise<ResultadoExpans
       continue;
     }
 
-    const nomeNormalizado = linha.nomeCampus.toUpperCase();
+    const nomeNormalizado = nomeCanonicoDaUnidade(linha.nomeCampus).toUpperCase();
     const unidades = await prisma.unidade.findMany({ where: { instituicaoId: instituicao.id } });
     let unidade = unidades.find((u) => u.nome.toUpperCase() === nomeNormalizado);
 

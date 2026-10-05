@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { conferenciaExtracao, existe } from "./caminhos";
@@ -114,7 +115,7 @@ export async function carregarConferencia(ano: number, sigla: string): Promise<R
     // aviso de unidade ausente.
     const rotulo = campus?.toUpperCase();
     if (!campus || rotulo === "CAMPUS" || rotulo === "TOTAL") return;
-    const unidadeId = idPorNome.get(campus.toUpperCase());
+    const unidadeId = idPorNome.get(nomeCanonicoDaUnidade(campus).toUpperCase());
     if (unidadeId === undefined) {
       naoEncontrados.push(campus);
       return;
