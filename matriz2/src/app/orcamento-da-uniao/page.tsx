@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 
 export const dynamic = "force-dynamic";
 
@@ -188,8 +189,24 @@ export default async function OrcamentoDaUniaoPage() {
   const ehVenancio = (nome: string) => nome.includes("VENÂNCIO AIRES");
   const fonteExecucao = execucoes[0]?.fonte.replace(/, [0-9]{6}_Despesas\.csv$/, ", arquivos mensais AAAAMM_Despesas.csv") ?? "";
 
+  const textoParaOChat = [
+    "Orçamento da União do IFSul.",
+    ...COLUNAS_TOTAIS.map((c) => {
+      const t = totalPor.get(`${c.documento}:${c.exercicio}`);
+      return t ? `${c.rotulo}: ${reais.format(Number(t.valor))}.` : "";
+    }).filter(Boolean),
+    ...orcamentoOrdenado
+      .filter((o) => ACOES_DA_MATRIZ.includes(o.acao))
+      .map((o) => `Execução ${ANO_EXECUCAO}, ação ${o.acao}: inicial ${reais.format(Number(o.inicial))}, atualizado ${reais.format(Number(o.atualizado))}, empenhado ${reais.format(Number(o.empenhado))}, realizado ${reais.format(Number(o.realizado))}.`),
+    ...campi
+      .filter((l) => ehVenancio(l.nome))
+      .map((l) => `${l.nome}: matriz de funcionamento ${reais.format(l.funcionamento)}, 20RL empenhado ${reais.format(l.emp20RL)} e pago ${reais.format(l.pago20RL)}; assistência na matriz ${reais.format(l.assistencia)}, 2994 empenhado ${reais.format(l.emp2994)} e pago ${reais.format(l.pago2994)}.`),
+    `Soma dos câmpus: matriz de funcionamento ${reais.format(somaCampi.funcionamento)}, 20RL pago ${reais.format(somaCampi.pago20RL)}.`,
+  ].join("\n");
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-12 lg:px-12`}>
+      <ContextoDaTela texto={textoParaOChat} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Orçamento da União do IFSul (LOA, PLOA e emendas)</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
