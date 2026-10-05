@@ -251,6 +251,8 @@ model Instituicao {
   orcamentoLoaLinhas       OrcamentoLoaLinha[]
   orcamentoLoaTotais       OrcamentoLoaTotal[]
   emendasParlamentares     EmendaParlamentar[]
+  execucoesDespesaUg       ExecucaoDespesaUg[]
+  orcamentosDespesaAcao    OrcamentoDespesaAcao[]
 
   @@index([uf])
 }
@@ -279,6 +281,7 @@ model Unidade {
   conferenciasCiclo         ConferenciaCiclo[]
   pnpEstruturas             PnpEstrutura[]
   valoresRecebidos          ValorRecebidoCampus[]
+  execucoesDespesaUg        ExecucaoDespesaUg[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -1238,4 +1241,50 @@ model EmendaParlamentar {
   criadoEm        DateTime    @default(now())
 
   @@index([instituicaoId, exercicio])
+}
+
+// ---------- Execução da despesa (Portal da Transparência) ----------
+
+/// Execução da despesa de uma unidade gestora (UG) numa ação, num mês de lançamento, do arquivo mensal "Despesas" do Portal da Transparência
+/// (CGU). Cada UG é um câmpus ou a Reitoria (unidadeId); o valor é do mês, não acumulado. Só guarda as ações da matriz (20RL, 20RG, 2994)
+/// e soma os planos orçamentários e naturezas de despesa de cada uma. Restos a Pagar ficam de fora: são de exercícios anteriores.
+model ExecucaoDespesaUg {
+  id            Int         @id @default(autoincrement())
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  /// Nulo se a UG ainda não casa com nenhuma unidade cadastrada.
+  unidadeId     Int?
+  unidade       Unidade?    @relation(fields: [unidadeId], references: [id])
+  ugCodigo      String      @db.VarChar(10)
+  ugNome        String      @db.VarChar(120)
+  ano           Int
+  mes           Int
+  acao          String      @db.VarChar(10)
+  empenhado     Decimal     @db.Decimal(18, 2)
+  liquidado     Decimal     @db.Decimal(18, 2)
+  pago          Decimal     @db.Decimal(18, 2)
+  fonte         String      @db.Text
+  criadoEm      DateTime    @default(now())
+
+  @@unique([instituicaoId, ugCodigo, ano, mes, acao])
+  @@index([instituicaoId, ano, acao])
+}
+
+/// Orçamento de uma instituição por ação num exercício, do arquivo "Orçamento da despesa" do Portal da Transparência: inicial (LOA),
+/// atualizado (com créditos), empenhado e realizado (liquidado), posição de fim de setembro. Só até a instituição, sem UG.
+model OrcamentoDespesaAcao {
+  id            Int         @id @default(autoincrement())
+  instituicaoId Int
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  exercicio     Int
+  acao          String      @db.VarChar(10)
+  acaoDescricao String      @db.VarChar(255)
+  inicial       Decimal     @db.Decimal(18, 2)
+  atualizado    Decimal     @db.Decimal(18, 2)
+  empenhado     Decimal     @db.Decimal(18, 2)
+  realizado     Decimal     @db.Decimal(18, 2)
+  fonte         String      @db.Text
+  criadoEm      DateTime    @default(now())
+
+  @@unique([instituicaoId, exercicio, acao])
 }

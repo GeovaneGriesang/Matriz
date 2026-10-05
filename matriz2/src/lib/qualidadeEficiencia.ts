@@ -16,7 +16,7 @@ export type FaixaIea = "MUITO_BAIXO" | "BAIXO" | "MEDIO" | "ALTO" | "MUITO_ALTO"
 export type FaixaRap = "MUITO_BAIXA" | "BAIXA" | "MEDIA" | "MUITO_ALTA";
 
 /**
- * Limiares de IEA relativos à média de rede do próprio ciclo (Portaria MEC/SETEC 646/2022:
+ * Limiares de IEA relativos à média de rede do próprio ciclo (Portaria MEC 243/2026, Tabela 1, que manteve as faixas da 646/2022:
  * 0,90× / 1,00× / 1,10× / 1,20× da média). Cada ciclo "congela" a tabela com a média
  * daquele ano-base; por isso não existe uma tabela única, e um ciclo sem tabela cadastrada
  * aqui não pode ser conferido (ver `faixaIea`).

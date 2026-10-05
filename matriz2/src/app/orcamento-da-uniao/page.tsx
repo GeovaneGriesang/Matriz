@@ -129,6 +129,65 @@ export default async function OrcamentoDaUniaoPage() {
 
   const fonteDe = (documento: string, exercicio: number) => totalPor.get(`${documento}:${exercicio}`)?.fonte ?? "";
 
+  // Execução de 2026 (Portal da Transparência): orçamento por ação e execução por UG, para a comparação com o valor da matriz de cada câmpus.
+  const ANO_EXECUCAO = 2026;
+  const [orcamentoDespesa, execucoes, distribuicoes2026, unidades] = instituicao
+    ? await Promise.all([
+        prisma.orcamentoDespesaAcao.findMany({ where: { instituicaoId: instituicao.id, exercicio: ANO_EXECUCAO } }),
+        prisma.execucaoDespesaUg.findMany({ where: { instituicaoId: instituicao.id, ano: ANO_EXECUCAO } }),
+        prisma.distribuicaoCampus.findMany({ where: { ano: ANO_EXECUCAO, unidade: { instituicaoId: instituicao.id } } }),
+        prisma.unidade.findMany({ where: { instituicaoId: instituicao.id } }),
+      ])
+    : [[], [], [], []];
+  const mesesCarregados = [...new Set(execucoes.map((e) => e.mes))].sort((a, b) => a - b);
+  const ultimoMes = mesesCarregados[mesesCarregados.length - 1];
+  const NOMES_MES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  const orcamentoOrdenado = [...orcamentoDespesa].sort((a, b) => {
+    const ia = ACOES_DA_MATRIZ.indexOf(a.acao);
+    const ib = ACOES_DA_MATRIZ.indexOf(b.acao);
+    if (ia >= 0 || ib >= 0) return (ia >= 0 ? ia : 99) - (ib >= 0 ? ib : 99);
+    return Number(b.atualizado) - Number(a.atualizado);
+  });
+
+  // Por câmpus: o que a matriz atribuiu em 2026 (Funcionamento e Assistência) contra o que a UG do câmpus empenhou e pagou nas ações 20RL e 2994.
+  const nomeDaUnidade = new Map(unidades.map((u) => [u.id, u.nome]));
+  const matrizPorUnidade = new Map(
+    distribuicoes2026.map((d) => [d.unidadeId, { funcionamento: Number(d.vlMatrFinal ?? 0), assistencia: Number(d.aePresencial ?? 0) + Number(d.aeEad ?? 0) + Number(d.aeRip ?? 0) }]),
+  );
+  type LinhaUg = { chave: string; nome: string; funcionamento: number; assistencia: number; emp20RL: number; pago20RL: number; emp2994: number; pago2994: number };
+  const porUg = new Map<string, LinhaUg>();
+  for (const e of execucoes) {
+    const m = e.unidadeId !== null ? matrizPorUnidade.get(e.unidadeId) : undefined;
+    const l = porUg.get(e.ugCodigo) ?? {
+      chave: e.ugCodigo,
+      nome: e.unidadeId !== null ? (nomeDaUnidade.get(e.unidadeId) ?? e.ugNome) : e.ugNome,
+      funcionamento: m?.funcionamento ?? 0,
+      assistencia: m?.assistencia ?? 0,
+      emp20RL: 0,
+      pago20RL: 0,
+      emp2994: 0,
+      pago2994: 0,
+    };
+    if (e.acao === "20RL") {
+      l.emp20RL += Number(e.empenhado);
+      l.pago20RL += Number(e.pago);
+    } else if (e.acao === "2994") {
+      l.emp2994 += Number(e.empenhado);
+      l.pago2994 += Number(e.pago);
+    }
+    porUg.set(e.ugCodigo, l);
+  }
+  const linhasCampus = [...porUg.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const reitoria = linhasCampus.filter((l) => l.nome === "REITORIA");
+  const campi = linhasCampus.filter((l) => l.nome !== "REITORIA");
+  const somaCampi = campi.reduce(
+    (s, l) => ({ funcionamento: s.funcionamento + l.funcionamento, assistencia: s.assistencia + l.assistencia, emp20RL: s.emp20RL + l.emp20RL, pago20RL: s.pago20RL + l.pago20RL, emp2994: s.emp2994 + l.emp2994, pago2994: s.pago2994 + l.pago2994 }),
+    { funcionamento: 0, assistencia: 0, emp20RL: 0, pago20RL: 0, emp2994: 0, pago2994: 0 },
+  );
+  const porcento = (parte: number, todo: number) => (todo > 0 ? `${((parte / todo) * 100).toFixed(0)}%` : "-");
+  const ehVenancio = (nome: string) => nome.includes("VENÂNCIO AIRES");
+  const fonteExecucao = execucoes[0]?.fonte.replace(/, [0-9]{6}_Despesas\.csv$/, ", arquivos mensais AAAAMM_Despesas.csv") ?? "";
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
@@ -250,6 +309,139 @@ export default async function OrcamentoDaUniaoPage() {
           estudante) estava incorporada à 2994; a LOA 2026 e o PLOA 2027 as trazem separadas, então compare 21IV e 2994 juntas.
         </p>
       </section>
+
+      {orcamentoDespesa.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Execução {ANO_EXECUCAO} por ação</h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Do orçamento aprovado ao dinheiro gasto, ação por ação, com a posição do Portal da Transparência
+            {ultimoMes ? ` até o fim de ${NOMES_MES[ultimoMes - 1]} de ${ANO_EXECUCAO}` : ""}. "Inicial" é a LOA; "atualizado" é a LOA mais os créditos abertos durante o ano;
+            "empenhado" é o que o IFSul já comprometeu; "realizado" é o que o Portal chama de orçamento realizado, que coincide com o valor pago.
+          </p>
+          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+                <tr>
+                  <th className="px-3 py-2">Ação</th>
+                  <th className="px-3 py-2 text-right">Inicial</th>
+                  <th className="px-3 py-2 text-right">Atualizado</th>
+                  <th className="px-3 py-2 text-right">Empenhado</th>
+                  <th className="px-3 py-2 text-right">Realizado</th>
+                  <th className="px-3 py-2 text-right">Realizado sobre atualizado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {orcamentoOrdenado.map((o) => (
+                  <tr key={o.acao} className={ACOES_DA_MATRIZ.includes(o.acao) ? "bg-if-green/5" : ""} title={o.fonte}>
+                    <td className="px-3 py-2">
+                      <span className="font-mono text-xs text-neutral-500">{o.acao}</span> {o.acaoDescricao}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(Number(o.inicial))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(Number(o.atualizado))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(Number(o.empenhado))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(Number(o.realizado))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{porcento(Number(o.realizado), Number(o.atualizado))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Fonte: {orcamentoDespesa[0]!.fonte}. As linhas verdes são as ações da matriz. O empenhado desta tabela vem do orçamento por unidade orçamentária; a tabela por
+            câmpus abaixo vem da execução por unidade gestora. Os dois recortes não são idênticos, e na ação 20RL o total por UG fica cerca de 2% acima.
+          </p>
+        </section>
+      )}
+
+      {campi.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus: o valor da matriz e o que cada unidade gastou em {ANO_EXECUCAO}</h2>
+          <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+            <strong>Não são grandezas iguais.</strong> O valor da matriz é uma referência de distribuição: diz quanto cabe a cada câmpus pela regra, não é um
+            limite de gasto nem um repasse carimbado. A execução é o que a unidade gestora (UG) do câmpus de fato empenhou e pagou nas ações 20RL (funcionamento) e
+            2994 (assistência), que também recebem emenda, crédito suplementar e descentralização, e cujo pagamento acompanha o calendário do ano, não o da matriz.
+            Use a comparação para ver o ritmo e a ordem de grandeza, não para dizer que um câmpus "gastou a mais" ou "a menos".
+          </p>
+          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+                <tr>
+                  <th className="px-3 py-2" rowSpan={2}>
+                    Câmpus (UG)
+                  </th>
+                  <th className="border-l border-neutral-200 px-3 py-2 text-center dark:border-neutral-800" colSpan={4}>
+                    Funcionamento (ação 20RL)
+                  </th>
+                  <th className="border-l border-neutral-200 px-3 py-2 text-center dark:border-neutral-800" colSpan={4}>
+                    Assistência estudantil (ação 2994)
+                  </th>
+                </tr>
+                <tr>
+                  <th className="border-l border-neutral-200 px-3 py-2 text-right dark:border-neutral-800">Matriz</th>
+                  <th className="px-3 py-2 text-right">Empenhado</th>
+                  <th className="px-3 py-2 text-right">Pago</th>
+                  <th className="px-3 py-2 text-right">Pago / matriz</th>
+                  <th className="border-l border-neutral-200 px-3 py-2 text-right dark:border-neutral-800">Matriz</th>
+                  <th className="px-3 py-2 text-right">Empenhado</th>
+                  <th className="px-3 py-2 text-right">Pago</th>
+                  <th className="px-3 py-2 text-right">Pago / matriz</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {campi.map((l) => (
+                  <tr key={l.chave} className={ehVenancio(l.nome) ? "bg-if-green/10 font-medium" : ""}>
+                    <td className="px-3 py-2">
+                      {l.nome}
+                      {ehVenancio(l.nome) ? <span className="ml-2 rounded bg-if-green px-1.5 py-0.5 text-xs font-normal text-white">destaque</span> : null}
+                      <span className="block font-mono text-xs font-normal text-neutral-500">UG {l.chave}</span>
+                    </td>
+                    <td className="border-l border-neutral-200 px-3 py-2 text-right tabular-nums dark:border-neutral-800">{l.funcionamento > 0 ? reais.format(l.funcionamento) : "-"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.emp20RL)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.pago20RL)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{porcento(l.pago20RL, l.funcionamento)}</td>
+                    <td className="border-l border-neutral-200 px-3 py-2 text-right tabular-nums dark:border-neutral-800">{l.assistencia > 0 ? reais.format(l.assistencia) : "-"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.emp2994)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.pago2994)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{porcento(l.pago2994, l.assistencia)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-neutral-50 font-semibold dark:bg-neutral-900">
+                  <td className="px-3 py-2">Soma dos câmpus</td>
+                  <td className="border-l border-neutral-200 px-3 py-2 text-right tabular-nums dark:border-neutral-800">{reais.format(somaCampi.funcionamento)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{reais.format(somaCampi.emp20RL)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{reais.format(somaCampi.pago20RL)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{porcento(somaCampi.pago20RL, somaCampi.funcionamento)}</td>
+                  <td className="border-l border-neutral-200 px-3 py-2 text-right tabular-nums dark:border-neutral-800">{reais.format(somaCampi.assistencia)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{reais.format(somaCampi.emp2994)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{reais.format(somaCampi.pago2994)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{porcento(somaCampi.pago2994, somaCampi.assistencia)}</td>
+                </tr>
+                {reitoria.map((l) => (
+                  <tr key={l.chave}>
+                    <td className="px-3 py-2">
+                      Reitoria
+                      <span className="block font-mono text-xs text-neutral-500">UG {l.chave}</span>
+                    </td>
+                    <td className="border-l border-neutral-200 px-3 py-2 text-right text-xs text-neutral-500 dark:border-neutral-800">sem valor por câmpus</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.emp20RL)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.pago20RL)}</td>
+                    <td className="px-3 py-2 text-right text-neutral-400">-</td>
+                    <td className="border-l border-neutral-200 px-3 py-2 text-right text-xs text-neutral-500 dark:border-neutral-800">sem valor por câmpus</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.emp2994)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{reais.format(l.pago2994)}</td>
+                    <td className="px-3 py-2 text-right text-neutral-400">-</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Fontes: valor da matriz em MDO, 5ª fase, ciclo {ANO_EXECUCAO} (Funcionamento final do câmpus, já com o Piso Mínimo; Assistência = presencial, EAD e
+            Regime de Internato Pleno); execução em {fonteExecucao}, UG a UG, somando os planos orçamentários, sem restos a pagar. A Reitoria concentra despesa
+            central (contratos e serviços de toda a instituição) e o bloco Reitorias da matriz, que não é aberto por câmpus; por isso fica fora da soma.
+          </p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Emendas parlamentares individuais por ação e exercício</h2>
