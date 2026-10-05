@@ -8,6 +8,8 @@ import { itemAtivo } from "@/lib/menu";
 interface Turno {
   papel: "usuario" | "assistente";
   texto: string;
+  /** Resposta pronta (escrita pela equipe), e não gerada pelo modelo de linguagem. */
+  pronta?: boolean;
 }
 
 const ContextoDoChat = createContext<{ definir: (texto: string) => void } | null>(null);
@@ -67,7 +69,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
       const r = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rota: pathname, pergunta: t, historico, contexto }),
+        body: JSON.stringify({ rota: pathname, pergunta: t, historico: historico.map(({ papel, texto }) => ({ papel, texto })), contexto }),
         signal: controle.signal,
       });
       if (!r.ok || !r.body) {
@@ -76,6 +78,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
         setTurnos((atual) => atual.slice(0, -1));
         return;
       }
+      const pronta = r.headers.get("X-Resposta-Pronta") === "1";
       const leitor = r.body.getReader();
       const decoder = new TextDecoder();
       let acumulado = "";
@@ -83,7 +86,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
         const { done, value } = await leitor.read();
         if (done) break;
         acumulado += decoder.decode(value, { stream: true });
-        setTurnos((atual) => [...atual.slice(0, -1), { papel: "assistente", texto: acumulado }]);
+        setTurnos((atual) => [...atual.slice(0, -1), { papel: "assistente", texto: acumulado, pronta }]);
       }
       if (!acumulado.trim()) setAviso("O assistente não devolveu resposta. Tente reformular a pergunta.");
     } catch {
@@ -159,6 +162,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
               }`}
             >
               {t.texto || (carregando && i === turnos.length - 1 ? "Pensando..." : "")}
+              {t.pronta && <span className="mt-1 block text-xs opacity-70">Resposta pronta, escrita pela equipe (não é gerada pela IA).</span>}
             </div>
           ))}
         </div>

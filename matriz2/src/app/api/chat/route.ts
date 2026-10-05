@@ -4,6 +4,7 @@ import { getAdminSession } from "@/server/auth/session";
 import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
 import { idDoModelo, rotuloDoModelo } from "@/lib/chat/modelo";
+import { respostaPronta } from "@/lib/chat/respostasProntas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,15 @@ export async function POST(req: Request) {
     entrada = null;
   }
   if (!entrada) return erro("Pergunta inválida.", 400);
+
+  // Pergunta comum: resposta pronta, na hora, sem passar pelo modelo (nem pela fila e pelo limite, que protegem a CPU do servidor).
+  const pronta = respostaPronta(entrada.pergunta, entrada.rota, rotuloDoModelo());
+  if (pronta) {
+    await prisma.conversaChat
+      .create({ data: { usuarioId: usuario.id, rota: entrada.rota, pergunta: entrada.pergunta, resposta: pronta, modelo: "respostas-prontas", duracaoMs: 0, situacao: "pronta" } })
+      .catch((e) => console.error("Chat: não consegui registrar a conversa.", e));
+    return new Response(pronta, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Resposta-Pronta": "1" } });
+  }
 
   if (!limite.tentar(usuario.id)) {
     return erro(`Você já fez muitas perguntas seguidas. Tente de novo em ${Math.ceil(limite.segundosParaLiberar(usuario.id) / 60)} minuto(s).`, 429);
