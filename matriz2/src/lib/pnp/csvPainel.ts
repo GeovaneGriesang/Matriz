@@ -139,13 +139,23 @@ export function deveIgnorar(c: ClasseArquivo): boolean {
   return c.dimensao === "" || ABERTURAS_REPETIDAS_NA_SERIE.has(c.dimensao);
 }
 
+/**
+ * Câmpus que mudaram de nome: a MDO ainda escreve o nome antigo e a PNP já escreve o novo. A chave é o nome normalizado da MDO, o valor é o
+ * normalizado da PNP. O Câmpus Avançado Novo Hamburgo (IFSul) deixou de ser avançado (confirmado pelo usuário em 2026-10-05; as matrículas
+ * batem: 21.795 na 2ª fase de 2026 e 21.796 na PNP de 2024).
+ */
+const NOME_ATUAL: Record<string, string> = {
+  CAMPUSAVANCADONOVOHAMBURGO: "CAMPUSNOVOHAMBURGO",
+};
+
 /** Nome para casar estruturas da PNP com as do sistema: sem acento, caixa alta, só letras e números. */
 export function normalizarNome(nome: string): string {
-  return nome
+  const chave = nome
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
+  return NOME_ATUAL[chave] ?? chave;
 }
 
 export type NivelPnpTexto = "REDE" | "REGIAO" | "ESTADO" | "INSTITUICAO" | "CAMPUS";

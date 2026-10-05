@@ -71,6 +71,8 @@ describe("leitura dos CSVs do painel da PNP", () => {
   it("normaliza nomes para casar estruturas", () => {
     expect(normalizarNome("Campus Venâncio Aires")).toBe(normalizarNome("CAMPUS VENÂNCIO AIRES"));
     expect(normalizarNome("IF FARROUPILHA")).toBe(normalizarNome("IFFARROUPILHA"));
+    // o Câmpus Avançado Novo Hamburgo deixou de ser avançado: a MDO ainda usa o nome antigo e a PNP o novo
+    expect(normalizarNome("CAMPUS AVANÇADO NOVO HAMBURGO")).toBe(normalizarNome("Campus Novo Hamburgo"));
     expect(nivelDoTexto("Instituição")).toBe("INSTITUICAO");
     expect(nivelDoTexto("Campus")).toBe("CAMPUS");
     expect(nivelDoTexto("Outro")).toBeNull();
