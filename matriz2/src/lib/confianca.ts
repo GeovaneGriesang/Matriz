@@ -149,6 +149,13 @@ export const CONFIANCA = {
     porque:
       "A regra do repasse é a oficial, mas o cenário é hipotético: turma entrando em março, vagas e evasão constantes por ano e valor da matrícula fixo (ou diluído de forma aproximada). Mede só o repasse: custo de professor, sala e permanência não entra.",
   },
+  "projecao-ciclos": {
+    nivel: "ESTIMADO",
+    titulo: "Projeção dos ciclos em andamento",
+    porque:
+      "A regra de contar o ciclo é a oficial da MDO (a Matrícula Total de cada ciclo bate com o Excel), mas o futuro é hipotético: a evasão é a média recente da PNP da instituição, o valor da matrícula fica fixo no de hoje (não sabe do orçamento da rede nem das matrículas dos outros institutos) e a reposição das turmas é uma estimativa do tamanho de cada turma nova. Mede só o repasse de funcionamento.",
+    paraResolver: "Comparar com a evasão real por curso do câmpus e com o orçamento previsto da rede quando houver.",
+  },
   "distribuicao-indices": {
     nivel: "ESTIMADO",
     titulo: "Distribuição entre câmpus, em transição",
