@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import type { CategoriaRepasse, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { candidatosParticipacao, exigirArquivo, planilhaParticipacao } from "./caminhos";
@@ -142,8 +143,8 @@ export async function carregarParticipacao(ano: number): Promise<ResultadoCarga>
     let unidadeId = unidadePorChave.get(chave);
     if (unidadeId === undefined) {
       const un = await prisma.unidade.upsert({
-        where: { instituicaoId_nome: { instituicaoId, nome: campus } },
-        create: { instituicaoId, nome: campus, tipo: "CAMPUS" },
+        where: { instituicaoId_nome: { instituicaoId, nome: nomeCanonicoDaUnidade(campus) } },
+        create: { instituicaoId, nome: nomeCanonicoDaUnidade(campus), tipo: "CAMPUS" },
         update: {},
       });
       unidadeId = un.id;

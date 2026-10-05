@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import type { CategoriaRepasse, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import fs from "node:fs";
@@ -365,7 +366,7 @@ export async function carregarParticipacaoInstituicao(
       ignoradas++;
       return;
     }
-    const unidadeId = unidadePorNome.get(campus.toUpperCase());
+    const unidadeId = unidadePorNome.get(nomeCanonicoDaUnidade(campus).toUpperCase());
     if (unidadeId === undefined) {
       naoEncontrados.add(campus);
       ignoradas++;

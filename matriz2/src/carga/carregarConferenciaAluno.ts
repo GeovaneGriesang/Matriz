@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { conferenciaExtracaoAluno, existe } from "./caminhos";
@@ -134,7 +135,7 @@ export async function carregarConferenciaAluno(ano: number, sigla: string): Prom
       const codigoCiclo = texto(v[COL.codigoCiclo]);
       if (!campus || !matriculaAluno || !codigoCiclo) continue;
 
-      const unidadeId = idPorNome.get(campus.toUpperCase());
+      const unidadeId = idPorNome.get(nomeCanonicoDaUnidade(campus).toUpperCase());
       if (unidadeId === undefined) {
         naoEncontrados.add(campus);
         continue;

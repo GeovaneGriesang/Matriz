@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { nomeCanonicoDaUnidade } from "@/lib/nomesDeUnidade";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { exigirArquivo, planilhaProposta } from "./caminhos";
@@ -267,10 +268,10 @@ export async function carregarProposta(ano: number): Promise<ResultadoProposta> 
     if (unidadeId === undefined) {
       const anoCriacao = numero(linha.getCell(CP.anoCriacao).value);
       const un = await prisma.unidade.upsert({
-        where: { instituicaoId_nome: { instituicaoId, nome } },
+        where: { instituicaoId_nome: { instituicaoId, nome: nomeCanonicoDaUnidade(nome) } },
         create: {
           instituicaoId,
-          nome,
+          nome: nomeCanonicoDaUnidade(nome),
           tipo: tipo === "R" ? "REITORIA" : "CAMPUS",
           anoCriacao: anoCriacao && anoCriacao > 1900 ? Math.round(anoCriacao) : null,
         },
