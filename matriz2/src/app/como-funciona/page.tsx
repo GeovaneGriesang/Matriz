@@ -170,8 +170,8 @@ export default async function ComoFuncionaPage() {
 
         <p>
           <strong>Etapa 2, Ponderação:</strong> a matrícula equalizada de cada curso (resultado da Etapa 1) é
-          multiplicada por um peso que depende do tipo de curso, conforme o Guia de Orçamento RFEPCT (Portaria
-          646/2022). Cursos técnicos e a graduação tecnológica/bacharelado seguem um "critério de referência": o
+          multiplicada por um peso que depende do tipo de curso, conforme o anexo da Portaria MEC 243/2026
+          (que revogou a 646/2022 e manteve esses critérios). Cursos técnicos e a graduação tecnológica/bacharelado seguem um "critério de referência": o
           peso vem da quantidade de laboratórios previstos no Catálogo Nacional de Cursos Técnicos (CNCT,
           edição 2014).
         </p>
@@ -310,6 +310,37 @@ export default async function ComoFuncionaPage() {
           de dividir o restante em Funcionamento/Reitorias/Qualidade e Eficiência, não depois. Some as duas
           etapas e o total bate: valor de referência = Assistência + ajuste + (Funcionamento + Reitorias +
           Qualidade e Eficiência).
+        </p>
+      </Bloco>
+
+      <Bloco
+        id="execucao"
+        titulo="Do valor da matriz ao dinheiro gasto"
+        fatia="Depois da matriz: orçamento aprovado, empenho e pagamento"
+        resumo="Em Orçamento da União, a execução de cada ação e de cada câmpus no ano, lida do Portal da Transparência."
+      >
+        <p>
+          A matriz diz quanto cabe a cada câmpus. O dinheiro, porém, só vira gasto em três passos: o <strong>empenho</strong> (a unidade
+          reserva o valor para uma despesa), a <strong>liquidação</strong> (o serviço ou bem foi entregue e conferido) e o{" "}
+          <strong>pagamento</strong>. O Portal da Transparência da CGU publica esses três valores todo mês, por unidade gestora (UG) e por
+          ação orçamentária. Cada câmpus e a Reitoria têm a sua UG.
+        </p>
+        <p>
+          As ações que interessam à matriz são a <strong>20RL</strong> (funcionamento das instituições), a <strong>2994</strong>{" "}
+          (assistência aos estudantes) e a <strong>20RG</strong> (reestruturação). O sistema guarda, mês a mês, o empenhado, o liquidado e o
+          pago dessas três por UG, e mostra em{" "}
+          <Link href="/orcamento-da-uniao" className={PROSE_LINK}>
+            Orçamento da União
+          </Link>{" "}
+          dois quadros: a execução de cada ação (inicial, atualizado, empenhado, realizado) e a comparação por câmpus entre o valor da matriz
+          e o que a UG pagou.
+        </p>
+        <p>
+          <strong>Cuidado ao comparar:</strong> o valor da matriz e o gasto da UG não são a mesma coisa. A matriz é uma referência de
+          distribuição; a UG também executa emenda parlamentar, crédito suplementar e dinheiro descentralizado, e paga conforme o calendário do ano. Um câmpus com
+          pago abaixo do valor da matriz em setembro ainda pode fechar o ano dentro dele, e um acima não gastou "a mais" por isso. A Reitoria concentra
+          despesas centrais da instituição, então não é comparada com a matriz. Os restos a pagar, que são despesas de anos anteriores pagas neste ano, ficam
+          fora da conta.
         </p>
       </Bloco>
 

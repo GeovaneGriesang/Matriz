@@ -13,7 +13,7 @@
  *
  * Lida assim: cada aluno rende, por dia, uma fração da carga horária do curso; o
  * ciclo só conta os dias que caem dentro do período da PNP (o ano-base); o peso
- * reflete o custo do curso (laboratórios, Portaria 646/2022); 800 horas por ano é
+ * reflete o custo do curso (laboratórios, Portaria MEC 243/2026, que revogou a 646/2022 mantendo o critério); 800 horas por ano é
  * a referência de "um aluno cheio".
  *
  * Nada aqui toca banco nem tela: é o mesmo cálculo usado na carga (para preencher o

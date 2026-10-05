@@ -367,6 +367,18 @@ export function parametrosMdoCsv(ano: number): string | null {
   return melhor?.caminho ?? null;
 }
 
+/**
+ * Arquivo do Portal da Transparência (CGU): `AAAAMM_Despesas.csv` (execução mensal por UG) ou `AAAA_OrcamentoDespesa.csv`.
+ * Fica em "Portal da Transparência/<ano>" ou, como foi baixado, em "Extra - resultados manuais/Outros"; vale a primeira pasta que o tiver.
+ */
+export function arquivoDoPortal(nome: string): string | null {
+  for (const pasta of [["Portal da Transparência", nome.slice(0, 4)], ["Extra - resultados manuais", "Outros"]]) {
+    const caminho = caixaCerta(RAIZ_DADOS, ...pasta, nome);
+    if (fs.existsSync(caminho)) return caminho;
+  }
+  return null;
+}
+
 /** Pasta dos documentos do orçamento da União (LOA, PLOA e relatórios de emendas): `PLOA e LOA/<ano>/...`. */
 export function pastaLoa(...partes: string[]): string {
   return caixaCerta(RAIZ_DADOS, "PLOA e LOA", ...partes);

@@ -124,7 +124,7 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       {
         href: "/orcamento-da-uniao",
         rotulo: "Orçamento da União (LOA)",
-        descricao: "O IFSul na LOA e no PLOA, ação por ação, com as emendas parlamentares e a fonte de cada número.",
+        descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas parlamentares e a execução de 2026 por câmpus, com a fonte de cada número.",
       },
       {
         href: "/peso-efetivo",
