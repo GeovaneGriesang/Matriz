@@ -24,6 +24,13 @@ describe("respostasProntas: perguntas que devem casar", () => {
     ["Qual a diferença entre ciclo de curso e ciclo orçamentário?", "dois sentidos"],
     ["O que significa a marca Estimado?", "hipótese"],
     ["Os alunos que passaram do prazo do curso ainda contam para a matriz?", "ICQA 0,5"],
+    ["O que é IEA?", "Índice de Eficiência Acadêmica"],
+    ["O que é a RAPP?", "Relação Aluno-Professor"],
+    ["O que significa IAPL?", "IAML"],
+    ["O que é a PNP?", "Plataforma Nilo Peçanha"],
+    ["O que é MECHDA?", "Matrículas Equalizadas"],
+    ["O que é a RFP?", "Renda Familiar Per Capita"],
+    ["O que é o RIP?", "Regime de Internato Pleno"],
     ["Quem calcula a matriz?", "IFTM"],
     ["Que IA você é?", "Modelo Teste"],
   ];
@@ -53,6 +60,7 @@ describe("respostasProntas: perguntas que NÃO devem casar (vão ao modelo)", ()
     "Qual é a capital da França?",
     "Quanto vale o curso de Informática no câmpus Pelotas?",
     "Explique a variação do IFSul entre 2026 e 2027",
+    "Qual o IEA do IFSul?",
     "",
   ];
   for (const pergunta of nao) {

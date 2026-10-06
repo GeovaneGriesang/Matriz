@@ -41,6 +41,8 @@ Marcas de confiança nas telas: Conferido (bate com o oficial), Atenção (há i
 export const CONHECIMENTO_POR_TELA: Record<string, string> = {
   "/": "A página inicial lista os ciclos carregados e leva às telas por pergunta: consultar, simular, conferir e ver os dados.",
   "/consulta": "Mostra o valor do bloco Funcionamento por instituição, câmpus e curso, com variação em relação ao ciclo anterior. O IFSul e o Câmpus Venâncio Aires aparecem em destaque.",
+  "/consulta/curso":
+    "Busca um curso pelo nome e mostra o peso, a carga horária mínima do MEC, a carga horária que vale na matriz e quanto a MDO paga por um aluno que faz o curso inteiro (peso x carga horária / 800 x valor da matrícula). É valor de referência, não o que o câmpus recebe.",
   "/consulta/valor-do-aluno": "O valor de um aluno em cada curso é o valor do ciclo dividido pelos alunos, mostrado em reais e em percentual do orçamento do câmpus.",
   "/consulta/comparar": "Põe o mesmo curso de câmpus diferentes lado a lado, para ver quem recebe mais por aluno.",
   "/evasao":

@@ -115,6 +115,48 @@ const PRONTAS: Pronta[] = [
       "O peso do curso vai de 1,0 a 2,5 conforme os laboratórios previstos; a licenciatura tem peso 2,5; mestrado e doutorado, 3,75. Curso de agropecuária tem ainda um bônus de 50%.",
   },
   {
+    id: "iea",
+    casa: (t) => tem(t, /\biea\b/) && tem(t, /(o que|significa|sigla|quer dizer|como|calcul|mede)/) && !tem(t, ESPECIFICA),
+    resposta: () =>
+      "O IEA é o Índice de Eficiência Acadêmica, um dos três indicadores do bloco Qualidade e Eficiência. Mede, de quem teve um desfecho no curso, quantos concluíram: conclusão dividida por conclusão mais evasão. A instituição é comparada com a média da Rede e recebe um peso de 0,5 a 2,5 conforme a faixa em que cai.",
+  },
+  {
+    id: "rapp",
+    casa: (t) => tem(t, /\brapp?\b/) && tem(t, /(o que|significa|sigla|quer dizer|como|calcul|mede|meta)/) && !tem(t, ESPECIFICA),
+    resposta: () =>
+      "A RAPP (ou RAP) é a Relação Aluno-Professor Presencial: quantos alunos presenciais há por professor equivalente. A meta legal é 20 alunos por professor (Plano Nacional de Educação). Pelas faixas, abaixo de 18 o peso é 0, de 18 a 20 é 1, de 20 a 22 é 2 e de 22 em diante é 2,5.",
+  },
+  {
+    id: "iaml",
+    casa: (t) => tem(t, /\b(iaml|iapl)\b/) && tem(t, /(o que|significa|sigla|quer dizer|como|calcul|mede)/) && !tem(t, ESPECIFICA),
+    resposta: () =>
+      "O IAML (que nas telas aparece também como IAPL) mede se a instituição atinge os percentuais legais de oferta: 50% em cursos técnicos, 20% em formação de professores e 10% em educação de jovens e adultos (PROEJA). Os três entram na média com pesos 7, 2 e 1.",
+  },
+  {
+    id: "pnp-sigla",
+    casa: (t) => tem(t, /\bpnp\b/) && tem(t, /(o que (e|significa)|sigla|quer dizer|o que seria)/),
+    resposta: () =>
+      "A PNP é a Plataforma Nilo Peçanha, a base oficial de dados de matrículas, cursos, docentes e orçamento da Rede Federal. A matriz de um ano usa a PNP de dois anos antes.",
+  },
+  {
+    id: "mechda",
+    casa: (t) => tem(t, /\bmechda\b/),
+    resposta: () =>
+      "MECHDA são as Matrículas Equalizadas por Carga Horária e Dias Ativos: o número de alunos de cada ciclo ajustado pela carga horária (800 horas por ano é a referência) e pelos dias em que o ciclo esteve ativo no ano. Falta ainda aplicar o peso do curso e o bônus de agropecuária para chegar à Matrícula Total.",
+  },
+  {
+    id: "rfp",
+    casa: (t) => tem(t, /\brfp\b|renda familiar per capita/) && tem(t, /(o que|significa|sigla|quer dizer|como|para que|serve)/),
+    resposta: () =>
+      "A RFP é a Renda Familiar Per Capita dos alunos, usada para ratear a Assistência Estudantil: quanto menor a renda, maior o peso. As faixas vão de até 0,5 salário mínimo (peso 2,5) a 3,5 salários mínimos ou mais (peso 0).",
+  },
+  {
+    id: "rip",
+    casa: (t) => tem(t, /\brip\b|internato pleno/) && tem(t, /(o que|significa|sigla|quer dizer|como|para que|serve)/),
+    resposta: () =>
+      "RIP é o Regime de Internato Pleno. Os alunos internos geram um valor adicional na Assistência Estudantil, rateado pela quantidade de alunos em RIP de cada câmpus.",
+  },
+  {
     id: "matricula-total",
     casa: (t) => tem(t, /matricula total/) && tem(t, /(o que|como|calcul|formula|significa)/) && !tem(t, ESPECIFICA),
     resposta: () =>

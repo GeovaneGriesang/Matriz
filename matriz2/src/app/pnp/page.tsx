@@ -7,6 +7,8 @@ import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { EtiquetaProcedencia } from "@/components/Procedencia";
 import { PainelConfianca } from "@/components/Confianca";
 import { AbasPnp } from "@/components/AbasPnp";
+import { GlossarioPnpEnsino } from "@/components/GlossarioPnp";
+import { dimensoesDoEnsino } from "@/server/queries/opcoesPnp";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,8 @@ interface Busca {
   campus?: string;
   ano?: string;
   edicao?: string;
+  /** "1" quando a pessoa clicou em Mostrar; sem isto a tela abre só com os filtros, sem consultar os dados. */
+  mostrar?: string;
 }
 
 const LIMITE = 600;
@@ -91,8 +95,9 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
   });
   const subaba = subabas.find((s) => s.subaba === params.subaba)?.subaba ?? subabas.find((s) => s.subaba === "Situação de Matrícula")?.subaba ?? subabas[0]!.subaba;
 
-  const dimensoesBrutas = await prisma.pnpFato.groupBy({ by: ["dimensao"], where: { subaba, fonteDados: { cicloOrcamento: edicao } } });
-  const dimensoes = dimensoesBrutas.map((d) => d.dimensao).sort((a, b) => a.localeCompare(b));
+  const mostrar = params.mostrar === "1";
+  // As aberturas vêm de uma tabela pequena (listá-las da tabela de fatos levava até 17 segundos em produção).
+  const dimensoes = await dimensoesDoEnsino(edicao, subaba);
   const dimensao = dimensoes.includes(params.dimensao ?? "") ? params.dimensao! : "";
 
   const nivel = (NIVEIS.find((n) => n.valor === params.nivel)?.valor ?? "INSTITUICAO") as NivelPnp;
@@ -134,15 +139,18 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
     estrutura: nivelEfetivo === "INSTITUICAO" && params.instituicao === "TODAS" ? { nivel: "INSTITUICAO" } : estruturaFiltro,
   };
 
-  const [total, linhas] = await Promise.all([
-    prisma.pnpFato.count({ where: onde }),
-    prisma.pnpFato.findMany({
-      where: onde,
-      take: LIMITE,
-      orderBy: [{ estruturaId: "asc" }, { valorDimensao: "asc" }, { categoria: "asc" }],
-      include: { estrutura: { select: { nivel: true, instituicao: true, campus: true, municipio: true, estado: true } } },
-    }),
-  ]);
+  // Os dados só são consultados depois do clique em "Mostrar": a tela abre na hora e a pessoa escolhe o recorte antes.
+  const [total, linhas] = mostrar
+    ? await Promise.all([
+        prisma.pnpFato.count({ where: onde }),
+        prisma.pnpFato.findMany({
+          where: onde,
+          take: LIMITE,
+          orderBy: [{ estruturaId: "asc" }, { valorDimensao: "asc" }, { categoria: "asc" }],
+          include: { estrutura: { select: { nivel: true, instituicao: true, campus: true, municipio: true, estado: true } } },
+        }),
+      ])
+    : [0, []];
 
   const rotulosMetricas: string[] = [];
   for (const l of linhas) {
@@ -154,7 +162,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
 
   function href(m: Partial<Busca>) {
     const q = new URLSearchParams();
-    const atual: Busca = { subaba, dimensao, nivel: nivelEfetivo, instituicao: params.instituicao ?? siglaInstituicao, ano: String(ano), edicao: String(edicao), ...m };
+    const atual: Busca = { subaba, dimensao, nivel: nivelEfetivo, instituicao: params.instituicao ?? siglaInstituicao, ano: String(ano), edicao: String(edicao), mostrar: "1", ...m };
     for (const [k, v] of Object.entries(atual)) if (v) q.set(k, v);
     return `/pnp?${q.toString()}`;
   }
@@ -165,6 +173,7 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
       <PainelConfianca ids={["pnp-manual-confere", "pnp-indicador-diferente-mdo"]} />
 
       <form method="get" className="grid gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-2 lg:grid-cols-6">
+        <input type="hidden" name="mostrar" value="1" />
         <label className="flex flex-col gap-1 lg:col-span-2">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Tabela</span>
           <select name="subaba" defaultValue={subaba} className={selectClasse}>
@@ -249,6 +258,18 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
         </div>
       </form>
 
+      {!mostrar && (
+        <div className="flex flex-col gap-2 rounded-lg border border-sky-300 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
+          <p className="font-medium">Escolha o recorte e clique em Mostrar.</p>
+          <p>
+            As tabelas da PNP têm milhões de linhas, por isso esta tela só busca os dados depois que você escolhe a tabela, o nível (rede, instituição ou câmpus), o ano-base
+            e, se quiser, uma abertura em &quot;Detalhar por&quot;. O recorte já escolhido ({subaba}, {nivelEfetivo === "REDE" ? "rede" : nivelEfetivo === "INSTITUICAO" ? "instituição" : "câmpus"}, ano-base {ano})
+            é um bom começo: é só clicar em Mostrar. O que cada tabela e cada termo significam está logo abaixo.
+          </p>
+        </div>
+      )}
+
+      {mostrar && (
       <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
         {fonteDoGrupo && (
           <EtiquetaProcedencia
@@ -272,12 +293,13 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
           .
         </span>
       </div>
+      )}
 
-      {linhas.length === 0 ? (
+      {mostrar && linhas.length === 0 ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Nenhuma linha para esse recorte. Nem toda tabela existe em todos os níveis (o nome do curso só existe por câmpus, por exemplo).
         </p>
-      ) : (
+      ) : mostrar ? (
         <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
@@ -314,7 +336,9 @@ export default async function PnpPage({ searchParams }: { searchParams: Promise<
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
+
+      <GlossarioPnpEnsino aberto={!mostrar} />
     </main>
   );
 }

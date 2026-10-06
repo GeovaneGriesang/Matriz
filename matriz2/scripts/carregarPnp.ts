@@ -17,6 +17,7 @@ import { carregarPnpManual } from "../src/carga/carregarPnpManual";
 import { carregarPnpOrcamento } from "../src/carga/carregarPnpOrcamento";
 import { carregarPnpExtrator } from "../src/carga/carregarPnpExtrator";
 import { carregarPnpMicrodados } from "../src/carga/carregarPnpMicrodados";
+import { recalcularOpcoesPnp } from "../src/server/queries/opcoesPnp";
 
 const inteiro = new Intl.NumberFormat("pt-BR");
 const PARTES = ["ensino", "pessoal", "orcamento", "extrator", "microdados"] as const;
@@ -81,6 +82,12 @@ async function main() {
           console.log(`  ${r.tipo} ${r.ano}: ${inteiro.format(r.linhasLidas)} lidas, ${inteiro.format(r.linhasGravadas)} gravadas [${r.situacao}]`);
         }
       }
+    }
+
+    // As telas de ensino e de orçamento listam as aberturas dos filtros a partir de uma tabela pequena; refaz-se aqui, depois da carga.
+    if (partes.includes("ensino") || partes.includes("pessoal") || partes.includes("orcamento")) {
+      titulo(`PNP, opções dos filtros das telas, edição ${ciclo}`);
+      await recalcularOpcoesPnp(ciclo, (m) => console.log(m));
     }
   }
   await prisma.$disconnect();
