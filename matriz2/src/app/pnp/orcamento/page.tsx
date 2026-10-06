@@ -6,6 +6,8 @@ import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { EtiquetaProcedencia } from "@/components/Procedencia";
 import { PainelConfianca } from "@/components/Confianca";
 import { AbasPnp } from "@/components/AbasPnp";
+import { DESCRICAO_RELACAO_ORGAO, GlossarioPnpOrcamento } from "@/components/GlossarioPnp";
+import { opcoesDoOrcamento } from "@/server/queries/opcoesPnp";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,8 @@ interface Busca {
   orgao?: string;
   ano?: string;
   edicao?: string;
+  /** "1" quando a pessoa clicou em Mostrar; sem isto a tela abre só com os filtros, sem consultar os dados. */
+  mostrar?: string;
 }
 
 const LIMITE = 600;
@@ -90,15 +94,11 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
     subabas[0]!.rotulo;
   const escolhida = subabas.find((s) => s.rotulo === subaba)!;
 
-  const dimensoes = (await prisma.pnpOrcamentoFato.groupBy({ by: ["dimensao"], where: { aba: escolhida.aba, subaba: escolhida.subaba, fonteDados: { cicloOrcamento: edicao } } }))
-    .map((d) => d.dimensao)
-    .sort((a, b) => a.localeCompare(b));
+  const mostrar = params.mostrar === "1";
+  // As aberturas e as relações do órgão vêm de uma tabela pequena (a varredura da tabela de fatos levava de 1 a 9 segundos em produção).
+  const { dimensoes, orgaos } = await opcoesDoOrcamento(edicao, escolhida.aba, escolhida.subaba);
   const dimensao = dimensoes.includes(params.dimensao ?? "") ? params.dimensao! : "";
 
-  const orgaos = (await prisma.pnpOrcamentoFato.groupBy({ by: ["relacaoOrgao"], where: { aba: escolhida.aba, subaba: escolhida.subaba, fonteDados: { cicloOrcamento: edicao } } }))
-    .map((o) => o.relacaoOrgao)
-    .filter(Boolean)
-    .sort();
   const orgao = orgaos.includes(params.orgao ?? "") ? params.orgao! : (orgaos.find((o) => o.includes("UO")) ?? orgaos[0] ?? "");
 
   const nivel = (NIVEIS.find((n) => n.valor === params.nivel)?.valor ?? "INSTITUICAO") as NivelPnp;
@@ -118,15 +118,18 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
     ...(orgao ? { relacaoOrgao: orgao } : {}),
     estrutura: nivel === "INSTITUICAO" && sigla !== "TODAS" ? { nivel, instituicao: sigla } : { nivel },
   };
-  const [total, linhas] = await Promise.all([
-    prisma.pnpOrcamentoFato.count({ where: onde }),
-    prisma.pnpOrcamentoFato.findMany({
-      where: onde,
-      take: LIMITE,
-      orderBy: [{ estruturaId: "asc" }, { mes: "asc" }, { valorDimensao: "asc" }],
-      include: { estrutura: { select: { nivel: true, instituicao: true } } },
-    }),
-  ]);
+  // Os dados só são consultados depois do clique em "Mostrar": a tela abre na hora e a pessoa escolhe o recorte antes.
+  const [total, linhas] = mostrar
+    ? await Promise.all([
+        prisma.pnpOrcamentoFato.count({ where: onde }),
+        prisma.pnpOrcamentoFato.findMany({
+          where: onde,
+          take: LIMITE,
+          orderBy: [{ estruturaId: "asc" }, { mes: "asc" }, { valorDimensao: "asc" }],
+          include: { estrutura: { select: { nivel: true, instituicao: true } } },
+        }),
+      ])
+    : [0, []];
   const rotulosMetricas: string[] = [];
   for (const l of linhas) for (const k of Object.keys(l.valores as Record<string, unknown>)) if (!rotulosMetricas.includes(k)) rotulosMetricas.push(k);
   const temMes = linhas.some((l) => l.mes);
@@ -139,6 +142,7 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
       <PainelConfianca ids={["pnp-orcamento-por-instituicao"]} />
 
       <form method="get" className="grid gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-2 lg:grid-cols-6">
+        <input type="hidden" name="mostrar" value="1" />
         <label className="flex flex-col gap-1 lg:col-span-2">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Tabela</span>
           <select name="subaba" defaultValue={subaba} className={selectClasse}>
@@ -211,6 +215,7 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
                 </option>
               ))}
             </select>
+            {DESCRICAO_RELACAO_ORGAO[orgao] && <span className="text-xs text-neutral-600 dark:text-neutral-400">{DESCRICAO_RELACAO_ORGAO[orgao]}</span>}
           </label>
         )}
         <div className="flex items-end">
@@ -220,6 +225,17 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
         </div>
       </form>
 
+      {!mostrar && (
+        <div className="flex flex-col gap-2 rounded-lg border border-sky-300 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
+          <p className="font-medium">Escolha o recorte e clique em Mostrar.</p>
+          <p>
+            Esta tela só busca os dados depois que você escolhe a tabela, a instituição, o ano-base e, se quiser, uma abertura em &quot;Detalhar por&quot; e a relação do órgão.
+            O recorte já escolhido é um bom começo: é só clicar em Mostrar. O que cada tabela, cada relação do órgão (UO, UGE, TED) e cada estágio da despesa significam está logo abaixo.
+          </p>
+        </div>
+      )}
+
+      {mostrar && (
       <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
         {fonte && (
           <EtiquetaProcedencia
@@ -238,12 +254,13 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
           {new Intl.NumberFormat("pt-BR").format(total)} linha(s){total > LIMITE ? `, mostrando as ${LIMITE} primeiras: escolha uma instituição` : ""}.
         </span>
       </div>
+      )}
 
-      {linhas.length === 0 ? (
+      {mostrar && linhas.length === 0 ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Nenhuma linha para esse recorte. Confira o nível: a tabela de gastos por matrícula equivalente existe por região e estado, e as demais só por rede e instituição.
         </p>
-      ) : (
+      ) : mostrar ? (
         <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
@@ -279,7 +296,9 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
+
+      <GlossarioPnpOrcamento aberto={!mostrar} />
     </main>
   );
 }

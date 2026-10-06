@@ -1311,3 +1311,24 @@ model ConversaChat {
   @@index([usuarioId, criadoEm])
   @@index([criadoEm])
 }
+
+// ---------- Opções dos filtros das telas da PNP ----------
+
+/// As opções de filtro de cada tabela da PNP ("Detalhar por" e "Relação do órgão"), guardadas à parte. Listar as aberturas direto da tabela de
+/// fatos varre milhões de linhas (17 segundos em produção); aqui são poucas linhas por tabela. Preenchida na carga da PNP (e sob demanda,
+/// na primeira vez que a tela precisa de uma lista que ainda não existe). `aba` é vazia no painel de ensino, que filtra só pela subaba.
+model PnpOpcaoFiltro {
+  id      Int    @id @default(autoincrement())
+  /// "ENSINO" ou "ORCAMENTO".
+  painel  String @db.VarChar(12)
+  /// Edição da PNP (ciclo da carga).
+  edicao  Int
+  aba     String @default("") @db.VarChar(60)
+  subaba  String @db.VarChar(80)
+  /// "dimensao" ou "relacaoOrgao".
+  tipo    String @db.VarChar(20)
+  valor   String @db.VarChar(255)
+
+  @@unique([painel, edicao, aba, subaba, tipo, valor])
+  @@index([painel, edicao, subaba, tipo])
+}

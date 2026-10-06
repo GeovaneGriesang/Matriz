@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { DadosImportadosTabela } from "./DadosImportadosTabela";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { contagensPnpPorFonte } from "@/server/queries/contagensPnp";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +34,13 @@ export default async function DadosImportadosPage() {
           conferenciasCiclo: true,
           parametrosParticipacao: true,
           indicadoresPnp: true,
-          pnpFatos: true,
-          pnpOrcamentoFatos: true,
         },
       },
     },
   });
 
+  // As duas tabelas gigantes da PNP são contadas à parte, com cache (contar milhões de linhas leva segundos).
+  const contagensPnp = await contagensPnpPorFonte();
   const somasPorFonte = await prisma.distribuicaoCiclo.groupBy({
     by: ["fonteDadosId"],
     _sum: { valorReais: true },
@@ -69,8 +70,8 @@ export default async function DadosImportadosPage() {
         f._count.conferenciasCiclo +
         f._count.parametrosParticipacao +
         f._count.indicadoresPnp +
-        f._count.pnpFatos +
-        f._count.pnpOrcamentoFatos,
+        (contagensPnp.pnpFatos.get(f.id) ?? 0) +
+        (contagensPnp.pnpOrcamentoFatos.get(f.id) ?? 0),
       soma: somaPorFonte.get(f.id) ?? null,
       temDadoPessoal: f._count.conferenciasExtracaoAluno > 0,
     }))

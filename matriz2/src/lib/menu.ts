@@ -31,6 +31,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         descricao: "Quanto cada instituição, câmpus e curso recebe no bloco Funcionamento.",
       },
       {
+        href: "/consulta/curso",
+        rotulo: "Quanto vale um curso?",
+        descricao: "Procure um curso que você pensa em ofertar: peso, carga horária mínima do MEC e quanto a MDO paga por um aluno que o conclui.",
+      },
+      {
         href: "/consulta/valor-do-aluno",
         rotulo: "Quanto vale um aluno",
         descricao: "Para cada curso de um câmpus: o valor de um aluno em reais e em percentual do orçamento do câmpus.",
