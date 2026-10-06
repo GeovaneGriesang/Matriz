@@ -8,6 +8,7 @@ import { PainelConfianca } from "@/components/Confianca";
 import { AbasPnp } from "@/components/AbasPnp";
 import { DESCRICAO_RELACAO_ORGAO, GlossarioPnpOrcamento } from "@/components/GlossarioPnp";
 import { opcoesDoOrcamento } from "@/server/queries/opcoesPnp";
+import { SeletorComExplicacao } from "@/components/SeletorComExplicacao";
 
 export const dynamic = "force-dynamic";
 
@@ -208,14 +209,7 @@ export default async function PnpOrcamentoPage({ searchParams }: { searchParams:
         {orgaos.length > 0 && (
           <label className="flex flex-col gap-1 lg:col-span-2">
             <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Relação do órgão</span>
-            <select name="orgao" defaultValue={orgao} className={selectClasse}>
-              {orgaos.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-            {DESCRICAO_RELACAO_ORGAO[orgao] && <span className="text-xs text-neutral-600 dark:text-neutral-400">{DESCRICAO_RELACAO_ORGAO[orgao]}</span>}
+            <SeletorComExplicacao nome="orgao" opcoes={orgaos} valorInicial={orgao} explicacoes={DESCRICAO_RELACAO_ORGAO} classeDoSelect={selectClasse} />
           </label>
         )}
         <div className="flex items-end">
