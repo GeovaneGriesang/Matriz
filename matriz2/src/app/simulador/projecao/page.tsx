@@ -40,11 +40,12 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Cinco anos à frente: o que os ciclos em andamento ainda rendem</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador de cenários: o que os ciclos rendem nos próximos anos</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        Um curso de 5 anos que começou em 2025 só termina em 2030. Esta tela projeta, ano a ano, o que cada ciclo em andamento continua valendo na matriz enquanto os
-        alunos que já estão matriculados terminam o curso, com a evasão média do instituto na modalidade. Responde: quanto de orçamento é preciso para que todos
-        consigam completar o ciclo, e como isso fica ao longo do tempo.
+        Um curso de 5 anos que começou em 2025 só termina em 2030. Esta tela projeta, ano a ano e pelo número de anos que você escolher, o que cada ciclo em andamento continua
+        valendo na matriz enquanto os alunos terminam o curso, com a evasão média do instituto na modalidade. Depois você monta o cenário: cursos novos que um câmpus pretende
+        abrir, em anos diferentes, e cursos que deixam de ser ofertados (as turmas em andamento terminam, mas não entram turmas novas), em um ou em vários câmpus. Responde:
+        quanto de orçamento é preciso para que todos completem o ciclo e como ficam os anos seguintes com as mudanças planejadas.
       </p>
     </div>
   );
@@ -147,6 +148,25 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
 
   const campusInicial = unidades.find((u) => ehCampusDestaque(u.nome))?.id ?? null;
 
+  // Os cursos que se podem abrir num cenário vêm da tabela de pesos, e o valor de uma matrícula presencial é o mais comum entre os ciclos presenciais.
+  const anoDosPesos = (await prisma.pesoEfetivoCurso.aggregate({ _max: { anoReferencia: true } }))._max.anoReferencia;
+  const catalogo = anoDosPesos
+    ? (await prisma.pesoEfetivoCurso.findMany({ where: { anoReferencia: anoDosPesos }, orderBy: [{ curso: "asc" }, { tipoCurso: "asc" }] })).map((p) => ({
+        curso: p.curso,
+        tipoCurso: p.tipoCurso,
+        tipoOferta: p.tipoOferta,
+        chMinimaMec: p.chMinimaMec,
+        pesoEfetivo: Number(p.pesoEfetivo),
+      }))
+    : [];
+  const contagemDeValores = new Map<number, number>();
+  for (const l of linhas) {
+    if (l.repasse !== "PRESENCIAL") continue;
+    const v = Math.round(Number(l.valorAluno ?? 0) * 100) / 100;
+    if (v > 0) contagemDeValores.set(v, (contagemDeValores.get(v) ?? 0) + 1);
+  }
+  const valorMatriculaPresencial = [...contagemDeValores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
@@ -163,6 +183,8 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
         anoBase0={anoBase0}
         campi={unidades}
         ciclos={ciclos}
+        catalogo={catalogo}
+        valorMatriculaPresencial={valorMatriculaPresencial}
         taxasPadrao={taxasPadrao}
         retencao={retencao}
         campusInicialId={campusInicial}

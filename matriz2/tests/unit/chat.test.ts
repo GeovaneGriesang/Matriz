@@ -9,7 +9,7 @@ describe("montarMensagens", () => {
     const m = montarMensagens({ rota: "/simulador/projecao", pergunta: "Quanto cai em 2031?", historico: [], contexto: "2031: R$ 100" });
     expect(m[0]!.role).toBe("system");
     expect(m[0]!.content).toContain(CONHECIMENTO_GERAL.slice(0, 40));
-    expect(m[0]!.content).toContain("Cinco anos à frente");
+    expect(m[0]!.content).toContain("Cenários, anos à frente");
     expect(m[0]!.content).toContain("DADOS DA TELA");
     expect(m[0]!.content).toContain("2031: R$ 100");
     expect(m.at(-1)).toEqual({ role: "user", content: "Quanto cai em 2031?" });

@@ -136,26 +136,74 @@ export function projetarMatriculados(c: CicloProjetavel, anoBase0: number, anos:
   return pontos;
 }
 
+/** Uma turma que entra no futuro, com o que ela rende em cada ano-base do horizonte. */
+export interface TurmaProjetada {
+  /** Ano civil em que a turma começa. */
+  anoEntrada: number;
+  pontos: PontoProjecao[];
+}
+
+const pontosVazios = (anoBase0: number, anos: number): PontoProjecao[] =>
+  Array.from({ length: anos }, (_, k) => ({ anoBase: anoBase0 + k, matriculaTotal: 0, valor: 0, alunosContados: 0 }));
+
+/** O que uma turma (ciclo) com `alunos` rende em cada ano-base, dado o ano em que entrou. */
+function pontosDaTurma(
+  turma: CicloProjetavel,
+  alunosNaEntrada: number,
+  anoDeEntrada: number,
+  evasao: number,
+  retencao: readonly number[],
+  anoBase0: number,
+  anos: number,
+): PontoProjecao[] {
+  const pontos = pontosVazios(anoBase0, anos);
+  for (let k = 0; k < anos; k++) {
+    const anoBase = anoBase0 + k;
+    const periodo = periodoDoAnoBase(anoBase);
+    if (turma.inicio.getTime() > periodo.fim.getTime()) continue;
+    const alunos = alunosNoAno({ alunos: alunosNaEntrada, ano: anoDeEntrada }, turma.termino, anoBase, evasao, retencao);
+    const ciclo = paraCalculo(turma, alunos);
+    const mt = matriculaTotalDoCiclo(ciclo, periodo);
+    pontos[k]!.matriculaTotal += mt;
+    pontos[k]!.valor += mt * turma.valorPorMT;
+    pontos[k]!.alunosContados += alunos * icqaDoCiclo(ciclo, periodo);
+  }
+  return pontos;
+}
+
+const somarPontos = (turmas: TurmaProjetada[], anoBase0: number, anos: number, ate?: number): PontoProjecao[] => {
+  const soma = pontosVazios(anoBase0, anos);
+  for (const t of turmas) {
+    if (ate !== undefined && t.anoEntrada > ate) continue;
+    t.pontos.forEach((p, k) => {
+      soma[k]!.matriculaTotal += p.matriculaTotal;
+      soma[k]!.valor += p.valor;
+      soma[k]!.alunosContados += p.alunosContados;
+    });
+  }
+  return soma;
+};
+
 /**
  * As turmas novas que entram no lugar do ciclo regular, uma por ano de intervalo (ou a cada duração do ciclo, se for maior que um
  * ano), cada uma com a duração do ciclo e o tamanho estimado da matrícula de entrada. Ciclo já terminado (aluno retido) não tem
- * reposição: é a sobra de uma turma antiga.
+ * reposição: é a sobra de uma turma antiga. Devolvidas turma a turma, para a tela poder parar de repor a partir de um ano
+ * (curso que deixa de ser ofertado) sem refazer a conta.
  */
-export function projetarReposicao(c: CicloProjetavel, anoBase0: number, anos: number, p: Premissas): PontoProjecao[] {
-  const pontos: PontoProjecao[] = Array.from({ length: anos }, (_, k) => ({ anoBase: anoBase0 + k, matriculaTotal: 0, valor: 0, alunosContados: 0 }));
+export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: number, p: Premissas): TurmaProjetada[] {
   const periodo0 = periodoDoAnoBase(anoBase0);
-  if (c.alunos <= 0 || c.termino.getTime() < periodo0.inicio.getTime()) return pontos;
+  if (c.alunos <= 0 || c.termino.getTime() < periodo0.inicio.getTime()) return [];
 
   const e = taxaDoCiclo(c, p.evasao);
   const duracao = diasDoCiclo(c);
-  if (duracao < 1) return pontos;
+  if (duracao < 1) return [];
 
   // A turma nova entra quando a anterior acaba, mas nunca com menos de um ano de intervalo: um ciclo curto (um curso FIC de 20 dias)
   // é ofertado uma vez por ano, e não repetido um atrás do outro, o que multiplicaria o valor por dezenas.
   const intervalo = Math.max(duracao, 365) * MS_DIA;
   let inicio = c.inicio.getTime() + intervalo;
   // Se a turma seguinte já cabia no ano-base inicial, ela está entre os ciclos de hoje e é ela quem gera as próximas: contar de novo duplicaria.
-  if (inicio <= periodo0.fim.getTime()) return pontos;
+  if (inicio <= periodo0.fim.getTime()) return [];
 
   // Tamanho da turma de entrada: a matrícula de hoje desfeita da evasão que já ocorreu desde o início do ciclo.
   const meioDoAnoBase0 = Date.UTC(anoBase0, 5, 30);
@@ -165,24 +213,107 @@ export function projetarReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
 
   const fimDoHorizonte = periodoDoAnoBase(anoBase0 + anos - 1).fim.getTime();
   const prazo = prazoDeJubilamentoEmDias(c.tipoCurso);
+  const turmas: TurmaProjetada[] = [];
   for (let n = 0; n < MAX_TURMAS_NOVAS && inicio <= fimDoHorizonte; n++) {
     const termino = inicio + (duracao - 1) * MS_DIA;
     const turma: CicloProjetavel = { ...c, inicio: new Date(inicio), termino: new Date(termino), jubilamento: new Date(termino + prazo * MS_DIA) };
     const anoDeEntrada = new Date(inicio).getUTCFullYear();
-    for (let k = 0; k < anos; k++) {
-      const anoBase = anoBase0 + k;
-      const periodo = periodoDoAnoBase(anoBase);
-      if (inicio > periodo.fim.getTime()) continue;
-      const alunos = alunosNoAno({ alunos: entrada, ano: anoDeEntrada }, turma.termino, anoBase, e, p.retencao);
-      const ciclo = paraCalculo(turma, alunos);
-      const mt = matriculaTotalDoCiclo(ciclo, periodo);
-      pontos[k]!.matriculaTotal += mt;
-      pontos[k]!.valor += mt * c.valorPorMT;
-      pontos[k]!.alunosContados += alunos * icqaDoCiclo(ciclo, periodo);
-    }
+    turmas.push({ anoEntrada: anoDeEntrada, pontos: pontosDaTurma(turma, entrada, anoDeEntrada, e, p.retencao, anoBase0, anos) });
     inicio += intervalo;
   }
-  return pontos;
+  return turmas;
+}
+
+/**
+ * A soma da reposição. `ultimoAnoDeEntrada` é o último ano em que ainda entra turma nova (curso que deixa de ser ofertado depois dele);
+ * sem ele, o curso continua sendo ofertado em todo o horizonte. As turmas que já entraram terminam o curso normalmente.
+ */
+export function projetarReposicao(c: CicloProjetavel, anoBase0: number, anos: number, p: Premissas, ultimoAnoDeEntrada?: number): PontoProjecao[] {
+  return somarPontos(turmasDeReposicao(c, anoBase0, anos, p), anoBase0, anos, ultimoAnoDeEntrada);
+}
+
+export { somarPontos as somarTurmas };
+
+/** Um curso novo que o cenário abre: onde, quando, com quantos alunos por turma e por quantos anos seguidos entra turma. */
+export interface CursoNovo {
+  tipoCurso: string;
+  repasse: Repasse;
+  peso: number;
+  /** Carga horária que vale na matriz. */
+  chMatriz: number;
+  /** Reais por unidade de Matrícula Total (valor da matrícula na modalidade). */
+  valorPorMT: number;
+  /** Ano civil da primeira turma. */
+  primeiroAnoEntrada: number;
+  /** Ano civil da última turma; igual ao primeiro quando é uma turma só. */
+  ultimoAnoEntrada: number;
+  /** Mês em que a primeira turma de cada ano começa (1 a 12). */
+  mesInicio: number;
+  /** Quantas turmas entram por ano: 1 (curso anual) ou 2 (semestral, a segunda seis meses depois da primeira). Padrão 1. */
+  entradasPorAno?: 1 | 2;
+  ingressantes: number;
+  duracaoAnos: number;
+}
+
+/** As turmas de um curso novo: uma por ano, do primeiro ao último ano de entrada. */
+export function turmasDeCursoNovo(curso: CursoNovo, anoBase0: number, anos: number, p: Premissas): TurmaProjetada[] {
+  const duracaoDias = Math.max(1, Math.round(curso.duracaoAnos * ANO_EM_DIAS));
+  const prazo = prazoDeJubilamentoEmDias(curso.tipoCurso);
+  const e = taxaDoCiclo(curso, p.evasao);
+  const turmas: TurmaProjetada[] = [];
+  const ultimo = Math.min(curso.ultimoAnoEntrada, anoBase0 + anos - 1);
+  // Uma turma por ano (curso anual) ou duas (semestral): as entradas andam de 12 em 12 meses, ou de 6 em 6, a partir do mês da primeira.
+  const mesesEntreEntradas = curso.entradasPorAno === 2 ? 6 : 12;
+  const mesDaPrimeira = Math.min(12, Math.max(1, curso.mesInicio)) - 1;
+  for (let n = 0; n < 400; n++) {
+    const inicio = Date.UTC(curso.primeiroAnoEntrada, mesDaPrimeira + n * mesesEntreEntradas, 1);
+    const ano = new Date(inicio).getUTCFullYear();
+    if (ano > ultimo) break;
+    if (ano < anoBase0) continue;
+    const termino = inicio + (duracaoDias - 1) * MS_DIA;
+    const turma: CicloProjetavel = {
+      id: -1,
+      unidadeId: -1,
+      curso: "",
+      tipoCurso: curso.tipoCurso,
+      tipoOferta: "",
+      repasse: curso.repasse,
+      inicio: new Date(inicio),
+      termino: new Date(termino),
+      jubilamento: new Date(termino + prazo * MS_DIA),
+      chCiclo: curso.chMatriz,
+      chMec: curso.chMatriz,
+      chMatriz: curso.chMatriz,
+      peso: curso.peso,
+      agropecuaria: false,
+      alunos: curso.ingressantes,
+      valorPorMT: curso.valorPorMT,
+    };
+    turmas.push({ anoEntrada: ano, pontos: pontosDaTurma(turma, curso.ingressantes, ano, e, p.retencao, anoBase0, anos) });
+  }
+  return turmas;
+}
+
+export function projetarCursoNovo(curso: CursoNovo, anoBase0: number, anos: number, p: Premissas): PontoProjecao[] {
+  return somarPontos(turmasDeCursoNovo(curso, anoBase0, anos, p), anoBase0, anos);
+}
+
+/**
+ * O último ano civil em que um ciclo que NÃO se repete termina: os ciclos regulares de hoje (que acabam e, se o curso para de ser ofertado,
+ * não são repostos) e as turmas dos cursos novos. Serve para sugerir o horizonte "até o último ciclo terminar".
+ */
+export function ultimoAnoDeTermino(ciclos: Array<Pick<CicloProjetavel, "termino" | "alunos">>, novos: CursoNovo[], anoBase0: number): number {
+  const inicioBase = Date.UTC(anoBase0, 0, 1);
+  let ultimo = anoBase0;
+  for (const c of ciclos) if (c.alunos > 0 && c.termino.getTime() >= inicioBase) ultimo = Math.max(ultimo, c.termino.getUTCFullYear());
+  for (const n of novos) {
+    const dias = Math.max(1, Math.round(n.duracaoAnos * ANO_EM_DIAS));
+    // A última turma é a segunda do ano, seis meses depois, num curso semestral.
+    const mesDaUltima = Math.min(12, Math.max(1, n.mesInicio)) - 1 + (n.entradasPorAno === 2 ? 6 : 0);
+    const termino = Date.UTC(n.ultimoAnoEntrada, mesDaUltima, 1) + (dias - 1) * MS_DIA;
+    ultimo = Math.max(ultimo, new Date(termino).getUTCFullYear());
+  }
+  return ultimo;
 }
 
 /**

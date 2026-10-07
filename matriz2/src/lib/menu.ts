@@ -69,8 +69,8 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       },
       {
         href: "/simulador/projecao",
-        rotulo: "Cinco anos à frente",
-        descricao: "O quanto os ciclos em andamento ainda rendem nos próximos anos, até todos os alunos terminarem, com a evasão média do instituto.",
+        rotulo: "Cenários, anos à frente",
+        descricao: "Quanto os ciclos rendem nos próximos anos, com cursos novos, cursos que deixam de ser ofertados e o horizonte que você escolher, em qualquer câmpus.",
       },
       {
         href: "/simulador/curso",

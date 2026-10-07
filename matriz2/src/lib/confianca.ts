@@ -151,9 +151,9 @@ export const CONFIANCA = {
   },
   "projecao-ciclos": {
     nivel: "ESTIMADO",
-    titulo: "Projeção dos ciclos em andamento",
+    titulo: "Projeção e cenários dos ciclos",
     porque:
-      "A regra de contar o ciclo é a oficial da MDO (a Matrícula Total de cada ciclo bate com o Excel), mas o futuro é hipotético: a evasão é a média recente da PNP da instituição, o valor da matrícula fica fixo no de hoje (não sabe do orçamento da rede nem das matrículas dos outros institutos) e a reposição das turmas é uma estimativa do tamanho de cada turma nova. Mede só o repasse de funcionamento.",
+      "A regra de contar o ciclo é a oficial da MDO (a Matrícula Total de cada ciclo bate com o Excel), mas o futuro é hipotético, e os cursos novos e as paradas de oferta são escolhas suas, não decisões da MDO: a evasão é a média recente da PNP da instituição, o valor da matrícula fica fixo no de hoje (não sabe do orçamento da rede nem das matrículas dos outros institutos) e a reposição das turmas é uma estimativa do tamanho de cada turma nova. Mede só o repasse de funcionamento.",
     paraResolver: "Comparar com a evasão real por curso do câmpus e com o orçamento previsto da rede quando houver.",
   },
   "distribuicao-indices": {
