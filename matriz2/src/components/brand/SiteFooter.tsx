@@ -16,7 +16,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-neutral-200 bg-white px-6 py-6 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 print:hidden">
           <a
             href="https://github.com/GeovaneGriesang/Matriz"
             target="_blank"

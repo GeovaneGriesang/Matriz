@@ -84,7 +84,7 @@ function baixar(nome: string, conteudo: string) {
 
 function cabecalhoDeImpressao(titulo: string): string {
   const quando = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-  return `Matriz Orçamentária RFEPCT. ${titulo}. Impresso em ${quando}. ${location.origin}${location.pathname}`;
+  return `${titulo}. Impresso em ${quando}. ${location.origin}${location.pathname}`;
 }
 
 /** Copia os valores digitados (campos, listas, caixas de marcar) do original para a cópia, que não os guarda. */
@@ -125,7 +125,10 @@ function imprimir(alvo: HTMLElement | null, titulo: string) {
     const copia = alvo.cloneNode(true) as HTMLElement;
     copia.querySelectorAll(".nao-imprimir").forEach((e) => e.remove());
     copiarValores(alvo, copia);
-    area.append(titulo1, copia);
+    // O bloco sai com a marca do sistema no alto e o crédito institucional no fim, como a página inteira.
+    const topo = document.querySelector("body > header")?.cloneNode(true) as HTMLElement | undefined;
+    const rodape = document.querySelector("body > footer")?.cloneNode(true) as HTMLElement | undefined;
+    area.append(...[topo, titulo1, copia, rodape].filter((e): e is HTMLElement => Boolean(e)));
     document.body.appendChild(area);
     document.body.setAttribute("data-imprimindo", "bloco");
   } else if (cabecalho) {
@@ -141,7 +144,9 @@ function imprimir(alvo: HTMLElement | null, titulo: string) {
     if (cabecalho) cabecalho.textContent = "";
   };
   window.addEventListener("afterprint", limpar);
-  setTimeout(() => window.print(), 60);
+  // As imagens que o navegador só carrega quando chegam à tela (o logotipo do rodapé) são carregadas antes de imprimir.
+  document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((i) => (i.loading = "eager"));
+  setTimeout(() => window.print(), 500);
 }
 
 function criarBotao(rotulo: string, dica: string, aoClicar: () => void): HTMLButtonElement {
@@ -212,11 +217,16 @@ function varrer(): number {
   return tabelas.length;
 }
 
+/** Telas de entrada e de conta: não há o que imprimir nem exportar nelas, e os botões só atrapalhariam. */
+const SEM_FERRAMENTAS = [/^\/admin\/(login|definir-senha|recuperar-senha|conta|inicio)/];
+
 export function FerramentasDeSaida() {
   const pathname = usePathname();
   const [tabelas, setTabelas] = useState(0);
+  const semFerramentas = SEM_FERRAMENTAS.some((r) => r.test(pathname));
 
   useEffect(() => {
+    if (semFerramentas) return;
     let espera: ReturnType<typeof setTimeout> | undefined;
     const agendar = () => {
       clearTimeout(espera);
@@ -229,7 +239,7 @@ export function FerramentasDeSaida() {
       clearTimeout(espera);
       observador.disconnect();
     };
-  }, [pathname]);
+  }, [pathname, semFerramentas]);
 
   function csvDaPagina() {
     const principal = document.querySelector("main");
@@ -242,6 +252,8 @@ export function FerramentasDeSaida() {
     }
     baixar(nomeDeArquivo(document.querySelector("h1")?.textContent?.trim() || "tabelas"), montarCsv(linhas));
   }
+
+  if (semFerramentas) return null;
 
   const tituloDaPagina = () => document.querySelector("h1")?.textContent?.trim() || document.title;
 

@@ -20,7 +20,7 @@ export async function SiteHeader() {
   const acessoPleno = usuario && usuario.papel !== "PADRAO";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
+    <header className="sticky top-0 z-30 print:static border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
       <div className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-wrap items-center gap-3`}>
         <Link href="/" className="flex items-center gap-3">
           <InstitutoFederalMark size={32} />
@@ -28,23 +28,27 @@ export async function SiteHeader() {
             Matriz Orçamentária RFEPCT
           </span>
         </Link>
-        {acessoPleno && <SiteNav />}
+        {acessoPleno && (
+          <div className="print:hidden">
+            <SiteNav />
+          </div>
+        )}
         {usuario && !acessoPleno && (
-          <nav>
+          <nav className="print:hidden">
             <Link href="/admin/inicio" className={LINK_CLASS}>
               Painel
             </Link>
           </nav>
         )}
         {!usuario && (
-          <nav>
+          <nav className="print:hidden">
             <Link href="/admin/login" className={LINK_CLASS}>
               Entrar
             </Link>
           </nav>
         )}
         {usuario && (
-          <div className="ml-auto flex items-center gap-3 text-sm">
+          <div className="ml-auto flex items-center gap-3 text-sm print:hidden">
             <Link
               href="/admin/conta"
               className="text-neutral-500 underline decoration-dotted hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
@@ -62,7 +66,9 @@ export async function SiteHeader() {
             </form>
           </div>
         )}
-        <ThemeToggle />
+        <div className="print:hidden">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
