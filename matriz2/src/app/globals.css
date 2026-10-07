@@ -26,7 +26,8 @@
 }
 
 /*
- * Impressão e PDF. A página inteira imprime sem o cabeçalho, o rodapé, os botões e o assistente; as tabelas perdem a rolagem
+ * Impressão e PDF. A página inteira imprime com a marca e o título do sistema no alto da primeira página e o crédito institucional no fim da
+ * última (o cabeçalho e o rodapé do site, sem menu, nome de usuário, tema e links de ícones), sem os botões e o assistente; as tabelas perdem a rolagem
  * (todas as linhas saem) e o fundo escuro vira claro. Imprimir só um bloco (tabela ou quadro) copia o bloco para #area-impressao
  * (ver FerramentasDeSaida) e esconde todo o resto da página.
  */
@@ -44,8 +45,6 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  body > header,
-  body > footer,
   .nao-imprimir {
     display: none !important;
   }
