@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anosOcupados, simularOpcaoCurso, type OpcaoCurso } from "@/lib/mdo/simulacaoCurso";
 import type { PadroesDoCurso } from "@/lib/mdo/padroesCurso";
 
@@ -47,6 +48,28 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
   const [diluir, setDiluir] = useState(false);
 
   const opcao: OpcaoCurso = { rotulo: nome, anosDuracao: duracao, mesesDuracao: meses, chTotalCiclo: chTotal, chMatriz: teto, vagasPorAno: vagas, evasaoAnual: evasao };
+  useConfiguracaoSalvavel({
+    chave: `simulador/novo-curso:${campus}:${base.rotulo}`,
+    rotulo: "esta simulação",
+    capturar: () => ({ nome, primeiroAno, duracao, meses: meses ?? null, chTotal, vagas, evasao, peso, teto, valorMatricula, reajuste, horizonte, diluir }),
+    aplicar: (d) =>
+      aplicarCampos(d, {
+        nome: comoTexto(setNome),
+        primeiroAno: comoNumero(setPrimeiroAno),
+        duracao: comoNumero(setDuracao),
+        meses: (v) => setMeses(typeof v === "number" ? v : undefined),
+        chTotal: comoNumero(setChTotal),
+        vagas: comoNumero(setVagas),
+        evasao: comoNumero(setEvasao),
+        peso: comoNumero(setPeso),
+        teto: comoNumero(setTeto),
+        valorMatricula: comoNumero(setValorMatricula),
+        reajuste: comoNumero(setReajuste),
+        horizonte: comoNumero(setHorizonte),
+        diluir: comoBooleano(setDiluir),
+      }),
+  });
+
   const parametros = useMemo(
     () => ({
       peso,

@@ -6,6 +6,8 @@ import { SiteFooter } from "@/components/brand/SiteFooter";
 import { ChatDaTela, ChatProvider } from "@/components/chat/ChatDaTela";
 import { getAdminSession } from "@/server/auth/session";
 import { rotuloDoModelo } from "@/lib/chat/modelo";
+import { FerramentasDeSaida } from "@/components/FerramentasDeSaida";
+import { ConfiguracoesProvider } from "@/components/configuracoes/ConfiguracoesSalvas";
 
 const openSans = Open_Sans({
   subsets: ["latin"],
@@ -30,8 +32,8 @@ const TEMA_INICIAL_SCRIPT = `
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // O assistente só aparece para quem tem acesso pleno e quando o servidor o liga (CHAT_ATIVO=1).
-  const usuario = process.env.CHAT_ATIVO === "1" ? await getAdminSession() : null;
-  const comChat = usuario !== null && usuario.papel !== "PADRAO";
+  const usuario = await getAdminSession();
+  const comChat = process.env.CHAT_ATIVO === "1" && usuario !== null && usuario.papel !== "PADRAO";
   return (
     <html lang="pt-BR" className={openSans.variable} suppressHydrationWarning>
       <head>
@@ -42,10 +44,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         suppressHydrationWarning
       >
         <ChatProvider>
+          <ConfiguracoesProvider>
           <SiteHeader />
+          {usuario && <FerramentasDeSaida />}
           <div className="flex-1">{children}</div>
           <SiteFooter />
           {comChat && <ChatDaTela modelo={rotuloDoModelo()} />}
+          </ConfiguracoesProvider>
         </ChatProvider>
       </body>
     </html>

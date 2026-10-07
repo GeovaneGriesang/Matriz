@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { EXPLICACAO_INDICE, ROTULO_INDICE, type ChaveIndice, type IndicesCampus } from "@/lib/mdo/indicesCampus";
 import { matrizPct, planoLinear, planoValido, simularTransicao, type CampusDistribuicao, type PlanoAno } from "@/lib/mdo/transicaoDistribuicao";
 
@@ -50,6 +51,23 @@ export function SimuladorDistribuicao({
   const [pesoIndice, setPesoIndice] = useState(50);
   const [crescimento, setCrescimento] = useState(0);
   const [manual, setManual] = useState<Record<number, Partial<PlanoAno>>>({});
+
+  useConfiguracaoSalvavel({
+    chave: `simulador/distribuicao:${instituicao}:${anoAlvo}`,
+    rotulo: "esta simulação",
+    capturar: () => ({ mantido, anos, chaveIndice, pesoIndice, crescimento, manual }),
+    aplicar: (d) =>
+      aplicarCampos(d, {
+        mantido: comoNumero(setMantido),
+        anos: comoNumero(setAnos),
+        chaveIndice: (v) => {
+          if (typeof v === "string") setChaveIndice(v as ChaveIndice | "nenhum");
+        },
+        pesoIndice: comoNumero(setPesoIndice),
+        crescimento: comoNumero(setCrescimento),
+        manual: comoObjeto<Record<number, Partial<PlanoAno>>>(setManual),
+      }),
+  });
 
   const planoAuto = useMemo(() => planoLinear(mantido, chaveIndice === "nenhum" ? 0 : pesoIndice / 100, anos), [mantido, pesoIndice, anos, chaveIndice]);
   const plano: PlanoAno[] = planoAuto.map((p, i) => ({ ...p, ...manual[i] }));

@@ -31,6 +31,10 @@ describe("respostasProntas: perguntas que devem casar", () => {
     ["O que é MECHDA?", "Matrículas Equalizadas"],
     ["O que é a RFP?", "Renda Familiar Per Capita"],
     ["O que é o RIP?", "Regime de Internato Pleno"],
+    ["Como salvo uma simulação?", "Salvar como"],
+    ["Posso compartilhar o cenário com outro usuário?", "Marcar todos"],
+    ["Como baixo os dados em CSV?", "CSV das tabelas"],
+    ["Posso imprimir ou gerar PDF?", "Salvar como PDF"],
     ["Quem calcula a matriz?", "IFTM"],
     ["Que IA você é?", "Modelo Teste"],
   ];

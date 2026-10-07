@@ -344,6 +344,50 @@ export default async function ComoFuncionaPage() {
         </p>
       </Bloco>
 
+      <Bloco
+        id="salvar-simulacoes"
+        titulo="Salvar simulações e consultas, e compartilhar"
+        fatia="Para não refazer toda a configuração, e para trabalhar junto"
+        resumo="Na barra do alto de cada tela de simulação ou de consulta com filtros."
+      >
+        <p>
+          Nas telas de simulação (cenários, curso novo, 3 ou 4 anos, comparação de alternativas, distribuição entre câmpus, evasão, RAP e IAPL) e nas consultas com filtros, a barra do alto tem a
+          lista <strong>Simulações salvas</strong> (ou <strong>Consultas salvas</strong>). <strong>Salvar como…</strong> guarda o que está na tela com o nome que você der; <strong>Carregar</strong>{" "}
+          traz de volta tudo como estava; <strong>Salvar</strong> grava por cima da que está em uso; <strong>Renomear</strong> muda o nome. Numa consulta, o que se guarda são os filtros escolhidos.
+        </p>
+        <p>
+          O que você salva é <strong>só seu</strong>. Com <strong>Compartilhar…</strong> você escolhe quem também a verá: há <em>Marcar todos</em>, <em>Desmarcar todos</em> e{" "}
+          <em>Inverter seleção</em>, e a busca por nome ou e-mail vale para essas ações (quem está marcado fora da busca não é desmarcado sem querer). Quem recebe vê a simulação na lista dela,
+          em &quot;Compartilhadas comigo&quot;, e pode carregá-la, mas não pode alterá-la: se quiser mexer, usa <strong>Salvar como…</strong> e fica com uma cópia sua.
+        </p>
+        <p>
+          <strong>Duas pessoas não salvam a mesma simulação ao mesmo tempo.</strong> Cada salvamento informa a versão que foi carregada; se outra pessoa (ou outra janela sua) salvou no meio, o
+          sistema recusa o seu salvamento, avisa quem salvou e oferece carregar a versão salva ou salvar a sua como cópia. Assim ninguém apaga o trabalho do outro sem perceber. O super-administrador
+          vê as simulações de todos nas mesmas telas, com o nome de quem as criou, e pode excluí-las, mas não sobrescrevê-las.
+        </p>
+      </Bloco>
+
+      <Bloco
+        id="imprimir-e-exportar"
+        titulo="Imprimir, salvar em PDF e baixar CSV"
+        fatia="Em todas as telas, para levar os números para uma reunião ou para o Excel"
+        resumo="Botões na página, em cada quadro e em cada tabela."
+      >
+        <p>
+          No alto de cada tela há a barra <strong>Esta página</strong>: <strong>Imprimir / PDF</strong> imprime a tela inteira, e <strong>CSV das tabelas</strong> baixa todas as
+          tabelas da página em um só arquivo, cada uma com o seu título. Cada <strong>quadro</strong> (as caixas das telas) tem um botão Imprimir / PDF na borda de cima, e cada{" "}
+          <strong>tabela</strong> tem os botões CSV e Imprimir / PDF logo acima dela. Assim dá para levar só o que interessa.
+        </p>
+        <p>
+          O sistema não gera o PDF sozinho: ele abre a janela de impressão do navegador, e na lista de impressoras você escolhe <strong>Salvar como PDF</strong>. A impressão sai
+          sem o menu e os botões, com a tabela inteira (sem barra de rolagem) e em fundo claro, na horizontal.
+        </p>
+        <p>
+          O CSV abre direto no Excel em português: separador ponto e vírgula e acentos corretos. Os valores em reais saem como número puro (sem &quot;R$&quot; e sem ponto de milhar),
+          para você somar e ordenar, e os percentuais mantêm o &quot;%&quot;. O que a tela mostra com filtro ou escolha (um câmpus, um ano) é o que vai para o arquivo.
+        </p>
+      </Bloco>
+
       <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
         <h2 className="font-semibold">Por que este sistema não recalcula nada disso</h2>
         <p>

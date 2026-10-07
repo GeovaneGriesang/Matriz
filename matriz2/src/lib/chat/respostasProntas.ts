@@ -181,6 +181,18 @@ const PRONTAS: Pronta[] = [
       "As marcas dizem o quanto confiar no número. Conferido: bate com o oficial da MDO ou com o Excel. Atenção: há uma inconsistência na fonte ou um dado que falta. Estimado: é uma hipótese nossa, com as premissas explicadas na própria marca.",
   },
   {
+    id: "salvar-simulacao",
+    casa: (t) => tem(t, /(salvar|salvo|salva|guardar|compartilh)/) && tem(t, /(simulac|cenario|consulta|filtro|configurac)/) && !tem(t, ESPECIFICA),
+    resposta: () =>
+      "No alto das telas de simulação e de consulta há a lista Simulações salvas (ou Consultas salvas). Salvar como… guarda o que está na tela com o nome que você der; Carregar traz tudo de volta; Salvar grava por cima; Renomear muda o nome; Compartilhar… escolhe quem também vai ver (com Marcar todos, Desmarcar todos e Inverter seleção). Quem recebe só carrega e pode salvar uma cópia. Duas pessoas não salvam a mesma ao mesmo tempo: se alguém salvou no meio, o sistema avisa e você escolhe recarregar ou salvar como cópia.",
+  },
+  {
+    id: "imprimir-exportar",
+    casa: (t) => tem(t, /(imprim|pdf|csv|excel|planilha|exportar|baixar)/) && tem(t, /(como|onde|posso|consigo|tem|dá|da )/) && !tem(t, ESPECIFICA),
+    resposta: () =>
+      "Toda tela tem, no alto, a barra Esta página: Imprimir / PDF imprime a tela inteira e CSV das tabelas baixa todas as tabelas em um arquivo. Cada quadro tem um botão Imprimir / PDF na borda de cima, e cada tabela tem os botões CSV e Imprimir / PDF logo acima. Para o PDF, escolha Salvar como PDF na janela de impressão. O CSV abre direto no Excel, com os valores em reais como número puro.",
+  },
+  {
     id: "quem-calcula",
     casa: (t) => tem(t, /quem (calcula|faz|define|homologa)/) && tem(t, /(matriz|mdo)/),
     resposta: () => "A matriz é calculada e homologada pela MDO, coordenada pelo IFTM com a Comissão Paritária. Este sistema não recalcula nada: importa o resultado oficial para conferir, comparar e simular.",

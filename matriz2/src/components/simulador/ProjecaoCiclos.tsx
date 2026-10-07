@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ContextoDaTela } from "@/components/chat/ChatDaTela";
+import { useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { PESO_REPASSE_PADRAO, type Repasse } from "@/lib/mdo/matriculaTotal";
 import { chDaMatrizDoCurso } from "@/lib/mdo/valorDoCurso";
 import {
@@ -88,6 +89,8 @@ interface CenarioSalvo {
   reporExistentes: boolean;
   encerramentos: Record<string, number>;
   novos: NovoCursoUI[];
+  /** O câmpus em exame (null = a instituição inteira). */
+  campusId?: number | null;
 }
 
 const MAX_ANOS = 20;
@@ -179,36 +182,48 @@ export function ProjecaoCiclos({
 
   const chaveSalva = `matriz.cenario.${instituicao}.${anoCiclo}`;
 
+  /** Aplica um cenário (do navegador ou salvo no servidor), conferindo cada campo: um cenário antigo ou de outra versão não pode quebrar a tela. */
+  function aplicarCenario(bruto: unknown) {
+    const c = bruto as Partial<CenarioSalvo> | null;
+    if (!c || c.v !== 1) return;
+    if (typeof c.anos === "number") setAnos(Math.min(MAX_ANOS, Math.max(1, Math.round(c.anos))));
+    if (typeof c.evPresencial === "number") setEvPresencial(Math.min(80, Math.max(0, c.evPresencial)));
+    if (typeof c.evEad === "number") setEvEad(Math.min(80, Math.max(0, c.evEad)));
+    setReporExistentes(c.reporExistentes !== false);
+    setEncerramentos(c.encerramentos && typeof c.encerramentos === "object" ? c.encerramentos : {});
+    setNovos((Array.isArray(c.novos) ? c.novos : []).filter((n) => campi.some((x) => x.id === n.unidadeId)));
+    if (c.campusId !== undefined) setCampusId(c.campusId !== null && campi.some((x) => x.id === c.campusId) ? c.campusId : null);
+  }
+
   // O cenário fica guardado neste navegador, para a pessoa voltar e continuar de onde parou.
   useEffect(() => {
     try {
       const bruto = window.localStorage.getItem(chaveSalva);
-      if (bruto) {
-        const s = JSON.parse(bruto) as CenarioSalvo;
-        if (s.v === 1) {
-          setAnos(Math.min(MAX_ANOS, Math.max(1, s.anos)));
-          setEvPresencial(s.evPresencial);
-          setEvEad(s.evEad);
-          setReporExistentes(s.reporExistentes);
-          setEncerramentos(s.encerramentos ?? {});
-          setNovos((s.novos ?? []).filter((n) => campi.some((c) => c.id === n.unidadeId)));
-        }
-      }
+      if (bruto) aplicarCenario(JSON.parse(bruto));
     } catch {
       /* navegador sem armazenamento: o cenário só vale enquanto a página estiver aberta */
     }
     setRestaurado(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveSalva, campi]);
 
   useEffect(() => {
     if (!restaurado) return;
     try {
-      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos };
+      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId };
       window.localStorage.setItem(chaveSalva, JSON.stringify(s));
     } catch {
       /* idem */
     }
-  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos]);
+  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId]);
+
+  // As simulações salvas no servidor (com nome, para compartilhar) usam o mesmo estado.
+  useConfiguracaoSalvavel({
+    chave: `simulador/projecao:${instituicao}:${anoCiclo}`,
+    rotulo: "esta simulação",
+    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId }) satisfies CenarioSalvo,
+    aplicar: aplicarCenario,
+  });
 
   const premissas = useMemo<Premissas>(
     () => ({ evasao: { presencial: evPresencial / 100, ead: evEad / 100 }, retencao: retencao.retencao }),
