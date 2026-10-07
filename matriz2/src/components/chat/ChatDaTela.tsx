@@ -102,7 +102,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="fixed bottom-5 right-5 z-40 rounded-full bg-if-green px-4 py-3 text-sm font-semibold text-white shadow-lg hover:opacity-90"
+        className="nao-imprimir fixed bottom-5 right-5 z-40 rounded-full bg-if-green px-4 py-3 text-sm font-semibold text-white shadow-lg hover:opacity-90"
       >
         Perguntar sobre esta tela
       </button>
@@ -112,7 +112,7 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
   return (
     <section
       aria-label="Assistente da matriz"
-      className="fixed bottom-5 right-5 z-40 flex h-[32rem] max-h-[calc(100vh-6rem)] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-lg border border-neutral-300 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+      className="nao-imprimir fixed bottom-5 right-5 z-40 flex h-[32rem] max-h-[calc(100vh-6rem)] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-lg border border-neutral-300 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
     >
       <header className="flex items-start justify-between gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
         <div className="flex flex-col">

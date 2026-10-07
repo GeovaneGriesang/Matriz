@@ -69,11 +69,14 @@ model Usuario {
   criadoEm           DateTime  @default(now())
   ultimoLoginEm      DateTime?
 
-  sessoes            Sessao[]
-  auditorias         RegistroAuditoria[]
-  codigosVerificacao CodigoVerificacao[]
-  valoresRecebidos   ValorRecebidoCampus[]
-  conversasChat      ConversaChat[]
+  sessoes                  Sessao[]
+  auditorias               RegistroAuditoria[]
+  codigosVerificacao       CodigoVerificacao[]
+  valoresRecebidos         ValorRecebidoCampus[]
+  conversasChat            ConversaChat[]
+  configuracoesSalvas      ConfiguracaoSalva[]         @relation("ConfiguracaoDono")
+  configuracoesAtualizadas ConfiguracaoSalva[]         @relation("ConfiguracaoAtualizadaPor")
+  configuracoesRecebidas   ConfiguracaoCompartilhada[]
 }
 
 /// Tipo de código enviado por e-mail.
@@ -1295,18 +1298,18 @@ model OrcamentoDespesaAcao {
 /// Uma pergunta feita ao assistente do chat e a resposta que ele deu, para a equipe ver o que as pessoas querem saber e onde o modelo erra.
 /// Guarda a tela em que a pergunta foi feita. Só quem tem acesso pleno usa o chat.
 model ConversaChat {
-  id         Int      @id @default(autoincrement())
-  usuarioId  Int
-  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
   /// Caminho da tela aberta, sem o prefixo do subcaminho.
-  rota       String   @db.VarChar(120)
-  pergunta   String   @db.Text
-  resposta   String   @db.MediumText
-  modelo     String   @db.VarChar(60)
-  duracaoMs  Int
+  rota      String   @db.VarChar(120)
+  pergunta  String   @db.Text
+  resposta  String   @db.MediumText
+  modelo    String   @db.VarChar(60)
+  duracaoMs Int
   /// "ok", "interrompida" ou "erro".
-  situacao   String   @db.VarChar(20)
-  criadoEm   DateTime @default(now())
+  situacao  String   @db.VarChar(20)
+  criadoEm  DateTime @default(now())
 
   @@index([usuarioId, criadoEm])
   @@index([criadoEm])
@@ -1318,17 +1321,56 @@ model ConversaChat {
 /// fatos varre milhões de linhas (17 segundos em produção); aqui são poucas linhas por tabela. Preenchida na carga da PNP (e sob demanda,
 /// na primeira vez que a tela precisa de uma lista que ainda não existe). `aba` é vazia no painel de ensino, que filtra só pela subaba.
 model PnpOpcaoFiltro {
-  id      Int    @id @default(autoincrement())
+  id     Int    @id @default(autoincrement())
   /// "ENSINO" ou "ORCAMENTO".
-  painel  String @db.VarChar(12)
+  painel String @db.VarChar(12)
   /// Edição da PNP (ciclo da carga).
-  edicao  Int
-  aba     String @default("") @db.VarChar(60)
-  subaba  String @db.VarChar(80)
+  edicao Int
+  aba    String @default("") @db.VarChar(60)
+  subaba String @db.VarChar(80)
   /// "dimensao" ou "relacaoOrgao".
-  tipo    String @db.VarChar(20)
-  valor   String @db.VarChar(255)
+  tipo   String @db.VarChar(20)
+  valor  String @db.VarChar(255)
 
   @@unique([painel, edicao, aba, subaba, tipo, valor])
   @@index([painel, edicao, subaba, tipo])
+}
+
+// ---------- Simulações e consultas salvas ----------
+
+/// Uma simulação ou uma consulta (os filtros de uma tela) que o usuário salvou com um nome, para não refazer toda a configuração.
+/// `tela` identifica a tela e o contexto (ex.: "simulador/projecao:IFSUL:2027", ou o caminho da tela nas consultas por filtro);
+/// `dados` é o estado da tela, como a própria tela o entende. O dono edita, renomeia, compartilha e exclui; quem recebe o
+/// compartilhamento só carrega (e pode salvar uma cópia sua). `versao` sobe a cada salvamento: quem salva informa a versão que
+/// carregou, e se outra pessoa (ou outra janela) salvou no meio, o salvamento é recusado em vez de apagar o trabalho dela.
+model ConfiguracaoSalva {
+  id              Int      @id @default(autoincrement())
+  donoId          Int
+  dono            Usuario  @relation("ConfiguracaoDono", fields: [donoId], references: [id])
+  tela            String   @db.VarChar(160)
+  nome            String   @db.VarChar(120)
+  dados           Json
+  versao          Int      @default(1)
+  atualizadoPorId Int
+  atualizadoPor   Usuario  @relation("ConfiguracaoAtualizadaPor", fields: [atualizadoPorId], references: [id])
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  compartilhadaCom ConfiguracaoCompartilhada[]
+
+  @@unique([donoId, tela, nome])
+  @@index([tela, donoId])
+}
+
+/// Com quem uma configuração salva foi compartilhada. Some junto com a configuração.
+model ConfiguracaoCompartilhada {
+  id             Int               @id @default(autoincrement())
+  configuracaoId Int
+  configuracao   ConfiguracaoSalva @relation(fields: [configuracaoId], references: [id], onDelete: Cascade)
+  usuarioId      Int
+  usuario        Usuario           @relation(fields: [usuarioId], references: [id])
+  criadoEm       DateTime          @default(now())
+
+  @@unique([configuracaoId, usuarioId])
+  @@index([usuarioId])
 }

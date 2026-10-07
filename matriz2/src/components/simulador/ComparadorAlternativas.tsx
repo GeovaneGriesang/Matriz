@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import {
   eixoDeAnos,
   melhores,
@@ -100,6 +101,21 @@ export function ComparadorAlternativas({
   const [horizonte, setHorizonte] = useState(8);
   const [reajustePct, setReajustePct] = useState(0);
   const [alternativas, setAlternativas] = useState<Alternativa[]>(() => alternativasIniciais(catalogo, base, base.anoDoValor + 1));
+
+  useConfiguracaoSalvavel({
+    chave: `simulador/alternativas:${instituicao}:${campus}`,
+    rotulo: "esta comparação",
+    capturar: () => ({ anoInicial, horizonte, reajustePct, alternativas }),
+    aplicar: (d) =>
+      aplicarCampos(d, {
+        anoInicial: comoNumero(setAnoInicial),
+        horizonte: comoNumero(setHorizonte),
+        reajustePct: comoNumero(setReajustePct),
+        alternativas: (v) => {
+          if (Array.isArray(v) && v.length > 0) setAlternativas(v as Alternativa[]);
+        },
+      }),
+  });
 
   const ctx: ContextoAlternativas = useMemo(() => ({ ...base, reajusteAnual: reajustePct / 100 }), [base, reajustePct]);
   const anos = useMemo(() => eixoDeAnos(anoInicial, horizonte), [anoInicial, horizonte]);

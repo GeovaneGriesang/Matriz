@@ -34,6 +34,10 @@ Assistência Estudantil: rateada pela renda familiar per capita dos alunos e por
 
 Orçamento da União: a LOA é o orçamento aprovado pelo Congresso e o PLOA a proposta do governo. Só vai até a instituição, não há valor por câmpus. Ações: 20RL funcionamento, 2994 assistência estudantil, 20RG reestruturação.
 
+Salvar simulações: nas telas de simulação e de consulta há, no alto, a lista de simulações (ou consultas) salvas com Carregar, Salvar, Salvar como, Renomear, Compartilhar e Excluir. O que se salva é só do usuário; ele pode compartilhar com outras pessoas (com Marcar todos, Desmarcar todos e Inverter seleção), que só carregam e podem salvar uma cópia. Duas pessoas não salvam a mesma ao mesmo tempo: o sistema recusa o salvamento de quem carregou uma versão antiga. O super-administrador vê as de todos, com o dono.
+
+Imprimir e exportar: toda tela tem, no alto, os botões Imprimir / PDF e CSV das tabelas; cada quadro tem Imprimir / PDF e cada tabela tem CSV e Imprimir / PDF. O PDF sai da janela de impressão do navegador (Salvar como PDF); o CSV abre no Excel, com valores em reais como número puro.
+
 Marcas de confiança nas telas: Conferido (bate com o oficial), Atenção (há inconsistência na fonte) e Estimado (hipótese nossa, com premissas explicadas).
 `.trim();
 

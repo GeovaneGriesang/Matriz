@@ -2,6 +2,7 @@
 
 import { ehInstituicaoDestaque } from "@/lib/destaque";
 import { useMemo, useState } from "react";
+import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { PROSE_LINK } from "@/lib/layoutWidths";
@@ -111,6 +112,19 @@ export function SimuladorUnificado({
   function setCrescimento(unidadeId: number, valor: number) {
     setCrescimentoPorCampus((atual) => ({ ...atual, [unidadeId]: valor }));
   }
+
+  useConfiguracaoSalvavel({
+    chave: "simulador/evasao-rap-iapl",
+    rotulo: "esta simulação",
+    capturar: () => ({ rapPorSigla, iaplPorSigla, reducaoPorCampus, crescimentoPorCampus }),
+    aplicar: (d) =>
+      aplicarCampos(d, {
+        rapPorSigla: comoObjeto<Record<string, number>>(setRapPorSigla),
+        iaplPorSigla: comoObjeto<Record<string, ValoresIapl>>(setIaplPorSigla),
+        reducaoPorCampus: comoObjeto<Record<number, number>>(setReducaoPorCampus),
+        crescimentoPorCampus: comoObjeto<Record<number, number>>(setCrescimentoPorCampus),
+      }),
+  });
 
   const rollups = useMemo(() => {
     const mapa = new Map<string, { evasao: number; crescimento: number; rap: number; iapl: number; total: number }>();

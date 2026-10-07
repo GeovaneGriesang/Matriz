@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anoDaVirada, simularOpcaoCurso, type OpcaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
 
 export interface CursoBase {
@@ -63,6 +64,23 @@ export function SimuladorCursoAnos({
     chMatriz: base.chMatriz,
     vagasPorAno: 40,
     evasaoAnual: 0,
+  });
+
+  useConfiguracaoSalvavel({
+    chave: `simulador/curso:${campus}:${ano}:${base.rotulo}`,
+    rotulo: "esta simulação",
+    capturar: () => ({ peso, agro, valorMatricula, chMatriz, horizonte, diluir, a, b }),
+    aplicar: (d) =>
+      aplicarCampos(d, {
+        peso: comoNumero(setPeso),
+        agro: comoBooleano(setAgro),
+        valorMatricula: comoNumero(setValorMatricula),
+        chMatriz: comoNumero(setChMatriz),
+        horizonte: comoNumero(setHorizonte),
+        diluir: comoBooleano(setDiluir),
+        a: comoObjeto<OpcaoCurso>(setA),
+        b: comoObjeto<OpcaoCurso>(setB),
+      }),
   });
 
   const parametros = useMemo(
