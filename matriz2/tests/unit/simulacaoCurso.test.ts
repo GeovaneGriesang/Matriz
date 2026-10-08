@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anoDaVirada, simularOpcaoCurso, type OpcaoCurso, type ParametrosSimulacaoCurso } from "@/lib/mdo/simulacaoCurso";
+import { anoDaVirada, exemploDoPrimeiroAno, exemploEmRegime, simularOpcaoCurso, type OpcaoCurso, type ParametrosSimulacaoCurso } from "@/lib/mdo/simulacaoCurso";
 
 const parametros: ParametrosSimulacaoCurso = {
   peso: 1.5,
@@ -142,5 +142,23 @@ describe("turma curta em meses (FIC)", () => {
     const quatro = simularOpcaoCurso(opcao({ anosDuracao: 4 }), parametros);
     expect(quatro.regime.turmas).toBe(4);
     expect(quatro.valorPorIngressante).toBeCloseTo(4 * 1.5 * 1200, 2);
+  });
+});
+
+describe("exemplo da conta com os números da simulação", () => {
+  it("abre exatamente a conta da tabela: primeiro ano e regime", () => {
+    for (const o of [opcao({ anosDuracao: 3 }), opcao({ anosDuracao: 4, vagasPorAno: 32, evasaoAnual: 0.1 })]) {
+      const r = simularOpcaoCurso(o, parametros);
+      const primeiro = exemploDoPrimeiroAno(o, parametros);
+      expect(primeiro.matriculaTotal).toBeCloseTo(r.linhas[0]!.matriculaTotal, 9);
+      expect(primeiro.valor).toBeCloseTo(r.linhas[0]!.valor, 6);
+      const regime = exemploEmRegime(o, parametros);
+      expect(regime).toHaveLength(o.anosDuracao);
+      expect(regime.reduce((s, t) => s + t.matriculaTotal, 0)).toBeCloseTo(r.regime.matriculaTotal, 9);
+    }
+  });
+
+  it("no primeiro ano a turma entra em março: 306 dias ativos", () => {
+    expect(exemploDoPrimeiroAno(opcao({}), parametros).diasAtivos).toBe(306);
   });
 });
