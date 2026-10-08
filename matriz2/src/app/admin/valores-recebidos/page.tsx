@@ -1,5 +1,5 @@
 import { prisma } from "@/server/db/prisma";
-import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { requireInformarValoresOrRedirect } from "@/server/auth/session";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SIGLA_DESTAQUE, campusDestaqueNaFrente } from "@/lib/destaque";
@@ -12,7 +12,7 @@ interface Busca {
 }
 
 export default async function ValoresRecebidosPage({ searchParams }: { searchParams: Promise<Busca> }) {
-  const usuario = await requireAcessoPlenoOrRedirect("/admin/valores-recebidos");
+  const usuario = await requireInformarValoresOrRedirect("/admin/valores-recebidos");
   const params = await searchParams;
 
   // União da 6ª fase com a 5ª fase: um valor recebido faz sentido informar mesmo

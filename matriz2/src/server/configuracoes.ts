@@ -180,7 +180,7 @@ export async function excluir(ator: Ator, id: number): Promise<Resultado<null>> 
 export async function destinatarios(ator: Ator): Promise<Resultado<Array<{ id: number; nome: string; email: string }>>> {
   if (!podeUsar(ator)) return falha(403, "Sem acesso.");
   const u = await prisma.usuario.findMany({
-    where: { ativo: true, papel: { not: "PADRAO" }, id: { not: ator.id } },
+    where: { ativo: true, id: { not: ator.id } },
     select: { id: true, nome: true, email: true },
     orderBy: { nome: "asc" },
   });
@@ -196,7 +196,7 @@ export async function compartilhar(ator: Ator, id: number, usuarioIds: unknown):
   if (!podeCompartilhar(ator, paraPermissao(c))) return falha(403, "Só quem criou a simulação pode compartilhá-la.");
 
   const validos = await prisma.usuario.findMany({
-    where: { id: { in: usuarioIds as number[], not: ator.id }, ativo: true, papel: { not: "PADRAO" } },
+    where: { id: { in: usuarioIds as number[], not: ator.id }, ativo: true },
     select: { id: true, nome: true },
   });
   const ids = validos.map((v) => v.id);

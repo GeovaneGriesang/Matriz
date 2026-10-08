@@ -1,3 +1,4 @@
+import { temAcessoPleno } from "@/lib/permissoes";
 import type { Metadata } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
@@ -33,7 +34,7 @@ const TEMA_INICIAL_SCRIPT = `
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // O assistente só aparece para quem tem acesso pleno e quando o servidor o liga (CHAT_ATIVO=1).
   const usuario = await getAdminSession();
-  const comChat = process.env.CHAT_ATIVO === "1" && usuario !== null && usuario.papel !== "PADRAO";
+  const comChat = process.env.CHAT_ATIVO === "1" && usuario !== null && temAcessoPleno(usuario.papel);
   return (
     <html lang="pt-BR" className={openSans.variable} suppressHydrationWarning>
       <head>

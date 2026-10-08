@@ -1,5 +1,6 @@
 "use server";
 
+import { podeInformarValores } from "@/lib/permissoes";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
@@ -26,7 +27,7 @@ export async function salvarValorRecebidoAction(formData: FormData): Promise<Sal
   if (!usuario) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
-  if (usuario.papel === "PADRAO") {
+  if (!podeInformarValores(usuario.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
   }
 
@@ -97,7 +98,7 @@ export async function salvarValoresRecebidosEmLoteAction(
   if (!usuario) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
-  if (usuario.papel === "PADRAO") {
+  if (!podeInformarValores(usuario.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
   }
   if (!Number.isFinite(ano) || ano < 2000) {
@@ -161,7 +162,7 @@ export async function excluirValorRecebidoAction(id: number): Promise<SalvarValo
   if (!usuario) {
     return { ok: false, errorMessage: "Não autenticado." };
   }
-  if (usuario.papel === "PADRAO") {
+  if (!podeInformarValores(usuario.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
   }
 

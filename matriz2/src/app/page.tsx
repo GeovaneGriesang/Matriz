@@ -1,3 +1,4 @@
+import { temAcessoPleno } from "@/lib/permissoes";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -18,7 +19,7 @@ const numero = new Intl.NumberFormat("pt-BR");
  */
 export default async function Home() {
   const usuario = await getAdminSession();
-  if (!usuario || usuario.papel === "PADRAO") {
+  if (!usuario || !temAcessoPleno(usuario.papel)) {
     return (
       <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-6 px-6 py-20 text-center`}>
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">

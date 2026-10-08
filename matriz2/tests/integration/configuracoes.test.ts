@@ -77,8 +77,8 @@ describe("simulações salvas", () => {
     expect(!semAcesso.ok && semAcesso.status).toBe(404);
 
     const comp = await compartilhar(dono, id, [colega.id, dono.id, padrao.id, 999999]);
-    // Só entra quem é usuário ativo com acesso pleno e diferente do dono.
-    expect(comp.ok && comp.valor.map((u) => u.id)).toEqual([colega.id]);
+    // Só entra quem é usuário ativo e diferente do dono (o PADRAO tem acesso pleno por ora); o id inexistente fica de fora.
+    expect(comp.ok && comp.valor.map((u) => u.id).sort()).toEqual([colega.id, padrao.id].sort());
 
     const depois = await listar(colega, TELA);
     expect(depois.ok && depois.valor[0]?.origem).toBe("compartilhada");
@@ -149,13 +149,14 @@ describe("simulações salvas", () => {
     expect((await excluir(superAdmin, outra.id)).ok).toBe(true);
   });
 
-  it("o usuário PADRAO não usa o recurso e a lista de destinatários não traz ele", async () => {
+  it("o usuário PADRAO usa o recurso e aparece na lista de destinatários (acesso pleno por ora)", async () => {
     if (!disponivel) return;
     const l = await listar(padrao, TELA);
-    expect(!l.ok && l.status).toBe(403);
-    expect((await criar(padrao, { tela: TELA, nome: "x", dados: {} })).ok).toBe(false);
+    expect(l.ok).toBe(true);
+    const c = await criar(padrao, { tela: TELA, nome: "do padrao", dados: {} });
+    expect(c.ok).toBe(true);
     const d = await destinatarios(dono);
-    expect(d.ok && d.valor.some((u) => u.id === padrao.id)).toBe(false);
+    expect(d.ok && d.valor.some((u) => u.id === padrao.id)).toBe(true);
     expect(d.ok && d.valor.some((u) => u.id === dono.id)).toBe(false);
     expect(d.ok && d.valor.some((u) => u.id === colega.id)).toBe(true);
   });

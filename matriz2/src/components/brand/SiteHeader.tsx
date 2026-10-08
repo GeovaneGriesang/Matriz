@@ -1,3 +1,4 @@
+import { temAcessoPleno } from "@/lib/permissoes";
 import Link from "next/link";
 import { InstitutoFederalMark } from "./InstitutoFederalMark";
 import { ThemeToggle } from "./ThemeToggle";
@@ -17,7 +18,7 @@ const LINK_CLASS = "text-sm text-neutral-600 hover:text-neutral-900 dark:text-ne
  */
 export async function SiteHeader() {
   const usuario = await getAdminSession();
-  const acessoPleno = usuario && usuario.papel !== "PADRAO";
+  const acessoPleno = usuario && temAcessoPleno(usuario.papel);
 
   return (
     <header className="sticky top-0 z-30 print:static border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">

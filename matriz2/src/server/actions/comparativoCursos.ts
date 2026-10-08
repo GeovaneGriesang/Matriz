@@ -1,5 +1,6 @@
 "use server";
 
+import { temAcessoPleno } from "@/lib/permissoes";
 import { getAdminSession } from "@/server/auth/session";
 import { carregarCursosDoCampus } from "@/server/queries/cursosCampus";
 import type { CursoLinha } from "@/app/consulta/ConsultaTabelaCursos";
@@ -23,7 +24,7 @@ export async function carregarCursosComparativoCampusAction(
   anoB: number,
 ): Promise<CursosComparativoCampus> {
   const usuario = await getAdminSession();
-  if (!usuario || usuario.papel === "PADRAO") {
+  if (!usuario || !temAcessoPleno(usuario.papel)) {
     return { ok: false, errorMessage: "Não autorizado.", cursosA: [], cursosB: [] };
   }
   const [cursosA, cursosB] = await Promise.all([
