@@ -1,3 +1,4 @@
+import { temAcessoPleno } from "@/lib/permissoes";
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
@@ -41,7 +42,7 @@ function lerEntrada(corpo: unknown): EntradaChat | null {
 export async function POST(req: Request) {
   if (process.env.CHAT_ATIVO !== "1") return erro("O chat ainda não está ligado neste servidor.", 503);
   const usuario = await getAdminSession();
-  if (!usuario || usuario.papel === "PADRAO") return erro("Não autenticado.", 401);
+  if (!usuario || !temAcessoPleno(usuario.papel)) return erro("Não autenticado.", 401);
 
   let entrada: EntradaChat | null;
   try {

@@ -1,3 +1,4 @@
+import { temAcessoPleno } from "@/lib/permissoes";
 import fs from "node:fs";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
@@ -13,7 +14,7 @@ import { localizarArquivoOriginal } from "@/carga/caminhos";
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const usuario = await getAdminSession();
-  if (!usuario || usuario.papel === "PADRAO") {
+  if (!usuario || !temAcessoPleno(usuario.papel)) {
     return new Response("Não autorizado.", { status: 403 });
   }
 

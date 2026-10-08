@@ -1,5 +1,6 @@
 "use server";
 
+import { temAcessoPleno } from "@/lib/permissoes";
 import { getAdminSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/prisma";
 import { explicarVariacao, type CicloParaExplicar, type ExplicacaoVariacao } from "@/lib/mdo/explicarVariacao";
@@ -49,7 +50,7 @@ async function carregarCiclo(ano: number, unidadeId: number): Promise<CicloParaE
  */
 export async function explicarVariacaoCampusAction(unidadeId: number, anoA: number, anoB: number): Promise<ResultadoExplicacao> {
   const usuario = await getAdminSession();
-  if (!usuario || usuario.papel === "PADRAO") return { ok: false, errorMessage: "Não autorizado." };
+  if (!usuario || !temAcessoPleno(usuario.papel)) return { ok: false, errorMessage: "Não autorizado." };
 
   const [a, b] = await Promise.all([carregarCiclo(anoA, unidadeId), carregarCiclo(anoB, unidadeId)]);
   if (typeof a === "string") return { ok: true, motivoSemExplicacao: a };

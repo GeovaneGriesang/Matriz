@@ -7,6 +7,8 @@
  *  - o super-administrador vê e carrega a de todos (com o nome do dono) e pode excluir, mas não sobrescrever a de outra pessoa.
  */
 
+import { temAcessoPleno } from "@/lib/permissoes";
+
 export type PapelDoUsuario = "SUPER_ADMIN" | "ADMIN" | "PADRAO";
 
 export interface Ator {
@@ -30,7 +32,7 @@ export const LIMITE_POR_USUARIO = 200;
 
 /** Só quem tem acesso pleno usa as telas que se salvam; o usuário PADRAO não vê nenhuma delas. */
 export function podeUsar(ator: Ator): boolean {
-  return ator.papel !== "PADRAO";
+  return temAcessoPleno(ator.papel);
 }
 
 export function origemDaConfiguracao(ator: Ator, c: ConfiguracaoParaPermissao): OrigemDaConfiguracao | null {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
-import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { requireInformarValoresOrRedirect } from "@/server/auth/session";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CicloOrcamentoForm } from "@/components/admin/CicloOrcamentoForm";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -12,7 +12,7 @@ export default async function AdminOrcamentoPage({
 }: {
   searchParams: Promise<{ ano?: string }>;
 }) {
-  const usuario = await requireAcessoPlenoOrRedirect("/admin/orcamento");
+  const usuario = await requireInformarValoresOrRedirect("/admin/orcamento");
 
   const ciclos = await prisma.cicloOrcamento.findMany({
     orderBy: { ano: "desc" },

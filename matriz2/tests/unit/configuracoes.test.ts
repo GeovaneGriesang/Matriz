@@ -52,10 +52,10 @@ describe("permissões", () => {
     expect(podeCompartilhar(superAdmin, config)).toBe(false);
   });
 
-  it("o usuário PADRAO não usa o recurso, nem na própria configuração", () => {
-    expect(podeUsar(padrao)).toBe(false);
-    expect(podeVer(padrao, { donoId: 5, compartilhadaComIds: [] })).toBe(false);
-    expect(podeSobrescrever(padrao, { donoId: 5, compartilhadaComIds: [] })).toBe(false);
+  it("o usuário PADRAO usa o recurso como o ADMIN (decisão de 2026-10-08, ver lib/permissoes)", () => {
+    expect(podeUsar(padrao)).toBe(true);
+    expect(podeVer(padrao, { donoId: 5, compartilhadaComIds: [] })).toBe(true);
+    expect(podeSobrescrever(padrao, { donoId: 5, compartilhadaComIds: [] })).toBe(true);
   });
 });
 
