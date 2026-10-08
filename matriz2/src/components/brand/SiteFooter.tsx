@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { InstitutoFederalMark } from "./InstitutoFederalMark";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
+import { apiUrl } from "@/lib/basePath";
+import { MEMBROS_DA_COMISSAO, PORTARIA_DA_COMISSAO } from "@/lib/comissao";
 
 const ICON_LINK_CLASS =
   "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
@@ -83,6 +85,34 @@ export function SiteFooter() {
           </p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">Desenvolvido por Geovane Griesang</p>
         </div>
+
+        <section
+          aria-labelledby="comissao-titulo"
+          className="border-t border-neutral-200 pt-4 text-center text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400"
+        >
+          <h2 id="comissao-titulo" className="font-semibold text-neutral-700 dark:text-neutral-300">
+            {PORTARIA_DA_COMISSAO.titulo}
+          </h2>
+          <p className="mt-1">
+            Comissão que estuda e analisa a matriz orçamentária, designada pela{" "}
+            <a
+              href={apiUrl(PORTARIA_DA_COMISSAO.arquivo)}
+              download={PORTARIA_DA_COMISSAO.nomeParaSalvar}
+              title="Baixar o PDF da portaria"
+              className="font-medium text-if-green underline dark:text-green-400 underline-offset-2 hover:no-underline print:no-underline"
+            >
+              Portaria nº {PORTARIA_DA_COMISSAO.numero}, de {PORTARIA_DA_COMISSAO.data}
+            </a>
+            .
+          </p>
+          <ul className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+            {MEMBROS_DA_COMISSAO.map((m) => (
+              <li key={m.nome}>
+                {m.nome} ({m.presidente ? `${m.segmento}, presidente` : m.segmento})
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
     </footer>
   );
