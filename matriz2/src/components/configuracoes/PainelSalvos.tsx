@@ -13,8 +13,24 @@ import { alternar, desmarcarTodos, diferencaDeCompartilhamento, inverterSelecao,
  * salva o estado da simulação; nas demais telas com filtros, salva o endereço (os filtros escolhidos) e, ao carregar, abre a tela com ele.
  */
 
-/** Telas em que não há o que salvar quando não houver registro: não têm filtro nem simulação. */
-const SEM_FILTROS = [/^\/$/, /^\/como-funciona/, /^\/situacao-dos-dados/, /^\/dados-importados/, /^\/admin/];
+/**
+ * Telas em que não há o que salvar quando não houver registro: não têm filtro nem simulação, ou são consultas simples (instituição,
+ * câmpus e ano) que se refazem em dois cliques, sem nada que valha guardar com nome.
+ */
+const SEM_FILTROS = [
+  /^\/$/,
+  /^\/como-funciona/,
+  /^\/situacao-dos-dados/,
+  /^\/dados-importados/,
+  /^\/admin/,
+  /^\/consulta\/?$/,
+  /^\/consulta\/valor-do-aluno/,
+  /^\/conferencia/,
+  /^\/evasao/,
+  /^\/comparativo/,
+  /^\/orcamento-da-uniao/,
+  /^\/simulador\/?$/,
+];
 
 const BOTAO =
   "rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800";

@@ -1,4 +1,4 @@
-import { matriculaTotalDoCiclo, type CicloParaCalculo } from "./matriculaTotal";
+import { decomporMatriculaTotal, matriculaTotalDoCiclo, type CicloParaCalculo, type DecomposicaoMatricula } from "./matriculaTotal";
 
 /**
  * Simulação de um curso ao longo dos anos, usando a MESMA regra da MDO para a
@@ -227,6 +227,48 @@ export function simularOpcaoCurso(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso
     valorPorIngressante: mtTurma * p.valorMatricula,
     valorAcumuladoHorizonte: acumulado,
   };
+}
+
+/**
+ * A conta do primeiro ano, aberta fator a fator, para a tela mostrar com os números da simulação: a primeira turma entra em
+ * março e só os dias de março a dezembro caem no ano. É a mesma conta de `simularOpcaoCurso` (a primeira linha do ano a ano).
+ */
+export function exemploDoPrimeiroAno(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso): DecomposicaoMatricula & { ano: number; valorMatricula: number; valor: number } {
+  const periodo = { inicio: new Date(Date.UTC(p.anoInicial, 0, 1)), fim: new Date(Date.UTC(p.anoInicial, 11, 31)) };
+  const ciclo = { ...ciclosDaTurma(p.anoInicial, p.mesInicio ?? 3, opcao, p), alunos: opcao.vagasPorAno };
+  const d = decomporMatriculaTotal(ciclo, periodo);
+  const valorMatricula = valorMatriculaNoAno(p, d.matriculaTotal, p.anoInicial);
+  return { ...d, ano: p.anoInicial, valorMatricula, valor: d.matriculaTotal * valorMatricula };
+}
+
+/**
+ * A conta de um ano cheio em regime, turma a turma (a mais nova primeiro): cada turma em andamento entra com os alunos que
+ * ainda tem (as vagas menos a evasão acumulada). A soma das Matrículas Totais é a de `regime.matriculaTotal`.
+ */
+export function exemploEmRegime(opcao: OpcaoCurso, p: ParametrosSimulacaoCurso): DecomposicaoMatricula[] {
+  const anoRegime = 2100;
+  const periodo = { inicio: new Date(Date.UTC(anoRegime, 0, 1)), fim: new Date(Date.UTC(anoRegime, 11, 31)) };
+  const turmas: DecomposicaoMatricula[] = [];
+  for (let idade = 0; idade < anosOcupados(opcao); idade++) {
+    const termino = fimDaTurma(anoRegime - idade, 1, opcao);
+    turmas.push(
+      decomporMatriculaTotal(
+        {
+          inicio: new Date(Date.UTC(anoRegime - idade, 0, 1)),
+          termino,
+          jubilamento: new Date(termino.getTime() + 3 * 365 * UM_DIA),
+          chCiclo: opcao.chTotalCiclo,
+          chMec: 0,
+          chMatriz: opcao.chMatriz,
+          peso: p.peso,
+          agropecuaria: p.agropecuaria,
+          alunos: opcao.vagasPorAno * Math.pow(1 - opcao.evasaoAnual, idade),
+        },
+        periodo,
+      ),
+    );
+  }
+  return turmas;
 }
 
 /** Primeiro ano em que o acumulado de A passa o de B (ou null se nunca, no horizonte). */

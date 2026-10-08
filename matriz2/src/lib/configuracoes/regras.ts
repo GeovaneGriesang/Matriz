@@ -57,7 +57,8 @@ export function validarNome(nome: unknown): Validacao<string> {
 
 export function validarTela(tela: unknown): Validacao<string> {
   if (typeof tela !== "string" || tela.length === 0 || tela.length > LIMITE_DE_TELA) return { ok: false, erro: "Tela inválida." };
-  if (!/^[\w\-./:?&=%+,;]+$/.test(tela)) return { ok: false, erro: "Tela inválida." };
+  // A chave é só um identificador; alguns simuladores incluem o nome do curso nela (com espaços, acentos e parênteses).
+  if (/[\u0000-\u001f\u007f<>]/.test(tela)) return { ok: false, erro: "Tela inválida." };
   return { ok: true, valor: tela };
 }
 

@@ -71,7 +71,9 @@ describe("validações", () => {
     expect(validarTela("simulador/projecao:IFSUL:2027").ok).toBe(true);
     expect(validarTela("/consulta/curso").ok).toBe(true);
     expect(validarTela("").ok).toBe(false);
+    expect(validarTela("simulador/curso:12:2027:TECNICO EM INFORMÁTICA (integrado)").ok).toBe(true);
     expect(validarTela("a b<script>").ok).toBe(false);
+    expect(validarTela("a\nb").ok).toBe(false);
     expect(validarTela("x".repeat(161)).ok).toBe(false);
   });
 

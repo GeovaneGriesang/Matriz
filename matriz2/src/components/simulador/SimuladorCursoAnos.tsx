@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
-import { anoDaVirada, simularOpcaoCurso, type OpcaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
+import { anoDaVirada, exemploDoPrimeiroAno, exemploEmRegime, simularOpcaoCurso, valorMatriculaNoAno, type OpcaoCurso, type ParametrosSimulacaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
+import type { DecomposicaoMatricula } from "@/lib/mdo/matriculaTotal";
 
 export interface CursoBase {
   rotulo: string;
@@ -211,6 +212,7 @@ export function SimuladorCursoAnos({
           reproduz ao centavo os 1.352 ciclos do IFSul): alunos × peso × (CH ÷ 800) × dias do ano dentro do
           ciclo ÷ dias do ciclo. Multiplicada pelo valor de uma matrícula, dá o repasse.
         </p>
+        <ExemploDaConta a={{ ...a, chMatriz }} b={{ ...b, chMatriz }} parametros={parametros} />
         <p>
           O que a regra mostra: a MDO paga pela <strong>carga horária total</strong> (até o teto da matriz), não
           pelo número de anos. Com a mesma CH, uma turma de 3 anos e uma de 4 rendem o mesmo por ingressante
@@ -223,6 +225,89 @@ export function SimuladorCursoAnos({
           {reais.format(base.valorHoje)} hoje.
         </p>
       </section>
+    </div>
+  );
+}
+
+const num2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num1ou0 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
+/** A conta de uma turma com os números no lugar das palavras: "32 alunos × 1,5 × (3.200 h ÷ 800) × 306 ÷ 1.096 dias". */
+function formulaComNumeros(d: DecomposicaoMatricula): string {
+  const partes = [`${num1ou0.format(d.alunos)} alunos`];
+  if (d.icqa !== 1) partes.push(`${num1ou0.format(d.icqa)} (ICQA)`);
+  partes.push(`${num1ou0.format(d.peso)} (peso)`);
+  if (d.bonusAgropecuaria !== 1) partes.push(`${num1ou0.format(d.bonusAgropecuaria)} (agropecuária)`);
+  partes.push(`(${inteiro.format(d.chEfetiva)} h ÷ 800)`);
+  partes.push(`${inteiro.format(d.diasAtivos)} ÷ ${inteiro.format(d.diasDoCiclo)} dias`);
+  return partes.join(" × ");
+}
+
+/** Um exemplo passo a passo com os números da simulação, para a pessoa ver de onde saem os valores da tabela. */
+function ExemploDaConta({ a, b, parametros }: { a: OpcaoCurso; b: OpcaoCurso; parametros: ParametrosSimulacaoCurso }) {
+  const itens = [
+    { letra: "A", cor: COR_A, op: a },
+    { letra: "B", cor: COR_B, op: b },
+  ].map((x) => {
+    const primeiro = exemploDoPrimeiroAno(x.op, parametros);
+    const regime = exemploEmRegime(x.op, parametros);
+    const mtRegime = regime.reduce((s, t) => s + t.matriculaTotal, 0);
+    const valorRegime = mtRegime * valorMatriculaNoAno(parametros, mtRegime);
+    return { ...x, primeiro, regime, mtRegime, valorRegime };
+  });
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Com os números desta simulação</h3>
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+        Cada fator abaixo vem dos campos preenchidos acima. Mude um deles e este exemplo muda junto. Os dias contados são os que a turma
+        tem de aula dentro do ano (a turma entra em março, então o primeiro ano tem menos dias), divididos pelos dias do curso inteiro.
+      </p>
+      {itens.map(({ letra, cor, op, primeiro, regime, mtRegime, valorRegime }) => {
+        const todasIguais = regime.every((t) => Math.abs(t.alunos - regime[0]!.alunos) < 1e-9);
+        const acimaDoTeto = op.chTotalCiclo > op.chMatriz;
+        return (
+          <div key={letra} className="flex flex-col gap-1.5">
+            <p className="font-medium text-neutral-900 dark:text-neutral-100">
+              <Marca cor={cor} /> Opção {letra}: {op.anosDuracao} anos, {inteiro.format(op.chTotalCiclo)} h
+              {acimaDoTeto && ` (a MDO conta só ${inteiro.format(op.chMatriz)} h, o teto da matriz)`}
+            </p>
+            <p>
+              <strong>Primeiro ano ({primeiro.ano}):</strong> entra a primeira turma, de {num1ou0.format(op.vagasPorAno)} alunos, em março.
+            </p>
+            <p className="pl-3 tabular-nums">
+              {formulaComNumeros(primeiro)} = <strong>{num2.format(primeiro.matriculaTotal)}</strong> de Matrícula Total
+              <br />
+              {num2.format(primeiro.matriculaTotal)} × {reais2.format(primeiro.valorMatricula)} ={" "}
+              <strong>{reais.format(primeiro.valor)}</strong> de repasse no ano
+            </p>
+            <p>
+              <strong>Em regime (ano completo):</strong> {regime.length} {regime.length === 1 ? "turma" : "turmas"} em andamento ao mesmo tempo, cada
+              uma com todos os dias do ano.
+            </p>
+            <p className="pl-3 tabular-nums">
+              {todasIguais ? (
+                <>
+                  Cada turma: {formulaComNumeros(regime[0]!)} = {num2.format(regime[0]!.matriculaTotal)}
+                  <br />
+                  {regime.length} turmas somam <strong>{num2.format(mtRegime)}</strong>
+                </>
+              ) : (
+                <>
+                  {regime.map((t, i) => (
+                    <span key={i}>
+                      Turma {i + 1}: {formulaComNumeros(t)} = {num2.format(t.matriculaTotal)}
+                      <br />
+                    </span>
+                  ))}
+                  Somam <strong>{num2.format(mtRegime)}</strong>
+                </>
+              )}
+              <br />
+              {num2.format(mtRegime)} × {reais2.format(valorMatriculaNoAno(parametros, mtRegime))} = <strong>{reais.format(valorRegime)}</strong> por ano
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
