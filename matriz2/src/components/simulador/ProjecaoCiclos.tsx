@@ -76,6 +76,8 @@ interface NovoCursoUI {
   /** Turmas por ano: 1 (curso anual) ou 2 (semestral). */
   entradas?: 1 | 2;
   anoFim: number;
+  /** O curso continua sendo ofertado, com uma turma nova a cada entrada, até o fim do horizonte (o normal de um curso aberto). Cenários salvos antes não têm o campo e seguem valendo pelo "último ano" que a pessoa informou. */
+  continua?: boolean;
   ingressantes: number;
   duracao: number;
   repasse: Repasse;
@@ -249,7 +251,7 @@ export function ProjecaoCiclos({
           chMatriz,
           valorPorMT: valorMatriculaPresencial * PESO_REPASSE_PADRAO[n.repasse],
           primeiroAnoEntrada: n.anoInicio,
-          ultimoAnoEntrada: Math.max(n.anoInicio, n.anoFim),
+          ultimoAnoEntrada: n.continua === true ? anoBase0 + anos - 1 : Math.max(n.anoInicio, n.anoFim),
           mesInicio: n.mes,
           entradasPorAno: n.entradas === 2 ? 2 : 1,
           ingressantes: Math.max(0, n.ingressantes),
@@ -257,7 +259,7 @@ export function ProjecaoCiclos({
         };
         return { ui: n, item, spec };
       }),
-    [novos, catalogo, valorMatriculaPresencial],
+    [novos, catalogo, valorMatriculaPresencial, anoBase0, anos],
   );
   const turmasDosNovos = useMemo(
     () => novosEspec.map((e) => (e.spec ? turmasDeCursoNovo(e.spec, anoBase0, anos, premissas) : [])),
@@ -375,6 +377,7 @@ export function ProjecaoCiclos({
         mes: 3,
         entradas: 1,
         anoFim: anoBase0 + 2,
+        continua: true,
         ingressantes: 40,
         duracao: 3,
         repasse: "PRESENCIAL",
@@ -408,7 +411,10 @@ export function ProjecaoCiclos({
   const comAlunos = ciclosDoRecorte.filter((c) => c.alunos > 0);
   const regulares = comAlunos.filter((c) => situacaoDoCiclo(c, anoBase0).regular);
   const atrasados = comAlunos.filter((c) => !situacaoDoCiclo(c, anoBase0).regular);
-  const novosDoRecorte = novosEspec.filter((e) => e.spec && (campusId === null || e.ui.unidadeId === campusId)).map((e) => e.spec!);
+  // Um curso que continua sendo ofertado não tem "último término": para sugerir o horizonte, conta só a primeira turma dele.
+  const novosDoRecorte = novosEspec
+    .filter((e) => e.spec && (campusId === null || e.ui.unidadeId === campusId))
+    .map((e) => (e.ui.continua === true ? { ...e.spec!, ultimoAnoEntrada: e.spec!.primeiroAnoEntrada } : e.spec!));
   const ultimoNecessario = ultimoAnoDeTermino(ciclosDoRecorte, novosDoRecorte, anoBase0);
 
   const total = (f: (l: LinhaAno) => number) => linhas.reduce((s, l) => s + f(l), 0);
@@ -764,7 +770,13 @@ export function ProjecaoCiclos({
                     ))}
                   </select>
                 </label>
-                <Numero rotulo="Última turma (ano)" valor={ui.anoFim} min={ui.anoInicio} max={anoBase0 + MAX_ANOS} onChange={(v) => mudarCurso(ui.id, { anoFim: Math.max(v, ui.anoInicio) })} ajuda="Igual ao ano da primeira: uma turma só" />
+                <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 sm:col-span-2">
+                  <input type="checkbox" checked={ui.continua === true} onChange={(e) => mudarCurso(ui.id, { continua: e.target.checked })} />
+                  Continua sendo ofertado: entra uma turma nova a cada ano (a cada semestre, se semestral) até o fim do horizonte
+                </label>
+                {ui.continua !== true && (
+                  <Numero rotulo="Última turma (ano)" valor={ui.anoFim} min={ui.anoInicio} max={anoBase0 + MAX_ANOS} onChange={(v) => mudarCurso(ui.id, { anoFim: Math.max(v, ui.anoInicio) })} ajuda="Igual ao ano da primeira: uma turma só" />
+                )}
                 <Numero rotulo="Ingressantes por turma" valor={ui.ingressantes} min={1} max={2000} onChange={(v) => mudarCurso(ui.id, { ingressantes: v })} />
                 <Numero rotulo="Duração (anos; 0,5 = um semestre)" valor={ui.duracao} min={0.1} max={10} passo={0.5} onChange={(v) => mudarCurso(ui.id, { duracao: v })} />
                 <div className="flex items-end">
