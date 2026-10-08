@@ -214,3 +214,17 @@ describe("somarProjecao e situacaoDoCiclo", () => {
     expect(situacaoDoCiclo({ termino: dia(2023, 12, 20), jubilamento: dia(2026, 12, 20) }, 2025).regular).toBe(false);
   });
 });
+
+describe("curso novo que continua sendo ofertado", () => {
+  it("entra uma turma nova por ano até o fim do horizonte, e o valor se estabiliza", async () => {
+    const { turmasDeCursoNovo, somarTurmas } = await import("@/lib/mdo/projecaoCiclos");
+    const curso = { tipoCurso: "TECNICO", repasse: "PRESENCIAL" as const, peso: 1.5, chMatriz: 3200, valorPorMT: 1000, primeiroAnoEntrada: 2027, ultimoAnoEntrada: 2025 + 12 - 1, mesInicio: 3, ingressantes: 40, duracaoAnos: 3 };
+    const p = { evasao: { presencial: 0.1, ead: 0.1 }, retencao: [0.45, 0.17, 0.1] };
+    const turmas = turmasDeCursoNovo(curso, 2025, 12, p);
+    expect(turmas.map((t) => t.anoEntrada)).toEqual([2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036]);
+    const soma = somarTurmas(turmas, 2025, 12);
+    // Depois de formada a primeira turma, o valor anual fica estável (uma turma entra enquanto outra sai).
+    expect(Math.abs(soma[10]!.valor / soma[9]!.valor - 1)).toBeLessThan(0.05);
+    expect(soma[11]!.valor).toBeGreaterThan(soma[5]!.valor * 0.9);
+  });
+});
