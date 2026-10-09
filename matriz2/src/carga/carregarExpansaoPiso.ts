@@ -145,7 +145,8 @@ export async function carregarExpansaoPiso(ano: number): Promise<ResultadoExpans
 
     const nomeNormalizado = nomeCanonicoDaUnidade(linha.nomeCampus).toUpperCase();
     const unidades = await prisma.unidade.findMany({ where: { instituicaoId: instituicao.id } });
-    let unidade = unidades.find((u) => u.nome.toUpperCase() === nomeNormalizado);
+    // Compara sem acento, espaço nem pontuação: a aba EXPANSÃO escreve "COMPLEXODO ALEMÃO" onde o resumo escreve "COMPLEXO DO ALEMÃO", e comparar o texto cru duplicava o câmpus (e o piso de R$ 700 mil).
+    let unidade = unidades.find((u) => normalizar(u.nome) === normalizar(nomeNormalizado));
 
     if (unidade) {
       jaExistiam++;
