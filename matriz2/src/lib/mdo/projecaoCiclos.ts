@@ -190,7 +190,7 @@ const somarPontos = (turmas: TurmaProjetada[], anoBase0: number, anos: number, a
  * reposição: é a sobra de uma turma antiga. Devolvidas turma a turma, para a tela poder parar de repor a partir de um ano
  * (curso que deixa de ser ofertado) sem refazer a conta.
  */
-export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: number, p: Premissas): TurmaProjetada[] {
+export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: number, p: Premissas, sucessoraNosDados = true): TurmaProjetada[] {
   const periodo0 = periodoDoAnoBase(anoBase0);
   if (c.alunos <= 0 || c.termino.getTime() < periodo0.inicio.getTime()) return [];
 
@@ -202,8 +202,14 @@ export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
   // é ofertado uma vez por ano, e não repetido um atrás do outro, o que multiplicaria o valor por dezenas.
   const intervalo = Math.max(duracao, 365) * MS_DIA;
   let inicio = c.inicio.getTime() + intervalo;
-  // Se a turma seguinte já cabia no ano-base inicial, ela está entre os ciclos de hoje e é ela quem gera as próximas: contar de novo duplicaria.
-  if (inicio <= periodo0.fim.getTime()) return [];
+  if (inicio <= periodo0.fim.getTime()) {
+    // Se a turma seguinte já cabia no ano-base inicial e está entre os ciclos de hoje, é ela quem gera as próximas: contar de novo duplicaria.
+    if (sucessoraNosDados) return [];
+    // Mas se ela não está nos dados (o câmpus não abriu aquela turma), o curso não pode simplesmente sumir: supõe-se que a oferta
+    // continua e a turma entra no mesmo dia e mês, no primeiro ano depois do ano-base (o ano-base em si fica como está nos dados).
+    const previsto = new Date(inicio);
+    inicio = Date.UTC(anoBase0 + 1, previsto.getUTCMonth(), previsto.getUTCDate());
+  }
 
   // Tamanho da turma de entrada: a matrícula de hoje desfeita da evasão que já ocorreu desde o início do ciclo.
   const meioDoAnoBase0 = Date.UTC(anoBase0, 5, 30);
@@ -222,6 +228,32 @@ export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
     inicio += intervalo;
   }
   return turmas;
+}
+
+/** Tolerância para dizer que um ciclo é a "sucessora" de outro: começa mais ou menos um intervalo depois (as datas de início variam). */
+const TOLERANCIA_SUCESSORA_DIAS = 200;
+
+/**
+ * Os ids dos ciclos que têm, nos próprios dados, a turma seguinte do mesmo curso, no mesmo câmpus e na mesma oferta. Quem não tem
+ * (o câmpus não abriu a turma seguinte) precisa ter a reposição retomada pela projeção, senão o curso some sem que ninguém tenha
+ * decidido isso.
+ */
+export function ciclosComSucessora(ciclos: Array<Pick<CicloProjetavel, "id" | "unidadeId" | "curso" | "tipoOferta" | "inicio" | "termino">>): Set<number> {
+  const porCurso = new Map<string, number[]>();
+  for (const c of ciclos) {
+    const k = `${c.unidadeId}|${c.curso}|${c.tipoOferta}`;
+    const l = porCurso.get(k);
+    if (l) l.push(c.inicio.getTime());
+    else porCurso.set(k, [c.inicio.getTime()]);
+  }
+  const tol = TOLERANCIA_SUCESSORA_DIAS * MS_DIA;
+  const comSucessora = new Set<number>();
+  for (const c of ciclos) {
+    const intervalo = Math.max(diasDoCiclo(c), 365) * MS_DIA;
+    const alvo = c.inicio.getTime() + intervalo;
+    if ((porCurso.get(`${c.unidadeId}|${c.curso}|${c.tipoOferta}`) ?? []).some((i) => i !== c.inicio.getTime() && Math.abs(i - alvo) < tol)) comSucessora.add(c.id);
+  }
+  return comSucessora;
 }
 
 /**

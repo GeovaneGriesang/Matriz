@@ -10,6 +10,7 @@ import {
   situacaoDoCiclo,
   turmasDeCursoNovo,
   turmasDeReposicao,
+  ciclosComSucessora,
   ultimoAnoDeTermino,
   type CicloProjetavel,
   type CursoNovo,
@@ -235,7 +236,8 @@ export function ProjecaoCiclos({
 
   // Os cálculos pesados (um por ciclo) só são refeitos quando muda o horizonte ou a evasão; mexer no cenário só refaz as somas.
   const matriculadosPorCiclo = useMemo(() => todos.map((c) => projetarMatriculados(c, anoBase0, anos, premissas)), [todos, anoBase0, anos, premissas]);
-  const turmasPorCiclo = useMemo<TurmaProjetada[][]>(() => todos.map((c) => turmasDeReposicao(c, anoBase0, anos, premissas)), [todos, anoBase0, anos, premissas]);
+  const comSucessora = useMemo(() => ciclosComSucessora(todos), [todos]);
+  const turmasPorCiclo = useMemo<TurmaProjetada[][]>(() => todos.map((c) => turmasDeReposicao(c, anoBase0, anos, premissas, comSucessora.has(c.id))), [todos, anoBase0, anos, premissas, comSucessora]);
 
   // Cursos novos: o que o catálogo sabe de cada um vira a especificação que o motor usa.
   const novosEspec = useMemo(

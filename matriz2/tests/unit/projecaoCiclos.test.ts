@@ -228,3 +228,30 @@ describe("curso novo que continua sendo ofertado", () => {
     expect(soma[11]!.valor).toBeGreaterThan(soma[5]!.valor * 0.9);
   });
 });
+
+describe("reposição de um ciclo cuja sucessora não está nos dados", () => {
+  const ciclo = (id: number, ini: string, ter: string) => ({
+    id, unidadeId: 1, curso: "INFORMATICA", tipoCurso: "TECNICO", tipoOferta: "INTEGRADO", repasse: "PRESENCIAL" as const,
+    inicio: new Date(ini), termino: new Date(ter), jubilamento: new Date(new Date(ter).getTime() + 3 * 365 * 864e5),
+    chCiclo: 3200, chMec: 3200, chMatriz: 3200, peso: 1.5, agropecuaria: false, alunos: 25, valorPorMT: 1000,
+  });
+  const p = { evasao: { presencial: 0.1, ead: 0.1 }, retencao: [0.45, 0.17, 0.1] };
+
+  it("reconhece quem tem a turma seguinte nos dados e quem não tem", async () => {
+    const { ciclosComSucessora } = await import("@/lib/mdo/projecaoCiclos");
+    const a = ciclo(1, "2022-01-10", "2025-12-23");
+    const b = ciclo(2, "2025-12-01", "2029-11-28");
+    const orfa = { ...ciclo(3, "2022-05-16", "2025-12-19"), curso: "OUTRO CURSO" };
+    expect([...ciclosComSucessora([a, b, orfa])].sort()).toEqual([1]);
+  });
+
+  it("com a sucessora nos dados não repõe de novo; sem ela, retoma a oferta depois do ano-base", async () => {
+    const { turmasDeReposicao } = await import("@/lib/mdo/projecaoCiclos");
+    const orfa = ciclo(3, "2022-05-16", "2025-12-19");
+    expect(turmasDeReposicao(orfa, 2025, 10, p, true)).toEqual([]);
+    const turmas = turmasDeReposicao(orfa, 2025, 10, p, false);
+    expect(turmas.length).toBeGreaterThan(1);
+    expect(turmas[0]!.anoEntrada).toBe(2026);
+    expect(turmas[0]!.anoEntrada).toBeGreaterThan(2025);
+  });
+});
