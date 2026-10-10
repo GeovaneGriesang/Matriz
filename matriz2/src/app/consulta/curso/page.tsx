@@ -22,7 +22,7 @@ interface Busca {
 const LIMITE = 80;
 const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const reais2 = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 const MODALIDADES: Array<{ valor: Repasse; rotulo: string }> = [

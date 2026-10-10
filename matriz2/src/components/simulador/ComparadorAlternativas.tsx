@@ -25,7 +25,7 @@ import type { ItemCatalogo } from "@/server/queries/contextoSimulador";
 
 export type ContextoBase = Omit<ContextoAlternativas, "reajusteAnual">;
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
