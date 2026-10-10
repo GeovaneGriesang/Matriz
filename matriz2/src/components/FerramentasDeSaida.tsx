@@ -217,8 +217,8 @@ function varrer(): number {
   return tabelas.length;
 }
 
-/** Telas de entrada e de conta: não há o que imprimir nem exportar nelas, e os botões só atrapalhariam. */
-const SEM_FERRAMENTAS = [/^\/admin\/(login|definir-senha|recuperar-senha|conta|inicio)/];
+/** A página Início e as telas de entrada e de conta: não há o que imprimir nem exportar nelas, e os botões só atrapalhariam. */
+const SEM_FERRAMENTAS = [/^\/$/, /^\/admin\/(login|definir-senha|recuperar-senha|conta|inicio)/];
 
 export function FerramentasDeSaida() {
   const pathname = usePathname();
