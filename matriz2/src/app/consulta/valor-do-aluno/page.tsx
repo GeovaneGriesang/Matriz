@@ -77,10 +77,39 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
   // O Venâncio Aires vem primeiro, e é o câmpus padrão quando nenhum foi escolhido.
   unidades.sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)));
 
+  // Os ciclos orçamentários com turmas (6ª fase) desta instituição: cada um usa a PNP de dois anos antes.
+  const anosDaInstituicao = (
+    await prisma.distribuicaoCiclo.findMany({ where: { unidade: { instituicaoId: instituicao.id } }, distinct: ["ano"], select: { ano: true } })
+  )
+    .map((a) => a.ano)
+    .sort((a, b) => b - a);
+
   const seletorInstituicao = (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-      <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
+        <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo orçamentário</span>
+        <div className="flex flex-wrap gap-1">
+          {(anosDaInstituicao.includes(ano) ? anosDaInstituicao : [...anosDaInstituicao, ano].sort((a, b) => b - a)).map((a) => (
+            <Link
+              key={a}
+              href={`/consulta/valor-do-aluno?ano=${a}&instituicao=${encodeURIComponent(instituicao.sigla)}${params.campus ? `&campus=${params.campus}` : ""}`}
+              title={`A matriz de ${a} usa os alunos da PNP de ${a - 2} (ano-base)`}
+              className={`rounded px-2 py-1 text-xs font-medium ${
+                a === ano
+                  ? "bg-if-green text-white"
+                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {a} <span className="font-normal opacity-80">(PNP {a - 2})</span>
+            </Link>
+          ))}
+        </div>
+        <span className="text-xs text-neutral-500">Cada matriz usa os alunos da PNP de dois anos antes (o ano-base).</span>
+      </div>
     </div>
   );
 
