@@ -13,7 +13,7 @@ export function AdminHeader({ usuario, atual }: { usuario: UsuarioLogado; atual:
   const links: { href: string; rotulo: string; minimo: Papel }[] = [
     { href: "/admin/orcamento", rotulo: "Correção manual", minimo: "ADMIN" },
     { href: "/admin/valores-recebidos", rotulo: "Valores recebidos", minimo: "ADMIN" },
-    { href: "/admin/usuarios", rotulo: "Usuários", minimo: "SUPER_ADMIN" },
+    { href: "/admin/usuarios", rotulo: "Usuários", minimo: "ADMIN" },
     { href: "/admin/auditoria", rotulo: "Auditoria", minimo: "SUPER_ADMIN" },
   ];
 

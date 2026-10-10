@@ -7,6 +7,7 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession, abrirSessaoParaUsuario } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
 import { validarForcaSenha } from "@/lib/senha";
+import { perfisQueMeuPapelCria, podeAgirSobreConta, podeGerirUsuarios } from "@/lib/permissoes";
 import { enviarEmailCadastro, enviarEmailRecuperacao } from "@/server/email/enviar";
 
 const CUSTO_BCRYPT = 12;
@@ -51,20 +52,21 @@ async function criarCodigoVerificacao(usuarioId: number, tipo: TipoCodigoVerific
 }
 
 /**
- * Server Action (só super-admin) que cria um novo usuário e manda o e-mail de
+ * Server Action (administrador ou super-admin) que cria um novo usuário e manda o e-mail de
  * primeiro acesso. Sem senha gerada: a conta fica sem `senhaHash` até a pessoa
  * concluir `/admin/definir-senha` com o código recebido (decisão do usuário em
  * 2026-09-05). Se o envio falhar (ex.: Resend ainda não configurado), o cadastro
  * não se perde — devolve o código para o super-admin repassar à mão.
  *
- * Só cria ADMIN ou PADRAO, nunca SUPER_ADMIN: ninguém precisa saber que esse papel
+ * O administrador só cria usuários de perfil padrão; só o super-admin cria administradores (ver `perfisQueMeuPapelCria`).
+ * Nunca cria SUPER_ADMIN: ninguém precisa saber que esse papel
  * existe (decisão do usuário em 2026-09-05), então o app nunca oferece criá-lo — só
  * nasce pelo script `seedSuperAdmin.ts`, fora da interface.
  */
 export async function criarUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (solicitante.papel !== "SUPER_ADMIN") {
+  if (!podeGerirUsuarios(solicitante.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para criar usuários." };
   }
 
@@ -76,6 +78,9 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
   if (!nome) return { ok: false, errorMessage: "Informe o nome." };
   if (!["ADMIN", "PADRAO"].includes(papel)) {
     return { ok: false, errorMessage: "Selecione um papel válido." };
+  }
+  if (!perfisQueMeuPapelCria(solicitante.papel).includes(papel)) {
+    return { ok: false, errorMessage: "Só o super-admin cadastra administradores. Você pode cadastrar usuários de perfil padrão." };
   }
 
   const existente = await prisma.usuario.findUnique({ where: { email } });
@@ -100,7 +105,7 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
 }
 
 /**
- * Server Action (só super-admin) que reseta a senha de outro usuário para uma nova
+ * Server Action (administrador, só em contas de perfil padrão, ou super-admin) que reseta a senha de outro usuário para uma nova
  * senha gerada, sem precisar da senha antiga. É a reserva sem depender de e-mail
  * (decisão do usuário em 2026-09-05): a recuperação normal usa código por e-mail
  * (`solicitarRecuperacaoSenhaAction`), mas esta continua existindo para quando o
@@ -109,7 +114,7 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
 export async function resetarSenhaUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (solicitante.papel !== "SUPER_ADMIN") {
+  if (!podeGerirUsuarios(solicitante.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para resetar senhas." };
   }
 
@@ -118,6 +123,9 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
 
   const alvo = await prisma.usuario.findUnique({ where: { id: usuarioAlvoId } });
   if (!alvo) return { ok: false, errorMessage: "Usuário não encontrado." };
+  if (!podeAgirSobreConta(solicitante.papel, alvo.papel)) {
+    return { ok: false, errorMessage: "Você só pode resetar a senha de usuários de perfil padrão." };
+  }
 
   const senha = gerarSenhaTemporaria();
   const senhaHash = await bcrypt.hash(senha, CUSTO_BCRYPT);
@@ -131,11 +139,11 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
   return { ok: true, senhaGerada: senha };
 }
 
-/** Server Action (só super-admin) que ativa ou desativa outro usuário, sem apagá-lo. */
+/** Server Action (administrador, só em contas de perfil padrão, ou super-admin) que ativa ou desativa outro usuário, sem apagá-lo. */
 export async function alternarAtivoUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
   const solicitante = await getAdminSession();
   if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
-  if (solicitante.papel !== "SUPER_ADMIN") {
+  if (!podeGerirUsuarios(solicitante.papel)) {
     return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
   }
 
@@ -145,6 +153,9 @@ export async function alternarAtivoUsuarioAction(formData: FormData): Promise<Re
 
   const alvo = await prisma.usuario.findUnique({ where: { id: usuarioAlvoId } });
   if (!alvo) return { ok: false, errorMessage: "Usuário não encontrado." };
+  if (!podeAgirSobreConta(solicitante.papel, alvo.papel)) {
+    return { ok: false, errorMessage: "Você só pode ativar ou desativar usuários de perfil padrão." };
+  }
 
   const ativo = !alvo.ativo;
   await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { ativo } });

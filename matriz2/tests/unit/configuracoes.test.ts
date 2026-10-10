@@ -116,3 +116,23 @@ describe("seleção para compartilhar", () => {
     expect(diferencaDeCompartilhamento([1, 2], new Set([2, 3]))).toEqual({ adicionados: [3], removidos: [1] });
   });
 });
+
+describe("gestão de usuários por perfil", () => {
+  it("o administrador cadastra só padrão; o super-admin cadastra padrão e administrador", async () => {
+    const { perfisQueMeuPapelCria } = await import("@/lib/permissoes");
+    expect(perfisQueMeuPapelCria("ADMIN")).toEqual(["PADRAO"]);
+    expect(perfisQueMeuPapelCria("SUPER_ADMIN")).toEqual(["PADRAO", "ADMIN"]);
+    expect(perfisQueMeuPapelCria("PADRAO")).toEqual([]);
+  });
+
+  it("o administrador só age sobre contas de perfil padrão; o padrão não gere ninguém", async () => {
+    const { podeAgirSobreConta, podeGerirUsuarios } = await import("@/lib/permissoes");
+    expect(podeAgirSobreConta("ADMIN", "PADRAO")).toBe(true);
+    expect(podeAgirSobreConta("ADMIN", "ADMIN")).toBe(false);
+    expect(podeAgirSobreConta("ADMIN", "SUPER_ADMIN")).toBe(false);
+    expect(podeAgirSobreConta("SUPER_ADMIN", "ADMIN")).toBe(true);
+    expect(podeAgirSobreConta("PADRAO", "PADRAO")).toBe(false);
+    expect(podeGerirUsuarios("ADMIN")).toBe(true);
+    expect(podeGerirUsuarios("PADRAO")).toBe(false);
+  });
+});

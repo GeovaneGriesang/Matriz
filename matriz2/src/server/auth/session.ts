@@ -1,4 +1,4 @@
-import { podeInformarValores, temAcessoPleno } from "@/lib/permissoes";
+import { podeGerirUsuarios, podeInformarValores, temAcessoPleno } from "@/lib/permissoes";
 import { randomBytes, createHash } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -141,6 +141,15 @@ export async function requireSuperAdminOrRedirect(nextPath: string): Promise<Usu
   const usuario = await requireAdminOrRedirect(nextPath);
   if (usuario.papel !== "SUPER_ADMIN") {
     redirect("/admin/orcamento");
+  }
+  return usuario;
+}
+
+/** Tela Usuários: administrador e super-admin (o administrador só age sobre contas de perfil padrão). */
+export async function requireGestorDeUsuariosOrRedirect(nextPath: string): Promise<UsuarioLogado> {
+  const usuario = await requireAdminOrRedirect(nextPath);
+  if (!podeGerirUsuarios(usuario.papel)) {
+    redirect("/admin/inicio");
   }
   return usuario;
 }
