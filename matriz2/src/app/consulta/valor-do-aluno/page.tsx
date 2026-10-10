@@ -6,6 +6,7 @@ import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { analisarCiclo, periodoDoCiclo, type AnaliseAluno } from "@/lib/mdo/valorAluno";
+import { LinhaDeCurso } from "./LinhaDeCurso";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto vale um aluno</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Para cada curso de um câmpus: quanto um aluno rende no orçamento, em reais e em percentual do orçamento do câmpus, e por
-        quê. Abra um curso para ver a conta de cada turma, fator por fator. Detalhes da regra em{" "}
+        quê. Clique num curso para abrir, logo abaixo dele, as turmas e a conta de cada uma, fator por fator. Detalhes da regra em{" "}
         <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
           Como funciona
         </Link>
@@ -277,12 +278,16 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
             </tr>
           </thead>
           {cursos.map((c) => (
-            <tbody key={c.chave} className="border-t border-neutral-200 dark:border-neutral-800">
-              <tr>
-                <td className="px-3 py-2 font-medium text-neutral-900 dark:text-neutral-100">
-                  <details>
-                    <summary className="cursor-pointer">{c.rotulo}</summary>
-                    <div className="mt-2 tabela-rolavel rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+            <LinhaDeCurso
+              key={c.chave}
+              rotulo={c.rotulo}
+              colunas={7}
+              detalhe={
+                  <div className="flex flex-col gap-3">
+                  <div className="grid items-start gap-4 xl:grid-cols-2">
+                    {/* Envolve a tabela: a barra de CSV e impressão que o sistema põe antes dela fica aqui dentro, não vira outra coluna. */}
+                    <div className="flex min-w-0 flex-col">
+                    <div className="tabela-rolavel rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                       <table className="w-full text-xs font-normal">
                         <thead className="bg-neutral-50 text-left uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
                           <tr>
@@ -329,9 +334,21 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                         Aluno vale = peso × ICQA × (CH ÷ 800) × dias × valor de uma matrícula. Cada coluna acima é um desses fatores.
                       </p>
                     </div>
+                    </div>
                     <ContasDasTurmas turmas={c.ciclos} totalCampus={totalCampus} ano={ano} />
-                  </details>
-                </td>
+                  </div>
+                  <div className="grid gap-2 rounded-md border border-if-green/40 bg-white p-3 text-xs dark:bg-neutral-950 sm:grid-cols-3 lg:grid-cols-6">
+                    <Total rotulo="Alunos do curso" valor={inteiro.format(c.alunos)} />
+                    <Total rotulo="Valor do curso" valor={reais0.format(c.valor)} />
+                    <Total rotulo="% do câmpus" valor={totalCampus > 0 ? `${dec2.format((c.valor / totalCampus) * 100)}%` : "-"} />
+                    <Total rotulo="Um aluno vale" valor={c.alunos > 0 ? reais.format(c.valorPorAluno) : "-"} destaque nota={c.alunos > 0 ? `${reais0.format(c.valor)} ÷ ${inteiro.format(c.alunos)} alunos` : undefined} />
+                    <Total rotulo="% do câmpus, por aluno" valor={c.alunos > 0 && totalCampus > 0 ? `${pct3.format((c.valorPorAluno / totalCampus) * 100)}%` : "-"} />
+                    <Total rotulo="Ano cheio" valor={c.anoCheio > 0 ? reais.format(c.anoCheio) : "-"} nota="um aluno cursando o ano inteiro" />
+                  </div>
+                  </div>
+              }
+              celulas={
+                <>
                 <td className="px-3 py-2 text-right tabular-nums">{inteiro.format(c.alunos)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{reais0.format(c.valor)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{totalCampus > 0 ? `${dec2.format((c.valor / totalCampus) * 100)}%` : "-"}</td>
@@ -340,8 +357,9 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                   {c.alunos > 0 && totalCampus > 0 ? `${pct3.format((c.valorPorAluno / totalCampus) * 100)}%` : "-"}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">{c.anoCheio > 0 ? reais.format(c.anoCheio) : "-"}</td>
-              </tr>
-            </tbody>
+                </>
+              }
+            />
           ))}
         </table>
       </div>
@@ -380,7 +398,7 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; i
   const comConta = turmas.filter((t) => t.analise && t.alunos > 0);
   if (comConta.length === 0) return null;
   return (
-    <div className="mt-2 flex flex-col gap-1.5 text-xs font-normal">
+    <div className="flex flex-col gap-1.5 text-xs font-normal">
       <span className="font-medium uppercase tracking-wide text-neutral-500">A conta de cada turma, com os números reais</span>
       {comConta.map((t, i) => {
         const d = t.analise!.decomposicao;
@@ -433,6 +451,17 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; i
           </details>
         );
       })}
+    </div>
+  );
+}
+
+/** Um total do curso, na faixa abaixo das turmas. */
+function Total({ rotulo, valor, nota, destaque }: { rotulo: string; valor: string; nota?: string; destaque?: boolean }) {
+  return (
+    <div className="flex flex-col">
+      <span className="uppercase tracking-wide text-neutral-500">{rotulo}</span>
+      <span className={`tabular-nums text-sm text-neutral-900 dark:text-neutral-100 ${destaque ? "font-semibold" : ""}`}>{valor}</span>
+      {nota && <span className="text-neutral-500">{nota}</span>}
     </div>
   );
 }
