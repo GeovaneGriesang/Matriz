@@ -12,6 +12,13 @@ import { localizarArquivoOriginal } from "@/carga/caminhos";
  * nesta URL sem passar pelo link da tela (a tela já esconde o link, mas a
  * proteção de verdade é aqui, não lá).
  */
+const TIPO_POR_EXTENSAO: Record<string, string> = {
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  xls: "application/vnd.ms-excel",
+  csv: "text/csv; charset=utf-8",
+  pdf: "application/pdf",
+};
+
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const usuario = await getAdminSession();
   if (!usuario || !temAcessoPleno(usuario.papel)) {
@@ -47,7 +54,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const nomeCodificado = encodeURIComponent(fonte.arquivo);
   return new Response(new Uint8Array(conteudo), {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Type": TIPO_POR_EXTENSAO[fonte.arquivo.toLowerCase().split(".").pop() ?? ""] ?? "application/octet-stream",
       "Content-Disposition": `attachment; filename="${fonte.arquivo}"; filename*=UTF-8''${nomeCodificado}`,
       "Content-Length": String(conteudo.length),
     },

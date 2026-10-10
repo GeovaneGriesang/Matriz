@@ -55,14 +55,39 @@ export function ComparativoTabelaCampus({
   linhas,
   anoA,
   anoB,
+  bloco = "matriculas",
+  instituicao,
   comInformado = true,
 }: {
   linhas: LinhaComparativoCampus[];
   anoA: number;
   anoB: number;
+  /** O bloco escolhido na tela: os valores dos câmpus já chegam filtrados por ele. */
+  bloco?: string;
+  /** O valor da instituição no mesmo bloco, para mostrar quanto dele fica fora dos câmpus. */
+  instituicao?: { sigla: string; a: number; b: number };
   /** O valor informado existe só para o IFSul; nas outras instituições as colunas e variações que dependem dele não aparecem. */
   comInformado?: boolean;
 }) {
+  if (bloco === "iqe") {
+    return (
+      <p className="rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+        A MDO não distribui o bloco <strong>Qualidade e Eficiência</strong> por câmpus: os três indicadores (IEA, RAP e IAPL) são calculados para a
+        instituição inteira, e o valor fica com ela{instituicao ? ` (${instituicao.sigla}: ${reais.format(instituicao.a)} em ${anoA} e ${reais.format(instituicao.b)} em ${anoB})` : ""}.
+        A divisão desse dinheiro entre os câmpus, se houver, é uma decisão interna da instituição. Escolha Funcionamento, Assistência Estudantil ou Total para ver os câmpus.
+      </p>
+    );
+  }
+  const somaA = linhas.reduce((s, l) => s + l.a, 0);
+  const somaB = linhas.reduce((s, l) => s + l.b, 0);
+  const foraA = instituicao ? instituicao.a - somaA : 0;
+  const foraB = instituicao ? instituicao.b - somaB : 0;
+  const oQueFicaFora =
+    bloco === "matriculas"
+      ? "a Reitoria (o bloco de 10% das reitorias entra no Funcionamento da instituição)"
+      : bloco === "totalSpo"
+        ? "a Reitoria e o bloco Qualidade e Eficiência, que a MDO não distribui por câmpus"
+        : "o que a MDO não atribui a nenhum câmpus";
   const valores = (l: LinhaComparativoCampus): ValoresDoCampus => ({ calculadoA: l.a, informadoA: l.informadoA, calculadoB: l.b, informadoB: l.informadoB });
   const variacoesUsadas = comInformado ? VARIACOES : VARIACOES.filter((v) => v.chave === "calcA_calcB");
   const totais = variacoesUsadas.map((def) => totalDaVariacao(def, linhas.map(valores)));
@@ -133,7 +158,7 @@ export function ComparativoTabelaCampus({
             <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
               <td className="px-2 py-2.5" />
               <td className="px-4 py-2.5">Soma dos {linhas.length} câmpus</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.a, 0))}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaA)}</td>
               {comInformado && (
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {reais.format(somaInformadoA)}
@@ -142,7 +167,7 @@ export function ComparativoTabelaCampus({
                   </span>
                 </td>
               )}
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(linhas.reduce((s, l) => s + l.b, 0))}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaB)}</td>
               {comInformado && (
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {reais.format(somaInformadoB)}
@@ -165,8 +190,31 @@ export function ComparativoTabelaCampus({
           </tfoot>
         }
       />
+      {instituicao && (
+        <div className="tabela-rolavel">
+          <table className="w-full text-sm" data-sem-ferramentas>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tr>
+                <td className="py-1.5 pr-3 text-neutral-600 dark:text-neutral-400">{instituicao.sigla}, valor da instituição neste bloco</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(instituicao.a)} <span className="text-xs text-neutral-500">em {anoA}</span></td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(instituicao.b)} <span className="text-xs text-neutral-500">em {anoB}</span></td>
+              </tr>
+              <tr>
+                <td className="py-1.5 pr-3 text-neutral-600 dark:text-neutral-400">Soma dos {linhas.length} câmpus</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(somaA)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(somaB)}</td>
+              </tr>
+              <tr className="font-medium">
+                <td className="py-1.5 pr-3">Fica com a instituição: {oQueFicaFora}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(foraA)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(foraB)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe.
+        <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe{bloco === "ae" ? " de Assistência Estudantil (presencial, EAD e RIP)" : bloco === "totalSpo" ? ", somando Funcionamento e Assistência Estudantil" : " de Funcionamento (já com o Piso Mínimo)"}.
         {comInformado
           ? " Informado é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor). Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença."
           : " Aqui só há a variação entre os dois ciclos calculados. O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul e aparece quando a opção \"Considerar dados informados para o IFSul\" está marcada."}

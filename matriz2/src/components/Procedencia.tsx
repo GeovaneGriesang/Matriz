@@ -1,4 +1,5 @@
 import type { Abrangencia, FaseMdo, OrigemDados } from "@prisma/client";
+import { apiUrl } from "@/lib/basePath";
 
 /**
  * A etiqueta de procedência, que acompanha todo número exibido no sistema.
@@ -43,6 +44,8 @@ const ROTULO_ABRANGENCIA: Record<Abrangencia, string> = {
 };
 
 export interface DadosProcedencia {
+  /** Com o id, o painel oferece baixar o arquivo original (a rota recusa o que tem dado por aluno ou não está no servidor). */
+  id?: number;
   origem: OrigemDados;
   fase: FaseMdo | null;
   arquivo: string;
@@ -81,7 +84,18 @@ export function PainelProcedencia({ fonte }: { fonte: DadosProcedencia }) {
       <dl className="mt-3 grid gap-x-8 gap-y-1.5 text-neutral-600 sm:grid-cols-2 dark:text-neutral-400">
         <div className="flex gap-2">
           <dt className="font-medium text-neutral-800 dark:text-neutral-200">Arquivo</dt>
-          <dd className="truncate font-mono text-xs leading-5">{fonte.arquivo}</dd>
+          <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+            <span className="truncate font-mono text-xs leading-5">{fonte.arquivo}</span>
+            {fonte.id !== undefined && /.(xlsx|xls|csv|pdf)$/i.test(fonte.arquivo) && (
+              <a
+                href={apiUrl(`/api/dados-importados/${fonte.id}/baixar`)}
+                className="nao-imprimir text-xs font-medium text-if-green underline hover:no-underline dark:text-green-400"
+                title="Baixar o arquivo original, como veio da fonte"
+              >
+                baixar
+              </a>
+            )}
+          </dd>
         </div>
         <div className="flex gap-2">
           <dt className="font-medium text-neutral-800 dark:text-neutral-200">Etapa</dt>
