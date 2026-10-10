@@ -6,7 +6,9 @@ import { PainelProcedencia } from "@/components/Procedencia";
 import { ComparativoTabela } from "./ComparativoTabela";
 import { OpcaoInformados } from "./OpcaoInformados";
 import type { LinhaComparativoCampus } from "./ComparativoTabelaCampus";
+import { ExplicacaoBlocos, type ExemploBlocos } from "./ExplicacaoBlocos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { ehCampusDestaque } from "@/lib/destaque";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,14 @@ const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const DESTAQUE = "IFSUL";
+
+const CAMPOS_POR_CAMPUS = { unidadeId: true, vlMatrFinal: true, aePresencial: true, aeEad: true, aeRip: true } as const;
+
+/** Os dois blocos que a MDO distribui por câmpus: Funcionamento (com o Piso Mínimo) e Assistência Estudantil (presencial, EAD e RIP). */
+function blocosDoCampus(c: { vlMatrFinal: unknown; aePresencial: unknown; aeEad: unknown; aeRip: unknown }) {
+  const n = (v: unknown) => (v === null || v === undefined ? 0 : Number(v));
+  return { funcionamento: n(c.vlMatrFinal), assistencia: n(c.aePresencial) + n(c.aeEad) + n(c.aeRip) };
+}
 
 interface Linha {
   sigla: string;
@@ -108,8 +118,8 @@ export default async function ComparativoPage({
   // vez (não só a instituição escolhida): expandir uma linha é instantâneo, sem
   // recarregar a página.
   const [porCampusA, porCampusB, recebidos] = await Promise.all([
-    prisma.distribuicaoCampus.findMany({ where: { ano: anoA }, select: { unidadeId: true, vlMatrFinal: true } }),
-    prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: { unidadeId: true, vlMatrFinal: true } }),
+    prisma.distribuicaoCampus.findMany({ where: { ano: anoA }, select: CAMPOS_POR_CAMPUS }),
+    prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: CAMPOS_POR_CAMPUS }),
     // O informado: o que cada campus de fato recebeu, digitado em Valores recebidos.
     comInformados
       ? prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true } })
@@ -122,8 +132,16 @@ export default async function ComparativoPage({
     select: { id: true, nome: true, instituicao: { select: { sigla: true } } },
   });
   const unidadePorId = new Map(unidadesComCampus.map((u) => [u.id, u]));
-  const aPorId = new Map(porCampusA.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
-  const bPorId = new Map(porCampusB.map((c) => [c.unidadeId, Number(c.vlMatrFinal ?? 0)]));
+  // Por câmpus a MDO só distribui o Funcionamento (vlMatrFinal, já com o Piso Mínimo) e a Assistência Estudantil (presencial, EAD e RIP).
+  // Qualidade e Eficiência e Reitoria ficam com a instituição: não há valor desses blocos por câmpus.
+  const brutoA = new Map(porCampusA.map((c) => [c.unidadeId, blocosDoCampus(c)]));
+  const brutoB = new Map(porCampusB.map((c) => [c.unidadeId, blocosDoCampus(c)]));
+  const valorNoBloco = (v: { funcionamento: number; assistencia: number } | undefined) =>
+    !v ? 0 : bloco === "matriculas" ? v.funcionamento : bloco === "ae" ? v.assistencia : bloco === "totalSpo" ? v.funcionamento + v.assistencia : 0;
+  const aPorId = new Map([...brutoA].map(([id, v]) => [id, valorNoBloco(v)]));
+  const bPorId = new Map([...brutoB].map(([id, v]) => [id, valorNoBloco(v)]));
+  // O informado (o que o câmpus de fato recebeu) se compara com o Funcionamento da matriz; nos outros blocos ele não se aplica.
+  const informadoNoBloco = comInformados && bloco === "matriculas";
 
   const camposPorSigla: Record<string, LinhaComparativoCampus[]> = {};
   for (const id of unidadeIdsComCampus) {
@@ -138,13 +156,34 @@ export default async function ComparativoPage({
       a,
       b,
       variacao: a > 0 ? (b / a - 1) * 100 : Number.NaN,
-      informadoA: informadoPorAnoEId.get(`${anoA}::${id}`) ?? null,
-      informadoB: informadoPorAnoEId.get(`${anoB}::${id}`) ?? null,
+      informadoA: informadoNoBloco ? (informadoPorAnoEId.get(`${anoA}::${id}`) ?? null) : null,
+      informadoB: informadoNoBloco ? (informadoPorAnoEId.get(`${anoB}::${id}`) ?? null) : null,
     });
   }
   for (const campi of Object.values(camposPorSigla)) {
     campi.sort((x, y) => y.b - x.b);
   }
+
+  // O exemplo do quadro explicativo, com os números do IFSul no ciclo mais recente.
+  const regIfsul = porSigla.get(DESTAQUE)?.[anoB];
+  const campiIfsul = unidadesComCampus.filter((u) => u.instituicao.sigla === DESTAQUE).map((u) => ({ nome: u.nome, v: brutoB.get(u.id) }));
+  const somaFuncCampi = campiIfsul.reduce((s, c) => s + (c.v?.funcionamento ?? 0), 0);
+  const somaAeCampi = campiIfsul.reduce((s, c) => s + (c.v?.assistencia ?? 0), 0);
+  const exemploCampus = campiIfsul.find((c) => ehCampusDestaque(c.nome)) ?? campiIfsul[0];
+  const exemplo: ExemploBlocos | null = regIfsul
+    ? {
+        sigla: DESTAQUE,
+        ano: anoB,
+        funcionamento: Number(regIfsul.matriculas ?? 0),
+        qualidade: Number(regIfsul.iqe ?? 0),
+        assistencia: Number(regIfsul.ae ?? 0),
+        total: Number(regIfsul.totalSpo ?? 0),
+        funcionamentoCampi: somaFuncCampi,
+        assistenciaCampi: somaAeCampi,
+        quantosCampi: campiIfsul.length,
+        campus: exemploCampus?.v ? { nome: exemploCampus.nome, funcionamento: exemploCampus.v.funcionamento, assistencia: exemploCampus.v.assistencia } : null,
+      }
+    : null;
 
   const BLOCOS = [
     { chave: "totalSpo", rotulo: "Total" },
@@ -164,14 +203,13 @@ export default async function ComparativoPage({
           MDO não responde numa tela só, porque lá cada ciclo se consulta separado.
         </p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Este bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência) só existe por
-          instituição: o relatório que abre por bloco e desce a câmpus tem valores atribuídos à unidade
-          errada (no IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça), então
-          ele não foi carregado. Clique no <strong>+</strong> na frente de uma instituição para abrir os
-          câmpus dela (o Total por câmpus vem de outra fonte, a mesma da Consulta); clique no{" "}
-          <strong>+</strong> de um câmpus para ver os cursos dele.
+          Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil): a tabela das instituições e a dos
+          câmpus passam a mostrar só aquele bloco. Clique no <strong>+</strong> na frente de uma instituição para abrir os câmpus dela;
+          clique no <strong>+</strong> de um câmpus para ver os cursos dele. Os valores por câmpus vêm da 5ª fase (a mesma fonte da
+          Consulta), e não do relatório comparativo que desce a câmpus, porque esse relatório atribui valores à unidade errada (no
+          IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça).
         </p>
-        {comInformados && (
+        {informadoNoBloco && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Na lista de câmpus do IFSul, cada ciclo tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o{" "}
           <strong>informado</strong> (o que ele de fato recebeu, cadastrado em Valores recebidos). Ao lado deles estão as cinco variações:
@@ -223,6 +261,8 @@ export default async function ComparativoPage({
         )}
       </div>
 
+      <ExplicacaoBlocos bloco={bloco} exemplo={exemplo} />
+
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ComparativoTabela
           linhas={linhas}
@@ -234,7 +274,7 @@ export default async function ComparativoPage({
           totalA={totalA}
           totalB={totalB}
           camposPorSigla={camposPorSigla}
-          comInformadoIfsul={comInformados}
+          comInformadoIfsul={informadoNoBloco}
         />
       </div>
 

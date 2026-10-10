@@ -28,6 +28,7 @@ export function ComparativoTabela({
   linhas,
   anoA,
   anoB,
+  bloco,
   variacaoRede,
   destaqueSigla,
   totalA,
@@ -57,7 +58,16 @@ export function ComparativoTabela({
       linhaExpandida={(l) => {
         const campi = camposPorSigla[l.sigla];
         if (!campi || campi.length === 0) return null;
-        return <ComparativoTabelaCampus linhas={campi} anoA={anoA} anoB={anoB} comInformado={comInformadoIfsul && ehInstituicaoDestaque(l.sigla)} />;
+        return (
+          <ComparativoTabelaCampus
+            linhas={campi}
+            anoA={anoA}
+            anoB={anoB}
+            bloco={bloco}
+            instituicao={{ sigla: l.sigla, a: l.a, b: l.b }}
+            comInformado={comInformadoIfsul && ehInstituicaoDestaque(l.sigla)}
+          />
+        );
       }}
       colunas={
         [
