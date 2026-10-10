@@ -23,7 +23,7 @@ export interface CursoOpcao {
   tipoCurso: string;
 }
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function mesAno(iso: string | null): string {
   if (!iso) return "";

@@ -6,7 +6,7 @@ import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 
 export const dynamic = "force-dynamic";
 
-const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
 
 /** O que o texto de cada documento chama de cada coluna. A ordem é a da leitura: do mais antigo ao mais novo. */
