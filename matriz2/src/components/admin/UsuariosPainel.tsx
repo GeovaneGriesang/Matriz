@@ -8,6 +8,7 @@ import {
   resetarSenhaUsuarioAction,
   alternarAtivoUsuarioAction,
 } from "@/server/actions/usuarios";
+import { podeAgirSobreConta } from "@/lib/permissoes";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 interface UsuarioLinha {
@@ -32,9 +33,9 @@ const ROTULO_PAPEL: Record<Papel, string> = {
  * Painel de gestão de usuários: criar (manda e-mail de primeiro acesso), resetar
  * senha manualmente (reserva sem e-mail, gera senha temporária) e ativar/desativar.
  * A senha do reset manual só existe nesta resposta — não fica salva em lugar nenhum
- * — por isso fica destacada até o super-admin fechar o aviso.
+ * — por isso fica destacada até quem a gerou fechar o aviso.
  */
-export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; meuId: number }) {
+export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { usuarios: UsuarioLinha[]; meuId: number; meuPapel: Papel; perfisQueCrio: Papel[] }) {
   const router = useRouter();
   const [avisoSegredo, setAvisoSegredo] = useState<{ email: string; rotulo: string; valor: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -151,11 +152,14 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
           <select
             id="papel"
             name="papel"
-            defaultValue="ADMIN"
+            defaultValue="PADRAO"
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           >
-            <option value="PADRAO">Padrão</option>
-            <option value="ADMIN">Admin</option>
+            {perfisQueCrio.map((p) => (
+              <option key={p} value={p}>
+                {p === "ADMIN" ? "Admin" : "Padrão"}
+              </option>
+            ))}
           </select>
         </div>
         <button
@@ -211,7 +215,10 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
                 rotulo: "Ações",
                 ordenavel: false,
                 valor: () => null,
-                render: (u) => (
+                render: (u) =>
+                  !podeAgirSobreConta(meuPapel, u.papel) ? (
+                    <span className="text-xs text-neutral-400">{u.id === meuId ? "sua conta" : "só o super-admin"}</span>
+                  ) : (
                   <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
@@ -232,7 +239,7 @@ export function UsuariosPainel({ usuarios, meuId }: { usuarios: UsuarioLinha[]; 
                       </button>
                     )}
                   </div>
-                ),
+                  ),
               },
             ] satisfies ColunaOrdenavel<(typeof usuarios)[number]>[]
           }

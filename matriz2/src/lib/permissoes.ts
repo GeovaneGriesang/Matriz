@@ -16,3 +16,22 @@ export function temAcessoPleno(papel: Papel): boolean {
 export function podeInformarValores(papel: Papel): boolean {
   return papel !== "PADRAO";
 }
+
+/** Quem abre a tela Usuários: o administrador e o super-admin. A Auditoria continua só do super-admin. */
+export function podeGerirUsuarios(papel: Papel): boolean {
+  return papel === "ADMIN" || papel === "SUPER_ADMIN";
+}
+
+/** Com que perfil cada um cadastra: o super-admin cria administradores e padrões; o administrador, só padrões. O super-admin nunca é criado pela interface. */
+export function perfisQueMeuPapelCria(papel: Papel): Papel[] {
+  if (papel === "SUPER_ADMIN") return ["PADRAO", "ADMIN"];
+  if (papel === "ADMIN") return ["PADRAO"];
+  return [];
+}
+
+/** Resetar senha e ativar ou desativar: o super-admin age sobre qualquer conta; o administrador, só sobre as de perfil padrão. */
+export function podeAgirSobreConta(solicitante: Papel, alvo: Papel): boolean {
+  if (solicitante === "SUPER_ADMIN") return true;
+  if (solicitante === "ADMIN") return alvo === "PADRAO";
+  return false;
+}
