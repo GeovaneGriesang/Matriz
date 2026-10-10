@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment, useState, type ReactNode } from "react";
 import { PROSE_LINK } from "@/lib/layoutWidths";
 import { diferencaParaPrincipal, diferencasContra } from "@/lib/compararCursos";
 import type { CursoLinha } from "./ConsultaTabelaCursos";
@@ -31,6 +32,8 @@ function diasEntre(inicioIso: string | null, terminoIso: string | null): number 
 
 type Linha = {
   rotulo: string;
+  /** O que o item é e como entra na conta, com o exemplo do curso principal (ou do primeiro) quando há número. */
+  ajuda: (ex: CursoComparavel) => ReactNode;
   valor: (c: CursoComparavel) => string;
   /** Para a diferença contra o principal: o número da linha, o jeito de escrevê-lo e se mais é melhor, pior ou indiferente. */
   numero?: (c: CursoComparavel) => number | null;
@@ -65,51 +68,60 @@ export function PainelComparacaoCursos({
   principalId?: number;
 }) {
   const principal = principalId !== undefined ? cursos.find((c) => c.id === principalId) : undefined;
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const exemplo = principal ?? cursos[0];
+  const alternar = (rotulo: string) =>
+    setAbertas((a) => {
+      const n = new Set(a);
+      if (n.has(rotulo)) n.delete(rotulo);
+      else n.add(rotulo);
+      return n;
+    });
   const outros = principal ? cursos.filter((c) => c.id !== principal.id) : [];
 
   const linhas: Linha[] = [
     {
-      rotulo: "Modalidade",
+      rotulo: "Modalidade", ajuda: (ex) => <>O tipo de oferta: técnico integrado ao ensino médio, técnico subsequente ou concomitante, Proeja, superior (bacharelado, licenciatura, tecnologia), pós-graduação ou FIC. Define a duração e a carga horária esperadas e, com os laboratórios do catálogo, o peso do curso. {ex.curso}: {ex.modalidadeRotulo ?? "não informada"}.</>,
       valor: (c) =>
         c.modalidadeRotulo ? `${c.modalidadeRotulo}${c.modalidade === "superior" && c.tipoCursoLegivel ? ` (${c.tipoCursoLegivel})` : ""}` : "não informada",
     },
-    { rotulo: "Forma de ensino", valor: (c) => (c.ensino === "ead" ? "A distância (EAD)" : c.ensino === "presencial" ? "Presencial" : "não informada") },
-    { rotulo: "Nível", valor: (c) => c.nivel ?? "não informado" },
-    { rotulo: "Repasse", valor: (c) => c.repasse.replace("_", " ") },
-    { rotulo: "Início do ciclo", valor: (c) => formatarData(c.inicio) },
-    { rotulo: "Término do ciclo", valor: (c) => formatarData(c.termino) },
+    { rotulo: "Forma de ensino", ajuda: () => <>Presencial ou a distância (EAD). Muda o valor de uma matrícula: o EAD vale 25% do presencial, o EAD MOOC 8% e o EAD com financiamento próprio 80% (Portaria MEC 243/2026).</>, valor: (c) => (c.ensino === "ead" ? "A distância (EAD)" : c.ensino === "presencial" ? "Presencial" : "não informada") },
+    { rotulo: "Nível", ajuda: () => <>Como a PNP classifica o curso: educação básica (técnico, Proeja, FIC), graduação ou pós-graduação.</>, valor: (c) => c.nivel ?? "não informado" },
+    { rotulo: "Repasse", ajuda: () => <>A categoria em que a MDO paga o ciclo: PRESENCIAL, EAD, EAD MOOC ou EAD FP (financiamento próprio). Cada uma tem o seu valor por matrícula, uma fração do presencial.</>, valor: (c) => c.repasse.replace("_", " ") },
+    { rotulo: "Início do ciclo", ajuda: (ex) => <>O primeiro dia da turma, como está na PNP. Ciclo é uma turma: os alunos que entraram juntos no mesmo curso. {ex.curso}: {formatarData(ex.inicio)}.</>, valor: (c) => formatarData(c.inicio) },
+    { rotulo: "Término do ciclo", ajuda: (ex) => <>O último dia previsto da turma. Depois dele, quem ainda está matriculado é aluno retido: conta metade, e só até o prazo de jubilamento. {ex.curso}: {formatarData(ex.termino)}.</>, valor: (c) => formatarData(c.termino) },
     {
-      rotulo: "Dias do ciclo",
+      rotulo: "Dias do ciclo", ajuda: (ex) => { const d = diasEntre(ex.inicio, ex.termino); return <>Término menos início. Entra na conta como divisor: o ciclo rende só os dias que caem no ano-base da PNP, na proporção dias no ano ÷ dias do ciclo. {d !== null ? <>{ex.curso}: {inteiro.format(d)} dias, cerca de {decimal.format(d / 365)} anos.</> : null}</>; },
       valor: (c) => {
         const dias = diasEntre(c.inicio, c.termino);
         return dias !== null ? `${dias} dias (≈${decimal.format(dias / 365)} anos)` : "não informado";
       },
     },
-    { rotulo: "CH mínima MEC", valor: (c) => (c.chMinimaMec !== null ? `${c.chMinimaMec} h` : "não informado") },
-    { rotulo: "CH Matriz", valor: (c) => (c.chMatriz !== null ? `${c.chMatriz} h` : "não informado"), numero: (c) => c.chMatriz, formatar: (n) => `${inteiro.format(n)} h`, melhor: "mais" },
+    { rotulo: "CH mínima MEC", ajuda: () => <>A carga horária mínima que o MEC exige para esse tipo de curso (catálogos CNCT e CNCST, diretrizes curriculares, guia do FIC). Vem pronta da MDO.</>, valor: (c) => (c.chMinimaMec !== null ? `${c.chMinimaMec} h` : "não informado") },
+    { rotulo: "CH Matriz", ajuda: (ex) => <>A carga horária que a matriz aceita para o curso. Se a turma tem mais horas, o excedente não rende. Entra na conta dividida por 800 h, a referência de um ano{ex.chMatriz !== null ? <>: {inteiro.format(ex.chMatriz)} h ÷ 800 = {decimal.format(ex.chMatriz / 800)}</> : null}.</>, valor: (c) => (c.chMatriz !== null ? `${c.chMatriz} h` : "não informado"), numero: (c) => c.chMatriz, formatar: (n) => `${inteiro.format(n)} h`, melhor: "mais" },
     {
-      rotulo: "CH Matriz ÷ CH mínima MEC",
+      rotulo: "CH Matriz ÷ CH mínima MEC", ajuda: (ex) => <>Quanto a carga horária aceita pela matriz passa do mínimo do MEC; 1,00 é igual ao mínimo{ex.chMatriz !== null && ex.chMinimaMec ? <>. {ex.curso}: {inteiro.format(ex.chMatriz)} ÷ {inteiro.format(ex.chMinimaMec)} = {decimal.format(ex.chMatriz / ex.chMinimaMec)}</> : null}.</>,
       valor: (c) => (c.chMatriz !== null && c.chMinimaMec ? decimal.format(c.chMatriz / c.chMinimaMec) : "não informado"),
     },
-    { rotulo: "Peso do curso na matriz", valor: (c) => (c.peso !== null ? decimal.format(c.peso) : "não informado"), numero: (c) => c.peso, formatar: (n) => decimal.format(n), melhor: "mais" },
-    { rotulo: "Alunos (matriz)", valor: (c) => (c.alunos !== null ? decimal.format(c.alunos) : "não informado"), numero: (c) => c.alunos, formatar: (n) => decimal.format(n), melhor: "mais" },
-    { rotulo: "Matrícula equalizada gerada", valor: (c) => decimal.format(c.matricula), numero: (c) => c.matricula, formatar: (n) => decimal.format(n), melhor: "mais" },
+    { rotulo: "Peso do curso na matriz", ajuda: (ex) => <>Multiplicador pelo custo do curso, pela quantidade de laboratórios do catálogo: de 1,0 a 2,5 (3,75 na pós stricto sensu). Todo o resto igual, um aluno de peso 2,0 vale o dobro de um de peso 1,0. {ex.peso !== null ? <>{ex.curso}: {decimal.format(ex.peso)}. </> : null}A tabela completa está em <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>Como funciona</Link>.</>, valor: (c) => (c.peso !== null ? decimal.format(c.peso) : "não informado"), numero: (c) => c.peso, formatar: (n) => decimal.format(n), melhor: "mais" },
+    { rotulo: "Alunos (matriz)", ajuda: (ex) => <>Os alunos do ciclo que a MDO conta, vindos da PNP do ano-base. {ex.alunos !== null ? <>{ex.curso}: {decimal.format(ex.alunos)}.</> : null}</>, valor: (c) => (c.alunos !== null ? decimal.format(c.alunos) : "não informado"), numero: (c) => c.alunos, formatar: (n) => decimal.format(n), melhor: "mais" },
+    { rotulo: "Matrícula equalizada gerada", ajuda: (ex) => <>A Matrícula Total do ciclo: alunos × ICQA × peso × (CH ÷ 800) × (dias no ano-base ÷ dias do ciclo), e × 1,5 se for de agropecuária. O ICQA é 1 para a turma regular e 0,5 para a que já devia ter terminado. {ex.curso}: {decimal.format(ex.matricula)}. A conta turma a turma está em <Link href="/consulta/valor-do-aluno" className={PROSE_LINK}>Quanto vale um aluno</Link>.</>, valor: (c) => decimal.format(c.matricula), numero: (c) => c.matricula, formatar: (n) => decimal.format(n), melhor: "mais" },
     {
-      rotulo: "Matrícula equalizada por aluno",
+      rotulo: "Matrícula equalizada por aluno", ajuda: (ex) => <>Matrícula equalizada ÷ alunos: quanto cada aluno conta na matriz{ex.alunos ? <>. {ex.curso}: {decimal.format(ex.matricula)} ÷ {decimal.format(ex.alunos)} = {decimal.format(ex.matricula / ex.alunos)}</> : null}.</>,
       valor: (c) => (c.alunos ? decimal.format(c.matricula / c.alunos) : "não informado"),
       numero: (c) => (c.alunos ? c.matricula / c.alunos : null),
       formatar: (n) => decimal.format(n),
       melhor: "mais",
     },
-    { rotulo: "Valor recebido", valor: (c) => reais.format(c.valor), numero: (c) => c.valor, formatar: (n) => reais.format(n), melhor: "mais" },
+    { rotulo: "Valor recebido", ajuda: (ex) => <>Matrícula equalizada × valor de uma matrícula na categoria de repasse{ex.matricula > 0 ? <>. {ex.curso}: {decimal.format(ex.matricula)} × {reais.format(ex.valor / ex.matricula)} = {reais.format(ex.valor)}</> : null}.</>, valor: (c) => reais.format(c.valor), numero: (c) => c.valor, formatar: (n) => reais.format(n), melhor: "mais" },
     {
-      rotulo: "Valor recebido por aluno",
+      rotulo: "Valor recebido por aluno", ajuda: (ex) => <>Valor recebido ÷ alunos{ex.alunos ? <>. {ex.curso}: {reais.format(ex.valor)} ÷ {decimal.format(ex.alunos)} = {reais.format(ex.valor / ex.alunos)}</> : null}.</>,
       valor: (c) => (c.alunos ? reais.format(c.valor / c.alunos) : "não informado"),
       numero: (c) => (c.alunos ? c.valor / c.alunos : null),
       formatar: (n) => reais.format(n),
       melhor: "mais",
     },
-    { rotulo: "Perda por evasão", valor: (c) => reais.format(c.perda), numero: (c) => c.perda, formatar: (n) => reais.format(n), melhor: "menos" },
+    { rotulo: "Perda por evasão", ajuda: (ex) => <>Quanto o ciclo deixou de receber pelos alunos que evadiram ou ficaram retidos além do prazo (o Custo Evadido da MDO). Aqui, menor é melhor. {ex.curso}: {reais.format(ex.perda)}.</>, valor: (c) => reais.format(c.perda), numero: (c) => c.perda, formatar: (n) => reais.format(n), melhor: "menos" },
   ];
 
   /** A diferença do principal contra `outro`, na linha, com a cor (verde, o principal se sai melhor; vermelho, pior). */
@@ -177,7 +189,15 @@ export function PainelComparacaoCursos({
         </Link>{" "}
         já considera duração do ciclo, peso do curso e carga horária, mas este sistema não refaz essa conta, só mostra os componentes que a própria MDO
         publica por ciclo de curso.
-        {principal && " Nas colunas dos outros cursos, a linha pequena diz o que o principal ganha (verde) ou perde (vermelho) em relação a eles."}
+        {principal && " Nas colunas dos outros cursos, a linha pequena diz o que o principal ganha (verde) ou perde (vermelho) em relação a eles."}{" "}
+        Clique no <strong>?</strong> de um item para ver o que ele é e a conta com os números {principal ? "do curso principal" : "do primeiro curso"}.{" "}
+        <button
+          type="button"
+          onClick={() => setAbertas(abertas.size === linhas.length ? new Set() : new Set(linhas.map((l) => l.rotulo)))}
+          className="nao-imprimir font-medium text-if-green underline hover:no-underline dark:text-green-400"
+        >
+          {abertas.size === linhas.length ? "Fechar todas as explicações" : "Explicar todos os itens"}
+        </button>
       </p>
       <div className="tabela-rolavel">
         <table className="w-full text-sm">
@@ -211,8 +231,23 @@ export function PainelComparacaoCursos({
           </thead>
           <tbody>
             {linhas.map((linha) => (
-              <tr key={linha.rotulo} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td className="px-3 py-2 text-neutral-500 dark:text-neutral-400">{linha.rotulo}</td>
+              <Fragment key={linha.rotulo}>
+              <tr className="border-t border-neutral-200 dark:border-neutral-800">
+                <td className="px-3 py-2 text-neutral-500 dark:text-neutral-400">
+                  <span className="inline-flex items-center gap-1.5">
+                    {linha.rotulo}
+                    <button
+                      type="button"
+                      onClick={() => alternar(linha.rotulo)}
+                      aria-expanded={abertas.has(linha.rotulo)}
+                      aria-label={`O que é ${linha.rotulo}`}
+                      title={`O que é ${linha.rotulo}`}
+                      className={`nao-imprimir inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none ${abertas.has(linha.rotulo) ? "border-if-green bg-if-green text-white" : "border-neutral-400 text-neutral-500 hover:border-if-green hover:text-if-green"}`}
+                    >
+                      ?
+                    </button>
+                  </span>
+                </td>
                 {cursos.map((c) => {
                   const dif = principal && principal.id !== c.id ? diferencaNaLinha(linha, c) : null;
                   return (
@@ -223,6 +258,14 @@ export function PainelComparacaoCursos({
                   );
                 })}
               </tr>
+              {abertas.has(linha.rotulo) && exemplo && (
+                <tr>
+                  <td colSpan={cursos.length + 1} className="bg-white px-3 py-2 text-xs text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300">
+                    {linha.ajuda(exemplo)}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>

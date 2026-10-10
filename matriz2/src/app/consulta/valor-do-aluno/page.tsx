@@ -20,6 +20,7 @@ const reais0 = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BR
 const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const dec2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dec4 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const dias1 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 const pct3 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
 const dataCurta = (d: Date | null) => (d ? d.toISOString().slice(0, 10).split("-").reverse().join("/") : "-");
@@ -116,6 +117,10 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     termino: Date | null;
     alunos: number;
     valor: number;
+    /** Valor de uma matrícula na modalidade do ciclo, como a MDO publicou. */
+    valorMatricula: number;
+    /** Matrícula Total publicada pela MDO para o ciclo. */
+    mtPublicada: number;
     analise: AnaliseAluno | null;
   }
   const porCurso = new Map<string, { rotulo: string; ciclos: CicloAnalisado[] }>();
@@ -146,6 +151,8 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       termino: c.termino,
       alunos: n(c.qtdAlunosMatriz),
       valor: n(c.valorReais),
+      valorMatricula: c.valorAluno ? n(c.valorAluno) : n(c.matriculaTotal) > 0 ? n(c.valorReais) / n(c.matriculaTotal) : 0,
+      mtPublicada: n(c.matriculaTotal),
       analise,
     };
     const atual = porCurso.get(chave) ?? { rotulo: `${c.curso}${oferta}${c.repasse === "PRESENCIAL" ? "" : `, ${c.repasse.replace("_", " ")}`}`, ciclos: [] };
@@ -165,7 +172,8 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       return {
         chave,
         rotulo: g.rotulo,
-        ciclos: g.ciclos.sort((a, b) => b.valor - a.valor),
+        // Em ordem de início: a turma mais antiga primeiro (sem data, no fim).
+        ciclos: g.ciclos.sort((a, b) => (a.inicio?.getTime() ?? Infinity) - (b.inicio?.getTime() ?? Infinity)),
         alunos,
         valor,
         valorPorAluno: alunos > 0 ? valor / alunos : 0,
@@ -292,6 +300,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                         Aluno vale = peso × ICQA × (CH ÷ 800) × dias × valor de uma matrícula. Cada coluna acima é um desses fatores.
                       </p>
                     </div>
+                    <ContasDasTurmas turmas={c.ciclos} totalCampus={totalCampus} ano={ano} />
                   </details>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{inteiro.format(c.alunos)}</td>
@@ -328,6 +337,74 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
         )}
       </div>
     </main>
+  );
+}
+
+/** Data por extenso curta, para a conta: "01/03/2022". */
+const dia = (d: Date | null) => dataCurta(d);
+
+/**
+ * A conta de cada turma, fator a fator, com os números reais: a mesma fórmula da legenda, preenchida. A primeira turma vem aberta
+ * como exemplo; as outras se abrem com um clique (o padrão de "ver detalhes" em tabela, sem empurrar a página).
+ */
+function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; inicio: Date | null; termino: Date | null; alunos: number; valor: number; valorMatricula: number; mtPublicada: number; analise: AnaliseAluno | null }[]; totalCampus: number; ano: number }) {
+  const comConta = turmas.filter((t) => t.analise && t.alunos > 0);
+  if (comConta.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-col gap-1.5 text-xs font-normal">
+      <span className="font-medium uppercase tracking-wide text-neutral-500">A conta de cada turma, com os números reais</span>
+      {comConta.map((t, i) => {
+        const d = t.analise!.decomposicao;
+        const porAluno = t.valor / t.alunos;
+        const regra = d.icqa === 1 ? "turma regular: todos os alunos contam" : d.icqa === 0.5 ? "turma que já devia ter terminado (alunos retidos): conta metade, e só 182,5 dias" : "alunos além do prazo de jubilamento: não contam";
+        return (
+          <details key={t.id} open={i === 0} className="rounded-md border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+            <summary className="cursor-pointer text-neutral-800 dark:text-neutral-200">
+              Turma de {dia(t.inicio)} a {dia(t.termino)}: um aluno vale <strong>{reais.format(porAluno)}</strong>
+            </summary>
+            <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-neutral-700 dark:text-neutral-300">
+              <li>
+                <strong>Carga horária:</strong> conta {inteiro.format(d.chEfetiva)} h (a menor entre a do curso e a da matriz). Dividida pelas 800 h de
+                referência de um ano: {inteiro.format(d.chEfetiva)} ÷ 800 = <strong>{dec4.format(d.fatorCargaHoraria)}</strong>.
+              </li>
+              <li>
+                <strong>Dias:</strong> a turma dura {inteiro.format(d.diasDoCiclo)} dias,{" "}
+                {d.icqa === 1
+                  ? <>e {dias1.format(d.diasAtivos)} deles caem no ano-base {ano - 2} (o ano da PNP que a matriz de {ano} usa)</>
+                  : <>mas já devia ter terminado antes do ano-base {ano - 2}; aluno retido conta um valor fixo de {dias1.format(d.diasAtivos)} dias (meio ano)</>}
+                : {dias1.format(d.diasAtivos)} ÷ {inteiro.format(d.diasDoCiclo)} = <strong>{dec4.format(d.fatorDias)}</strong>.
+              </li>
+              <li>
+                <strong>ICQA:</strong> {dec2.format(d.icqa)}, {regra}.
+              </li>
+              <li>
+                <strong>Matrícula Total da turma:</strong> {dias1.format(d.alunos)} alunos × {dec2.format(d.icqa)} × {dec2.format(d.peso)} (peso)
+                {d.bonusAgropecuaria > 1 ? ` × ${dec2.format(d.bonusAgropecuaria)} (agropecuária)` : ""} × {dec4.format(d.fatorCargaHoraria)} ×{" "}
+                {dec4.format(d.fatorDias)} = <strong>{dec4.format(d.matriculaTotal)}</strong>
+                {Math.abs(d.matriculaTotal - t.mtPublicada) > 0.01 && (
+                  <span className="text-neutral-500"> (a MDO publicou {dec4.format(t.mtPublicada)})</span>
+                )}
+                .
+              </li>
+              <li>
+                <strong>Valor da turma:</strong> {dec4.format(t.mtPublicada)} × {reais.format(t.valorMatricula)} (valor de uma matrícula) ={" "}
+                <strong>{reais.format(t.valor)}</strong>.
+              </li>
+              <li>
+                <strong>Um aluno vale:</strong> {reais.format(t.valor)} ÷ {inteiro.format(t.alunos)} alunos = <strong>{reais.format(porAluno)}</strong>
+                {totalCampus > 0 && (
+                  <>
+                    , que é {reais.format(porAluno)} ÷ {reais.format(totalCampus)} = <strong>{pct3.format((porAluno / totalCampus) * 100)}%</strong> do
+                    orçamento do câmpus por matrícula
+                  </>
+                )}
+                .
+              </li>
+            </ol>
+          </details>
+        );
+      })}
+    </div>
   );
 }
 
