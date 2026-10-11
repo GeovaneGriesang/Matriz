@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anoDaVirada, exemploDoPrimeiroAno, exemploEmRegime, simularOpcaoCurso, valorMatriculaNoAno, type OpcaoCurso, type ParametrosSimulacaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
 import type { DecomposicaoMatricula } from "@/lib/mdo/matriculaTotal";
+import { ehCampusDestaque } from "@/lib/destaque";
+import { calcularRotina, ROTINA_PADRAO, type RotinaCalculada, type RotinaDoCampus } from "@/lib/mdo/rotinaCurso";
 
 export interface CursoBase {
   rotulo: string;
@@ -14,6 +16,8 @@ export interface CursoBase {
   alunosHoje: number;
   valorHoje: number;
   ciclosHoje: number;
+  /** A carga horária que o curso tem de fato no câmpus (a mais frequente nos ciclos), quando os dados trazem. */
+  chCurso: number | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -67,10 +71,16 @@ export function SimuladorCursoAnos({
     evasaoAnual: 0,
   });
 
+  // A carga horária real de cada opção (a do PPC, que pode passar do mínimo que a matriz conta) e a rotina do câmpus.
+  const [chRealA, setChRealA] = useState(base.chCurso ?? Math.min(3000, base.chMatriz));
+  const [chRealB, setChRealB] = useState(base.chCurso ?? base.chMatriz);
+  // Venâncio Aires conta os 15 minutos de intervalo como carga horária; nos outros câmpus a opção começa desmarcada.
+  const [rotina, setRotina] = useState<RotinaDoCampus>({ ...ROTINA_PADRAO, contarIntervalo: ehCampusDestaque(campus) });
+
   useConfiguracaoSalvavel({
     chave: `simulador/curso:${campus}:${ano}:${base.rotulo}`,
     rotulo: "esta simulação",
-    capturar: () => ({ peso, agro, valorMatricula, chMatriz, horizonte, diluir, a, b }),
+    capturar: () => ({ peso, agro, valorMatricula, chMatriz, horizonte, diluir, a, b, chRealA, chRealB, rotina }),
     aplicar: (d) =>
       aplicarCampos(d, {
         peso: comoNumero(setPeso),
@@ -81,6 +91,9 @@ export function SimuladorCursoAnos({
         diluir: comoBooleano(setDiluir),
         a: comoObjeto<OpcaoCurso>(setA),
         b: comoObjeto<OpcaoCurso>(setB),
+        chRealA: comoNumero(setChRealA),
+        chRealB: comoNumero(setChRealB),
+        rotina: comoObjeto<RotinaDoCampus>((r) => setRotina({ ...ROTINA_PADRAO, ...r })),
       }),
   });
 
@@ -130,8 +143,8 @@ export function SimuladorCursoAnos({
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <CartaoOpcao op={a} onChange={setA} cor={COR_A} chMatriz={chMatriz} />
-        <CartaoOpcao op={b} onChange={setB} cor={COR_B} chMatriz={chMatriz} />
+        <CartaoOpcao op={a} onChange={setA} cor={COR_A} chMatriz={chMatriz} chReal={chRealA} onChReal={setChRealA} />
+        <CartaoOpcao op={b} onChange={setB} cor={COR_B} chMatriz={chMatriz} chReal={chRealB} onChReal={setChRealB} />
       </div>
 
       <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
@@ -155,13 +168,15 @@ export function SimuladorCursoAnos({
               <Linha rotulo="Por ingressante, do ingresso à formatura" a={reais.format(ra.valorPorIngressante)} b={reais.format(rb.valorPorIngressante)} dif={pctDiferenca(ra.valorPorIngressante, rb.valorPorIngressante)} destaque />
               <Linha rotulo="Alunos matriculados em regime" a={inteiro.format(ra.regime.alunosAtivos)} b={inteiro.format(rb.regime.alunosAtivos)} dif={pctDiferenca(ra.regime.alunosAtivos, rb.regime.alunosAtivos)} />
               <Linha rotulo="Repasse por ano, em regime" a={reais.format(ra.regime.valor)} b={reais.format(rb.regime.valor)} dif={pctDiferenca(ra.regime.valor, rb.regime.valor)} destaque />
-              <Linha rotulo="Valor de UM aluno por ano, em regime" a={reais2.format(ra.regime.valorPorAlunoAno)} b={reais2.format(rb.regime.valorPorAlunoAno)} dif={pctDiferenca(ra.regime.valorPorAlunoAno, rb.regime.valorPorAlunoAno)} destaque />
+              <Linha rotulo="Valor de UM aluno por ano, em regime" a={reais2.format(ra.regime.valorPorAlunoAno)} b={reais2.format(rb.regime.valorPorAlunoAno)} dif={pctDiferenca(ra.regime.valorPorAlunoAno, rb.regime.valorPorAlunoAno)} destaque nota="Maior no curso mais curto só porque cada aluno cursa mais horas por ano; o repasse total e as horas de sala e de professor são os mesmos (veja a rotina abaixo)." />
               <Linha rotulo={`Acumulado em ${horizonte} anos`} a={reais.format(ra.valorAcumuladoHorizonte)} b={reais.format(rb.valorAcumuladoHorizonte)} dif={pctDiferenca(ra.valorAcumuladoHorizonte, rb.valorAcumuladoHorizonte)} destaque />
             </tbody>
           </table>
         </div>
         <Veredito ra={ra} rb={rb} virada={virada} quemVira={quemViraPrimeiro === ra ? "A" : "B"} />
       </section>
+
+      <QuadroRotina a={a} b={b} chRealA={chRealA} chRealB={chRealB} rotina={rotina} onRotina={setRotina} alunosA={ra.regime.alunosAtivos} alunosB={rb.regime.alunosAtivos} />
 
       <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Ano a ano</h2>
@@ -378,7 +393,7 @@ function Numero({ rotulo, valor, passo, min, max, onChange, ajuda }: { rotulo: s
   );
 }
 
-function CartaoOpcao({ op, onChange, cor, chMatriz }: { op: OpcaoCurso; onChange: (o: OpcaoCurso) => void; cor: string; chMatriz: number }) {
+function CartaoOpcao({ op, onChange, cor, chMatriz, chReal, onChReal }: { op: OpcaoCurso; onChange: (o: OpcaoCurso) => void; cor: string; chMatriz: number; chReal: number; onChReal: (v: number) => void }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
       <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
@@ -386,10 +401,105 @@ function CartaoOpcao({ op, onChange, cor, chMatriz }: { op: OpcaoCurso; onChange
       </h2>
       <div className="grid grid-cols-2 gap-3">
         <Numero rotulo="Duração (anos)" valor={op.anosDuracao} passo={1} min={1} max={6} onChange={(v) => onChange({ ...op, anosDuracao: Math.max(1, Math.round(v)) })} />
-        <Numero rotulo="CH total da turma (h)" valor={op.chTotalCiclo} passo={50} min={100} max={6000} onChange={(v) => onChange({ ...op, chTotalCiclo: v })} ajuda={op.chTotalCiclo > chMatriz ? `${inteiro.format(op.chTotalCiclo - chMatriz)} h acima do teto não rendem` : undefined} />
+        <Numero rotulo="CH mínima, a do cálculo (h)" valor={op.chTotalCiclo} passo={50} min={100} max={6000} onChange={(v) => onChange({ ...op, chTotalCiclo: v })} ajuda={op.chTotalCiclo > chMatriz ? `${inteiro.format(op.chTotalCiclo - chMatriz)} h acima do teto não rendem` : "A que a MDO conta para o repasse"} />
+        <Numero rotulo="CH real do curso (h)" valor={chReal} passo={50} min={100} max={6000} onChange={onChReal} ajuda="A do PPC; só entra na rotina (horas por dia, turnos), não no repasse" />
         <Numero rotulo="Vagas por ano" valor={op.vagasPorAno} passo={5} min={1} max={400} onChange={(v) => onChange({ ...op, vagasPorAno: v })} />
         <Numero rotulo="Evasão por ano (%)" valor={Math.round(op.evasaoAnual * 100)} passo={1} min={0} max={60} onChange={(v) => onChange({ ...op, evasaoAnual: Math.min(0.9, Math.max(0, v / 100)) })} />
       </div>
+    </section>
+  );
+}
+
+const dec2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dec1 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** "1 turno por dia e mais 1,7 contraturno por semana", ou "menos de um turno por dia". */
+function textoDaRotina(r: RotinaCalculada): string {
+  if (r.turnosPorDia < 0.995) return `menos de 1 turno por dia (${dec1.format(r.periodosPorDia)} períodos)`;
+  if (r.contraturnosPorSemana < 0.05) return "1 turno por dia";
+  return `1 turno por dia e mais ${dec1.format(r.contraturnosPorSemana)} contraturno${r.contraturnosPorSemana >= 1.95 ? "s" : ""} por semana`;
+}
+
+/**
+ * O que cada opção exige do câmpus: horas por dia, períodos, turnos, e o que todas as turmas juntas ocupam de sala e de professor.
+ * Não muda o repasse; responde se a opção cabe na rotina do câmpus.
+ */
+function QuadroRotina({
+  a,
+  b,
+  chRealA,
+  chRealB,
+  rotina,
+  onRotina,
+  alunosA,
+  alunosB,
+}: {
+  a: OpcaoCurso;
+  b: OpcaoCurso;
+  chRealA: number;
+  chRealB: number;
+  rotina: RotinaDoCampus;
+  onRotina: (r: RotinaDoCampus) => void;
+  alunosA: number;
+  alunosB: number;
+}) {
+  const ra = calcularRotina(chRealA, a.anosDuracao, rotina);
+  const rb = calcularRotina(chRealB, b.anosDuracao, rotina);
+  const mudar = (m: Partial<RotinaDoCampus>) => onRotina({ ...rotina, ...m });
+  const minutosTurno = rotina.periodosPorTurno * rotina.minutosPorPeriodo + (rotina.contarIntervalo ? rotina.minutosDeIntervalo : 0);
+  const comEad = rotina.fracaoEad > 0;
+  const linha = (rotulo: string, va: string, vb: string, nota?: string) => <Linha rotulo={rotulo} a={va} b={vb} dif="" nota={nota} />;
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">A rotina no câmpus: cabe?</h2>
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        O repasse não muda com o número de anos, mas a rotina sim: a mesma carga horária em menos anos dá mais horas por dia, e pode exigir
+        contraturno. Informe como o câmpus organiza o turno (o padrão é o de Venâncio Aires: 5 períodos de 45 minutos).
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Numero rotulo="Minutos por período" valor={rotina.minutosPorPeriodo} passo={5} min={30} max={60} onChange={(v) => mudar({ minutosPorPeriodo: v })} />
+        <Numero rotulo="Períodos por turno" valor={rotina.periodosPorTurno} passo={1} min={1} max={8} onChange={(v) => mudar({ periodosPorTurno: Math.round(v) })} ajuda="5 em Venâncio Aires, 6 em Lajeado" />
+        <Numero rotulo="Dias letivos por ano" valor={rotina.diasLetivos} passo={5} min={100} max={250} onChange={(v) => mudar({ diasLetivos: Math.round(v) })} ajuda="200 é o mínimo legal" />
+        <Numero rotulo="Minutos de intervalo por turno" valor={rotina.minutosDeIntervalo} passo={5} min={0} max={60} onChange={(v) => mudar({ minutosDeIntervalo: v })} />
+        <Numero rotulo="Parte EAD da carga horária (%)" valor={Math.round(rotina.fracaoEad * 100)} passo={5} min={0} max={80} onChange={(v) => mudar({ fracaoEad: Math.min(0.8, Math.max(0, v / 100)) })} ajuda="Não ocupa sala nem turno" />
+        <label className="flex items-center gap-2 self-center text-sm text-neutral-700 dark:text-neutral-300">
+          <input type="checkbox" checked={rotina.contarIntervalo} onChange={(e) => mudar({ contarIntervalo: e.target.checked })} />
+          O intervalo conta como carga horária
+        </label>
+      </div>
+
+      <div className="tabela-rolavel">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th className="py-2 pr-3"></th>
+              <th className="px-3 py-2 text-right"><Marca cor={COR_A} /> {a.anosDuracao} anos</th>
+              <th className="px-3 py-2 text-right"><Marca cor={COR_B} /> {b.anosDuracao} anos</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {linha("Horas por ano (CH mínima, a do cálculo)", `${inteiro.format(a.chTotalCiclo)} ÷ ${a.anosDuracao} = ${inteiro.format(a.chTotalCiclo / a.anosDuracao)} h`, `${inteiro.format(b.chTotalCiclo)} ÷ ${b.anosDuracao} = ${inteiro.format(b.chTotalCiclo / b.anosDuracao)} h`)}
+            {linha("Horas por ano (CH real do curso)", `${inteiro.format(chRealA)} ÷ ${a.anosDuracao} = ${inteiro.format(ra.horasPorAno)} h`, `${inteiro.format(chRealB)} ÷ ${b.anosDuracao} = ${inteiro.format(rb.horasPorAno)} h`, "Daqui para baixo, tudo usa a CH real.")}
+            {comEad && linha("Horas presenciais por ano", `${inteiro.format(ra.horasPresenciaisPorAno)} h`, `${inteiro.format(rb.horasPresenciaisPorAno)} h`, `Tirados os ${inteiro.format(rotina.fracaoEad * 100)}% a distância.`)}
+            {linha("Horas por dia", `${dec2.format(ra.horasPorDia)} h`, `${dec2.format(rb.horasPorDia)} h`, `Horas presenciais por ano ÷ ${rotina.diasLetivos} dias letivos.`)}
+            {linha("Turnos por dia", dec2.format(ra.turnosPorDia), dec2.format(rb.turnosPorDia), `Horas por dia ÷ ${dec2.format(ra.horasPorTurno)} h de um turno (${rotina.periodosPorTurno} × ${rotina.minutosPorPeriodo} min${rotina.contarIntervalo ? ` + ${rotina.minutosDeIntervalo} min de intervalo` : ""} = ${minutosTurno} min).`)}
+            {linha("Períodos de aula por dia", dec1.format(ra.periodosPorDia), dec1.format(rb.periodosPorDia))}
+            {linha("Rotina da turma", textoDaRotina(ra), textoDaRotina(rb), "Contraturno por semana: (turnos por dia − 1) × 5 dias.")}
+            {linha("Turmas ao mesmo tempo, com todas em andamento", inteiro.format(ra.turmasAoMesmoTempo), inteiro.format(rb.turmasAoMesmoTempo))}
+            {linha("Alunos no câmpus ao mesmo tempo", inteiro.format(alunosA), inteiro.format(alunosB))}
+            {linha("Períodos de sala por semana, todas as turmas", inteiro.format(ra.periodosDeSalaPorSemana), inteiro.format(rb.periodosDeSalaPorSemana), "Turmas × períodos por semana. Com a mesma CH, empatam: o curso mais curto tem menos turmas, cada uma com mais horas.")}
+            {linha("Períodos de aula de professor por ano, todas as turmas", inteiro.format(ra.periodosDeProfessorPorAno), inteiro.format(rb.periodosDeProfessorPorAno), "Sem contar turma dividida em laboratório.")}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        A conta supõe a carga horária em horas-relógio (60 minutos). Com todas as turmas em andamento, a mesma CH ocupa as mesmas salas e
+        os mesmos professores nas duas opções; o que muda é a rotina de cada turma (contraturno, transporte, alimentação) e o ritmo nos
+        primeiros anos, quando o curso mais curto entrega mais horas por ano. O encaixe real dos horários com os outros cursos do câmpus,
+        a área de cada professor e os indicadores da instituição (evasão, retenção) ficam fora desta conta.
+      </p>
     </section>
   );
 }

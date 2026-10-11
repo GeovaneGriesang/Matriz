@@ -60,11 +60,12 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador de curso: 3 ou 4 anos?</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Técnico integrado: 3 ou 4 anos?</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        Escolha um câmpus e um curso como ponto de partida, e compare duas formas de ofertá-lo, por exemplo uma turma de
-        ensino médio integrado de 3 anos contra uma de 4. A tela mostra quanto cada uma rende por aluno, por ano e no
-        acumulado, usando a mesma regra de Matrícula Total da MDO.
+        Esta simulação vale <strong>só para o curso técnico integrado ao ensino médio</strong>, o único em que a escolha entre 3 e 4 anos se
+        coloca (Proeja, subsequente, concomitante e superior têm outra organização). Escolha um câmpus e um curso integrado como ponto de
+        partida e compare as duas formas de ofertá-lo: quanto cada uma rende pela regra de Matrícula Total da MDO e que rotina ela exige do
+        câmpus (horas por dia, turnos, salas e professores).
       </p>
     </div>
   );
@@ -92,6 +93,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
     select: {
       curso: true,
       tipoOferta: true,
+      cargaHoraria: true,
       pesoCursoMatriz: true,
       chMatriz: true,
       qtdAlunosMatriz: true,
@@ -116,16 +118,40 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
         integrado: oferta === "INTEGRADO",
       };
     })
-    .sort((a, b) => Number(b.integrado) - Number(a.integrado) || b.valor - a.valor);
+    // Só o técnico integrado: é nele que se escolhe entre 3 e 4 anos.
+    .filter((c) => c.integrado)
+    .sort((a, b) => b.valor - a.valor);
 
   const escolhido = cursos.find((c) => c.chave === params.curso) ?? cursos[0];
+  const chipsDeCampus = (
+          <div className="flex flex-wrap gap-1">
+            {unidades.map((u) => (
+              <Link
+                key={u.id}
+                href={`/simulador/curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
+                className={`rounded px-2 py-1 text-xs font-medium ${
+                  u.id === campus.id
+                    ? "bg-if-green text-white"
+                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                }`}
+              >
+                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
+              </Link>
+            ))}
+          </div>
+  );
+
   if (!escolhido) {
     return (
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <SubmenuSimulador />
         {cabecalho}
+        <div className="flex flex-col gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
+          {chipsDeCampus}
+        </div>
         <p className="text-neutral-600 dark:text-neutral-400">
-          {campus.nome} não tem ciclos em {ano}.
+          {campus.nome} não tem curso técnico integrado com ciclos em {ano}. Escolha outro câmpus.
         </p>
       </main>
     );
@@ -138,6 +164,8 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
     peso: Number(moda(l.map((c) => Number(c.pesoCursoMatriz ?? 1))) ?? 1),
     agropecuaria: l.some((c) => c.agropecuaria === true),
     chMatriz: Math.max(...l.map((c) => c.chMatriz ?? 0), 800),
+    // A carga horária que o curso de fato tem no câmpus (pode passar do mínimo que a matriz conta).
+    chCurso: Number(moda(l.map((c) => c.cargaHoraria ?? 0).filter((v) => v > 0)) ?? 0) || null,
     valorMatricula: valorMatricula || 1200,
     alunosHoje: l.reduce((s, c) => s + Number(c.qtdAlunosMatriz ?? 0), 0),
     valorHoje: escolhido.valor,
@@ -185,21 +213,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/simulador/curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
+          {chipsDeCampus}
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Curso de partida</span>
