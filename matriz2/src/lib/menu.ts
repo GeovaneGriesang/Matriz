@@ -85,7 +85,7 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "A transição de 3 anos para a matriz: manter parte do valor anterior e completar com um índice de qualidade.",
+        descricao: "Em desenvolvimento, aguardando a regra interna. Ensaio da transição para a matriz: manter parte do valor anterior e completar com um índice de qualidade.",
       },
       {
         href: "/simulador",

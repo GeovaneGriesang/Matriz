@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ABAS = [
+const ABAS: { href: string; rotulo: string; emDesenvolvimento?: boolean }[] = [
   { href: "/simulador/alternativas", rotulo: "O que rende mais?" },
   { href: "/simulador/novo-curso", rotulo: "Curso novo, ano a ano" },
   { href: "/simulador/projecao", rotulo: "Cenários, anos à frente" },
   { href: "/simulador/curso", rotulo: "Curso: 3 ou 4 anos" },
   { href: "/simulador/oportunidades", rotulo: "Onde há ganho" },
-  { href: "/simulador/distribuicao", rotulo: "Distribuição entre câmpus" },
+  { href: "/simulador/distribuicao", rotulo: "Distribuição entre câmpus", emDesenvolvimento: true },
   { href: "/simulador", rotulo: "Evasão, RAP e IAPL" },
 ];
 
@@ -32,6 +32,14 @@ export function SubmenuSimulador() {
             }`}
           >
             {a.rotulo}
+            {a.emDesenvolvimento && (
+              <span
+                className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                title="Em desenvolvimento: aguardando a regra interna"
+              >
+                em desenvolvimento
+              </span>
+            )}
           </Link>
         );
       })}

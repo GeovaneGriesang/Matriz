@@ -33,6 +33,17 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
+      <div
+        role="status"
+        className="flex flex-col gap-1 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200"
+      >
+        <span className="text-sm font-bold uppercase tracking-wide">Em desenvolvimento: aguardando a regra interna</span>
+        <span className="text-sm">
+          A forma como o IFSul vai distribuir o Funcionamento entre os câmpus ainda não foi definida. Esta tela é um ensaio com regras
+          possíveis (manter parte do valor anterior, índice de qualidade e eficiência); os números são ilustrativos e não devem ser usados
+          como decisão. Quando a regra interna for aprovada, a simulação será ajustada a ela.
+        </span>
+      </div>
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus, em transição</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Como repartir o Funcionamento de uma instituição entre os câmpus sem tirar tudo de quem perde de uma vez: mantém-se uma
