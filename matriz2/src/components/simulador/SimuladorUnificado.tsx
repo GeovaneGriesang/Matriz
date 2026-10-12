@@ -506,11 +506,35 @@ function SliderControl({
   maxLabel: string;
   format: (v: number) => string;
 }) {
+  // O marcador é para chegar perto; o campo ao lado aceita o número exato (com vírgula ou ponto), dentro dos mesmos limites.
+  const ehPercentual = format(value).trim().endsWith("%");
+  const [texto, setTexto] = useState<string | null>(null);
+  const exibido = texto ?? String(Math.round(value * 100) / 100).replace(".", ",");
+  function confirmar(t: string) {
+    const v = Number(t.replace(",", "."));
+    if (t.trim() !== "" && Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
+    setTexto(null);
+  }
   return (
     <div className="flex flex-col gap-1 text-sm">
-      <span className="flex items-baseline justify-between font-medium text-neutral-900 dark:text-neutral-100">
+      <span className="flex items-baseline justify-between gap-2 font-medium text-neutral-900 dark:text-neutral-100">
         <span>{label}</span>
-        <span className="tabular-nums text-if-green">{format(value)}</span>
+        <span className="flex items-baseline gap-1 text-if-green">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={exibido}
+            onChange={(e) => setTexto(e.target.value)}
+            onBlur={(e) => confirmar(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmar((e.target as HTMLInputElement).value);
+            }}
+            aria-label={`${label}, valor exato`}
+            title={`Digite o valor exato (de ${String(min).replace(".", ",")} a ${String(max).replace(".", ",")}) e tecle Enter`}
+            className="w-20 rounded border border-neutral-300 px-1.5 py-0.5 text-right tabular-nums text-if-green dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          {ehPercentual && <span>%</span>}
+        </span>
       </span>
       <input
         type="range"

@@ -6,6 +6,8 @@ import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { carregarCatalogo, carregarContextoDoCampus } from "@/server/queries/contextoSimulador";
+import { PROSE_LINK } from "@/lib/layoutWidths";
+import { MODALIDADES, ehChaveDeModalidade, modalidadeDoCurso } from "@/lib/modalidadeCurso";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,10 @@ interface Busca {
   ano?: string;
   instituicao?: string;
   campus?: string;
+  /** Filtros da lista de cursos: modalidade, parte do nome, e se o câmpus já oferta o curso. */
+  modalidade?: string;
+  busca?: string;
+  oferta?: string;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -87,9 +93,22 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
     }),
   ]);
 
+  // Filtros da lista: modalidade, parte do nome (sem acento) e se o câmpus já oferta o curso.
+  const modalidade = ehChaveDeModalidade(params.modalidade) ? params.modalidade : undefined;
+  const busca = (params.busca ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+  const oferta = params.oferta === "nova" || params.oferta === "existente" ? params.oferta : undefined;
+  const ofertadosNoCampus = new Set(ciclos.map((c) => `${c.curso}|${c.tipoOferta ?? ""}`));
+
   // Ranking: o que um aluno que entra rende, do ingresso à formatura, com a CH no teto que a MDO paga.
-  const ranking = catalogo
-    .filter((c) => TIPOS_DO_RANKING.includes(c.tipoCurso))
+  const todosDoRanking = catalogo.filter((c) => TIPOS_DO_RANKING.includes(c.tipoCurso));
+  const ranking = todosDoRanking
+    .filter((c) => !modalidade || modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === modalidade)
+    .filter((c) => !busca || c.rotulo.includes(busca))
+    .filter((c) => {
+      if (!oferta) return true;
+      const ja = ofertadosNoCampus.has(`${c.rotulo.replace(/ \(.*\)$/, "")}|${c.tipoOferta}`);
+      return oferta === "existente" ? ja : !ja;
+    })
     .map((c) => {
       const p = c.padroes;
       const chPaga = Math.min(p.chTotal, p.teto);
@@ -97,8 +116,18 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
       const anos = p.mesesDuracao ? p.mesesDuracao / 12 : p.anosDuracao;
       return { ...c, chPaga, porIngressante, porAlunoAno: porIngressante / anos, anos };
     })
-    .sort((a, b) => b.porIngressante - a.porIngressante)
-    .slice(0, 30);
+    .sort((a, b) => b.porIngressante - a.porIngressante);
+  const hrefFiltro = (m: { modalidade?: string; oferta?: string }) => {
+    const q = new URLSearchParams({ ano: String(ano), instituicao: instituicao.sigla, campus: String(campus.id) });
+    const mod = "modalidade" in m ? m.modalidade : modalidade;
+    const ofe = "oferta" in m ? m.oferta : oferta;
+    if (mod) q.set("modalidade", mod);
+    if (ofe) q.set("oferta", ofe);
+    if (params.busca) q.set("busca", params.busca);
+    return `/simulador/oportunidades?${q.toString()}`;
+  };
+  const chip = (ativo: boolean) =>
+    `rounded px-2 py-1 text-xs font-medium ${ativo ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"}`;
 
   // Horas que não rendem: ciclos do câmpus em que a CH do ciclo passa do teto da matriz.
   const acima = new Map<string, { curso: string; oferta: string; alunos: number; chCiclo: number; chMatriz: number; valor: number }>();
@@ -151,8 +180,60 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Para cada curso da rede, quanto um aluno que entra rende do ingresso à formatura em {campus.nome}, com a carga horária no teto que a MDO paga. A conta é peso do curso × (carga horária ÷ 800) × valor da matrícula
           ({reais.format(contexto.valorMatricula)} no ciclo {ano}). O que mais pesa é o <strong>peso do curso</strong> (de 1 a 3,75): com a mesma carga horária, um curso de peso 2,5 rende 2,5 vezes o de peso 1.
-          Os 30 primeiros:
         </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <strong>De onde vêm os cursos e os pesos:</strong> da{" "}
+          <Link href="/peso-efetivo" className={PROSE_LINK}>
+            tabela de peso efetivo por curso
+          </Link>
+          , que o sistema monta a partir da Matrícula Total que a MDO publicou para cada ciclo da rede (6ª fase): o peso é o que faz a conta da
+          MDO fechar para aquele curso. Entram os cursos mais ofertados na rede ({inteiro.format(todosDoRanking.length)} nesta lista). A duração e a
+          carga horária são as típicas do tipo de curso; o valor da matrícula é o do câmpus.
+        </p>
+        <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Modalidade</span>
+            <Link href={hrefFiltro({ modalidade: undefined })} className={chip(!modalidade)}>
+              Todas
+            </Link>
+            {MODALIDADES.filter((m) => todosDoRanking.some((c) => modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === m.chave)).map((m) => (
+              <Link key={m.chave} href={hrefFiltro({ modalidade: m.chave })} className={chip(modalidade === m.chave)} title={m.ajuda}>
+                {m.rotulo}
+              </Link>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Neste câmpus</span>
+            <Link href={hrefFiltro({ oferta: undefined })} className={chip(!oferta)}>
+              Todos
+            </Link>
+            <Link href={hrefFiltro({ oferta: "nova" })} className={chip(oferta === "nova")}>
+              Ainda não ofertados
+            </Link>
+            <Link href={hrefFiltro({ oferta: "existente" })} className={chip(oferta === "existente")}>
+              Já ofertados
+            </Link>
+          </div>
+          <form method="get" className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="ano" value={ano} />
+            <input type="hidden" name="instituicao" value={instituicao.sigla} />
+            <input type="hidden" name="campus" value={campus.id} />
+            {modalidade && <input type="hidden" name="modalidade" value={modalidade} />}
+            {oferta && <input type="hidden" name="oferta" value={oferta} />}
+            <input
+              name="busca"
+              defaultValue={params.busca ?? ""}
+              placeholder="Parte do nome do curso, ex.: informática"
+              className="w-72 rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+            />
+            <button type="submit" className="rounded-md bg-if-green px-3 py-1 text-sm font-medium text-white">
+              Filtrar
+            </button>
+            <span className="text-xs text-neutral-500">
+              {inteiro.format(ranking.length)} de {inteiro.format(todosDoRanking.length)} cursos
+            </span>
+          </form>
+        </div>
         <div className="tabela-rolavel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
@@ -164,6 +245,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
                 <th className="px-3 py-2 text-right">Duração</th>
                 <th className="px-3 py-2 text-right">Por ingressante</th>
                 <th className="px-3 py-2 text-right">Por aluno, ao ano</th>
+                <th className="px-3 py-2 text-right" title="Em quantos ciclos (turmas) da rede o curso aparece">Turmas na rede</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -177,12 +259,18 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
                       {r.rotulo}
                     </Link>
                   </td>
-                  <td className="px-3 py-1.5 text-xs text-neutral-500">{r.tipoCurso}</td>
+                  <td className="px-3 py-1.5 text-xs text-neutral-500">
+                    {r.tipoCurso}
+                    {ofertadosNoCampus.has(`${r.rotulo.replace(/ \(.*\)$/, "")}|${r.tipoOferta}`) && (
+                      <span className="ml-1 rounded bg-if-green/10 px-1 text-[10px] font-semibold uppercase text-if-green">já no câmpus</span>
+                    )}
+                  </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{decimal.format(r.peso)}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(r.chPaga)} h</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{r.anos < 1 ? `${inteiro.format(r.anos * 12)} meses` : `${decimal.format(r.anos)} anos`}</td>
                   <td className="px-3 py-1.5 text-right font-medium tabular-nums">{reais.format(r.porIngressante)}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(r.porAlunoAno)}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-neutral-500">{inteiro.format(r.ciclos)}</td>
                 </tr>
               ))}
             </tbody>
