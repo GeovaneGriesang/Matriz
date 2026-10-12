@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anosOcupados, simularOpcaoCurso, type OpcaoCurso } from "@/lib/mdo/simulacaoCurso";
+import { MarcadorDiluicao } from "./MarcadorDiluicao";
 import type { PadroesDoCurso } from "@/lib/mdo/padroesCurso";
 
 export interface CursoNovoBase {
@@ -155,10 +156,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
         <Numero rotulo="Teto de CH da matriz (h)" valor={teto} passo={100} min={100} max={6000} onChange={setTeto} ajuda={`Curso com CH mínima do MEC de ${inteiro.format(base.chMinimaMec)} h`} />
         <Numero rotulo={`Valor de uma matrícula (R$, ciclo ${base.anoDoValor})`} valor={valorMatricula} passo={10} min={1} max={5000} onChange={setValorMatricula} ajuda="Vem dos ciclos deste câmpus" />
         <Numero rotulo="Reajuste do valor por ano (%)" valor={Math.round(reajuste * 1000) / 10} passo={0.5} min={-10} max={30} onChange={(v) => setReajuste(v / 100)} ajuda="Zero é o conservador: o valor real só se conhece quando a MDO fecha o ciclo" />
-        <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 sm:col-span-2">
-          <input type="checkbox" checked={diluir} onChange={(e) => setDiluir(e.target.checked)} />
-          Considerar que mais matrícula na rede dilui o valor de cada matrícula
-        </label>
+        <MarcadorDiluicao marcado={diluir} onChange={setDiluir} matriculasRede={base.matriculasRede} matriculaDoCurso={r.regime.matriculaTotal} valorMatricula={valorMatricula} />
       </section>
 
       {chTotal > teto && (

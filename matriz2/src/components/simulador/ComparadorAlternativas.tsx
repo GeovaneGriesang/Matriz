@@ -22,6 +22,8 @@ import {
   type IndicadorSimulavel,
 } from "@/lib/simulacaoIndicadores";
 import type { ItemCatalogo } from "@/server/queries/contextoSimulador";
+import { MODALIDADES, modalidadeDoCurso, type ChaveModalidade } from "@/lib/modalidadeCurso";
+import { VAGAS_POR_ANO_PADRAO } from "@/lib/mdo/padroesCurso";
 
 export type ContextoBase = Omit<ContextoAlternativas, "reajusteAnual">;
 
@@ -79,7 +81,7 @@ function alternativasIniciais(catalogo: ItemCatalogo[], ctx: ContextoBase, ano: 
     });
   }
   if (fic) {
-    lista.push(cursoDoCatalogo(fic, ano, { vagasPorAno: 60 }, "Turma FIC de 160 h (Mulheres Mil)"));
+    lista.push(cursoDoCatalogo(fic, ano, { vagasPorAno: VAGAS_POR_ANO_PADRAO }, "Turma FIC de 160 h (Mulheres Mil)"));
   }
   return lista;
 }
@@ -130,9 +132,14 @@ export function ComparadorAlternativas({
   function remover(id: string) {
     setAlternativas((l) => l.filter((a) => a.id !== id));
   }
-  function adicionarCurso() {
-    const ref = catalogo.find((c) => c.chave === "BACHARELADO|NÃO SE APLICA|ADMINISTRACAO|3000") ?? catalogo[0];
+  // Curso novo começa pela modalidade: ela decide a duração, a carga horária e o teto típicos, e restringe a lista de cursos.
+  const [escolhendoModalidade, setEscolhendoModalidade] = useState(false);
+  const modalidadesComCurso = MODALIDADES.filter((m) => catalogo.some((c) => modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === m.chave));
+  function adicionarCurso(modalidade: ChaveModalidade) {
+    // O curso mais frequente da modalidade (o catálogo já vem do mais ofertado para o menos) como ponto de partida.
+    const ref = catalogo.find((c) => modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === modalidade);
     if (ref) setAlternativas((l) => [...l, cursoDoCatalogo(ref, anoInicial)]);
+    setEscolhendoModalidade(false);
   }
   function adicionarIndicador() {
     const indicador: IndicadorSimulavel = base.indicadores.rap ? "RAP" : "IAPL_TECNICO";
@@ -168,11 +175,33 @@ export function ComparadorAlternativas({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Adicionar</span>
-        <BotaoAdicionar onClick={adicionarCurso}>Curso novo</BotaoAdicionar>
+        <BotaoAdicionar onClick={() => setEscolhendoModalidade((v) => !v)}>Curso novo</BotaoAdicionar>
         <BotaoAdicionar onClick={adicionarIndicador}>Subir um indicador (RAP, IAPL)</BotaoAdicionar>
         <BotaoAdicionar onClick={adicionarEvasao}>Reduzir a evasão</BotaoAdicionar>
         <BotaoAdicionar onClick={adicionarMatricula}>Ocupar mais vagas</BotaoAdicionar>
       </div>
+      {escolhendoModalidade && (
+        <div className="flex flex-col gap-2 rounded-lg border border-if-green/50 bg-if-green/5 p-3">
+          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Qual a modalidade do curso novo?</span>
+          <div className="flex flex-wrap gap-2">
+            {modalidadesComCurso.map((m) => (
+              <button
+                key={m.chave}
+                type="button"
+                onClick={() => adicionarCurso(m.chave)}
+                title={m.ajuda}
+                className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:border-if-green hover:text-if-green dark:border-neutral-700 dark:bg-neutral-900"
+              >
+                {m.rotulo}
+              </button>
+            ))}
+            <button type="button" onClick={() => setEscolhendoModalidade(false)} className="px-2 text-sm text-neutral-500 underline">
+              cancelar
+            </button>
+          </div>
+          <span className="text-xs text-neutral-500">A modalidade define a duração, a carga horária e o teto típicos; depois dá para escolher o curso e mudar tudo.</span>
+        </div>
+      )}
 
       {alternativas.length === 0 ? (
         <p className="rounded-md border border-neutral-200 px-3 py-6 text-center text-sm text-neutral-500 dark:border-neutral-800">Adicione uma alternativa para comparar.</p>
@@ -374,9 +403,13 @@ function CartaoAlternativa({
 
 function CorpoCurso({ alt, catalogo, onChange }: { alt: AlternativaCurso; catalogo: ItemCatalogo[]; onChange: (a: Alternativa) => void }) {
   const [filtro, setFiltro] = useState("");
-  const normalizado = filtro.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
-  const opcoes = catalogo.filter((c) => !normalizado || c.rotulo.includes(normalizado) || c.tipoCurso.includes(normalizado)).slice(0, 80);
   const atual = catalogo.find((c) => c.chave === alt.referencia);
+  const [modalidade, setModalidade] = useState<ChaveModalidade | "">(atual ? modalidadeDoCurso(atual.tipoCurso, atual.tipoOferta) : "");
+  const normalizado = filtro.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+  const opcoes = catalogo
+    .filter((c) => !modalidade || modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === modalidade)
+    .filter((c) => !normalizado || c.rotulo.includes(normalizado) || c.tipoCurso.includes(normalizado))
+    .slice(0, 80);
   const emMeses = alt.opcao.mesesDuracao !== undefined;
   const o = alt.opcao;
 
@@ -393,6 +426,26 @@ function CorpoCurso({ alt, catalogo, onChange }: { alt: AlternativaCurso; catalo
 
   return (
     <>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Modalidade</span>
+        <select
+          value={modalidade}
+          onChange={(e) => {
+            const m = e.target.value as ChaveModalidade | "";
+            setModalidade(m);
+            const primeiro = catalogo.find((c) => modalidadeDoCurso(c.tipoCurso, c.tipoOferta) === m);
+            if (primeiro) usar(primeiro);
+          }}
+          className="rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          <option value="">Todas</option>
+          {MODALIDADES.map((m) => (
+            <option key={m.chave} value={m.chave}>
+              {m.rotulo}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Curso de referência (dele vêm o peso e o teto de carga horária)</span>
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="filtrar, ex.: administração, FIC, integrado" className="rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900" />

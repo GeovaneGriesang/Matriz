@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 import { useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { PESO_REPASSE_PADRAO, type Repasse } from "@/lib/mdo/matriculaTotal";
+import { VAGAS_POR_ANO_PADRAO } from "@/lib/mdo/padroesCurso";
 import { chDaMatrizDoCurso } from "@/lib/mdo/valorDoCurso";
 import {
   projetarMatriculados,
@@ -380,7 +381,7 @@ export function ProjecaoCiclos({
         entradas: 1,
         anoFim: anoBase0 + 2,
         continua: true,
-        ingressantes: 40,
+        ingressantes: VAGAS_POR_ANO_PADRAO,
         duracao: 3,
         repasse: "PRESENCIAL",
       },

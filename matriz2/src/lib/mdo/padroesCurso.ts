@@ -15,6 +15,9 @@ export interface PadroesDoCurso {
   vagasPorAno: number;
 }
 
+/** Estudantes que entram por ano em uma turma nova, o padrão de todas as simulações (pedido do usuário em 2026-10-11). */
+export const VAGAS_POR_ANO_PADRAO = 32;
+
 /** Sem teto fixo, a MDO usa a CH do próprio ciclo: o simulador não limita. */
 export const SEM_TETO_DE_CH = 6000;
 
@@ -26,18 +29,18 @@ export function padroesDoCurso(tipoCurso: string, tipoOferta: string, chMinimaMe
 
   if (ehQualificacaoProfissional(tipo)) {
     // As cargas de 1.600, 2.400 e 3.200 h que aparecem no catálogo de FIC são valores padrão da MDO, não a duração real.
-    return { anosDuracao: 1, mesesDuracao: 4, chTotal: mec > 800 ? 160 : mec, teto, vagasPorAno: 40 };
+    return { anosDuracao: 1, mesesDuracao: 4, chTotal: mec > 800 ? 160 : mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
   }
   if (tipo === "TECNICO") {
-    if (oferta.includes("PROEJA")) return { anosDuracao: 3, chTotal: teto, teto, vagasPorAno: 40 };
-    if (oferta === "INTEGRADO") return { anosDuracao: 4, chTotal: teto, teto, vagasPorAno: 40 };
-    return { anosDuracao: 2, chTotal: mec, teto, vagasPorAno: 40 };
+    if (oferta.includes("PROEJA")) return { anosDuracao: 3, chTotal: teto, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
+    if (oferta === "INTEGRADO") return { anosDuracao: 4, chTotal: teto, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
+    return { anosDuracao: 2, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
   }
-  if (tipo === "BACHARELADO") return { anosDuracao: mec >= 3600 ? 5 : 4, chTotal: mec, teto, vagasPorAno: 40 };
-  if (tipo === "LICENCIATURA") return { anosDuracao: 4, chTotal: mec, teto, vagasPorAno: 40 };
-  if (tipo === "TECNOLOGIA") return { anosDuracao: 3, chTotal: mec, teto, vagasPorAno: 40 };
-  if (tipo.startsWith("ESPECIALIZACAO")) return { anosDuracao: 2, mesesDuracao: 18, chTotal: mec, teto, vagasPorAno: 30 };
+  if (tipo === "BACHARELADO") return { anosDuracao: mec >= 3600 ? 5 : 4, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
+  if (tipo === "LICENCIATURA") return { anosDuracao: 4, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
+  if (tipo === "TECNOLOGIA") return { anosDuracao: 3, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
+  if (tipo.startsWith("ESPECIALIZACAO")) return { anosDuracao: 2, mesesDuracao: 18, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
   if (tipo.startsWith("MESTRADO")) return { anosDuracao: 2, chTotal: mec, teto, vagasPorAno: 15 };
   if (tipo === "DOUTORADO") return { anosDuracao: 4, chTotal: mec, teto, vagasPorAno: 10 };
-  return { anosDuracao: 2, chTotal: mec, teto, vagasPorAno: 40 };
+  return { anosDuracao: 2, chTotal: mec, teto, vagasPorAno: VAGAS_POR_ANO_PADRAO };
 }

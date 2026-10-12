@@ -5,6 +5,8 @@ import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConf
 import { anoDaVirada, exemploDoPrimeiroAno, exemploEmRegime, simularOpcaoCurso, valorMatriculaNoAno, type OpcaoCurso, type ParametrosSimulacaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
 import type { DecomposicaoMatricula } from "@/lib/mdo/matriculaTotal";
 import { ehCampusDestaque } from "@/lib/destaque";
+import { VAGAS_POR_ANO_PADRAO } from "@/lib/mdo/padroesCurso";
+import { MarcadorDiluicao } from "./MarcadorDiluicao";
 import { calcularRotina, ROTINA_PADRAO, type RotinaCalculada, type RotinaDoCampus } from "@/lib/mdo/rotinaCurso";
 
 export interface CursoBase {
@@ -59,7 +61,7 @@ export function SimuladorCursoAnos({
     anosDuracao: 3,
     chTotalCiclo: Math.min(3000, base.chMatriz),
     chMatriz: base.chMatriz,
-    vagasPorAno: 40,
+    vagasPorAno: VAGAS_POR_ANO_PADRAO,
     evasaoAnual: 0,
   });
   const [b, setB] = useState<OpcaoCurso>({
@@ -67,7 +69,7 @@ export function SimuladorCursoAnos({
     anosDuracao: 4,
     chTotalCiclo: base.chMatriz,
     chMatriz: base.chMatriz,
-    vagasPorAno: 40,
+    vagasPorAno: VAGAS_POR_ANO_PADRAO,
     evasaoAnual: 0,
   });
 
@@ -136,10 +138,7 @@ export function SimuladorCursoAnos({
           <input type="checkbox" checked={agro} onChange={(e) => setAgro(e.target.checked)} />
           Curso de agropecuária (+50%)
         </label>
-        <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 sm:col-span-2">
-          <input type="checkbox" checked={diluir} onChange={(e) => setDiluir(e.target.checked)} />
-          Considerar que mais matrícula na rede dilui o valor de cada matrícula
-        </label>
+        <MarcadorDiluicao marcado={diluir} onChange={setDiluir} matriculasRede={matriculasRede} matriculaDoCurso={Math.max(ra.regime.matriculaTotal, rb.regime.matriculaTotal)} valorMatricula={valorMatricula} />
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
