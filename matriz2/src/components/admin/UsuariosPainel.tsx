@@ -43,9 +43,12 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
 
   async function handleCriar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // O formulário é guardado já aqui: depois do await, event.currentTarget vale null (o React solta o evento), e limpar o
+    // formulário por ele dava erro e impedia a lista de recarregar.
+    const formulario = event.currentTarget;
     setErro(null);
     setEnviando("criar");
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(formulario);
     const email = String(formData.get("email"));
     const resultado = await criarUsuarioAction(formData);
     setEnviando(null);
@@ -60,7 +63,7 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
     } else {
       setAvisoSegredo(null);
     }
-    event.currentTarget.reset();
+    formulario.reset();
     router.refresh();
   }
 

@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { randomBytes, randomInt, createHash } from "node:crypto";
 import type { Papel, TipoCodigoVerificacao } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
@@ -89,6 +90,7 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
   const novo = await prisma.usuario.create({ data: { email, nome, papel, senhaHash: null } });
   const codigo = await criarCodigoVerificacao(novo.id, "PRIMEIRO_ACESSO");
   await registrarAuditoria(solicitante.id, "criar_usuario", { usuarioAlvoId: novo.id, email, papel });
+  revalidatePath("/admin/usuarios");
 
   try {
     await enviarEmailCadastro({ email, nome }, codigo);
@@ -135,6 +137,7 @@ export async function resetarSenhaUsuarioAction(formData: FormData): Promise<Res
   // mais tinha acesso à conta, o reset também serve para tirá-lo.
   await prisma.sessao.deleteMany({ where: { usuarioId: usuarioAlvoId } });
   await registrarAuditoria(solicitante.id, "resetar_senha_usuario", { usuarioAlvoId, email: alvo.email });
+  revalidatePath("/admin/usuarios");
 
   return { ok: true, senhaGerada: senha };
 }
@@ -160,6 +163,7 @@ export async function alternarAtivoUsuarioAction(formData: FormData): Promise<Re
   const ativo = !alvo.ativo;
   await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { ativo } });
   if (!ativo) await prisma.sessao.deleteMany({ where: { usuarioId: usuarioAlvoId } });
+  revalidatePath("/admin/usuarios");
   await registrarAuditoria(solicitante.id, ativo ? "reativar_usuario" : "desativar_usuario", {
     usuarioAlvoId,
     email: alvo.email,
