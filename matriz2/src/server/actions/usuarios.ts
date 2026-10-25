@@ -8,7 +8,7 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession, abrirSessaoParaUsuario } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
 import { validarForcaSenha } from "@/lib/senha";
-import { perfisQueMeuPapelCria, podeAgirSobreConta, podeGerirUsuarios } from "@/lib/permissoes";
+import { perfisQueMeuPapelCria, podeAgirSobreConta, podeGerirUsuarios, podeMudarPerfil } from "@/lib/permissoes";
 import { enviarEmailCadastro, enviarEmailRecuperacao } from "@/server/email/enviar";
 
 const CUSTO_BCRYPT = 12;
@@ -169,6 +169,31 @@ export async function alternarAtivoUsuarioAction(formData: FormData): Promise<Re
     email: alvo.email,
   });
 
+  return { ok: true };
+}
+
+/** Server Action (só super-admin) que muda o perfil de outro usuário entre Admin e Padrão. Derruba as sessões dele para o novo perfil valer já. */
+export async function alterarPerfilUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
+  const solicitante = await getAdminSession();
+  if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
+
+  const usuarioAlvoId = Number(formData.get("usuarioId"));
+  const novoPapel = String(formData.get("papel") ?? "") as Papel;
+  if (!Number.isInteger(usuarioAlvoId)) return { ok: false, errorMessage: "Usuário inválido." };
+  if (!["ADMIN", "PADRAO"].includes(novoPapel)) return { ok: false, errorMessage: "Perfil inválido." };
+
+  const alvo = await prisma.usuario.findUnique({ where: { id: usuarioAlvoId } });
+  if (!alvo) return { ok: false, errorMessage: "Usuário não encontrado." };
+  if (!podeMudarPerfil(solicitante.papel, alvo.papel, alvo.id === solicitante.id)) {
+    return { ok: false, errorMessage: "Só o super-admin muda o perfil de outro usuário." };
+  }
+  if (alvo.papel === novoPapel) return { ok: true };
+
+  await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { papel: novoPapel } });
+  // A sessão lê o perfil do banco a cada pedido, então o novo já vale; derrubar as sessões faz a pessoa entrar de novo e ver o menu certo.
+  await prisma.sessao.deleteMany({ where: { usuarioId: usuarioAlvoId } });
+  await registrarAuditoria(solicitante.id, "alterar_perfil_usuario", { usuarioAlvoId, email: alvo.email, de: alvo.papel, para: novoPapel });
+  revalidatePath("/admin/usuarios");
   return { ok: true };
 }
 

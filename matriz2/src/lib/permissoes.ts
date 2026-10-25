@@ -1,6 +1,8 @@
 /**
  * Decisão de 2026-10-08: o usuário PADRAO vê os dados e faz as simulações (inclusive salvá-las e compartilhá-las), como o ADMIN.
- * O que ele NÃO faz: informar ou corrigir valores (Valores recebidos e Correção manual) e gerir usuários ou ver a Auditoria.
+ * O que ele NÃO faz: ver ou alterar Valores recebidos e Correção manual, gerir usuários ou ver a Auditoria.
+ * Decisão de 2026-10-25: o ADMIN vê Valores recebidos e Correção manual, mas só o SUPER_ADMIN altera; e só o SUPER_ADMIN muda o
+ * perfil de outro usuário.
  * Para voltar a esconder as telas de dados dele, basta pôr `false` em `PADRAO_VE_E_SIMULA`.
  */
 export const PADRAO_VE_E_SIMULA = true;
@@ -12,9 +14,19 @@ export function temAcessoPleno(papel: Papel): boolean {
   return PADRAO_VE_E_SIMULA || papel !== "PADRAO";
 }
 
-/** Informar ou corrigir valores (Valores recebidos, Correção manual do orçamento). */
+/** Ver as telas Valores recebidos e Correção manual (sem alterar). */
+export function podeVerValores(papel: Papel): boolean {
+  return papel === "ADMIN" || papel === "SUPER_ADMIN";
+}
+
+/** Informar ou corrigir valores (Valores recebidos, Correção manual do orçamento): só o super-admin. */
 export function podeInformarValores(papel: Papel): boolean {
-  return papel !== "PADRAO";
+  return papel === "SUPER_ADMIN";
+}
+
+/** Mudar o perfil de outro usuário (entre Admin e Padrão): só o super-admin, nunca o próprio nem o de outro super-admin. */
+export function podeMudarPerfil(solicitante: Papel, alvo: Papel, ehOProprio: boolean): boolean {
+  return solicitante === "SUPER_ADMIN" && alvo !== "SUPER_ADMIN" && !ehOProprio;
 }
 
 /** Quem abre a tela Usuários: o administrador e o super-admin. A Auditoria continua só do super-admin. */
