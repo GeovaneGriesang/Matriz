@@ -4,8 +4,8 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
-import { idDoModeloGemini, idDoModeloLocal, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
-import { chamarGemini, textoDoEvento } from "@/lib/chat/gemini";
+import { idDoModeloGemini, idDoModeloLocal, modelosGemini, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
+import { chamarGeminiEmOrdem, textoDoEvento } from "@/lib/chat/gemini";
 import { respostaPronta } from "@/lib/chat/respostasProntas";
 
 export const runtime = "nodejs";
@@ -72,10 +72,11 @@ export async function POST(req: Request) {
       .catch((e) => console.error("Chat: não consegui registrar a conversa.", e));
 
   if (usaGemini()) {
-    const modeloGemini = idDoModeloGemini();
     const sinal = AbortSignal.any([req.signal, AbortSignal.timeout(90_000)]);
-    const leitorGemini = await chamarGemini(montarMensagens({ ...entrada, modelo: rotuloDoModelo(modeloGemini) }), modeloGemini, process.env.GEMINI_API_KEY!, sinal);
-    if (leitorGemini) {
+    const mensagens = montarMensagens({ ...entrada, modelo: rotuloDoModelo(idDoModeloGemini()) });
+    const escolhido = await chamarGeminiEmOrdem(mensagens, modelosGemini(), process.env.GEMINI_API_KEY!, sinal);
+    if (escolhido) {
+      const { leitor: leitorGemini, modelo: modeloGemini } = escolhido;
       // O Gemini manda eventos SSE ("data: {...}"); ao navegador vai só o texto, que aparece enquanto é gerado.
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
