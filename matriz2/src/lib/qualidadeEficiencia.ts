@@ -6,7 +6,7 @@
  * a MDO já publicou (`DistribuicaoInstituicao`) e apontar onde os dois divergem. Nunca é
  * usado para decidir quanto uma instituição recebe; isso continua vindo pronto da MDO.
  *
- * Fórmulas confirmadas em docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md
+ * Fórmulas confirmadas em matriz2/docs/Metodologia_Matriz_Orcamentaria_CONIF.md
  * (Guia de Referência Metodológica da PNP, MEC/SETEC) e validadas batendo ao centésimo
  * de ponto percentual contra o IFSUL em 2027 (IEA 40,71% → faixa MUITO_BAIXO → peso
  * 0,5×; RAP 18,54 → faixa BAIXA → peso 1,0×).

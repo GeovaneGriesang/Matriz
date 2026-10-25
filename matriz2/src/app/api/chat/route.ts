@@ -2,7 +2,7 @@ import { temAcessoPleno } from "@/lib/permissoes";
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
-import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
+import { LIMITES_CHAT_COMPLETO, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
 import { idDoModeloGemini, idDoModeloLocal, idDoModeloPara, modelosGemini, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
 import { podeUsarGemini } from "@/lib/permissoes";
@@ -26,18 +26,18 @@ function erro(mensagem: string, status: number, extra?: Record<string, unknown>)
 function lerEntrada(corpo: unknown): EntradaChat | null {
   if (!corpo || typeof corpo !== "object") return null;
   const c = corpo as Record<string, unknown>;
-  if (typeof c.pergunta !== "string" || c.pergunta.trim().length === 0 || c.pergunta.length > LIMITES_CHAT.pergunta) return null;
+  if (typeof c.pergunta !== "string" || c.pergunta.trim().length === 0 || c.pergunta.length > LIMITES_CHAT_COMPLETO.pergunta) return null;
   if (typeof c.rota !== "string" || !c.rota.startsWith("/") || c.rota.length > 120) return null;
   const historico: TurnoChat[] = [];
   if (Array.isArray(c.historico)) {
-    for (const t of c.historico.slice(-LIMITES_CHAT.turnosDeHistorico)) {
+    for (const t of c.historico.slice(-LIMITES_CHAT_COMPLETO.turnosDeHistorico)) {
       if (!t || typeof t !== "object") return null;
       const { papel, texto } = t as Record<string, unknown>;
       if ((papel !== "usuario" && papel !== "assistente") || typeof texto !== "string") return null;
       historico.push({ papel, texto });
     }
   }
-  const contexto = typeof c.contexto === "string" ? c.contexto.slice(0, LIMITES_CHAT.contexto) : undefined;
+  const contexto = typeof c.contexto === "string" ? c.contexto.slice(0, LIMITES_CHAT_COMPLETO.contexto) : undefined;
   return { rota: c.rota, pergunta: c.pergunta, historico, contexto };
 }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   // O Gemini vale para administrador e super-admin; o perfil padrão vai direto ao modelo local.
   if (usaGemini() && podeUsarGemini(usuario.papel)) {
     const sinal = AbortSignal.any([req.signal, AbortSignal.timeout(90_000)]);
-    const mensagens = montarMensagens({ ...entrada, modelo: rotuloDoModelo(idDoModeloGemini()) });
+    const mensagens = montarMensagens({ ...entrada, modelo: rotuloDoModelo(idDoModeloGemini()) }, "completo");
     const escolhido = await chamarGeminiEmOrdem(mensagens, modelosGemini(), process.env.GEMINI_API_KEY!, sinal);
     if (escolhido) {
       const { leitor: leitorGemini, modelo: modeloGemini } = escolhido;

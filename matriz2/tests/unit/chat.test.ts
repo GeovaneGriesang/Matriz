@@ -89,3 +89,19 @@ describe("UmPorVez", () => {
     expect(v.tomar(1700)).not.toBeNull();
   });
 });
+
+describe("montarMensagens no modo completo (Gemini)", () => {
+  it("traz as instruções didáticas, o conhecimento do sistema e aceita mais contexto e histórico", () => {
+    const historico = Array.from({ length: 14 }, (_, i) => ({ papel: (i % 2 ? "assistente" : "usuario") as "usuario" | "assistente", texto: `t${i}` }));
+    const contexto = "x".repeat(10000);
+    const completo = montarMensagens({ rota: "/consulta", pergunta: "Como funciona?", historico, contexto }, "completo");
+    const curto = montarMensagens({ rota: "/consulta", pergunta: "Como funciona?", historico, contexto });
+    expect(completo[0]!.content).toMatch(/passo a passo/);
+    expect(completo[0]!.content).toMatch(/CONHECIMENTO DO SISTEMA/);
+    expect(completo[0]!.content).toMatch(/Super-admin/);
+    expect(curto[0]!.content).not.toMatch(/CONHECIMENTO DO SISTEMA/);
+    expect(completo.length).toBe(1 + 10 + 1);
+    expect(curto.length).toBe(1 + 6 + 1);
+    expect(completo[0]!.content.length).toBeGreaterThan(curto[0]!.content.length + 7000);
+  });
+});
