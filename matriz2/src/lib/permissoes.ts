@@ -14,6 +14,11 @@ export function temAcessoPleno(papel: Papel): boolean {
   return PADRAO_VE_E_SIMULA || papel !== "PADRAO";
 }
 
+/** Chat com o Gemini (Google): administrador e super-admin. O perfil padrão usa o chat com o modelo do próprio servidor, sem enviar nada ao Google. */
+export function podeUsarGemini(papel: Papel): boolean {
+  return papel === "ADMIN" || papel === "SUPER_ADMIN";
+}
+
 /** Ver as telas Valores recebidos e Correção manual (sem alterar). */
 export function podeVerValores(papel: Papel): boolean {
   return papel === "ADMIN" || papel === "SUPER_ADMIN";

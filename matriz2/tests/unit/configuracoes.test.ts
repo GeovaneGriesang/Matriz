@@ -155,3 +155,12 @@ describe("valores e perfis (decisão de 2026-10-25)", () => {
     expect(podeMudarPerfil("ADMIN", "PADRAO", false)).toBe(false);
   });
 });
+
+describe("chat com o Gemini", () => {
+  it("administrador e super-admin usam o Gemini; o perfil padrão, não", async () => {
+    const { podeUsarGemini } = await import("@/lib/permissoes");
+    expect(podeUsarGemini("ADMIN")).toBe(true);
+    expect(podeUsarGemini("SUPER_ADMIN")).toBe(true);
+    expect(podeUsarGemini("PADRAO")).toBe(false);
+  });
+});

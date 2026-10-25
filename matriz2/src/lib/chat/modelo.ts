@@ -34,6 +34,11 @@ export function idDoModeloLocal(): string {
   return process.env.OLLAMA_MODEL ?? "qwen2.5:3b-instruct";
 }
 
+/** O modelo de uma pessoa: o Gemini quando há chave e o perfil pode usá-lo; senão, o local. */
+export function idDoModeloPara(podeGemini: boolean): string {
+  return usaGemini() && podeGemini ? idDoModeloGemini() : idDoModeloLocal();
+}
+
 /** O modelo principal: o Gemini quando há chave, senão o local. */
 export function idDoModelo(): string {
   return usaGemini() ? idDoModeloGemini() : idDoModeloLocal();
