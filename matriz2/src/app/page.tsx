@@ -39,7 +39,7 @@ export default async function Home() {
   }
 
   // Um resumo POR CICLO, de propósito: 2026 e 2027 vêm de fontes e estados
-  // diferentes hoje (ver docs/pnp-matriz/Metodologia_Matriz_Orcamentaria_CONIF.md e
+  // diferentes hoje (ver matriz2/docs/Metodologia_Matriz_Orcamentaria_CONIF.md e
   // README), e uma tela didática não pode esconder isso atrás de um número só.
   const [porInstituicaoRaw, cicloOrcamentos, cicloCursoPorAno, cicloCampusPorAno] = await Promise.all([
     prisma.comparativoInstitucional.groupBy({

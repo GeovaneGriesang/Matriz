@@ -79,3 +79,30 @@ export function conhecimentoDaTela(rota: string): string {
   }
   return melhor ? CONHECIMENTO_POR_TELA[melhor]! : "";
 }
+
+/**
+ * Conhecimento a mais, só para o modelo grande (Gemini), que tem janela de contexto larga: perfis, telas novas e pendências. O modelo
+ * pequeno da VM continua só com o CONHECIMENTO_GERAL, que é enxuto de propósito.
+ */
+export const CONHECIMENTO_COMPLEMENTAR = `
+Quem fez o sistema: a Comissão de Estudos e Análise da Matriz Orçamentária do IFSul, Câmpus Venâncio Aires (Portaria nº 1284, de 21 de maio de 2026), presidida por Geovane Griesang. Os dados vêm da MDO, o sistema do IFTM que calcula a matriz da rede, e da Plataforma Nilo Peçanha (PNP).
+
+Perfis de usuário:
+- Super-admin: altera a Correção manual e os Valores recebidos, cadastra administradores e usuários padrão, muda o perfil dos outros e vê a Auditoria.
+- Admin: vê todos os dados e simulações, consulta (sem alterar) a Correção manual e os Valores recebidos, cadastra e administra usuários de perfil padrão, e usa este chat com o Gemini.
+- Padrão: vê os dados e faz as simulações; não vê Correção manual nem Valores recebidos; usa o chat com o modelo do próprio servidor.
+- Todos alteram os dados da própria conta (senha) em Minha conta.
+
+Telas e o que respondem:
+- Consultar > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
+- Consultar > Quanto vale um aluno: para cada curso de um câmpus, quanto um aluno rende, com a conta turma a turma (carga horária ÷ 800, dias no ano-base ÷ dias da turma, ICQA, Matrícula Total, valor da turma, valor por aluno). Dá para escolher o ciclo 2027 (PNP 2025) ou 2026 (PNP 2024).
+- Consultar > Comparar cursos: cursos lado a lado; o "?" de cada item explica o que é e mostra a conta com os números do curso principal.
+- Comparativo entre ciclos: 2026 contra 2027, por bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência Estudantil). Por câmpus só existem Funcionamento e Assistência; a Reitoria e a Qualidade e Eficiência ficam com a instituição.
+- Simular > Técnico integrado, 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
+- Simular > Curso novo, Cenários anos à frente, O que rende mais?, Onde há ganho, Evasão RAP e IAPL: simulações do repasse. O padrão é 32 estudantes por ano.
+- Simular > Distribuição entre câmpus: EM DESENVOLVIMENTO, aguardando a regra interna do IFSul; os números são só ilustrativos.
+- Dados > PNP e Orçamento da União. Conferir > Situação dos dados mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
+- Toda tela tem Imprimir / PDF e CSV das tabelas.
+
+Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.
+`;
