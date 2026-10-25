@@ -3,6 +3,8 @@
 import { ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { LegendaDaTabela } from "@/components/LegendaDaTabela";
+import { exemploDeInstituicao, legendaEvasao } from "@/components/legendas";
 
 export interface InstituicaoLinha {
   sigla: string;
@@ -31,6 +33,8 @@ export function EvasaoTabelaInstituicoes({
   redePct: number;
 }) {
   return (
+    <>
+      <LegendaDaTabela itens={legendaEvasao(exemploDeInstituicao(linhas)?.sigla ?? "", exemploDeInstituicao(linhas), { posicao: exemploDeInstituicao(linhas)?.posicao ?? null })} exemplo={exemploDeInstituicao(linhas)?.sigla} />
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(l) => l.sigla}
@@ -83,5 +87,6 @@ export function EvasaoTabelaInstituicoes({
         ] satisfies ColunaOrdenavel<InstituicaoLinha>[]
       }
     />
+    </>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { LegendaDaTabela } from "@/components/LegendaDaTabela";
+import { legendaEvasao } from "@/components/legendas";
 
 export interface CursoLinha {
   curso: string;
@@ -22,6 +24,8 @@ const doisDecimais = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, 
  */
 export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
   return (
+    <>
+      <LegendaDaTabela itens={legendaEvasao(cursos[0]?.curso ?? "", cursos[0])} exemplo={cursos[0]?.curso} />
     <TabelaOrdenavel
       linhas={cursos}
       chaveLinha={(c) => `${c.curso}-${c.nivel}-${cursos.indexOf(c)}`}
@@ -71,5 +75,6 @@ export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
         ] satisfies ColunaOrdenavel<CursoLinha>[]
       }
     />
+    </>
   );
 }

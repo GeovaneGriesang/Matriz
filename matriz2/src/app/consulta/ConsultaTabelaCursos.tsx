@@ -5,6 +5,8 @@ import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelComparacaoCursos } from "./PainelComparacaoCursos";
+import { LegendaDaTabela } from "@/components/LegendaDaTabela";
+import { legendaConsultaCursos } from "@/components/legendas";
 
 export interface CursoLinha {
   id: number;
@@ -64,6 +66,7 @@ export function ConsultaTabelaCursos({
 
   return (
     <div className="flex flex-col gap-4">
+      <LegendaDaTabela itens={legendaConsultaCursos(cursos[0])} exemplo={cursos[0]?.curso} />
       <TabelaOrdenavel
         linhas={cursos}
         chaveLinha={(c) => c.id}
