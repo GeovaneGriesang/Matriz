@@ -4,14 +4,15 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
-import { idDoModelo, rotuloDoModelo } from "@/lib/chat/modelo";
+import { idDoModeloGemini, idDoModeloLocal, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
+import { chamarGemini, textoDoEvento } from "@/lib/chat/gemini";
 import { respostaPronta } from "@/lib/chat/respostasProntas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
-const MODELO = idDoModelo();
+const MODELO_LOCAL = idDoModeloLocal();
 /** Uma pessoa pode fazer 12 perguntas a cada 10 minutos. */
 const limite = new LimitePorUsuario(12, 10 * 60_000);
 /** Uma resposta por vez no servidor; se uma travar, a vez expira sozinha em 3 minutos. */
@@ -64,10 +65,70 @@ export async function POST(req: Request) {
   if (!limite.tentar(usuario.id)) {
     return erro(`Você já fez muitas perguntas seguidas. Tente de novo em ${Math.ceil(limite.segundosParaLiberar(usuario.id) / 60)} minuto(s).`, 429);
   }
+  const inicio = Date.now();
+  const registrarConversa = (resposta: string, modelo: string, situacao: string) =>
+    prisma.conversaChat
+      .create({ data: { usuarioId: usuario.id, rota: entrada!.rota, pergunta: entrada!.pergunta, resposta, modelo, duracaoMs: Date.now() - inicio, situacao } })
+      .catch((e) => console.error("Chat: não consegui registrar a conversa.", e));
+
+  if (usaGemini()) {
+    const modeloGemini = idDoModeloGemini();
+    const sinal = AbortSignal.any([req.signal, AbortSignal.timeout(90_000)]);
+    const leitorGemini = await chamarGemini(montarMensagens({ ...entrada, modelo: rotuloDoModelo(modeloGemini) }), modeloGemini, process.env.GEMINI_API_KEY!, sinal);
+    if (leitorGemini) {
+      // O Gemini manda eventos SSE ("data: {...}"); ao navegador vai só o texto, que aparece enquanto é gerado.
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let resto = "";
+      let texto = "";
+      let fechado = false;
+      const fechar = async (situacao: string) => {
+        if (fechado) return;
+        fechado = true;
+        await registrarConversa(texto, modeloGemini, texto || situacao !== "ok" ? situacao : "vazia");
+      };
+      const fluxoGemini = new ReadableStream<Uint8Array>({
+        async pull(controle) {
+          try {
+            const { done, value } = await leitorGemini.read();
+            if (done) {
+              const ultimo = textoDoEvento(resto.trim());
+              if (ultimo) {
+                texto += ultimo;
+                controle.enqueue(encoder.encode(ultimo));
+              }
+              await fechar("ok");
+              controle.close();
+              return;
+            }
+            resto += decoder.decode(value, { stream: true });
+            const linhas = resto.split("\n");
+            resto = linhas.pop() ?? "";
+            for (const linha of linhas) {
+              const pedaco = textoDoEvento(linha.trim());
+              if (pedaco) {
+                texto += pedaco;
+                controle.enqueue(encoder.encode(pedaco));
+              }
+            }
+          } catch {
+            await fechar(req.signal.aborted ? "interrompida" : "erro");
+            controle.close();
+          }
+        },
+        async cancel() {
+          await leitorGemini.cancel().catch(() => undefined);
+          await fechar("interrompida");
+        },
+      });
+      return new Response(fluxoGemini, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+    }
+    // Sem resposta do Gemini: segue para o modelo local, como antes da chave existir.
+  }
+
   const devolver = vez.tomar();
   if (!devolver) return erro("O assistente está respondendo a outra pergunta. Tente de novo em alguns segundos.", 429);
 
-  const inicio = Date.now();
   let resposta = "";
   let situacao = "ok";
   let registrado = false;
@@ -77,7 +138,7 @@ export async function POST(req: Request) {
     devolver();
     try {
       await prisma.conversaChat.create({
-        data: { usuarioId: usuario.id, rota: entrada!.rota, pergunta: entrada!.pergunta, resposta, modelo: MODELO, duracaoMs: Date.now() - inicio, situacao },
+        data: { usuarioId: usuario.id, rota: entrada!.rota, pergunta: entrada!.pergunta, resposta, modelo: MODELO_LOCAL, duracaoMs: Date.now() - inicio, situacao },
       });
     } catch (e) {
       console.error("Chat: não consegui registrar a conversa.", e);
@@ -90,8 +151,8 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: MODELO,
-        messages: montarMensagens({ ...entrada, modelo: rotuloDoModelo() }),
+        model: MODELO_LOCAL,
+        messages: montarMensagens({ ...entrada, modelo: rotuloDoModelo(MODELO_LOCAL) }),
         stream: true,
         keep_alive: "5m",
         options: { num_ctx: 4096, num_predict: 450, temperature: 0.2 },

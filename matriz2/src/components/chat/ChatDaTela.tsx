@@ -137,8 +137,14 @@ export function ChatDaTela({ modelo }: { modelo: string }) {
         {turnos.length === 0 && (
           <div className="flex flex-col gap-2 text-neutral-600 dark:text-neutral-400">
             <p>
-              Eu explico esta tela e a regra da matriz. Sou um modelo pequeno e posso errar: confira os números na tela e, na dúvida, veja a página "Como funciona".
+              Eu explico esta tela e a regra da matriz. {modelo.includes("Google") ? "Posso errar" : "Sou um modelo pequeno e posso errar"}: confira os
+              números na tela e, na dúvida, veja a página &quot;Como funciona&quot;.
             </p>
+            {modelo.includes("Google") && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                As perguntas e os números desta tela são enviados ao Google (Gemini) para gerar a resposta. Não escreva dados pessoais.
+              </p>
+            )}
             <div className="flex flex-wrap gap-1">
               {SUGESTOES.map((s) => (
                 <button
