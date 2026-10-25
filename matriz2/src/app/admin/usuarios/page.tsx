@@ -26,7 +26,7 @@ export default async function AdminUsuariosPage() {
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Usuários</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           {ehSuper
-            ? "Você é super-admin: cadastra administradores e usuários padrão e age sobre qualquer conta."
+            ? "Você é super-admin: cadastra administradores e usuários padrão, muda o perfil dos outros usuários (na coluna Perfil) e age sobre qualquer conta. Só você altera a Correção manual e os Valores recebidos; os administradores apenas consultam."
             : "Você é administrador: cadastra usuários de perfil padrão e pode resetar a senha ou desativar essas contas. Só o super-admin cadastra administradores."}{" "}
           Ao criar, a pessoa recebe um código por e-mail para o primeiro acesso. "Resetar senha" é a reserva sem
           depender de e-mail: gera uma senha temporária e derruba as sessões abertas daquela conta.

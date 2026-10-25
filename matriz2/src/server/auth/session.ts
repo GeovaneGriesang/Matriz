@@ -1,4 +1,4 @@
-import { podeGerirUsuarios, podeInformarValores, temAcessoPleno } from "@/lib/permissoes";
+import { podeGerirUsuarios, podeVerValores, temAcessoPleno } from "@/lib/permissoes";
 import { randomBytes, createHash } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -168,10 +168,10 @@ export async function requireAcessoPlenoOrRedirect(nextPath: string): Promise<Us
   return usuario;
 }
 
-/** Telas de informar ou corrigir valores (Valores recebidos, Correção manual): o usuário PADRAO não entra. */
+/** Telas de Valores recebidos e Correção manual: o administrador vê (sem alterar); o usuário PADRAO não entra. */
 export async function requireInformarValoresOrRedirect(nextPath: string): Promise<UsuarioLogado> {
   const usuario = await requireAdminOrRedirect(nextPath);
-  if (!podeInformarValores(usuario.papel)) {
+  if (!podeVerValores(usuario.papel)) {
     redirect("/admin/inicio");
   }
   return usuario;

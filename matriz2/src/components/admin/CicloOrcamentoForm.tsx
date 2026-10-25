@@ -83,7 +83,7 @@ function formatarMoeda(valorBruto: string): string {
   return Number.isFinite(n) ? formatoReais.format(n) : valorBruto;
 }
 
-export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
+export function CicloOrcamentoForm({ ciclo, somenteLeitura = false }: { ciclo: CicloOrcamentoPlano; somenteLeitura?: boolean }) {
   const [valores, setValores] = useState<Record<string, string>>(
     Object.fromEntries(
       Object.entries(ciclo).map(([chave, valor]) => [chave, valor === null ? "" : String(valor)]),
@@ -122,6 +122,12 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      {somenteLeitura && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          Você pode consultar os parâmetros do ciclo, mas só o super-admin altera.
+        </p>
+      )}
+      <fieldset disabled={somenteLeitura} className="flex min-w-0 flex-col gap-6">
       {GRUPOS.map((grupo) => (
         <fieldset key={grupo.titulo} className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
           <legend className="px-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{grupo.titulo}</legend>
@@ -175,6 +181,7 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
         </p>
       )}
 
+      {!somenteLeitura && (
       <button
         type="submit"
         disabled={salvando}
@@ -182,6 +189,8 @@ export function CicloOrcamentoForm({ ciclo }: { ciclo: CicloOrcamentoPlano }) {
       >
         {salvando ? "Salvando..." : "Salvar correção manual"}
       </button>
+      )}
+      </fieldset>
     </form>
   );
 }

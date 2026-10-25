@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { requireInformarValoresOrRedirect } from "@/server/auth/session";
+import { podeInformarValores } from "@/lib/permissoes";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CicloOrcamentoForm } from "@/components/admin/CicloOrcamentoForm";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -72,6 +73,7 @@ export default async function AdminOrcamentoPage({
                   formulário guarda os valores do primeiro ciclo carregado e ignora a
                   prop `ciclo` mudando ao clicar noutro ano na aba acima. */}
               <CicloOrcamentoForm
+                somenteLeitura={!podeInformarValores(usuario.papel)}
                 key={ciclo.ano}
                 ciclo={{
                   ano: ciclo.ano,

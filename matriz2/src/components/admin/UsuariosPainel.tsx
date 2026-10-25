@@ -7,8 +7,9 @@ import {
   criarUsuarioAction,
   resetarSenhaUsuarioAction,
   alternarAtivoUsuarioAction,
+  alterarPerfilUsuarioAction,
 } from "@/server/actions/usuarios";
-import { podeAgirSobreConta } from "@/lib/permissoes";
+import { podeAgirSobreConta, podeMudarPerfil } from "@/lib/permissoes";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 
 interface UsuarioLinha {
@@ -79,6 +80,21 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
       return;
     }
     setAvisoSegredo({ email, rotulo: "Senha temporária", valor: resultado.senhaGerada! });
+    router.refresh();
+  }
+
+  async function handleMudarPerfil(usuarioId: number, papel: Papel) {
+    setErro(null);
+    setEnviando(`perfil-${usuarioId}`);
+    const formData = new FormData();
+    formData.set("usuarioId", String(usuarioId));
+    formData.set("papel", papel);
+    const resultado = await alterarPerfilUsuarioAction(formData);
+    setEnviando(null);
+    if (!resultado.ok) {
+      setErro(resultado.errorMessage ?? "Não foi possível mudar o perfil.");
+      return;
+    }
     router.refresh();
   }
 
@@ -191,11 +207,22 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
                 chave: "perfil",
                 rotulo: "Perfil",
                 valor: (u) => u.papel,
-                render: (u) => (
-                  <span className={u.papel === "SUPER_ADMIN" ? "text-if-green" : undefined}>
-                    {ROTULO_PAPEL[u.papel]}
-                  </span>
-                ),
+                render: (u) =>
+                  podeMudarPerfil(meuPapel, u.papel, u.id === meuId) ? (
+                    <select
+                      value={u.papel}
+                      disabled={enviando === `perfil-${u.id}`}
+                      onChange={(e) => handleMudarPerfil(u.id, e.target.value as Papel)}
+                      aria-label={`Perfil de ${u.nome}`}
+                      title="Mudar o perfil (o usuário precisa entrar de novo)"
+                      className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                    >
+                      <option value="ADMIN">admin</option>
+                      <option value="PADRAO">padrão</option>
+                    </select>
+                  ) : (
+                    <span className={u.papel === "SUPER_ADMIN" ? "text-if-green" : undefined}>{ROTULO_PAPEL[u.papel]}</span>
+                  ),
               },
               {
                 chave: "status",

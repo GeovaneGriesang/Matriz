@@ -1,5 +1,6 @@
 import { prisma } from "@/server/db/prisma";
 import { requireInformarValoresOrRedirect } from "@/server/auth/session";
+import { podeInformarValores } from "@/lib/permissoes";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SIGLA_DESTAQUE, campusDestaqueNaFrente } from "@/lib/destaque";
@@ -80,6 +81,7 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
       </div>
 
       <ValoresRecebidosPainel
+        somenteLeitura={!podeInformarValores(usuario.papel)}
         ano={ano}
         anosDisponiveis={anosDisponiveis.map((a) => a.ano)}
         instituicoes={instituicoes.map((i) => ({ ...i, unidades: campusDestaqueNaFrente(i.unidades, (u) => u.nome) }))}

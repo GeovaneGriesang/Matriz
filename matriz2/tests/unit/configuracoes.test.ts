@@ -136,3 +136,22 @@ describe("gestão de usuários por perfil", () => {
     expect(podeGerirUsuarios("PADRAO")).toBe(false);
   });
 });
+
+describe("valores e perfis (decisão de 2026-10-25)", () => {
+  it("o admin vê Correção manual e Valores recebidos, mas só o super-admin altera; o padrão nem vê", async () => {
+    const { podeVerValores, podeInformarValores } = await import("@/lib/permissoes");
+    expect(podeVerValores("ADMIN")).toBe(true);
+    expect(podeVerValores("PADRAO")).toBe(false);
+    expect(podeInformarValores("ADMIN")).toBe(false);
+    expect(podeInformarValores("SUPER_ADMIN")).toBe(true);
+  });
+
+  it("só o super-admin muda o perfil, e nunca o próprio nem o de outro super-admin", async () => {
+    const { podeMudarPerfil } = await import("@/lib/permissoes");
+    expect(podeMudarPerfil("SUPER_ADMIN", "ADMIN", false)).toBe(true);
+    expect(podeMudarPerfil("SUPER_ADMIN", "PADRAO", false)).toBe(true);
+    expect(podeMudarPerfil("SUPER_ADMIN", "SUPER_ADMIN", false)).toBe(false);
+    expect(podeMudarPerfil("SUPER_ADMIN", "ADMIN", true)).toBe(false);
+    expect(podeMudarPerfil("ADMIN", "PADRAO", false)).toBe(false);
+  });
+});

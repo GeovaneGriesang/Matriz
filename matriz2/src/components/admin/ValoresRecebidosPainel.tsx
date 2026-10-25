@@ -64,7 +64,10 @@ export function ValoresRecebidosPainel({
   anosDisponiveis,
   instituicoes,
   registros,
+  somenteLeitura = false,
 }: {
+  /** O administrador vê os valores, mas só o super-admin altera. */
+  somenteLeitura?: boolean;
   ano: number;
   anosDisponiveis: number[];
   instituicoes: Instituicao[];
@@ -212,6 +215,12 @@ export function ValoresRecebidosPainel({
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             {instituicaoEscolhida.sigla}, todos os câmpus, {ano}
           </h2>
+          {somenteLeitura && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          Você pode consultar os valores informados, mas só o super-admin altera.
+        </p>
+          )}
+          <fieldset disabled={somenteLeitura} className="flex min-w-0 flex-col gap-4">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Preencha ou edite o valor de quantos câmpus quiser e salve tudo de uma vez. Deixar um campo
             em branco não grava nada; apagar o valor de um câmpus que já tinha registro remove esse
@@ -279,6 +288,7 @@ export function ValoresRecebidosPainel({
             <p className="rounded-md bg-if-green/10 p-3 text-sm text-if-green">{mensagem}</p>
           )}
 
+          {!somenteLeitura && (
           <button
             type="submit"
             disabled={salvando || !instituicaoEscolhida.unidades.length}
@@ -286,6 +296,8 @@ export function ValoresRecebidosPainel({
           >
             {salvando ? "Salvando..." : `Salvar alterações de ${instituicaoEscolhida.sigla}`}
           </button>
+          )}
+          </fieldset>
         </form>
       )}
 
@@ -341,7 +353,8 @@ export function ValoresRecebidosPainel({
                     rotulo: "",
                     ordenavel: false,
                     valor: () => null,
-                    render: (r) => (
+                    render: (r) =>
+                      somenteLeitura ? null : (
                       <button
                         type="button"
                         onClick={() => handleExcluir(r.id)}
