@@ -3,6 +3,8 @@
 import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
+import { LegendaDaTabela } from "@/components/LegendaDaTabela";
+import { exemploDeCampus, legendaEvasao } from "@/components/legendas";
 
 export interface CampusLinha {
   unidadeId: number;
@@ -65,6 +67,8 @@ export function EvasaoTabelaCampus({
   totalTaxa: number;
 }) {
   return (
+    <>
+      <LegendaDaTabela itens={legendaEvasao(exemploDeCampus(linhas)?.nome.replace(/^CAMPUS( AVANÇADO)? /, "") ?? "", exemploDeCampus(linhas), { redePct })} exemplo={exemploDeCampus(linhas)?.nome} />
     <TabelaOrdenavel
       linhas={linhas}
       chaveLinha={(c) => c.unidadeId}
@@ -137,5 +141,6 @@ export function EvasaoTabelaCampus({
         </tfoot>
       }
     />
+    </>
   );
 }
