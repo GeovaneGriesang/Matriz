@@ -64,7 +64,7 @@ Se as duas candidatas saírem, o banco cai de 4,0 GB para cerca de 3,5 GB, e o M
 
 - **A raiz do repositório tinha o Matriz antigo** (209 arquivos). Foi removida em 2026-10-02; o último commit que a continha está na etiqueta git `matriz-v1-ultimo-commit`, então nada se perde.
 - **15 scripts de análise** (`matriz2/scripts/_analise_*.ts`): são exploratórios, não fazem parte do sistema. Os de resíduos, peso e reconstrução (cinco de resíduo, três de peso, dois de reconstrução, mais o de carga horária) já cumpriram o papel e estão documentados em `docs/calculo-da-matriz-a-partir-da-pnp.md`. Podem ir para uma pasta `scripts/analises` ou ser apagados, mantendo só os três de edições da PNP e o de microdados.
-- **`docs/pnp-matriz`**: manter. São os valores de referência (planilhas oficiais da CONIF) contra os quais o cálculo é conferido.
+- **`docs/pnp-matriz`**: removido em 2026-10-25 com os demais restos da primeira versão; a metodologia da CONIF foi mantida em `matriz2/docs/Metodologia_Matriz_Orcamentaria_CONIF.md`.
 
 ## 6. Telas
 
