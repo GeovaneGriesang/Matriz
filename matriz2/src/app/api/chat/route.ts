@@ -4,7 +4,8 @@ import { prisma } from "@/server/db/prisma";
 import { getAdminSession } from "@/server/auth/session";
 import { LIMITES_CHAT, montarMensagens, type EntradaChat, type TurnoChat } from "@/lib/chat/montarPrompt";
 import { LimitePorUsuario, UmPorVez } from "@/lib/chat/limite";
-import { idDoModeloGemini, idDoModeloLocal, modelosGemini, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
+import { idDoModeloGemini, idDoModeloLocal, idDoModeloPara, modelosGemini, rotuloDoModelo, usaGemini } from "@/lib/chat/modelo";
+import { podeUsarGemini } from "@/lib/permissoes";
 import { chamarGeminiEmOrdem, textoDoEvento } from "@/lib/chat/gemini";
 import { respostaPronta } from "@/lib/chat/respostasProntas";
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   if (!entrada) return erro("Pergunta inválida.", 400);
 
   // Pergunta comum: resposta pronta, na hora, sem passar pelo modelo (nem pela fila e pelo limite, que protegem a CPU do servidor).
-  const pronta = respostaPronta(entrada.pergunta, entrada.rota, rotuloDoModelo());
+  const pronta = respostaPronta(entrada.pergunta, entrada.rota, rotuloDoModelo(idDoModeloPara(podeUsarGemini(usuario.papel))));
   if (pronta) {
     await prisma.conversaChat
       .create({ data: { usuarioId: usuario.id, rota: entrada.rota, pergunta: entrada.pergunta, resposta: pronta, modelo: "respostas-prontas", duracaoMs: 0, situacao: "pronta" } })
@@ -71,7 +72,8 @@ export async function POST(req: Request) {
       .create({ data: { usuarioId: usuario.id, rota: entrada!.rota, pergunta: entrada!.pergunta, resposta, modelo, duracaoMs: Date.now() - inicio, situacao } })
       .catch((e) => console.error("Chat: não consegui registrar a conversa.", e));
 
-  if (usaGemini()) {
+  // O Gemini vale para administrador e super-admin; o perfil padrão vai direto ao modelo local.
+  if (usaGemini() && podeUsarGemini(usuario.papel)) {
     const sinal = AbortSignal.any([req.signal, AbortSignal.timeout(90_000)]);
     const mensagens = montarMensagens({ ...entrada, modelo: rotuloDoModelo(idDoModeloGemini()) });
     const escolhido = await chamarGeminiEmOrdem(mensagens, modelosGemini(), process.env.GEMINI_API_KEY!, sinal);

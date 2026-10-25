@@ -1,4 +1,4 @@
-import { temAcessoPleno } from "@/lib/permissoes";
+import { podeUsarGemini, temAcessoPleno } from "@/lib/permissoes";
 import type { Metadata } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/brand/SiteHeader";
 import { SiteFooter } from "@/components/brand/SiteFooter";
 import { ChatDaTela, ChatProvider } from "@/components/chat/ChatDaTela";
 import { getAdminSession } from "@/server/auth/session";
-import { rotuloDoModelo } from "@/lib/chat/modelo";
+import { idDoModeloPara, rotuloDoModelo } from "@/lib/chat/modelo";
 import { FerramentasDeSaida } from "@/components/FerramentasDeSaida";
 import { ConfiguracoesProvider } from "@/components/configuracoes/ConfiguracoesSalvas";
 
@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {usuario && <FerramentasDeSaida />}
           <div className="flex-1">{children}</div>
           <SiteFooter />
-          {comChat && <ChatDaTela modelo={rotuloDoModelo()} />}
+          {comChat && <ChatDaTela modelo={rotuloDoModelo(idDoModeloPara(podeUsarGemini(usuario.papel)))} />}
           </ConfiguracoesProvider>
         </ChatProvider>
       </body>
