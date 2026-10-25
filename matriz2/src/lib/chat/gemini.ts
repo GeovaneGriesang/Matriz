@@ -31,26 +31,47 @@ export function textoDoEvento(linha: string): string {
   }
 }
 
+/** Tenta os modelos em ordem e devolve o primeiro que aceitar a pergunta, com o nome dele (para o registro da conversa). */
+export async function chamarGeminiEmOrdem(
+  mensagens: MensagemOllama[],
+  modelos: string[],
+  chave: string,
+  sinal: AbortSignal,
+): Promise<{ leitor: ReadableStreamDefaultReader<Uint8Array>; modelo: string } | null> {
+  for (const modelo of modelos) {
+    if (sinal.aborted) return null;
+    const leitor = await chamarGemini(mensagens, modelo, chave, sinal);
+    if (leitor) return { leitor, modelo };
+  }
+  return null;
+}
+
 export async function chamarGemini(
   mensagens: MensagemOllama[],
   modelo: string,
   chave: string,
   sinal: AbortSignal,
 ): Promise<ReadableStreamDefaultReader<Uint8Array> | null> {
+  // Espera no máximo 20 s pelo começo da resposta: um modelo travado não segura a pergunta, e o próximo da lista é tentado.
+  // Começada a resposta, o prazo deixa de valer (o texto pode continuar chegando aos pedaços).
+  const prazo = new AbortController();
+  const relogio = setTimeout(() => prazo.abort(), 20_000);
   try {
     const resposta = await fetch(`${URL_BASE}/${encodeURIComponent(modelo)}:streamGenerateContent?alt=sse`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": chave },
       body: JSON.stringify(paraGemini(mensagens)),
-      signal: sinal,
+      signal: AbortSignal.any([sinal, prazo.signal]),
     });
+    clearTimeout(relogio);
     if (!resposta.ok || !resposta.body) {
-      console.error(`Chat: o Gemini respondeu ${resposta.status}; caindo para o modelo local.`);
+      console.error(`Chat: o Gemini (${modelo}) respondeu ${resposta.status}; tentando o próximo.`);
       return null;
     }
     return resposta.body.getReader();
   } catch (e) {
-    console.error("Chat: não consegui falar com o Gemini; caindo para o modelo local.", e instanceof Error ? e.message : e);
+    clearTimeout(relogio);
+    console.error(`Chat: não consegui falar com o Gemini (${modelo}); tentando o próximo.`, e instanceof Error ? e.message : e);
     return null;
   }
 }
