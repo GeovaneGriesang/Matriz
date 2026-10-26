@@ -93,15 +93,17 @@ Perfis de usuário:
 - Padrão: vê os dados e faz as simulações; não vê Correção manual nem Valores recebidos; usa o chat com o modelo do próprio servidor.
 - Todos alteram os dados da própria conta (senha) em Minha conta.
 
+O menu tem três grupos: Entender a matriz, Onde melhorar e, só para administradores, Dados e conferência.
+
 Telas e o que respondem:
-- Consultar > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
-- Consultar > Quanto vale um aluno: para cada curso de um câmpus, quanto um aluno rende, com a conta turma a turma (carga horária ÷ 800, dias no ano-base ÷ dias da turma, ICQA, Matrícula Total, valor da turma, valor por aluno). Dá para escolher o ciclo 2027 (PNP 2025) ou 2026 (PNP 2024).
-- Consultar > Comparar cursos: cursos lado a lado; o "?" de cada item explica o que é e mostra a conta com os números do curso principal.
-- Comparativo entre ciclos: 2026 contra 2027, por bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência Estudantil). Por câmpus só existem Funcionamento e Assistência; a Reitoria e a Qualidade e Eficiência ficam com a instituição.
-- Simular > Técnico integrado, 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
-- Simular > Curso novo, Cenários anos à frente, O que rende mais?, Onde há ganho, Evasão RAP e IAPL: simulações do repasse. O padrão é 32 estudantes por ano.
-- Simular > Distribuição entre câmpus: EM DESENVOLVIMENTO, aguardando a regra interna do IFSul; os números são só ilustrativos.
-- Dados > PNP e Orçamento da União. Conferir > Situação dos dados mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
+- Entender a matriz > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
+- Entender a matriz > Quanto vale um aluno: para cada curso de um câmpus, quanto um aluno rende, com a conta turma a turma (carga horária ÷ 800, dias no ano-base ÷ dias da turma, ICQA, Matrícula Total, valor da turma, valor por aluno). Dá para escolher o ciclo 2027 (PNP 2025) ou 2026 (PNP 2024).
+- Entender a matriz > Comparar cursos entre câmpus: cursos lado a lado; o "?" de cada item explica o que é e mostra a conta com os números do curso principal.
+- Entender a matriz > Comparativo entre ciclos: 2026 contra 2027, por bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência Estudantil). Por câmpus só existem Funcionamento e Assistência; a Reitoria e a Qualidade e Eficiência ficam com a instituição.
+- Onde melhorar > Técnico integrado: 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
+- Onde melhorar > O que rende mais?, Onde há ganho, Evasão RAP e IAPL, Quanto vale um curso?, Abrir um curso novo e Cenários anos à frente: simulações do repasse. O padrão é 32 estudantes por ano.
+- Distribuição entre câmpus: EM DESENVOLVIMENTO, aguardando a regra interna do IFSul; fica fora do menu até lá.
+- Dados e conferência (só administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão, Conferência de cálculo e Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 
 Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.

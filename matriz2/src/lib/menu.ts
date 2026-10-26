@@ -1,7 +1,10 @@
+import type { Papel } from "@prisma/client";
+
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
- * divergir. Reorganizado em 2026-10-01 de 11 itens soltos para 4 grupos por pergunta que a pessoa quer responder
- * (consultar, simular, conferir, ver os dados), mais "Como funciona".
+ * divergir. Reorganizado em 2026-10-25 pelos objetivos do sistema (pedido do usuário: "opções demais"): entender como a matriz
+ * reparte o orçamento, descobrir onde o câmpus pode melhorar, e, só para administradores, os dados e a conferência. Nenhuma
+ * tela saiu; só mudou de lugar. Antes eram 4 grupos (Consultar, Simular, Conferir, Dados).
  */
 
 export interface ItemMenu {
@@ -9,6 +12,8 @@ export interface ItemMenu {
   rotulo: string;
   /** Uma frase, em linguagem de quem não é de TI: o que se faz nesta tela. */
   descricao: string;
+  /** Tela que ainda não está pronta: aparece só para o super-admin (ex.: a distribuição entre câmpus, à espera da regra interna). */
+  somenteSuperAdmin?: boolean;
 }
 
 export interface GrupoMenu {
@@ -16,66 +21,48 @@ export interface GrupoMenu {
   rotulo: string;
   /** Pergunta que o grupo responde, mostrada na página inicial. */
   pergunta: string;
+  /** Grupo técnico: só administradores e super-admin veem no menu. */
+  somenteAdmin?: boolean;
   itens: ItemMenu[];
 }
 
 export const GRUPOS_MENU: GrupoMenu[] = [
   {
-    id: "consultar",
-    rotulo: "Consultar",
-    pergunta: "Quanto recebe?",
+    id: "entender",
+    rotulo: "Entender a matriz",
+    pergunta: "Como o orçamento é repartido e quanto cada um recebe?",
     itens: [
       {
         href: "/consulta",
         rotulo: "Valor por instituição, câmpus e curso",
-        descricao: "Quanto cada instituição, câmpus e curso recebe no bloco Funcionamento.",
-      },
-      {
-        href: "/consulta/curso",
-        rotulo: "Quanto vale um curso?",
-        descricao: "Procure um curso que você pensa em ofertar: peso, carga horária mínima do MEC e quanto a MDO paga por um aluno que o conclui.",
+        descricao: "Quanto cada instituição, câmpus e curso recebe no bloco Funcionamento, com a conta de cada coluna.",
       },
       {
         href: "/consulta/valor-do-aluno",
         rotulo: "Quanto vale um aluno",
-        descricao: "Para cada curso de um câmpus: o valor de um aluno em reais e em percentual do orçamento do câmpus.",
+        descricao: "Para cada curso de um câmpus: o valor de um aluno e a conta turma a turma.",
+      },
+      {
+        href: "/comparativo",
+        rotulo: "Comparativo entre ciclos",
+        descricao: "O que mudou de 2026 para 2027, bloco a bloco, com a explicação do que ocorreu.",
       },
       {
         href: "/consulta/comparar",
         rotulo: "Comparar cursos entre câmpus",
         descricao: "O mesmo curso em câmpus diferentes, lado a lado.",
       },
-      {
-        href: "/comparativo",
-        rotulo: "Comparativo entre ciclos",
-        descricao: "O que mudou de um ciclo para o outro, com a explicação do que ocorreu em cada instituição.",
-      },
     ],
   },
   {
-    id: "simular",
-    rotulo: "Simular",
-    pergunta: "E se mudar?",
+    id: "melhorar",
+    rotulo: "Onde melhorar",
+    pergunta: "O que o câmpus pode fazer para o orçamento crescer?",
     itens: [
       {
         href: "/simulador/alternativas",
         rotulo: "O que rende mais?",
-        descricao: "Compara lado a lado: curso de 3 ou 4 anos, curso novo, turma FIC, melhorar a RAP, reduzir a evasão, ocupar vagas.",
-      },
-      {
-        href: "/simulador/novo-curso",
-        rotulo: "Abrir um curso novo",
-        descricao: "Quanto um curso novo rende ano a ano no câmpus, do primeiro ano de entrada até chegar ao regime.",
-      },
-      {
-        href: "/simulador/projecao",
-        rotulo: "Cenários, anos à frente",
-        descricao: "Quanto os ciclos rendem nos próximos anos, com cursos novos, cursos que deixam de ser ofertados e o horizonte que você escolher, em qualquer câmpus.",
-      },
-      {
-        href: "/simulador/curso",
-        rotulo: "Curso de 3 ou 4 anos",
-        descricao: "Quanto um curso rende em 3 anos contra 4, ano a ano, no câmpus escolhido.",
+        descricao: "Compara lado a lado: curso novo, turma FIC, melhorar a RAP, reduzir a evasão, ocupar vagas.",
       },
       {
         href: "/simulador/oportunidades",
@@ -83,22 +70,49 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         descricao: "Que tipo de curso rende mais por vaga e onde o câmpus tem horas que a MDO não paga.",
       },
       {
-        href: "/simulador/distribuicao",
-        rotulo: "Distribuição entre câmpus",
-        descricao: "Em desenvolvimento, aguardando a regra interna. Ensaio da transição para a matriz: manter parte do valor anterior e completar com um índice de qualidade.",
-      },
-      {
         href: "/simulador",
         rotulo: "Evasão, RAP e IAPL",
         descricao: "Quanto o valor muda se a evasão cair ou se a instituição mudar de faixa nos indicadores.",
       },
+      {
+        href: "/consulta/curso",
+        rotulo: "Quanto vale um curso?",
+        descricao: "Procure um curso que pensa em ofertar: peso, carga horária mínima e quanto a MDO paga por um aluno que o conclui.",
+      },
+      {
+        href: "/simulador/novo-curso",
+        rotulo: "Abrir um curso novo",
+        descricao: "Quanto um curso novo rende ano a ano, do primeiro ano de entrada até todas as turmas estarem em andamento.",
+      },
+      {
+        href: "/simulador/curso",
+        rotulo: "Técnico integrado: 3 ou 4 anos",
+        descricao: "O repasse e a rotina (horas por dia, turnos, salas e professores) de um integrado em 3 ou em 4 anos.",
+      },
+      {
+        href: "/simulador/projecao",
+        rotulo: "Cenários, anos à frente",
+        descricao: "Quanto os ciclos rendem nos próximos anos, com cursos novos e cursos que deixam de ser ofertados.",
+      },
+      {
+        href: "/simulador/distribuicao",
+        rotulo: "Distribuição entre câmpus",
+        descricao: "Em desenvolvimento, aguardando a regra interna. Ensaio da transição para a matriz.",
+        somenteSuperAdmin: true,
+      },
     ],
   },
   {
-    id: "conferir",
-    rotulo: "Conferir",
-    pergunta: "A conta fecha?",
+    id: "dados",
+    rotulo: "Dados e conferência",
+    pergunta: "De onde vêm os números e a conta fecha?",
+    somenteAdmin: true,
     itens: [
+      {
+        href: "/situacao-dos-dados",
+        rotulo: "Situação dos dados",
+        descricao: "O que está conferido, o que precisa de revisão e o que é estimativa.",
+      },
       {
         href: "/conferencia",
         rotulo: "Conferência de cálculo",
@@ -109,13 +123,6 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         rotulo: "Perda por evasão",
         descricao: "Quanto cada instituição, câmpus e curso deixa de receber por causa da evasão.",
       },
-    ],
-  },
-  {
-    id: "dados",
-    rotulo: "Dados",
-    pergunta: "De onde vem?",
-    itens: [
       {
         href: "/dados-importados",
         rotulo: "Dados importados",
@@ -134,21 +141,24 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       {
         href: "/orcamento-da-uniao",
         rotulo: "Orçamento da União (LOA)",
-        descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas parlamentares e a execução de 2026 por câmpus, com a fonte de cada número.",
+        descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas e a execução por câmpus.",
       },
       {
         href: "/peso-efetivo",
         rotulo: "Peso por curso",
         descricao: "O peso que a MDO aplicou a cada curso, com a fonte de cada linha.",
       },
-      {
-        href: "/situacao-dos-dados",
-        rotulo: "Situação dos dados",
-        descricao: "O que está conferido, o que precisa de revisão e o que é estimativa.",
-      },
     ],
   },
 ];
+
+/** Os grupos e itens que cada perfil vê no menu e no Início. As telas continuam abertas pelo endereço; só saem da vista. */
+export function gruposVisiveis(papel: Papel | null | undefined): GrupoMenu[] {
+  const admin = papel === "ADMIN" || papel === "SUPER_ADMIN";
+  return GRUPOS_MENU.filter((g) => !g.somenteAdmin || admin)
+    .map((g) => ({ ...g, itens: g.itens.filter((i) => !i.somenteSuperAdmin || papel === "SUPER_ADMIN") }))
+    .filter((g) => g.itens.length > 0);
+}
 
 export const ITEM_INICIO: ItemMenu = { href: "/", rotulo: "Início", descricao: "A visão geral dos ciclos carregados." };
 export const ITEM_COMO_FUNCIONA: ItemMenu = {
