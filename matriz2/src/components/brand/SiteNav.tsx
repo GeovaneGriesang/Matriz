@@ -3,17 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { GRUPOS_MENU, ITEM_COMO_FUNCIONA, ITEM_INICIO, itemAtivo } from "@/lib/menu";
+import type { Papel } from "@prisma/client";
+import { ITEM_COMO_FUNCIONA, ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
 
 /**
- * O menu em quatro grupos por pergunta (Consultar, Simular, Conferir, Dados), mais "Início" e "Como funciona". Antes
- * eram 11 links soltos, difíceis de distinguir; agora cada grupo abre uma lista em que cada tela traz uma frase dizendo
- * o que se faz nela. O texto vem de `lib/menu.ts`, o mesmo da página inicial.
+ * O menu em grupos pelos objetivos do sistema (Entender a matriz, Onde melhorar e, para administradores, Dados e conferência),
+ * mais "Início" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
+ * vem de `lib/menu.ts`, o mesmo da página inicial, e o que cada perfil vê sai de `gruposVisiveis`.
  *
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do
  * cabeçalho (sessão, nome, Sair) continua no Server Component.
  */
-export function SiteNav() {
+export function SiteNav({ papel }: { papel: Papel }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState<string | null>(null);
   const raiz = useRef<HTMLElement>(null);
@@ -47,7 +48,7 @@ export function SiteNav() {
         {ITEM_INICIO.rotulo}
       </Link>
 
-      {GRUPOS_MENU.map((g) => {
+      {gruposVisiveis(papel).map((g) => {
         const grupoAtivo = g.itens.some((i) => i.href === ativo?.href);
         const estaAberto = aberto === g.id;
         return (

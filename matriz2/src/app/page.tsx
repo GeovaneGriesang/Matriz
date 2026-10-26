@@ -2,7 +2,7 @@ import { temAcessoPleno } from "@/lib/permissoes";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
-import { GRUPOS_MENU } from "@/lib/menu";
+import { gruposVisiveis } from "@/lib/menu";
 import { getAdminSession } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -97,8 +97,8 @@ export default async function Home() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {GRUPOS_MENU.map((g) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {gruposVisiveis(usuario.papel).map((g) => (
             <section
               key={g.id}
               className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"

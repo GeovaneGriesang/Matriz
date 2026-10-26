@@ -27,9 +27,19 @@ describe("menu", () => {
     for (const g of GRUPOS_MENU) for (const i of g.itens) expect(i.descricao.length).toBeGreaterThan(20);
   });
 
-  it("o simulador de curso de 3 ou 4 anos está no grupo Simular", () => {
-    const simular = GRUPOS_MENU.find((g) => g.id === "simular")!;
-    expect(simular.itens.some((i) => i.href === "/simulador/curso")).toBe(true);
+  it("o simulador do integrado de 3 ou 4 anos está no grupo Onde melhorar", () => {
+    const melhorar = GRUPOS_MENU.find((g) => g.id === "melhorar")!;
+    expect(melhorar.itens.some((i) => i.href === "/simulador/curso")).toBe(true);
+  });
+
+  it("o perfil padrão não vê o grupo Dados e conferência; o admin vê; a distribuição só aparece para o super-admin", async () => {
+    const { gruposVisiveis } = await import("@/lib/menu");
+    const ids = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).map((g) => g.id);
+    const itens = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).flatMap((g) => g.itens.map((i) => i.href));
+    expect(ids("PADRAO")).toEqual(["entender", "melhorar"]);
+    expect(ids("ADMIN")).toEqual(["entender", "melhorar", "dados"]);
+    expect(itens("ADMIN")).not.toContain("/simulador/distribuicao");
+    expect(itens("SUPER_ADMIN")).toContain("/simulador/distribuicao");
   });
 
   it("marca o item de endereço mais longo, não o prefixo", () => {
