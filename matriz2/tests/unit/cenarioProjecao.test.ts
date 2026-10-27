@@ -107,7 +107,10 @@ describe("cursos novos", () => {
     const anual = projetarCursoNovo(cursoNovo(), 2025, 12, SEM_PERDA).reduce((s, p) => s + p.valor, 0);
     const semestral = cursoNovo({ entradasPorAno: 2 });
     expect(turmasDeCursoNovo(semestral, 2025, 12, SEM_PERDA).map((t) => t.anoEntrada)).toEqual([2028, 2028]);
-    expect(projetarCursoNovo(semestral, 2025, 12, SEM_PERDA).reduce((s, p) => s + p.valor, 0)).toBeCloseTo(anual * 2, 6);
+    // Quase o dobro: desde 2026-10-27 o motor segue a 4ª fase da MDO e, no ano bissexto, o ciclo longo vale 365/366; a turma
+    // de março e a de setembro atravessam os anos bissextos em proporções diferentes, e a diferença fica abaixo de 0,1%.
+    const total = projetarCursoNovo(semestral, 2025, 12, SEM_PERDA).reduce((s, p) => s + p.valor, 0);
+    expect(Math.abs(total / (anual * 2) - 1)).toBeLessThan(0.001);
   });
 
   it("semestral em vários anos: a segunda turma de agosto pode cair no ano seguinte quando a primeira é depois de junho", () => {

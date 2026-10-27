@@ -126,3 +126,24 @@ describe("contra a planilha do IFSul de 2027 calculada pelo Excel", () => {
     },
   );
 });
+
+describe("ano bissexto (4ª fase da MDO, versão 8.5)", () => {
+  it("retido conta metade do período: 182,5 dias em 365 e 183 em 366", async () => {
+    const { diasAtivosNoPeriodo } = await import("@/lib/mdo/matriculaTotal");
+    const retido = { inicio: new Date(Date.UTC(2019, 1, 1)), termino: new Date(Date.UTC(2022, 11, 20)), jubilamento: new Date(Date.UTC(2025, 11, 19)) };
+    expect(diasAtivosNoPeriodo(retido, { inicio: new Date(Date.UTC(2023, 0, 1)), fim: new Date(Date.UTC(2023, 11, 31)) })).toBe(182.5);
+    expect(diasAtivosNoPeriodo(retido, { inicio: new Date(Date.UTC(2024, 0, 1)), fim: new Date(Date.UTC(2024, 11, 31)) })).toBe(183);
+  });
+
+  it("ciclo de mais de um ano vale 365/366 no ano bissexto; ciclo curto não muda", async () => {
+    const { decomporMatriculaTotal } = await import("@/lib/mdo/matriculaTotal");
+    const p2024 = { inicio: new Date(Date.UTC(2024, 0, 1)), fim: new Date(Date.UTC(2024, 11, 31)) };
+    const longo = { inicio: new Date(Date.UTC(2023, 2, 1)), termino: new Date(Date.UTC(2026, 1, 28)), jubilamento: new Date(Date.UTC(2029, 1, 27)), chCiclo: 3200, chMec: 1200, chMatriz: 3200, peso: 1.5, agropecuaria: false, alunos: 30 };
+    const d = decomporMatriculaTotal(longo, p2024);
+    expect(d.diasAtivos).toBe(366);
+    expect(d.ajusteDoAno).toBeCloseTo(365 / 366, 12);
+    expect(d.fatorDias).toBeCloseTo((366 / d.diasDoCiclo) * (365 / 366), 12);
+    const curto = { inicio: new Date(Date.UTC(2024, 7, 1)), termino: new Date(Date.UTC(2024, 11, 22)), jubilamento: new Date(Date.UTC(2024, 11, 22)), chCiclo: 200, chMec: 200, chMatriz: 200, peso: 1, agropecuaria: false, alunos: 78 };
+    expect(decomporMatriculaTotal(curto, p2024).ajusteDoAno).toBe(1);
+  });
+});

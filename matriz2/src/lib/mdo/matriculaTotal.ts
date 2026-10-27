@@ -81,10 +81,16 @@ export function icqaDoCiclo(
   return 0.5;
 }
 
+/** Dias do período da PNP (365, ou 366 em ano bissexto). */
+export function diasDoPeriodo(periodo: PeriodoPnp): number {
+  return diasInclusivos(periodo.inicio, periodo.fim);
+}
+
 /**
  * Dias do ciclo que contam dentro do período da PNP. Ciclo regular: a interseção
- * entre o ciclo e o período. Retido: fixo em 182,5 (meio ano), não importa quando o
- * ciclo devia ter acabado. Jubilado: zero (e o ICQA já zera de todo modo).
+ * entre o ciclo e o período. Retido: metade do período (182,5 dias, ou 183 em ano
+ * bissexto), não importa quando o ciclo devia ter acabado. Jubilado: zero (e o ICQA
+ * já zera de todo modo). É a coluna DACP5 da 4ª fase da MDO: (DFP - DIP + 1) / 2.
  */
 export function diasAtivosNoPeriodo(
   ciclo: Pick<CicloParaCalculo, "inicio" | "termino" | "jubilamento">,
@@ -95,7 +101,7 @@ export function diasAtivosNoPeriodo(
     const ate = Math.min(ciclo.termino.getTime(), periodo.fim.getTime());
     return Math.max(0, Math.round((ate - de) / MS_DIA) + 1);
   }
-  if (ciclo.jubilamento.getTime() >= periodo.inicio.getTime()) return DIAS_ATIVOS_RETIDO;
+  if (ciclo.jubilamento.getTime() >= periodo.inicio.getTime()) return diasDoPeriodo(periodo) / 2;
   return 0;
 }
 
@@ -126,9 +132,26 @@ export interface DecomposicaoMatricula {
   fatorCargaHoraria: number;
   diasAtivos: number;
   diasDoCiclo: number;
-  /** diasAtivos / diasDoCiclo. */
+  /** Dias do período da PNP (365 ou 366). */
+  diasDoPeriodo: number;
+  /** 365 ÷ dias do período, para o ciclo de um ano ou mais (1 no ano de 365 dias e no ciclo curto). */
+  ajusteDoAno: number;
+  /** diasAtivos / diasDoCiclo × ajusteDoAno. */
   fatorDias: number;
   matriculaTotal: number;
+}
+
+/**
+ * A fração do ciclo que conta no período. Reproduz a 4ª fase da MDO (versão 8.5): FECH × FEDA, em que o ciclo de um ano
+ * ou mais é anualizado em 365 dias e dividido pelos dias do período. Por isso, no ano bissexto (366 dias), o ciclo longo
+ * vale 365/366 do que valeria; o ciclo curto (menos de um ano) não muda. Conferido em 2026-10-27: as 1.986 linhas da
+ * 4ª fase do IFSul (período 2023) e os ciclos de 2026 (PNP 2024, bissexto) e 2027 do IFSul.
+ */
+export function fatorDeDias(ciclo: Pick<CicloParaCalculo, "inicio" | "termino" | "jubilamento">, periodo: PeriodoPnp): number {
+  const dias = diasDoCiclo(ciclo);
+  if (dias <= 0) return 0;
+  const ajuste = dias >= 365 ? 365 / diasDoPeriodo(periodo) : 1;
+  return (diasAtivosNoPeriodo(ciclo, periodo) / dias) * ajuste;
 }
 
 /** A conta inteira, passo a passo, para a tela poder mostrar de onde o número vem. */
@@ -139,7 +162,9 @@ export function decomporMatriculaTotal(ciclo: CicloParaCalculo, periodo: Periodo
   const ch = chEfetiva(ciclo);
   const bonus = ciclo.agropecuaria ? BONUS_AGROPECUARIA : 1;
   const fatorCh = ch / CH_REFERENCIA_ANUAL;
-  const fatorDias = dias > 0 ? ativos / dias : 0;
+  const periodoDias = diasDoPeriodo(periodo);
+  const ajusteDoAno = dias >= 365 ? 365 / periodoDias : 1;
+  const fatorDias = fatorDeDias(ciclo, periodo);
   return {
     alunos: ciclo.alunos,
     icqa,
@@ -149,6 +174,8 @@ export function decomporMatriculaTotal(ciclo: CicloParaCalculo, periodo: Periodo
     fatorCargaHoraria: fatorCh,
     diasAtivos: ativos,
     diasDoCiclo: dias,
+    diasDoPeriodo: periodoDias,
+    ajusteDoAno,
     fatorDias,
     matriculaTotal: ciclo.alunos * icqa * ciclo.peso * bonus * fatorCh * fatorDias,
   };
