@@ -14,6 +14,8 @@ export interface ItemMenu {
   descricao: string;
   /** Tela que ainda não está pronta: aparece só para o super-admin (ex.: a distribuição entre câmpus, à espera da regra interna). */
   somenteSuperAdmin?: boolean;
+  /** Outros endereços que pertencem a este item (abas da mesma tela): o menu marca o item como ativo neles. */
+  abas?: string[];
 }
 
 export interface GrupoMenu {
@@ -61,18 +63,9 @@ export const GRUPOS_MENU: GrupoMenu[] = [
     itens: [
       {
         href: "/simulador/alternativas",
-        rotulo: "O que rende mais?",
-        descricao: "Compara lado a lado: curso novo, turma FIC, melhorar a RAP, reduzir a evasão, ocupar vagas.",
-      },
-      {
-        href: "/simulador/oportunidades",
-        rotulo: "Onde há ganho",
-        descricao: "Que tipo de curso rende mais por vaga e onde o câmpus tem horas que a MDO não paga.",
-      },
-      {
-        href: "/simulador",
-        rotulo: "Evasão, RAP e IAPL",
-        descricao: "Quanto o valor muda se a evasão cair ou se a instituição mudar de faixa nos indicadores.",
+        rotulo: "Onde o câmpus pode ganhar",
+        descricao: "Três abas: comparar alternativas (curso novo, FIC, RAP, evasão, vagas), ideias de cursos e horas não pagas, e indicadores e evasão.",
+        abas: ["/simulador/oportunidades", "/simulador"],
       },
       {
         href: "/consulta/curso",
@@ -176,9 +169,19 @@ export const TODOS_OS_ITENS: ItemMenu[] = [ITEM_INICIO, ...GRUPOS_MENU.flatMap((
  */
 export function itemAtivo(pathname: string): ItemMenu | null {
   let melhor: ItemMenu | null = null;
+  let tamanho = -1;
   for (const item of TODOS_OS_ITENS) {
+    // As abas valem pelo endereço exato (a aba "/simulador" não pode marcar "/simulador/curso").
+    if (item.abas?.includes(pathname) && pathname.length > tamanho) {
+      melhor = item;
+      tamanho = pathname.length;
+      continue;
+    }
     const coincide = item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`);
-    if (coincide && (!melhor || item.href.length > melhor.href.length)) melhor = item;
+    if (coincide && item.href.length > tamanho) {
+      melhor = item;
+      tamanho = item.href.length;
+    }
   }
   return melhor;
 }

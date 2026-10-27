@@ -34,7 +34,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
   if (anos.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
-        <h1 className="text-2xl font-semibold">Simulador</h1>
+        <h1 className="text-2xl font-semibold">Onde o câmpus pode ganhar: indicadores e evasão</h1>
         <p className="mt-3 text-neutral-600 dark:text-neutral-400">
           Esta tela depende da 6ª fase da MDO (perda por evasão) ou da aba &quot;INDICADORES&quot;
           (RAP). Nenhum ciclo carregado ainda.
@@ -159,7 +159,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde o câmpus pode ganhar: indicadores e evasão</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           Clique no <strong>+</strong> em frente a uma instituição para simular a RAP e o IAPL dela, e
           para abrir os câmpus e simular evasão e crescimento de matrícula de cada um. Pode abrir

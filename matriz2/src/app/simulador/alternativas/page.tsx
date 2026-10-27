@@ -30,7 +30,7 @@ export default async function AlternativasPage({ searchParams }: { searchParams:
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">O que rende mais?</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde o câmpus pode ganhar: comparar alternativas</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Ponha lado a lado as coisas que um câmpus pode fazer para receber mais: um curso de 3 anos contra um de 4, melhorar a RAP, abrir uma turma FIC de 160 h, um
         bacharelado novo, reduzir a evasão, ocupar mais vagas. Cada uma vira o mesmo número, o ganho em reais por ano, e a tela mostra qual rende mais, qual começa antes e o que cada uma exige

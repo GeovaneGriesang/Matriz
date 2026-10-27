@@ -44,7 +44,10 @@ describe("menu", () => {
 
   it("marca o item de endereço mais longo, não o prefixo", () => {
     expect(itemAtivo("/simulador/curso")?.href).toBe("/simulador/curso");
-    expect(itemAtivo("/simulador")?.href).toBe("/simulador");
+    // "/simulador" e "/simulador/oportunidades" são abas de "Onde o câmpus pode ganhar".
+    expect(itemAtivo("/simulador")?.href).toBe("/simulador/alternativas");
+    expect(itemAtivo("/simulador/oportunidades")?.href).toBe("/simulador/alternativas");
+    expect(itemAtivo("/simulador/projecao")?.href).toBe("/simulador/projecao");
     expect(itemAtivo("/consulta/valor-do-aluno")?.href).toBe("/consulta/valor-do-aluno");
     expect(itemAtivo("/consulta")?.href).toBe("/consulta");
     expect(itemAtivo("/")?.href).toBe("/");
