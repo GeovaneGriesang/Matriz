@@ -69,18 +69,9 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       },
       {
         href: "/consulta/curso",
-        rotulo: "Quanto vale um curso?",
-        descricao: "Procure um curso que pensa em ofertar: peso, carga horária mínima e quanto a MDO paga por um aluno que o conclui.",
-      },
-      {
-        href: "/simulador/novo-curso",
-        rotulo: "Abrir um curso novo",
-        descricao: "Quanto um curso novo rende ano a ano, do primeiro ano de entrada até todas as turmas estarem em andamento.",
-      },
-      {
-        href: "/simulador/curso",
-        rotulo: "Técnico integrado: 3 ou 4 anos",
-        descricao: "O repasse e a rotina (horas por dia, turnos, salas e professores) de um integrado em 3 ou em 4 anos.",
+        rotulo: "Abrir ou mudar um curso",
+        descricao: "Três abas: quanto vale um curso (peso e carga horária), quanto um curso novo rende ano a ano, e o integrado em 3 ou 4 anos.",
+        abas: ["/simulador/novo-curso", "/simulador/curso"],
       },
       {
         href: "/simulador/projecao",

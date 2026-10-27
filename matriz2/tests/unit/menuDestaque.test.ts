@@ -27,9 +27,9 @@ describe("menu", () => {
     for (const g of GRUPOS_MENU) for (const i of g.itens) expect(i.descricao.length).toBeGreaterThan(20);
   });
 
-  it("o simulador do integrado de 3 ou 4 anos está no grupo Onde melhorar", () => {
+  it("o simulador do integrado de 3 ou 4 anos é aba de Abrir ou mudar um curso, no grupo Onde melhorar", () => {
     const melhorar = GRUPOS_MENU.find((g) => g.id === "melhorar")!;
-    expect(melhorar.itens.some((i) => i.href === "/simulador/curso")).toBe(true);
+    expect(melhorar.itens.some((i) => i.abas?.includes("/simulador/curso"))).toBe(true);
   });
 
   it("o perfil padrão não vê o grupo Dados e conferência; o admin vê; a distribuição só aparece para o super-admin", async () => {
@@ -43,7 +43,10 @@ describe("menu", () => {
   });
 
   it("marca o item de endereço mais longo, não o prefixo", () => {
-    expect(itemAtivo("/simulador/curso")?.href).toBe("/simulador/curso");
+    // "/simulador/curso" e "/simulador/novo-curso" são abas de "Abrir ou mudar um curso".
+    expect(itemAtivo("/simulador/curso")?.href).toBe("/consulta/curso");
+    expect(itemAtivo("/simulador/novo-curso")?.href).toBe("/consulta/curso");
+    expect(itemAtivo("/consulta/curso")?.href).toBe("/consulta/curso");
     // "/simulador" e "/simulador/oportunidades" são abas de "Onde o câmpus pode ganhar".
     expect(itemAtivo("/simulador")?.href).toBe("/simulador/alternativas");
     expect(itemAtivo("/simulador/oportunidades")?.href).toBe("/simulador/alternativas");

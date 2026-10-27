@@ -60,7 +60,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Técnico integrado: 3 ou 4 anos?</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Abrir ou mudar um curso: técnico integrado em 3 ou 4 anos?</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Esta simulação vale <strong>só para o curso técnico integrado ao ensino médio</strong>, o único em que a escolha entre 3 e 4 anos se
         coloca (Proeja, subsequente, concomitante e superior têm outra organização). Escolha um câmpus e um curso integrado como ponto de
