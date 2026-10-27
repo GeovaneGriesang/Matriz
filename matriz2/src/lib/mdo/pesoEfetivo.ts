@@ -11,6 +11,7 @@
 import {
   chEfetiva,
   diasAtivosNoPeriodo,
+  fatorDeDias,
   diasDoCiclo,
   icqaDoCiclo,
   type CicloParaCalculo,
@@ -55,7 +56,7 @@ export function deduzirPesoEfetivo(c: CicloObservado, periodo: PeriodoPnp): numb
   if (alunos === 0 || icqa === 0 || ativos === 0) return null;
   const ch = chEfetiva(c.ciclo);
   if (ch <= 0) return null;
-  const alunosEfetivos = (alunos * icqa * ativos) / diasDoCiclo(c.ciclo);
+  const alunosEfetivos = alunos * icqa * fatorDeDias(c.ciclo, periodo);
   return Math.round(((c.matriculaTotal * 800) / alunosEfetivos / ch) * 1000) / 1000;
 }
 

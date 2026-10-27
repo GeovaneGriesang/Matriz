@@ -419,7 +419,9 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; i
                 {d.icqa === 1
                   ? <>e {dias1.format(d.diasAtivos)} deles caem no ano-base {ano - 2} (o ano da PNP que a matriz de {ano} usa)</>
                   : <>mas já devia ter terminado antes do ano-base {ano - 2}; aluno retido conta um valor fixo de {dias1.format(d.diasAtivos)} dias (meio ano)</>}
-                : {dias1.format(d.diasAtivos)} ÷ {inteiro.format(d.diasDoCiclo)} = <strong>{dec4.format(d.fatorDias)}</strong>.
+                : {dias1.format(d.diasAtivos)} ÷ {inteiro.format(d.diasDoCiclo)}
+                {d.ajusteDoAno !== 1 && <> × 365 ÷ {inteiro.format(d.diasDoPeriodo)} (o ano-base {ano - 2} é bissexto: a MDO anualiza a turma em 365 dias e divide pelos {inteiro.format(d.diasDoPeriodo)} do ano)</>}{" "}
+                = <strong>{dec4.format(d.fatorDias)}</strong>.
               </li>
               <li>
                 <strong>ICQA:</strong> {dec2.format(d.icqa)}, {regra}.
