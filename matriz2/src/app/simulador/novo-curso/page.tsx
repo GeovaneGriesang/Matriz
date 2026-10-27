@@ -53,7 +53,7 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Abrir um curso novo: quanto rende, ano a ano</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Abrir ou mudar um curso: quanto um curso novo rende, ano a ano</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Escolha o câmpus e um curso parecido com o que se quer abrir (dele vêm o peso e a carga horária máxima que a MDO paga), diga em que ano a primeira turma entra, quanto dura, a carga
         horária e as vagas. Serve para qualquer tipo de curso (técnico, bacharelado, licenciatura, tecnologia, FIC, pós) em qualquer câmpus da rede. A tela mostra o repasse de cada ano, até o

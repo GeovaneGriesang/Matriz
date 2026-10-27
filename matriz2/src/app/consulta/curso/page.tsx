@@ -4,6 +4,7 @@ import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { PainelConfianca } from "@/components/Confianca";
+import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { valorDoCurso } from "@/lib/mdo/valorDoCurso";
 import type { Repasse } from "@/lib/mdo/matriculaTotal";
 
@@ -52,11 +53,12 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto vale um curso?</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Abrir ou mudar um curso: quanto vale um curso?</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Procure um curso que você pensa em ofertar e veja o que a matriz considera dele: o <strong>peso</strong>, a <strong>carga horária mínima</strong> do MEC, a
         carga horária que vale na matriz e quanto a MDO paga, em média, por um aluno que faz o curso inteiro. Serve para comparar cursos antes de abrir turma.
       </p>
+      <SubmenuSimulador />
     </div>
   );
 
