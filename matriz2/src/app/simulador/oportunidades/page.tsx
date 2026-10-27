@@ -40,10 +40,10 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde há ganho</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde o câmpus pode ganhar: ideias de cursos e horas não pagas</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Duas leituras que o sistema faz sozinho, sem você montar nenhuma simulação: <strong>qual tipo de curso rende mais por vaga</strong> e <strong>onde o câmpus tem carga horária que a MDO não paga</strong>.
-        Servem para dar ideias do que simular em seguida em &quot;O que rende mais?&quot;.
+        Servem para dar ideias do que simular em seguida na aba &quot;Comparar alternativas&quot;.
       </p>
     </div>
   );
