@@ -37,6 +37,12 @@ describe("montarMensagens", () => {
   it("o texto de instruções proíbe inventar número", () => {
     expect(montarMensagens({ rota: "/", pergunta: "a", historico: [] })[0]!.content).toMatch(/Nunca invente número/);
   });
+
+  it("os dois modos pedem que todo percentual diga de quê ele é", () => {
+    const entrada = { rota: "/consulta", pergunta: "a", historico: [] };
+    expect(montarMensagens(entrada)[0]!.content).toMatch(/Todo percentual diz de quê é/);
+    expect(montarMensagens(entrada, "completo")[0]!.content).toMatch(/Todo percentual vem com a base dele/);
+  });
 });
 
 describe("conhecimento", () => {
