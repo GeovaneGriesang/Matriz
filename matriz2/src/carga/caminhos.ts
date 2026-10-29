@@ -291,6 +291,26 @@ export function existe(caminho: string): boolean {
  * por engano da própria MDO, dentro da 2ª fase por aluno — ver
  * `conferenciaExtracaoAluno`).
  */
+const PASTA_QUARTA_FASE = path.join(EXPORTADOS, "01 - Matriz orçamentária", "4a fase - Checagem de Matrículas Totais");
+
+/**
+ * 4ª fase (Checagem de Matrículas Totais): todas as planilhas .xlsx, uma subpasta por ciclo orçamentário
+ * ("2025", "2027"). O nome do arquivo varia: a exportação da MDO ("checagem_matriculas_totais_2025.xlsx", com o ano-base
+ * no nome) e a planilha que a DDI salvou no Excel ("4ª Fase - Conferência matrículas totais 2025 IFSUL.xlsx").
+ */
+export function planilhasQuartaFase(): { ciclo: number; caminho: string }[] {
+  const raiz = caixaCerta(PASTA_QUARTA_FASE);
+  if (!fs.existsSync(raiz)) return [];
+  const achados: { ciclo: number; caminho: string }[] = [];
+  for (const pasta of fs.readdirSync(raiz, { withFileTypes: true })) {
+    if (!pasta.isDirectory() || !/^\d{4}$/.test(pasta.name)) continue;
+    for (const nome of fs.readdirSync(path.join(raiz, pasta.name))) {
+      if (nome.toLowerCase().endsWith(".xlsx") && !nome.startsWith("~$")) achados.push({ ciclo: Number(pasta.name), caminho: path.join(raiz, pasta.name, nome) });
+    }
+  }
+  return achados.sort((x, y) => x.ciclo - y.ciclo || x.caminho.localeCompare(y.caminho));
+}
+
 function pastaBaseDaFase(fase: string | null): string[] {
   switch (fase) {
     case "F2_CONFERENCIA_EXTRACAO":
@@ -304,6 +324,8 @@ function pastaBaseDaFase(fase: string | null): string[] {
       ];
     case "F6_PARTICIPACAO":
       return [path.join(EXPORTADOS, "01 - Matriz orçamentária", "6a fase - Participação Orçamentária")];
+    case "F4_CHECAGEM_MATRICULAS":
+      return [PASTA_QUARTA_FASE];
     default:
       return [path.join(EXPORTADOS, "03 - Indicadores")];
   }

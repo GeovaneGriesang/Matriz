@@ -28,7 +28,7 @@ export interface GrupoMenu {
   itens: ItemMenu[];
 }
 
-export const GRUPOS_MENU: GrupoMenu[] = [
+const GRUPOS: GrupoMenu[] = [
   {
     id: "entender",
     rotulo: "Entender a matriz",
@@ -48,6 +48,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
         href: "/comparativo",
         rotulo: "Comparativo entre ciclos",
         descricao: "O que mudou de 2026 para 2027, bloco a bloco, com a explicação do que ocorreu.",
+      },
+      {
+        href: "/conferencia/quarta-fase",
+        rotulo: "Matrícula Total, como na planilha da 4ª fase",
+        descricao: "A planilha da 4ª fase da MDO refeita coluna a coluna (CHM, FECH, FEDA, MECHDA, MT), ciclo a ciclo, comparada com o arquivo.",
       },
       {
         href: "/consulta/comparar",
@@ -135,6 +140,11 @@ export const GRUPOS_MENU: GrupoMenu[] = [
     ],
   },
 ];
+
+/** Dentro de cada grupo, as telas ficam em ordem alfabética (pedido do usuário em 2026-10-29), para achar pelo nome. */
+const alfabetica = (a: ItemMenu, b: ItemMenu) => a.rotulo.localeCompare(b.rotulo, "pt-BR", { sensitivity: "base" });
+
+export const GRUPOS_MENU: GrupoMenu[] = GRUPOS.map((g) => ({ ...g, itens: [...g.itens].sort(alfabetica) }));
 
 /** Os grupos e itens que cada perfil vê no menu e no Início. As telas continuam abertas pelo endereço; só saem da vista. */
 export function gruposVisiveis(papel: Papel | null | undefined): GrupoMenu[] {

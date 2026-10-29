@@ -48,6 +48,8 @@ export const CONHECIMENTO_POR_TELA: Record<string, string> = {
   "/consulta/curso":
     "Busca um curso pelo nome e mostra o peso, a carga horária mínima do MEC, a carga horária que vale na matriz e quanto a MDO paga por um aluno que faz o curso inteiro (peso x carga horária / 800 x valor da matrícula). É valor de referência, não o que o câmpus recebe.",
   "/consulta/valor-do-aluno": "O valor de um aluno em cada curso é o valor do ciclo dividido pelos alunos, mostrado em reais e em percentual do orçamento do câmpus.",
+  "/conferencia/quarta-fase":
+    "Carrega a planilha da 4ª fase da MDO (Checagem de Matrículas Totais, versão 8.5) e refaz as 16 colunas calculadas com as fórmulas do Excel: CHM, QDTC, CHMD, CHA, FECH, DACP1 a DACP5, FEDA, FECHDA, MECHDA, MP, BA e MT. Na planilha da DDI (matriz 2025, ano-base 2023), os 1.986 ciclos do IFSul conferem em todas as colunas. Na exportação de 2027 (só fórmulas), a referência é a 6ª fase: a maioria confere, e os que não conferem têm peso ou carga horária mínima diferente na 4ª fase. Em quatro colunas (CHMD, FECH, FEDA e MECHDA) o texto do cabeçalho não diz o mesmo que a fórmula; vale a fórmula.",
   "/consulta/comparar": "Põe o mesmo curso de câmpus diferentes lado a lado, para ver quem recebe mais por aluno.",
   "/evasao":
     "O custo evadido é o quanto um ciclo deixa de receber por alunos que a MDO não conta (evadidos ou retidos além do prazo de jubilamento). A definição mudou na 6ª fase do IFSul de setembro de 2026; não some números de versões diferentes.",

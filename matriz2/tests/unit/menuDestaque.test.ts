@@ -72,3 +72,12 @@ describe("câmpus em destaque (Venâncio Aires)", () => {
     expect(campusDestaqueNaFrente(lista, (i) => i.n).map((i) => i.n)).toEqual(["CAMPUS VENÂNCIO AIRES", "CAMPUS BAGÉ", "CAMPUS PELOTAS", "CAMPUS CAMAQUÃ"]);
   });
 });
+
+describe("ordem do menu", () => {
+  it("as telas de cada grupo estão em ordem alfabética", () => {
+    for (const g of GRUPOS_MENU) {
+      const rotulos = g.itens.map((i) => i.rotulo);
+      expect(rotulos).toEqual([...rotulos].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })));
+    }
+  });
+});

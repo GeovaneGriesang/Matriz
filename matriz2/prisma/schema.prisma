@@ -224,6 +224,8 @@ model FonteDados {
   ciclosOrcamento           CicloOrcamento[]
   parametrosParticipacao    ParametrosParticipacao[]
   conferenciasCiclo         ConferenciaCiclo[]
+  quartaFaseCiclos          QuartaFaseCiclo[]
+  quartaFaseUnidades        QuartaFaseUnidade[]
   pesosEfetivos             PesoEfetivoCurso[]
   indicadoresPnp            IndicadoresPnpInstituicao[]
   pnpFatos                  PnpFato[]
@@ -864,6 +866,70 @@ model ConferenciaCiclo {
 
   @@unique([ano, unidadeId, codigoCiclo, financiamento])
   @@index([ano, unidadeId])
+  @@index([fonteDadosId])
+}
+
+/// Uma linha da aba "Ciclos de Matrículas" da 4ª fase da MDO (Checagem de Matrículas Totais), como veio no arquivo:
+/// as entradas do ciclo e, quando o Excel gravou, os resultados das colunas calculadas. É a planilha que a DDI usa para
+/// conferir a Matrícula Total; a tela /conferencia/quarta-fase a refaz com as mesmas fórmulas e com o motor do sistema.
+model QuartaFaseCiclo {
+  id             Int        @id @default(autoincrement())
+  fonteDadosId   Int
+  fonteDados     FonteDados @relation(fields: [fonteDadosId], references: [id], onDelete: Cascade)
+  cicloOrcamento Int
+  /// Linha no Excel, para a pessoa achar o ciclo no arquivo.
+  linha          Int
+
+  uf                 String?
+  cidade             String?
+  instituicao        String
+  unidade            String
+  modalidade         String
+  financiamento      String
+  tipoCurso          String
+  curso              String   @db.Text
+  areaEixo           String?
+  agropecuaria       Boolean
+  tipoOferta         String
+  codigoCiclo        String
+  nomeCiclo          String?  @db.Text
+  inicio             DateTime
+  termino            DateTime
+  chCiclo            Int
+  chMec              Int
+  peso               Decimal  @db.Decimal(10, 4)
+  inicioPeriodo      DateTime
+  fimPeriodo         DateTime
+  matriculas         Decimal  @db.Decimal(18, 4)
+  /// Coluna AP: PRESENCIAL, EAD, EAD MOOC ou EAD FP.
+  situacao           String
+  /// Resultados que o Excel gravou nas colunas S a AO, pela chave de `COLUNAS_QUARTA_FASE` (chm, qdtc, ..., mt). Nulo quando o
+  /// arquivo chegou só com as fórmulas (a exportação da MDO não grava o resultado; a planilha da DDI, salva no Excel, grava).
+  resultadosPlanilha Json?
+
+  @@index([fonteDadosId])
+  @@index([cicloOrcamento, unidade])
+}
+
+/// Uma linha da aba "Instituíção" da 4ª fase: alunos e Matrículas Totais por unidade e modalidade, somados pelo Excel.
+model QuartaFaseUnidade {
+  id                 Int        @id @default(autoincrement())
+  fonteDadosId       Int
+  fonteDados         FonteDados @relation(fields: [fonteDadosId], references: [id], onDelete: Cascade)
+  cicloOrcamento     Int
+  linha              Int
+  unidade            String
+  alunosPresencial   Decimal?   @db.Decimal(18, 4)
+  alunosPresencialFe Decimal?   @db.Decimal(18, 4)
+  alunosEad          Decimal?   @db.Decimal(18, 4)
+  alunosEadMooc      Decimal?   @db.Decimal(18, 4)
+  alunosEadFp        Decimal?   @db.Decimal(18, 4)
+  alunosTotal        Decimal?   @db.Decimal(18, 4)
+  mtPresencial       Decimal?   @db.Decimal(18, 6)
+  mtEad              Decimal?   @db.Decimal(18, 6)
+  mtEadMooc          Decimal?   @db.Decimal(18, 6)
+  mtEadFp            Decimal?   @db.Decimal(18, 6)
+
   @@index([fonteDadosId])
 }
 
