@@ -32,14 +32,13 @@ describe("menu", () => {
     expect(melhorar.itens.some((i) => i.abas?.includes("/simulador/curso"))).toBe(true);
   });
 
-  it("o perfil padrão não vê o grupo Dados e conferência; o admin vê; a distribuição só aparece para o super-admin", async () => {
+  it("o perfil padrão não vê o grupo Dados e conferência; o admin vê; a distribuição aparece para todos os perfis", async () => {
     const { gruposVisiveis } = await import("@/lib/menu");
     const ids = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).map((g) => g.id);
     const itens = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).flatMap((g) => g.itens.map((i) => i.href));
     expect(ids("PADRAO")).toEqual(["entender", "melhorar"]);
     expect(ids("ADMIN")).toEqual(["entender", "melhorar", "dados"]);
-    expect(itens("ADMIN")).not.toContain("/simulador/distribuicao");
-    expect(itens("SUPER_ADMIN")).toContain("/simulador/distribuicao");
+    for (const papel of ["PADRAO", "ADMIN", "SUPER_ADMIN"] as const) expect(itens(papel)).toContain("/simulador/distribuicao");
   });
 
   it("marca o item de endereço mais longo, não o prefixo", () => {

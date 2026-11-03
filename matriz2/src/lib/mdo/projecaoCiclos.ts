@@ -184,9 +184,29 @@ const somarPontos = (turmas: TurmaProjetada[], anoBase0: number, anos: number, a
   return soma;
 };
 
+/** Folga para dizer que a nova turma entra "quando a anterior termina": as datas de início e de término variam de um ano a outro. */
+const FOLGA_DE_ENTRADA_DIAS = 60;
+
 /**
- * As turmas novas que entram no lugar do ciclo regular, uma por ano de intervalo (ou a cada duração do ciclo, se for maior que um
- * ano), cada uma com a duração do ciclo e o tamanho estimado da matrícula de entrada. Ciclo já terminado (aluno retido) não tem
+ * De quantos em quantos anos este ciclo abre uma nova turma no lugar da anterior: o menor número de anos em que a mesma data de
+ * início chega ao término do ciclo. Um integrado de 13/02/2023 a 19/12/2025 é reposto em 13/02/2026 (3 anos), e não em 20/12/2025,
+ * que é o que a soma da duração daria: os cursos abrem turma na mesma época do ano. Um curso FIC de 20 dias, uma vez por ano.
+ */
+function anosEntreTurmas(c: Pick<CicloProjetavel, "inicio" | "termino">): number {
+  const limite = c.termino.getTime() - FOLGA_DE_ENTRADA_DIAS * MS_DIA;
+  for (let n = 1; n < 50; n++) {
+    if (Date.UTC(c.inicio.getUTCFullYear() + n, c.inicio.getUTCMonth(), c.inicio.getUTCDate()) >= limite) return n;
+  }
+  return 50;
+}
+
+/** A data de início da n-ésima turma depois do ciclo, sempre no mesmo dia e mês. */
+function inicioDaTurma(c: Pick<CicloProjetavel, "inicio">, anos: number): number {
+  return Date.UTC(c.inicio.getUTCFullYear() + anos, c.inicio.getUTCMonth(), c.inicio.getUTCDate());
+}
+
+/**
+ * As turmas novas que entram no lugar do ciclo regular, na mesma época do ano em que ele começou, cada uma com a duração do ciclo e o tamanho estimado da matrícula de entrada. Ciclo já terminado (aluno retido) não tem
  * reposição: é a sobra de uma turma antiga. Devolvidas turma a turma, para a tela poder parar de repor a partir de um ano
  * (curso que deixa de ser ofertado) sem refazer a conta.
  */
@@ -200,15 +220,16 @@ export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
 
   // A turma nova entra quando a anterior acaba, mas nunca com menos de um ano de intervalo: um ciclo curto (um curso FIC de 20 dias)
   // é ofertado uma vez por ano, e não repetido um atrás do outro, o que multiplicaria o valor por dezenas.
-  const intervalo = Math.max(duracao, 365) * MS_DIA;
-  let inicio = c.inicio.getTime() + intervalo;
+  const passo = anosEntreTurmas(c);
+  let anosDepois = passo;
+  let inicio = inicioDaTurma(c, anosDepois);
   if (inicio <= periodo0.fim.getTime()) {
     // Se a turma seguinte já cabia no ano-base inicial e está entre os ciclos de hoje, é ela quem gera as próximas: contar de novo duplicaria.
     if (sucessoraNosDados) return [];
     // Mas se ela não está nos dados (o câmpus não abriu aquela turma), o curso não pode simplesmente sumir: supõe-se que a oferta
     // continua e a turma entra no mesmo dia e mês, no primeiro ano depois do ano-base (o ano-base em si fica como está nos dados).
-    const previsto = new Date(inicio);
-    inicio = Date.UTC(anoBase0 + 1, previsto.getUTCMonth(), previsto.getUTCDate());
+    anosDepois = anoBase0 + 1 - c.inicio.getUTCFullYear();
+    inicio = inicioDaTurma(c, anosDepois);
   }
 
   // Tamanho da turma de entrada: a matrícula de hoje desfeita da evasão que já ocorreu desde o início do ciclo.
@@ -225,7 +246,8 @@ export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
     const turma: CicloProjetavel = { ...c, inicio: new Date(inicio), termino: new Date(termino), jubilamento: new Date(termino + prazo * MS_DIA) };
     const anoDeEntrada = new Date(inicio).getUTCFullYear();
     turmas.push({ anoEntrada: anoDeEntrada, pontos: pontosDaTurma(turma, entrada, anoDeEntrada, e, p.retencao, anoBase0, anos) });
-    inicio += intervalo;
+    anosDepois += passo;
+    inicio = inicioDaTurma(c, anosDepois);
   }
   return turmas;
 }
@@ -249,8 +271,7 @@ export function ciclosComSucessora(ciclos: Array<Pick<CicloProjetavel, "id" | "u
   const tol = TOLERANCIA_SUCESSORA_DIAS * MS_DIA;
   const comSucessora = new Set<number>();
   for (const c of ciclos) {
-    const intervalo = Math.max(diasDoCiclo(c), 365) * MS_DIA;
-    const alvo = c.inicio.getTime() + intervalo;
+    const alvo = inicioDaTurma(c, anosEntreTurmas(c));
     if ((porCurso.get(`${c.unidadeId}|${c.curso}|${c.tipoOferta}`) ?? []).some((i) => i !== c.inicio.getTime() && Math.abs(i - alvo) < tol)) comSucessora.add(c.id);
   }
   return comSucessora;
@@ -425,4 +446,31 @@ export function somarProjecao(ciclos: CicloProjetavel[], anoBase0: number, anos:
     }
   }
   return resumo;
+}
+
+/**
+ * O que os cursos de cada câmpus rendem, ano a ano, sem nenhuma decisão nova: as turmas em andamento até terminarem, mais a
+ * reposição das turmas (cursos que continuam recebendo entradas). É a mesma conta do "Cenários, anos à frente" sem cursos
+ * novos nem encerramentos, com o valor da matrícula de hoje.
+ */
+export function valorPorCampusNosAnos(ciclos: CicloProjetavel[], anoBase0: number, anos: number, p: Premissas): Map<number, number[]> {
+  const comSucessora = ciclosComSucessora(ciclos);
+  const porCampus = new Map<number, number[]>();
+  for (const c of ciclos) {
+    let linha = porCampus.get(c.unidadeId);
+    if (!linha) {
+      linha = Array.from({ length: anos }, () => 0);
+      porCampus.set(c.unidadeId, linha);
+    }
+    const doCampus = linha;
+    projetarMatriculados(c, anoBase0, anos, p).forEach((ponto, k) => {
+      doCampus[k]! += ponto.valor;
+    });
+    for (const turma of turmasDeReposicao(c, anoBase0, anos, p, comSucessora.has(c.id))) {
+      turma.pontos.forEach((ponto, k) => {
+        doCampus[k]! += ponto.valor;
+      });
+    }
+  }
+  return porCampus;
 }
