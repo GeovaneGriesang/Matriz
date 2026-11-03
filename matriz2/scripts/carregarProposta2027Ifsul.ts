@@ -1,5 +1,5 @@
 /**
- * Grava em "Valores recebidos" o valor de 2027 de cada câmpus do IFSul pela transição proposta ao Colégio de Dirigentes: a base de 2026
+ * Grava em "Valores recebidos" o valor de 2027 de cada câmpus do IFSul pela proposta do Câmpus Sapucaia do Sul: a base de 2026
  * mais 33% da diferença até a matriz de 2027 (5ª fase). A observação leva a marca de proposta, e as telas avisam que não é dinheiro recebido.
  *
  * Rode depois de `scripts/carregarBase2026Ifsul.ts`. Uso: npx tsx scripts/carregarProposta2027Ifsul.ts

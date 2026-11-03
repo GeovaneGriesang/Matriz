@@ -86,7 +86,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "A transição de 2027 a 2029 proposta ao Colégio de Dirigentes, câmpus a câmpus, com a conta de cada ano.",
+        descricao: "A proposta do Câmpus Sapucaia do Sul: a transição de 2027 a 2029, câmpus a câmpus, com a conta de cada ano.",
       },
     ],
   },

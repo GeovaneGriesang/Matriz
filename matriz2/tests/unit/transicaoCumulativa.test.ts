@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { matrizesProjetadas, transicaoDoCampus } from "@/lib/mdo/transicaoCumulativa";
 
-describe("transição cumulativa da proposta ao CODIR", () => {
+describe("transição cumulativa da proposta do Câmpus Sapucaia do Sul", () => {
   // O exemplo do próprio documento: Câmpus Sapucaia do Sul, com a matriz igual nos três anos.
   const anos = transicaoDoCampus(3460022.11, [4057568.49, 4057568.49, 4057568.49]);
 

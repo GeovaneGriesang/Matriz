@@ -22,7 +22,7 @@ interface Busca {
 
 const n = (v: unknown) => Number(v ?? 0);
 
-/** A proposta ao CODIR vale para o IFSul e parte de 2026: base informada de 2026, matriz da 5ª fase de 2027, projeção a partir do ano-base 2025. */
+/** A proposta do Câmpus Sapucaia do Sul vale para o IFSul e parte de 2026: base informada de 2026, matriz da 5ª fase de 2027, projeção a partir do ano-base 2025. */
 async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransicao[]> {
   const [matrizes, bases, linhas, taxas] = await Promise.all([
     prisma.distribuicaoCampus.findMany({
@@ -103,15 +103,15 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         role="status"
         className="flex flex-col gap-1 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200"
       >
-        <span className="text-sm font-bold uppercase tracking-wide">Proposta em discussão, ainda não é a regra do IFSul</span>
+        <span className="text-sm font-bold uppercase tracking-wide">Proposta do Câmpus Sapucaia do Sul: não é a regra do IFSul</span>
         <span className="text-sm">
-          A adoção da Matriz SETEC-CONIF, com transição entre 2027 e 2029, é uma proposta enviada ao Colégio de Dirigentes pelo Câmpus Sapucaia do Sul. Enquanto não
-          for aprovada, os valores abaixo são simulação, não o que cada câmpus vai receber.
+          Esta tela simula o documento &quot;Proposta de adoção da Matriz Orçamentária SETEC-CONIF para distribuição de orçamento entre Câmpus do IFSul&quot;, do Câmpus Sapucaia do Sul.
+          Os valores abaixo são simulação dessa proposta, não o que cada câmpus vai receber.
         </span>
       </div>
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus, em transição</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: a proposta do Câmpus Sapucaia do Sul</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        Como sair do que cada câmpus recebeu em 2026 até a distribuição pela matriz, em três anos. Em 2027, o câmpus incorpora 33% da diferença até a matriz de 2027; em 2028, 66%
+        A proposta sai do que cada câmpus recebeu em 2026 e chega à distribuição pela matriz em três anos. Em 2027, o câmpus incorpora 33% da diferença até a matriz de 2027; em 2028, 66%
         da diferença que restou até a matriz de 2028; em 2029, adota a matriz inteira. Vale tanto para quem ganha quanto para quem perde. Clique num câmpus para ver a conta.
       </p>
     </div>

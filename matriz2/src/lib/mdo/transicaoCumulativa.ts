@@ -1,6 +1,6 @@
 /**
- * Transição cumulativa da proposta levada ao Colégio de Dirigentes do IFSul ("Proposta de adoção da Matriz Orçamentária
- * SETEC-CONIF para distribuição de orçamento entre Câmpus do IFSul", Fabio Lemes, Câmpus Sapucaia do Sul):
+ * Transição cumulativa da proposta do Câmpus Sapucaia do Sul ("Proposta de adoção da Matriz Orçamentária SETEC-CONIF para
+ * distribuição de orçamento entre Câmpus do IFSul"):
  *
  *   2027: V27 = V26 + 0,33 × (M27 − V26)
  *   2028: V28 = V27 + 0,66 × (M28 − V27)
