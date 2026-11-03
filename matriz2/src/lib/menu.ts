@@ -86,8 +86,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "Em desenvolvimento, aguardando a regra interna. Ensaio da transição para a matriz.",
-        somenteSuperAdmin: true,
+        descricao: "A transição de 2027 a 2029 proposta ao Colégio de Dirigentes, câmpus a câmpus, com a conta de cada ano.",
       },
     ],
   },

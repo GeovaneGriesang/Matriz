@@ -156,6 +156,13 @@ export const CONFIANCA = {
       "A regra de contar o ciclo é a oficial da MDO (a Matrícula Total de cada ciclo bate com o Excel), mas o futuro é hipotético, e os cursos novos e as paradas de oferta são escolhas suas, não decisões da MDO: a evasão é a média recente da PNP da instituição, o valor da matrícula fica fixo no de hoje (não sabe do orçamento da rede nem das matrículas dos outros institutos) e a reposição das turmas é uma estimativa do tamanho de cada turma nova. Mede só o repasse de funcionamento.",
     paraResolver: "Comparar com a evasão real por curso do câmpus e com o orçamento previsto da rede quando houver.",
   },
+  "transicao-proposta": {
+    nivel: "ESTIMADO",
+    titulo: "Transição proposta ao Colégio de Dirigentes",
+    porque:
+      "A regra (33%, 66% e 100%) é a do documento enviado ao CODIR, ainda sem aprovação. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase da MDO. O exemplo do documento usa R$ 4.057.568,49 para o Câmpus Sapucaia do Sul em 2027, e a 5ª fase de 03/10/2026 traz R$ 3.665.124,96; a origem do valor do documento não foi identificada. A matriz de 2028 e 2029 é estimativa: nenhuma foi publicada. Os valores de 2027 em Valores recebidos são o resultado desta proposta, marcados como não aprovados.",
+    paraResolver: "Confirmar com o proponente de onde vem a referência de 2027 e aguardar a decisão do CODIR.",
+  },
   "distribuicao-indices": {
     nivel: "ESTIMADO",
     titulo: "Distribuição entre câmpus, em transição",

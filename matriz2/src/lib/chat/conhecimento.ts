@@ -61,7 +61,7 @@ export const CONHECIMENTO_POR_TELA: Record<string, string> = {
   "/simulador/curso": "Compara oferecer um curso em 3 ou em 4 anos: o que a MDO paga depende da carga horária total, não do número de anos em si.",
   "/simulador/novo-curso": "Mostra quanto um curso novo rende ano a ano no câmpus, do primeiro ingresso até o regime.",
   "/simulador/alternativas": "Compara lado a lado alternativas: curso de 3 ou 4 anos, curso novo, turma FIC, melhorar a RAP, reduzir a evasão, ocupar vagas.",
-  "/simulador/distribuicao": "Simula a transição de 3 anos entre manter o valor do ano anterior e passar à distribuição pela matriz, entre os câmpus de uma instituição. O dinheiro total se conserva.",
+  "/simulador/distribuicao": "Simula a transição proposta ao Colégio de Dirigentes do IFSul, ainda não aprovada: em 2027 o câmpus incorpora 33% da diferença entre o valor de 2026 e a matriz de 2027; em 2028, 66% da diferença entre o valor de 2027 e a matriz de 2028; em 2029, adota a matriz. A soma dos câmpus não se conserva em 2027 e 2028. A matriz de 2028 e 2029 é estimativa.",
   "/simulador/projecao":
     "Simulador de cenários: projeta, ano a ano e pelo número de anos escolhido (de 1 a 20), quanto os ciclos em andamento rendem na matriz até os alunos terminarem, com a evasão média do instituto e a retenção observada. Permite acrescentar cursos novos (em qualquer câmpus, com ano e mês de início, ingressantes, repetição anual ou semestral e duração) e fazer cursos deixarem de ser ofertados a partir de um ano (as turmas em andamento terminam). Mostra já matriculados, reposição das turmas que continuam, cursos novos, o total do cenário e a diferença sobre manter tudo como está. O valor da matrícula fica fixo no de hoje, então é ordem de grandeza e não promessa de repasse.",
   "/orcamento-da-uniao":
@@ -106,7 +106,7 @@ Telas e o que respondem:
 - Aba Integrado: 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
 - Onde melhorar > Onde o câmpus pode ganhar: uma tela com três abas, Comparar alternativas (curso novo, turma FIC, RAP, evasão, vagas, lado a lado), Ideias de cursos e horas não pagas, e Indicadores e evasão.
 - Onde melhorar > Cenários, anos à frente: quanto os ciclos rendem nos próximos anos, com cursos novos e cursos que deixam de ser ofertados. Nas simulações, o padrão é 32 estudantes por ano.
-- Distribuição entre câmpus: EM DESENVOLVIMENTO, aguardando a regra interna do IFSul; fica fora do menu até lá.
+- Distribuição entre câmpus: simula a transição de 2027 a 2029 proposta ao Colégio de Dirigentes, ainda sem aprovação; os valores não são o que os câmpus vão receber.
 - Dados e conferência (só administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão, Conferência de cálculo e Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 

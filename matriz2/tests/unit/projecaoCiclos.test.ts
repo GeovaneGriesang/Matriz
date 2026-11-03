@@ -111,13 +111,23 @@ describe("projetarMatriculados", () => {
 });
 
 describe("projetarReposicao", () => {
-  it("ciclo regular ganha uma turma nova no dia seguinte ao término, com o mesmo tamanho (sem evasão)", () => {
+  it("ciclo regular ganha uma turma nova na mesma época do ano em que abriu, depois do término (sem evasão)", () => {
     const c = cursoDeCincoAnos({ inicio: dia(2022, 3, 1), termino: dia(2026, 12, 20), jubilamento: dia(2029, 12, 20) });
     const pontos = projetarReposicao(c, 2025, 6, SEM_EVASAO);
     expect(pontos[0]!.valor).toBe(0);
-    // A turma nova entra em 21/12/2026: em 2026 só contam os 11 dias finais, em 2027 o ano inteiro, e depois mais até o regime.
-    expect(pontos[1]!.valor).toBeGreaterThan(0);
-    expect(pontos[2]!.valor).toBeGreaterThan(pontos[1]!.valor * 5);
+    // A turma nova entra em 01/03/2027: nada em 2026, parte de 2027 e o ano inteiro em 2028.
+    expect(pontos[1]!.valor).toBe(0);
+    expect(pontos[2]!.valor).toBeGreaterThan(0);
+    expect(pontos[3]!.valor).toBeGreaterThan(pontos[2]!.valor);
+  });
+
+  it("integrado que abriu em fevereiro e termina em dezembro é reposto no fevereiro seguinte, não em dezembro", async () => {
+    const { turmasDeReposicao } = await import("@/lib/mdo/projecaoCiclos");
+    const c = cursoDeCincoAnos({ inicio: dia(2023, 2, 13), termino: dia(2025, 12, 19), jubilamento: dia(2028, 12, 19) });
+    const turmas = turmasDeReposicao(c, 2025, 6, SEM_EVASAO);
+    expect(turmas.map((t) => t.anoEntrada)).toEqual([2026, 2029]);
+    // Sem o defeito, a turma de 2026 conta quase o ano inteiro em 2026 (de 13/02 a 31/12: 322 de 365 dias).
+    expect(turmas[0]!.pontos[1]!.valor / turmas[0]!.pontos[2]!.valor).toBeCloseTo(322 / 365, 1);
   });
 
   it("não repõe ciclo que já terminou (aluno retido) nem ciclo sem alunos", () => {
@@ -247,7 +257,8 @@ describe("reposição de um ciclo cuja sucessora não está nos dados", () => {
 
   it("com a sucessora nos dados não repõe de novo; sem ela, retoma a oferta depois do ano-base", async () => {
     const { turmasDeReposicao } = await import("@/lib/mdo/projecaoCiclos");
-    const orfa = ciclo(3, "2022-05-16", "2025-12-19");
+    // A turma seguinte caberia em 16/05/2025, dentro do ano-base: ou ela está nos dados, ou o câmpus não a abriu.
+    const orfa = ciclo(3, "2022-05-16", "2025-03-20");
     expect(turmasDeReposicao(orfa, 2025, 10, p, true)).toEqual([]);
     const turmas = turmasDeReposicao(orfa, 2025, 10, p, false);
     expect(turmas.length).toBeGreaterThan(1);
