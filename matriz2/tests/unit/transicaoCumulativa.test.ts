@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matrizesProjetadas, transicaoDoCampus } from "@/lib/mdo/transicaoCumulativa";
+import { matrizesProjetadas, PROPOSTAS_DE_TRANSICAO, transicaoDoCampus } from "@/lib/mdo/transicaoCumulativa";
 
 describe("transição cumulativa da proposta do Câmpus Sapucaia do Sul", () => {
   // O exemplo do próprio documento: Câmpus Sapucaia do Sul, com a matriz igual nos três anos.
@@ -37,6 +37,29 @@ describe("transição cumulativa da proposta do Câmpus Sapucaia do Sul", () => 
     expect(novo[0]!.valor).toBeCloseTo(231000, 6);
     expect(novo[0]!.variacao).toBeNull();
     expect(novo[1]!.variacao).not.toBeNull();
+  });
+});
+
+describe("proposta do Câmpus Venâncio Aires", () => {
+  const etapas = PROPOSTAS_DE_TRANSICAO.find((p) => p.id === "venancio-aires")!.etapas;
+  const matriz = (m: number) => etapas.map(() => m);
+
+  // Tabelas 2 a 5 do documento: a base é o orçamento corrigido e a matriz, a que ele usa.
+  it.each([
+    ["Bagé", 2206485.793, 2255132.83, 2208918.14, 2213539.61, 2221858.26],
+    ["Venâncio Aires", 1969798.139, 1643539.69, 1953485.22, 1922490.66, 1866700.47],
+    ["Novo Hamburgo", 725310.0793, 1873045.83, 782696.87, 891731.76, 1087994.58],
+  ] as const)("%s reproduz as tabelas do documento, ao centavo", (_nome, base, m, v28, v29, v30) => {
+    const t = transicaoDoCampus(base, matriz(m), etapas);
+    expect(t[0]!.valor).toBeCloseTo(base, 6);
+    expect(t[1]!.valor).toBeCloseTo(v28, 2);
+    expect(t[2]!.valor).toBeCloseTo(v29, 2);
+    expect(t[3]!.valor).toBeCloseTo(v30, 2);
+  });
+
+  it("fecha 31,6% da diferença até 2030 e não chega à matriz", () => {
+    const t = transicaoDoCampus(1000, matriz(2000), etapas);
+    expect(t[3]!.valor).toBeCloseTo(1316, 6);
   });
 });
 

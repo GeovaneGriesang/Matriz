@@ -1,5 +1,3 @@
-import { AvisoValorProposto } from "@/components/AvisoValorProposto";
-import { ehValorProposto } from "@/lib/valorProposto";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -124,8 +122,8 @@ export default async function ComparativoPage({
     prisma.distribuicaoCampus.findMany({ where: { ano: anoB }, select: CAMPOS_POR_CAMPUS }),
     // O informado: o que cada campus de fato recebeu, digitado em Valores recebidos.
     comInformados
-      ? prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true, observacao: true } })
-      : Promise.resolve([] as { ano: number; unidadeId: number; valorRecebido: unknown; observacao: string | null }[]),
+      ? prisma.valorRecebidoCampus.findMany({ where: { ano: { in: [anoA, anoB] } }, select: { ano: true, unidadeId: true, valorRecebido: true } })
+      : Promise.resolve([] as { ano: number; unidadeId: number; valorRecebido: unknown }[]),
   ]);
   const informadoPorAnoEId = new Map(recebidos.map((r) => [`${r.ano}::${r.unidadeId}`, Number(r.valorRecebido)]));
   const unidadeIdsComCampus = Array.from(new Set([...porCampusA, ...porCampusB].map((c) => c.unidadeId)));
@@ -222,8 +220,6 @@ export default async function ComparativoPage({
       </div>
 
       <PainelConfianca ids={["comparativo-institucional", ...(comInformados ? (["valor-informado"] as const) : []), "piso-2026", "mooc-2027", "explicacao-variacao"]} />
-
-      {informadoNoBloco && [...new Set(recebidos.filter((r) => ehValorProposto(r.observacao)).map((r) => r.ano))].map((a) => <AvisoValorProposto key={a} ano={a} />)}
 
       <OpcaoInformados marcado={comInformados} bloco={bloco} />
 

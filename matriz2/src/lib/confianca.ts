@@ -158,10 +158,10 @@ export const CONFIANCA = {
   },
   "transicao-proposta": {
     nivel: "ESTIMADO",
-    titulo: "Proposta de transição do Câmpus Sapucaia do Sul",
+    titulo: "Propostas de transição dos câmpus",
     porque:
-      "A regra (33%, 66% e 100%) é a do documento do Câmpus Sapucaia do Sul, 'Proposta de adoção da Matriz Orçamentária SETEC-CONIF para distribuição de orçamento entre Câmpus do IFSul', e não é a regra do IFSul. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase da MDO. O exemplo do documento usa R$ 4.057.568,49 para o Câmpus Sapucaia do Sul em 2027, e a 5ª fase de 03/10/2026 traz R$ 3.665.124,96; a origem do valor do documento não foi identificada. A matriz de 2028 e 2029 é estimativa: nenhuma foi publicada. Os valores de 2027 em Valores recebidos são o resultado desta proposta, marcados como proposta.",
-    paraResolver: "Confirmar com o Câmpus Sapucaia do Sul de onde vem a referência de 2027.",
+      "As regras são as dos documentos dos câmpus Sapucaia do Sul e Venâncio Aires, e nenhuma é a regra do IFSul. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase de 03/10/2026, nas duas propostas. Por isso os valores diferem dos exemplos dos documentos, que usam matrizes anteriores ou de origem não identificada. A matriz de 2028 em diante é estimativa: nenhuma foi publicada.",
+    paraResolver: "Refazer a conta quando a matriz de cada ano for publicada.",
   },
   "distribuicao-indices": {
     nivel: "ESTIMADO",

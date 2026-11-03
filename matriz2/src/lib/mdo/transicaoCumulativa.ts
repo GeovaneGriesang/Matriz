@@ -1,16 +1,14 @@
 /**
- * Transição cumulativa da proposta do Câmpus Sapucaia do Sul ("Proposta de adoção da Matriz Orçamentária SETEC-CONIF para
- * distribuição de orçamento entre Câmpus do IFSul"):
+ * As duas propostas de transição apresentadas por câmpus do IFSul têm a mesma conta, com percentuais diferentes:
  *
- *   2027: V27 = V26 + 0,33 × (M27 − V26)
- *   2028: V28 = V27 + 0,66 × (M28 − V27)
- *   2029: V29 = M29
+ *   V(ano) = V(ano anterior) + fração × (M(ano) − V(ano anterior))
  *
  * V é o valor distribuído ao câmpus e M, a referência da Matriz SETEC-CONIF no mesmo ano. Os percentuais incidem sobre a
- * diferença que ainda resta até a matriz daquele ano, e não sobre a diferença de 2026: por isso se diz "cumulativa".
+ * diferença que ainda resta até a matriz daquele ano, e não sobre a diferença de 2026: por isso o efeito é cumulativo. "95% do
+ * ano anterior mais 5% da matriz", como escreve a proposta de Venâncio Aires, é a mesma conta com fração de 5%.
  *
- * Esta regra NÃO conserva o total: cada câmpus anda em direção à própria matriz, sem repartir um orçamento fixo. A soma dos
- * câmpus só coincide com a soma da matriz no último ano. A tela mostra essa diferença em vez de escondê-la.
+ * A conta NÃO conserva o total: cada câmpus anda em direção à própria matriz, sem repartir um orçamento fixo. A tela mostra a
+ * diferença entre a soma dos câmpus e a soma da matriz em vez de escondê-la.
  */
 
 export interface EtapaTransicao {
@@ -19,11 +17,51 @@ export interface EtapaTransicao {
   fracao: number;
 }
 
-export const ETAPAS_DA_PROPOSTA: readonly EtapaTransicao[] = [
-  { ano: 2027, fracao: 0.33 },
-  { ano: 2028, fracao: 0.66 },
-  { ano: 2029, fracao: 1 },
+export interface PropostaDeTransicao {
+  id: string;
+  campus: string;
+  /** O título do documento, como está nele. */
+  documento: string;
+  etapas: readonly EtapaTransicao[];
+  /** A regra, em uma frase. */
+  regra: string;
+  /** O que a tela precisa avisar para a simulação não ser lida como mais do que é. */
+  ressalvas: readonly string[];
+}
+
+export const PROPOSTAS_DE_TRANSICAO: readonly PropostaDeTransicao[] = [
+  {
+    id: "sapucaia",
+    campus: "Câmpus Sapucaia do Sul",
+    documento: "Proposta de adoção da Matriz Orçamentária SETEC-CONIF para distribuição de orçamento entre Câmpus do IFSul",
+    etapas: [
+      { ano: 2027, fracao: 0.33 },
+      { ano: 2028, fracao: 0.66 },
+      { ano: 2029, fracao: 1 },
+    ],
+    regra: "Em 2027, incorpora 33% da diferença até a matriz; em 2028, 66% da diferença que restou; em 2029, adota a matriz inteira.",
+    ressalvas: ["O exemplo do documento usa R$ 4.057.568,49 como matriz de 2027 do Câmpus Sapucaia do Sul; a 5ª fase usada aqui traz R$ 3.665.124,96."],
+  },
+  {
+    id: "venancio-aires",
+    campus: "Câmpus Venâncio Aires",
+    documento: "Contribuição do Câmpus Venâncio Aires para a proposta de distribuição da matriz orçamentária, 2027-2030",
+    etapas: [
+      { ano: 2027, fracao: 0 },
+      { ano: 2028, fracao: 0.05 },
+      { ano: 2029, fracao: 0.1 },
+      { ano: 2030, fracao: 0.2 },
+    ],
+    regra: "Em 2027, mantém o orçamento de 2026; depois, incorpora 5%, 10% e 20% da diferença até a matriz, sobre o valor do ano anterior. Até 2030 fecha 31,6% da diferença, e a metodologia é reavaliada ao final.",
+    ressalvas: [
+      "As tabelas do documento usam uma matriz anterior (soma de R$ 40.883.731,04) e corrigem o orçamento de 2026 em 1,17%. Aqui vale a matriz de 2027 da 5ª fase, como o documento recomenda quando ela estivesse disponível, e o orçamento de 2026 fica sem correção. Por isso os valores diferem das tabelas do documento.",
+      "O modelo misto do documento (frota, prédios, estrutura agrícola) não tem peso nem fórmula: esta simulação considera só o valor anterior e a matriz.",
+      "O Câmpus São Leopoldo não consta das tabelas do documento; sem valor em 2026, aqui ele parte de zero.",
+    ],
+  },
 ];
+
+const ETAPAS_SAPUCAIA = PROPOSTAS_DE_TRANSICAO[0]!.etapas;
 
 export interface AnoDaTransicao {
   ano: number;
@@ -41,7 +79,7 @@ export interface AnoDaTransicao {
 }
 
 /** A trajetória de um câmpus. `matrizes` traz a referência de cada etapa, na mesma ordem. */
-export function transicaoDoCampus(baseInicial: number, matrizes: readonly number[], etapas: readonly EtapaTransicao[] = ETAPAS_DA_PROPOSTA): AnoDaTransicao[] {
+export function transicaoDoCampus(baseInicial: number, matrizes: readonly number[], etapas: readonly EtapaTransicao[] = ETAPAS_SAPUCAIA): AnoDaTransicao[] {
   let base = baseInicial;
   return etapas.map((etapa, i) => {
     const matriz = matrizes[i] ?? 0;

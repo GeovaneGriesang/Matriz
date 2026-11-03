@@ -22,7 +22,10 @@ interface Busca {
 
 const n = (v: unknown) => Number(v ?? 0);
 
-/** A proposta do Câmpus Sapucaia do Sul vale para o IFSul e parte de 2026: base informada de 2026, matriz da 5ª fase de 2027, projeção a partir do ano-base 2025. */
+/** De 2027 a 2030, o último ano das propostas. */
+const ANOS_DE_MATRIZ = 4;
+
+/** As propostas de câmpus valem para o IFSul e partem de 2026: base informada de 2026, matriz da 5ª fase de 2027, projeção a partir do ano-base 2025. */
 async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransicao[]> {
   const [matrizes, bases, linhas, taxas] = await Promise.all([
     prisma.distribuicaoCampus.findMany({
@@ -66,7 +69,7 @@ async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransica
     };
   });
   const retencao = retencaoObservada(ciclos, 2025);
-  const projecao = valorPorCampusNosAnos(ciclos, 2025, 3, {
+  const projecao = valorPorCampusNosAnos(ciclos, 2025, ANOS_DE_MATRIZ, {
     evasao: { presencial: taxas?.presencial ?? 0.15, ead: taxas?.ead ?? 0.1 },
     retencao: retencao.retencao,
   });
@@ -78,7 +81,7 @@ async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransica
       nome: m.unidade.nome,
       base: basePorId.get(m.unidadeId) ?? null,
       matriz2027: n(m.vlMatrFinal),
-      matrizesPelaProjecao: matrizesProjetadas(n(m.vlMatrFinal), projecao.get(m.unidadeId), 3),
+      matrizesPelaProjecao: matrizesProjetadas(n(m.vlMatrFinal), projecao.get(m.unidadeId), ANOS_DE_MATRIZ),
       temCiclos: projecao.has(m.unidadeId),
     }))
     .sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) || a.nome.localeCompare(b.nome, "pt-BR"));
@@ -103,16 +106,15 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         role="status"
         className="flex flex-col gap-1 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200"
       >
-        <span className="text-sm font-bold uppercase tracking-wide">Proposta do Câmpus Sapucaia do Sul: não é a regra do IFSul</span>
+        <span className="text-sm font-bold uppercase tracking-wide">Propostas de câmpus: nenhuma é a regra do IFSul</span>
         <span className="text-sm">
-          Esta tela simula o documento &quot;Proposta de adoção da Matriz Orçamentária SETEC-CONIF para distribuição de orçamento entre Câmpus do IFSul&quot;, do Câmpus Sapucaia do Sul.
-          Os valores abaixo são simulação dessa proposta, não o que cada câmpus vai receber.
+          Esta tela simula as propostas de distribuição apresentadas pelos câmpus Sapucaia do Sul e Venâncio Aires. Os valores abaixo são simulação de cada proposta, não o que cada câmpus vai
+          receber.
         </span>
       </div>
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: a proposta do Câmpus Sapucaia do Sul</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: as propostas dos câmpus</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        A proposta sai do que cada câmpus recebeu em 2026 e chega à distribuição pela matriz em três anos. Em 2027, o câmpus incorpora 33% da diferença até a matriz de 2027; em 2028, 66%
-        da diferença que restou até a matriz de 2028; em 2029, adota a matriz inteira. Vale tanto para quem ganha quanto para quem perde. Clique num câmpus para ver a conta.
+        Como cada proposta sai do que cada câmpus recebeu em 2026 em direção à matriz, ano a ano. Escolha a proposta, ou compare as duas. A regra vale tanto para quem ganha quanto para quem perde.
       </p>
     </div>
   );
