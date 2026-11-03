@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ehCampusDestaque } from "@/lib/destaque";
-import { ETAPAS_DA_PROPOSTA, transicaoDoCampus } from "@/lib/mdo/transicaoCumulativa";
+import { PROPOSTAS_DE_TRANSICAO, transicaoDoCampus, type PropostaDeTransicao } from "@/lib/mdo/transicaoCumulativa";
 
 export interface CampusDaTransicao {
   id: number;
@@ -10,13 +10,14 @@ export interface CampusDaTransicao {
   /** Valor informado de 2026; nulo se o câmpus não recebeu nada (câmpus novo). */
   base: number | null;
   matriz2027: number;
-  /** Matriz de 2027, 2028 e 2029 pela projeção dos cursos. */
+  /** Matriz de 2027 em diante pela projeção dos cursos, um valor por ano. */
   matrizesPelaProjecao: number[];
   /** Falso quando o câmpus não tem ciclos para projetar (recebe só o Piso Mínimo). */
   temCiclos: boolean;
 }
 
 type Cenario = "constante" | "projecao";
+type Visao = string; // o id de uma proposta, ou "comparar"
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const pct = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" });
@@ -25,55 +26,95 @@ const fracao = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractio
 const cor = (v: number) => (Math.abs(v) < 0.005 ? "text-neutral-500" : v > 0 ? "text-if-green" : "text-if-red dark:text-red-400");
 const th = "whitespace-nowrap px-2 py-1.5 text-right font-medium";
 const td = "whitespace-nowrap px-2 py-1 text-right tabular-nums";
+const borda = "border-l border-neutral-200 dark:border-neutral-800";
+
+const botao = (ativo: boolean) =>
+  `rounded px-3 py-1.5 font-medium ${ativo ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"}`;
+
+function trajetoria(c: CampusDaTransicao, proposta: PropostaDeTransicao, cenario: Cenario) {
+  const matrizes = cenario === "constante" ? proposta.etapas.map(() => c.matriz2027) : c.matrizesPelaProjecao;
+  return transicaoDoCampus(c.base ?? 0, matrizes, proposta.etapas);
+}
 
 export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
+  const [visao, setVisao] = useState<Visao>(PROPOSTAS_DE_TRANSICAO[0]!.id);
   const [cenario, setCenario] = useState<Cenario>("constante");
-  const [abertoId, setAbertoId] = useState<number | null>(campi.find((c) => ehCampusDestaque(c.nome))?.id ?? null);
-
-  const linhas = useMemo(
-    () =>
-      campi.map((c) => {
-        const matrizes = cenario === "constante" ? [c.matriz2027, c.matriz2027, c.matriz2027] : c.matrizesPelaProjecao;
-        const base = c.base ?? 0;
-        const anos = transicaoDoCampus(base, matrizes);
-        return { ...c, baseValor: base, anos, final: anos[anos.length - 1]!.valor };
-      }),
-    [campi, cenario],
-  );
-
-  const somaBase = linhas.reduce((s, l) => s + l.baseValor, 0);
-  const somas = ETAPAS_DA_PROPOSTA.map((_, i) => ({
-    matriz: linhas.reduce((s, l) => s + l.anos[i]!.matriz, 0),
-    valor: linhas.reduce((s, l) => s + l.anos[i]!.valor, 0),
-  }));
-  const aberto = linhas.find((l) => l.id === abertoId) ?? null;
+  const proposta = PROPOSTAS_DE_TRANSICAO.find((p) => p.id === visao) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Matriz de 2028 e 2029</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Proposta</span>
+        {PROPOSTAS_DE_TRANSICAO.map((p) => (
+          <button key={p.id} type="button" onClick={() => setVisao(p.id)} aria-pressed={visao === p.id} className={botao(visao === p.id)}>
+            {p.campus}
+          </button>
+        ))}
+        <button type="button" onClick={() => setVisao("comparar")} aria-pressed={visao === "comparar"} className={botao(visao === "comparar")}>
+          Comparar as duas
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Matriz dos anos seguintes</span>
         {(
           [
-            ["constante", "Igual à de 2027 (como no exemplo do documento)"],
+            ["constante", "Igual à de 2027"],
             ["projecao", "Pela projeção dos cursos de cada câmpus"],
           ] as const
         ).map(([valor, rotulo]) => (
-          <button
-            key={valor}
-            type="button"
-            onClick={() => setCenario(valor)}
-            aria-pressed={cenario === valor}
-            className={`rounded px-3 py-1.5 font-medium ${cenario === valor ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
-          >
+          <button key={valor} type="button" onClick={() => setCenario(valor)} aria-pressed={cenario === valor} className={botao(cenario === valor)}>
             {rotulo}
           </button>
         ))}
       </div>
       <p className="max-w-4xl text-sm text-neutral-600 dark:text-neutral-400">
+        A matriz de 2027 é a da 5ª fase da MDO, nas duas propostas.{" "}
         {cenario === "constante"
-          ? "A matriz de 2028 e 2029 fica igual à de 2027, sem inflação nem mudança de matrículas. Mostra só o efeito da regra de transição."
-          : "A matriz de cada câmpus acompanha o que os cursos dele rendem nos anos seguintes: as turmas em andamento até terminarem, com a evasão média do IFSul, e a reposição das turmas. O valor da matrícula fica o de hoje; o orçamento da rede e as matrículas dos outros institutos não são conhecidos. É uma estimativa, não a matriz oficial desses anos."}
+          ? "Nos anos seguintes ela fica igual à de 2027, sem inflação nem mudança de matrículas: mostra só o efeito da regra de transição."
+          : "Nos anos seguintes ela acompanha o que os cursos de cada câmpus rendem: as turmas em andamento até terminarem, com a evasão média do IFSul, e a reposição das turmas. O valor da matrícula fica o de hoje; o orçamento da rede e as matrículas dos outros institutos não são conhecidos. É uma estimativa, não a matriz oficial desses anos."}
       </p>
+
+      {proposta ? <TabelaDaProposta key={proposta.id} campi={campi} proposta={proposta} cenario={cenario} /> : <Comparacao campi={campi} cenario={cenario} />}
+    </div>
+  );
+}
+
+function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransicao[]; proposta: PropostaDeTransicao; cenario: Cenario }) {
+  const [abertoId, setAbertoId] = useState<number | null>(campi.find((c) => ehCampusDestaque(c.nome))?.id ?? null);
+  const etapas = proposta.etapas;
+  const ultimoAno = etapas[etapas.length - 1]!.ano;
+
+  const linhas = useMemo(
+    () =>
+      campi.map((c) => {
+        const anos = trajetoria(c, proposta, cenario);
+        return { ...c, baseValor: c.base ?? 0, anos, final: anos[anos.length - 1]!.valor };
+      }),
+    [campi, proposta, cenario],
+  );
+
+  const somaBase = linhas.reduce((s, l) => s + l.baseValor, 0);
+  const somas = etapas.map((_, i) => ({
+    matriz: linhas.reduce((s, l) => s + l.anos[i]!.matriz, 0),
+    valor: linhas.reduce((s, l) => s + l.anos[i]!.valor, 0),
+  }));
+  const somaFinal = somas[somas.length - 1]!.valor;
+  const aberto = linhas.find((l) => l.id === abertoId) ?? null;
+
+  return (
+    <>
+      <div className="flex max-w-4xl flex-col gap-1 text-sm text-neutral-700 dark:text-neutral-300">
+        <p>
+          <strong>Documento:</strong> &quot;{proposta.documento}&quot;, do {proposta.campus}.
+        </p>
+        <p>{proposta.regra}</p>
+        {proposta.ressalvas.map((r) => (
+          <p key={r} className="text-amber-800 dark:text-amber-300">
+            {r}
+          </p>
+        ))}
+      </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="min-w-full text-xs">
@@ -81,18 +122,18 @@ export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
             <tr>
               <th className="px-2 py-1 text-left font-medium" rowSpan={2}>Câmpus</th>
               <th className={th} rowSpan={2}>Base 2026</th>
-              {ETAPAS_DA_PROPOSTA.map((e) => (
-                <th key={e.ano} className="border-l border-neutral-200 px-2 py-1 text-center font-medium dark:border-neutral-800" colSpan={3}>
-                  {e.ano} ({e.fracao === 1 ? "100% da matriz" : `incorpora ${fracao.format(e.fracao)} da diferença`})
+              {etapas.map((e) => (
+                <th key={e.ano} className={`${borda} px-2 py-1 text-center font-medium`} colSpan={3}>
+                  {e.ano} ({e.fracao === 0 ? "mantém o valor de 2026" : e.fracao === 1 ? "100% da matriz" : `incorpora ${fracao.format(e.fracao)} da diferença`})
                 </th>
               ))}
-              <th className="border-l border-neutral-200 px-2 py-1 text-center font-medium dark:border-neutral-800" colSpan={2}>2029 contra 2026</th>
+              <th className={`${borda} px-2 py-1 text-center font-medium`} colSpan={2}>{ultimoAno} contra 2026</th>
             </tr>
             <tr>
-              {ETAPAS_DA_PROPOSTA.map((e) => (
-                <FragmentoCabecalho key={e.ano} />
+              {etapas.map((e) => (
+                <CabecalhoDoAno key={e.ano} />
               ))}
-              <th className={th}>R$</th>
+              <th className={`${th} ${borda}`}>R$</th>
               <th className={th}>%</th>
             </tr>
           </thead>
@@ -108,9 +149,9 @@ export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
                   </td>
                   <td className={td}>{l.base === null ? "sem base" : reais.format(l.base)}</td>
                   {l.anos.map((a) => (
-                    <FragmentoAno key={a.ano} matriz={a.matriz} valor={a.valor} variacao={a.variacao} />
+                    <CelulasDoAno key={a.ano} matriz={a.matriz} valor={a.valor} variacao={a.variacao} />
                   ))}
-                  <td className={`${td} ${cor(dif)}`}>{reais.format(dif)}</td>
+                  <td className={`${td} ${borda} ${cor(dif)}`}>{reais.format(dif)}</td>
                   <td className={`${td} ${cor(dif)}`}>{l.baseValor > 0 ? pct.format(dif / l.baseValor) : ""}</td>
                 </tr>
               );
@@ -120,40 +161,47 @@ export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
             <tr>
               <td className="px-2 py-1 text-left">Soma dos câmpus</td>
               <td className={td}>{reais.format(somaBase)}</td>
-              {somas.map((s, i) => (
-                <FragmentoAno key={i} matriz={s.matriz} valor={s.valor} variacao={(i === 0 ? somaBase : somas[i - 1]!.valor) > 0 ? s.valor / (i === 0 ? somaBase : somas[i - 1]!.valor) - 1 : null} />
-              ))}
-              <td className={`${td} ${cor(somas[2]!.valor - somaBase)}`}>{reais.format(somas[2]!.valor - somaBase)}</td>
-              <td className={`${td} ${cor(somas[2]!.valor - somaBase)}`}>{somaBase > 0 ? pct.format(somas[2]!.valor / somaBase - 1) : ""}</td>
+              {somas.map((s, i) => {
+                const anterior = i === 0 ? somaBase : somas[i - 1]!.valor;
+                return <CelulasDoAno key={i} matriz={s.matriz} valor={s.valor} variacao={anterior > 0 ? s.valor / anterior - 1 : null} />;
+              })}
+              <td className={`${td} ${borda} ${cor(somaFinal - somaBase)}`}>{reais.format(somaFinal - somaBase)}</td>
+              <td className={`${td} ${cor(somaFinal - somaBase)}`}>{somaBase > 0 ? pct.format(somaFinal / somaBase - 1) : ""}</td>
             </tr>
             <tr className="font-normal">
               <td className="px-2 py-1 text-left">Soma da proposta menos a soma da matriz</td>
               <td className={td}></td>
               {somas.map((s, i) => (
-                <td key={i} className={`${td} ${cor(s.valor - s.matriz)} border-l border-neutral-200 dark:border-neutral-800`} colSpan={3}>
+                <td key={i} className={`${td} ${borda} ${cor(s.valor - s.matriz)}`} colSpan={3}>
                   {reais.format(s.valor - s.matriz)}
                 </td>
               ))}
-              <td className={td} colSpan={2}></td>
+              <td className={`${td} ${borda}`} colSpan={2}></td>
             </tr>
           </tfoot>
         </table>
       </div>
       <p className="max-w-4xl text-xs text-neutral-500 dark:text-neutral-400">
-        A regra não reparte um total fixo: cada câmpus anda em direção à própria matriz. Por isso, em 2027 e 2028, a soma dos câmpus não é igual à soma da matriz, e a última linha mostra a diferença. O
-        documento não diz de onde sairia ou para onde iria essa diferença. Só entra o Funcionamento dos câmpus: Reitoria, Qualidade e Eficiência e Assistência Estudantil ficam de fora.
+        A conta não reparte um total fixo: cada câmpus anda em direção à própria matriz. Por isso a soma dos câmpus pode não ser igual à soma da matriz, e a última linha mostra a diferença. Só entra o
+        Funcionamento dos câmpus: Reitoria, Qualidade e Eficiência e Assistência Estudantil ficam de fora. Clique num câmpus para ver a conta.
       </p>
 
       {aberto && (
         <div className="flex flex-col gap-2 rounded-lg border border-if-green/40 bg-if-green/5 p-4 text-sm">
-          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">A conta de {aberto.nome}</h3>
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
+            A conta de {aberto.nome}, na proposta do {proposta.campus}
+          </h3>
           {aberto.base === null && <p className="text-amber-800 dark:text-amber-300">Este câmpus não tem valor em 2026: a transição parte de zero.</p>}
           {!aberto.temCiclos && cenario === "projecao" && <p className="text-amber-800 dark:text-amber-300">Sem ciclos para projetar: a matriz fica igual à de 2027.</p>}
           <ul className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
             {aberto.anos.map((a) =>
-              a.fracao === 1 ? (
+              a.fracao === 0 ? (
                 <li key={a.ano}>
-                  <strong>{a.ano}:</strong> adota a matriz do ano inteira = {reais.format(a.valor)}
+                  <strong>{a.ano}:</strong> mantém o valor de 2026 = <strong>{reais.format(a.valor)}</strong>
+                </li>
+              ) : a.fracao === 1 ? (
+                <li key={a.ano}>
+                  <strong>{a.ano}:</strong> adota a matriz do ano inteira = <strong>{reais.format(a.valor)}</strong>
                 </li>
               ) : (
                 <li key={a.ano}>
@@ -165,26 +213,116 @@ export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
           </ul>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-function FragmentoCabecalho() {
+/** As duas propostas lado a lado, nos anos que existem em cada uma. */
+function Comparacao({ campi, cenario }: { campi: CampusDaTransicao[]; cenario: Cenario }) {
+  const [sapucaia, venancio] = [PROPOSTAS_DE_TRANSICAO[0]!, PROPOSTAS_DE_TRANSICAO[1]!];
+  const anos = [2027, 2028, 2029, 2030];
+  const linhas = campi.map((c) => {
+    const a = new Map(trajetoria(c, sapucaia, cenario).map((t) => [t.ano, t.valor]));
+    const b = new Map(trajetoria(c, venancio, cenario).map((t) => [t.ano, t.valor]));
+    return { ...c, a, b };
+  });
+  const soma = (f: (l: (typeof linhas)[number]) => number) => linhas.reduce((s, l) => s + f(l), 0);
+  // Depois de 2029, a proposta do Sapucaia segue na matriz do ano.
+  const matrizDe = (c: CampusDaTransicao, ano: number) => (cenario === "constante" ? c.matriz2027 : (c.matrizesPelaProjecao[ano - 2027] ?? c.matriz2027));
+  const valorA = (l: (typeof linhas)[number], ano: number) => l.a.get(ano) ?? matrizDe(l, ano);
+
   return (
     <>
-      <th className={`${th} border-l border-neutral-200 dark:border-neutral-800`}>Matriz</th>
+      <p className="max-w-4xl text-sm text-neutral-700 dark:text-neutral-300">
+        As duas partem do mesmo valor de 2026 e da mesma matriz. A do {sapucaia.campus} termina em 2029, e em 2030 fica na matriz do ano; a do {venancio.campus} vai até 2030, sem chegar à matriz.
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <table className="min-w-full text-xs">
+          <thead className="bg-neutral-50 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+            <tr>
+              <th className="px-2 py-1 text-left font-medium" rowSpan={2}>Câmpus</th>
+              <th className={th} rowSpan={2}>Base 2026</th>
+              {anos.map((ano) => (
+                <th key={ano} className={`${borda} px-2 py-1 text-center font-medium`} colSpan={2}>{ano}</th>
+              ))}
+              <th className={`${borda} px-2 py-1 text-center font-medium`} colSpan={2}>2030 contra 2026</th>
+            </tr>
+            <tr>
+              {anos.map((ano) => (
+                <ParDeCabecalho key={ano} />
+              ))}
+              <ParDeCabecalho />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {linhas.map((l) => {
+              const base = l.base ?? 0;
+              const fimA = valorA(l, 2030);
+              const fimB = l.b.get(2030)!;
+              return (
+                <tr key={l.id} className={ehCampusDestaque(l.nome) ? "bg-if-green/5" : undefined}>
+                  <td className="whitespace-nowrap px-2 py-1 text-left font-medium">{l.nome}</td>
+                  <td className={td}>{l.base === null ? "sem base" : reais.format(l.base)}</td>
+                  {anos.map((ano) => (
+                    <ParDeValores key={ano} a={valorA(l, ano)} b={l.b.get(ano)!} />
+                  ))}
+                  <td className={`${td} ${borda} ${cor(fimA - base)}`}>{base > 0 ? pct.format(fimA / base - 1) : ""}</td>
+                  <td className={`${td} ${cor(fimB - base)}`}>{base > 0 ? pct.format(fimB / base - 1) : ""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="bg-neutral-50 font-medium dark:bg-neutral-900">
+            <tr>
+              <td className="px-2 py-1 text-left">Soma dos câmpus</td>
+              <td className={td}>{reais.format(soma((l) => l.base ?? 0))}</td>
+              {anos.map((ano) => (
+                <ParDeValores key={ano} a={soma((l) => valorA(l, ano))} b={soma((l) => l.b.get(ano)!)} />
+              ))}
+              <td className={`${td} ${borda}`}></td>
+              <td className={td}></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function CabecalhoDoAno() {
+  return (
+    <>
+      <th className={`${th} ${borda}`}>Matriz</th>
       <th className={th}>Proposta</th>
       <th className={th}>Var.</th>
     </>
   );
 }
 
-function FragmentoAno({ matriz, valor, variacao }: { matriz: number; valor: number; variacao: number | null }) {
+function CelulasDoAno({ matriz, valor, variacao }: { matriz: number; valor: number; variacao: number | null }) {
   return (
     <>
-      <td className={`${td} border-l border-neutral-200 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400`}>{reais.format(matriz)}</td>
+      <td className={`${td} ${borda} text-neutral-500 dark:text-neutral-400`}>{reais.format(matriz)}</td>
       <td className={`${td} font-medium`}>{reais.format(valor)}</td>
       <td className={`${td} ${variacao === null ? "" : cor(variacao * 100)}`}>{variacao === null ? "" : pct.format(variacao)}</td>
+    </>
+  );
+}
+
+function ParDeCabecalho() {
+  return (
+    <>
+      <th className={`${th} ${borda}`}>Sapucaia</th>
+      <th className={th}>V. Aires</th>
+    </>
+  );
+}
+
+function ParDeValores({ a, b }: { a: number; b: number }) {
+  return (
+    <>
+      <td className={`${td} ${borda}`}>{reais.format(a)}</td>
+      <td className={td}>{reais.format(b)}</td>
     </>
   );
 }

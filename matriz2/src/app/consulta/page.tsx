@@ -1,5 +1,3 @@
-import { AvisoValorProposto } from "@/components/AvisoValorProposto";
-import { ehValorProposto } from "@/lib/valorProposto";
 import { destaqueNaFrente, ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
@@ -250,7 +248,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     select: { unidadeId: true, valorRecebido: true, observacao: true },
   });
   const recebidoPorId = new Map(recebidos.map((r) => [r.unidadeId, Number(r.valorRecebido)]));
-  const recebidoEhProposta = recebidos.some((r) => ehValorProposto(r.observacao));
 
   const vlMatrFinalPorId = new Map(
     distribuicaoCampus.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
@@ -364,7 +361,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             </>
           )}
         </p>
-        {recebidoEhProposta && <AvisoValorProposto ano={ano} />}
         {semSextaFaseInstituicao && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
