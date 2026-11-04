@@ -4,6 +4,8 @@
  * do curso, que se repete a cada turma. Cursos de mesmo nome são agrupados; o período e a modalidade dizem qual é a turma.
  */
 
+import { turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
+
 export interface TurmaDeEntrada {
   id: number;
   codigoCiclo?: string;
@@ -21,6 +23,9 @@ export interface TurmaComparada {
   rotulo: string;
   valorA: number | null;
   valorB: number | null;
+  /** A turma já tinha terminado antes do ano-base daquele ciclo e rende só pelos alunos retidos. */
+  retidaA: boolean;
+  retidaB: boolean;
 }
 
 export interface CursoComparado {
@@ -39,7 +44,7 @@ function rotuloDaTurma(t: TurmaDeEntrada): string {
   return partes.filter(Boolean).join(", ");
 }
 
-export function compararCursosEntreCiclos(cursosA: TurmaDeEntrada[], cursosB: TurmaDeEntrada[]): CursoComparado[] {
+export function compararCursosEntreCiclos(cursosA: TurmaDeEntrada[], cursosB: TurmaDeEntrada[], anoA: number, anoB: number): CursoComparado[] {
   const chaveDe = (t: TurmaDeEntrada) => t.codigoCiclo ?? `id-${t.id}`;
   const porChave = new Map<string, { curso: string; inicio: string | null; base: TurmaDeEntrada; valorA: number | null; valorB: number | null }>();
   for (const [lista, lado] of [[cursosA, "valorA"], [cursosB, "valorB"]] as const) {
@@ -53,7 +58,14 @@ export function compararCursosEntreCiclos(cursosA: TurmaDeEntrada[], cursosB: Tu
   const porCurso = new Map<string, CursoComparado & { inicios: Map<string, string> }>();
   for (const [chave, t] of porChave) {
     const grupo = porCurso.get(t.curso) ?? { curso: t.curso, turmas: [], totalA: 0, totalB: 0, inicios: new Map<string, string>() };
-    grupo.turmas.push({ chave, rotulo: rotuloDaTurma(t.base), valorA: t.valorA, valorB: t.valorB });
+    grupo.turmas.push({
+      chave,
+      rotulo: rotuloDaTurma(t.base),
+      valorA: t.valorA,
+      valorB: t.valorB,
+      retidaA: t.valorA !== null && turmaEncerradaAntesDoAnoBase(t.base.termino, anoA),
+      retidaB: t.valorB !== null && turmaEncerradaAntesDoAnoBase(t.base.termino, anoB),
+    });
     grupo.totalA += t.valorA ?? 0;
     grupo.totalB += t.valorB ?? 0;
     grupo.inicios.set(chave, t.inicio ?? "9999");

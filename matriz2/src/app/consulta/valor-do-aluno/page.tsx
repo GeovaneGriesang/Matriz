@@ -1,6 +1,8 @@
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
+import { Fragment } from "react";
+import { NOME_DAS_TURMAS_RETIDAS, explicacaoDasTurmasRetidas, turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -153,6 +155,8 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     /** Matrícula Total publicada pela MDO para o ciclo. */
     mtPublicada: number;
     analise: AnaliseAluno | null;
+    /** Terminou antes do ano-base: rende só pelos alunos retidos e fica no grupo à parte. */
+    retida: boolean;
   }
   const porCurso = new Map<string, { rotulo: string; ciclos: CicloAnalisado[] }>();
   for (const c of ciclos) {
@@ -185,6 +189,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       valorMatricula: c.valorAluno ? n(c.valorAluno) : n(c.matriculaTotal) > 0 ? n(c.valorReais) / n(c.matriculaTotal) : 0,
       mtPublicada: n(c.matriculaTotal),
       analise,
+      retida: turmaEncerradaAntesDoAnoBase(c.termino, ano),
     };
     const atual = porCurso.get(chave) ?? { rotulo: `${c.curso}${oferta}${c.repasse === "PRESENCIAL" ? "" : `, ${c.repasse.replace("_", " ")}`}`, ciclos: [] };
     atual.ciclos.push(item);
@@ -203,8 +208,9 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       return {
         chave,
         rotulo: g.rotulo,
-        // Em ordem de início: a turma mais antiga primeiro (sem data, no fim).
-        ciclos: g.ciclos.sort((a, b) => (a.inicio?.getTime() ?? Infinity) - (b.inicio?.getTime() ?? Infinity)),
+        // As turmas do ano-base primeiro, e as encerradas depois; em cada grupo, por início (sem data, no fim).
+        ciclos: g.ciclos.sort((a, b) => Number(a.retida) - Number(b.retida) || (a.inicio?.getTime() ?? Infinity) - (b.inicio?.getTime() ?? Infinity)),
+        soRetidas: g.ciclos.every((t) => t.retida),
         alunos,
         valor,
         valorPorAluno: alunos > 0 ? valor / alunos : 0,
@@ -212,7 +218,10 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       };
     })
     .filter((c) => c.valor > 0 || c.alunos > 0)
-    .sort((a, b) => b.valor - a.valor);
+    .sort((a, b) => Number(a.soRetidas) - Number(b.soRetidas) || b.valor - a.valor);
+  const turmasRetidas = cursos.flatMap((c) => c.ciclos.filter((t) => t.retida));
+  const valorRetidas = turmasRetidas.reduce((s, t) => s + t.valor, 0);
+  const primeiroSoRetidas = cursos.find((c) => c.soRetidas)?.chave;
 
   const [distCampus] = await Promise.all([
     prisma.distribuicaoCampus.findUnique({ where: { ano_unidadeId: { ano, unidadeId: campus.id } }, select: { vlMatrFinal: true, elegivelPiso: true } }),
@@ -265,6 +274,13 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
         </p>
       )}
 
+      {turmasRetidas.length > 0 && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <strong>{NOME_DAS_TURMAS_RETIDAS}:</strong> {inteiro.format(turmasRetidas.length)} {turmasRetidas.length === 1 ? "turma" : "turmas"}, {reais0.format(valorRetidas)}
+          {totalCampus > 0 ? ` (${dec2.format((valorRetidas / totalCampus) * 100)}% do câmpus)` : ""}. {explicacaoDasTurmasRetidas(ano)} Dentro de cada curso, essas turmas aparecem separadas das demais.
+        </p>
+      )}
+
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
@@ -279,8 +295,15 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
             </tr>
           </thead>
           {cursos.map((c) => (
+            <Fragment key={c.chave}>
+            {c.chave === primeiroSoRetidas && (
+              <tbody>
+                <tr className="border-t-2 border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+                  <td colSpan={7} className="px-3 py-2 text-xs font-semibold text-amber-900 dark:text-amber-200">Cursos só com turmas já encerradas e alunos retidos</td>
+                </tr>
+              </tbody>
+            )}
             <LinhaDeCurso
-              key={c.chave}
               rotulo={c.rotulo}
               colunas={7}
               detalhe={
@@ -304,10 +327,16 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                          {c.ciclos.map((t) => {
+                          {c.ciclos.map((t, i) => {
                             const d = t.analise?.decomposicao;
                             return (
-                              <tr key={t.id}>
+                              <Fragment key={t.id}>
+                              {t.retida && !c.ciclos[i - 1]?.retida && (
+                                <tr className="bg-amber-50 dark:bg-amber-950">
+                                  <td colSpan={9} className="px-2 py-1 font-semibold text-amber-900 dark:text-amber-200">{NOME_DAS_TURMAS_RETIDAS}</td>
+                                </tr>
+                              )}
+                              <tr>
                                 <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300">
                                   {dataCurta(t.inicio)} a {dataCurta(t.termino)}
                                 </td>
@@ -327,6 +356,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                                   {t.alunos > 0 && totalCampus > 0 ? `${pct3.format((t.valor / t.alunos / totalCampus) * 100)}%` : "-"}
                                 </td>
                               </tr>
+                              </Fragment>
                             );
                           })}
                         </tbody>
@@ -361,6 +391,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                 </>
               }
             />
+            </Fragment>
           ))}
         </table>
       </div>
@@ -395,7 +426,7 @@ const dia = (d: Date | null) => dataCurta(d);
  * A conta de cada turma, fator a fator, com os números reais: a mesma fórmula da legenda, preenchida. A primeira turma vem aberta
  * como exemplo; as outras se abrem com um clique (o padrão de "ver detalhes" em tabela, sem empurrar a página).
  */
-function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; inicio: Date | null; termino: Date | null; alunos: number; valor: number; valorMatricula: number; mtPublicada: number; analise: AnaliseAluno | null }[]; totalCampus: number; ano: number }) {
+function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; inicio: Date | null; termino: Date | null; alunos: number; valor: number; valorMatricula: number; mtPublicada: number; analise: AnaliseAluno | null; retida: boolean }[]; totalCampus: number; ano: number }) {
   const comConta = turmas.filter((t) => t.analise && t.alunos > 0);
   if (comConta.length === 0) return null;
   return (
@@ -408,7 +439,7 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; i
         return (
           <details key={t.id} open={i === 0} className="rounded-md border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
             <summary className="cursor-pointer text-neutral-800 dark:text-neutral-200">
-              Turma de {dia(t.inicio)} a {dia(t.termino)}: um aluno vale <strong>{reais.format(porAluno)}</strong>
+              Turma de {dia(t.inicio)} a {dia(t.termino)}{t.retida ? " (encerrada, alunos retidos)" : ""}: um aluno vale <strong>{reais.format(porAluno)}</strong>
             </summary>
             <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-neutral-700 dark:text-neutral-300">
               <li>

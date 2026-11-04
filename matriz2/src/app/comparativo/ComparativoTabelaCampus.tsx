@@ -8,6 +8,7 @@ import { carregarCursosComparativoCampusAction } from "@/server/actions/comparat
 import { explicarVariacaoCampusAction, type ResultadoExplicacao } from "@/server/actions/explicarVariacao";
 import type { CursoLinha } from "@/app/consulta/ConsultaTabelaCursos";
 import { compararCursosEntreCiclos, type CursoComparado } from "@/lib/cursosEntreCiclos";
+import { explicacaoDasTurmasRetidas } from "@/lib/turmasRetidas";
 import { VARIACOES, totalDaVariacao, variacaoDoCampus, type ValoresDoCampus, type Variacao } from "@/lib/variacoesComparativo";
 
 export interface LinhaComparativoCampus {
@@ -267,7 +268,7 @@ function CursosDoCampus({ unidadeId, anoA, anoB }: { unidadeId: number; anoA: nu
     );
   }
 
-  return <CursosLadoALado anoA={anoA} anoB={anoB} cursos={compararCursosEntreCiclos(estado.cursosA, estado.cursosB)} />;
+  return <CursosLadoALado anoA={anoA} anoB={anoB} cursos={compararCursosEntreCiclos(estado.cursosA, estado.cursosB, anoA, anoB)} />;
 }
 
 /** Os dois ciclos na mesma tabela: uma linha por turma, agrupadas por curso, e em branco o ano em que a turma não contribuiu. */
@@ -277,6 +278,9 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
   const emAmbos = turmas.find((t) => t.valorA !== null && t.valorB !== null);
   const totalA = cursos.reduce((a, c) => a + c.totalA, 0);
   const totalB = cursos.reduce((a, c) => a + c.totalB, 0);
+  const retidasA = turmas.reduce((a, t) => a + (t.retidaA ? (t.valorA ?? 0) : 0), 0);
+  const retidasB = turmas.reduce((a, t) => a + (t.retidaB ? (t.valorB ?? 0) : 0), 0);
+  const selo = <span className="block text-[10px] font-medium text-amber-700 dark:text-amber-400">alunos retidos</span>;
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-neutral-600 dark:text-neutral-400">
@@ -289,6 +293,11 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
           </>
         )}
       </p>
+      {(retidasA > 0 || retidasB > 0) && (
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          <strong>Marca "alunos retidos":</strong> a turma já tinha terminado antes do ano-base daquele ciclo. {explicacaoDasTurmasRetidas(anoB)} A mesma turma pode ser regular num ano e retida no outro.
+        </p>
+      )}
       <div className="tabela-rolavel isolate max-h-[70vh] rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-xs text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
@@ -313,8 +322,8 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
               {c.turmas.map((t) => (
                 <tr key={t.chave} className="border-t border-neutral-100 text-neutral-700 dark:border-neutral-900 dark:text-neutral-300">
                   <td className="py-1.5 pl-7 pr-3 text-xs">{t.rotulo}</td>
-                  <td className={celula}>{t.valorA !== null ? reaisCurso.format(t.valorA) : ""}</td>
-                  <td className={celula}>{t.valorB !== null ? reaisCurso.format(t.valorB) : ""}</td>
+                  <td className={celula}>{t.valorA !== null ? reaisCurso.format(t.valorA) : ""}{t.retidaA && selo}</td>
+                  <td className={celula}>{t.valorB !== null ? reaisCurso.format(t.valorB) : ""}{t.retidaB && selo}</td>
                   <td className={celula}>{t.valorA !== null && t.valorB !== null ? <Sinal v={t.valorB - t.valorA} /> : ""}</td>
                 </tr>
               ))}
@@ -327,6 +336,14 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
               <td className={celula}>{reaisCurso.format(totalB)}</td>
               <td className={celula}><Sinal v={totalB - totalA} /></td>
             </tr>
+            {(retidasA > 0 || retidasB > 0) && (
+              <tr className="text-xs font-normal">
+                <td className="px-3 py-1.5">Dessa soma, turmas já encerradas, com alunos retidos</td>
+                <td className={celula}>{reaisCurso.format(retidasA)}</td>
+                <td className={celula}>{reaisCurso.format(retidasB)}</td>
+                <td className={celula}><Sinal v={retidasB - retidasA} /></td>
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>

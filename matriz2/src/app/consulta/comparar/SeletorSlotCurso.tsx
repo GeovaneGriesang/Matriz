@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ehInstituicaoDestaque } from "@/lib/destaque";
+import { NOME_DAS_TURMAS_RETIDAS } from "@/lib/turmasRetidas";
 
 export interface CampusOpcao {
   id: number;
@@ -21,9 +22,23 @@ export interface CursoOpcao {
   /** Modalidade (técnico integrado, Proeja, superior...) e tipo do curso (bacharelado, licenciatura...). */
   modalidade: string;
   tipoCurso: string;
+  /** A turma terminou antes do ano-base e rende só pelos alunos retidos: fica num grupo à parte da lista. */
+  retida: boolean;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function opcaoDoCurso(c: CursoOpcao) {
+  return (
+    <option key={c.id} value={c.id}>
+      {c.curso}
+      {c.modalidade ? ` [${c.modalidade}${c.modalidade === "Superior" && c.tipoCurso ? `, ${c.tipoCurso}` : ""}]` : ""}
+      {c.peso !== null ? `, peso ${c.peso.toString().replace(".", ",")}` : ""}
+      {c.repasse !== "PRESENCIAL" ? `, ${c.repasse.replace("_", " ")}` : ""}
+      {mesAno(c.inicio)} ({reais.format(c.valor)})
+    </option>
+  );
+}
 
 function mesAno(iso: string | null): string {
   if (!iso) return "";
@@ -144,15 +159,8 @@ export function SeletorSlotCurso({
           style={{ height: "var(--lista-altura, 11rem)", fontSize: "var(--lista-fonte, 14px)" }}
           aria-label={`Curso do slot ${indice}`}
         >
-          {cursosVisiveis.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.curso}
-              {c.modalidade ? ` [${c.modalidade}${c.modalidade === "Superior" && c.tipoCurso ? `, ${c.tipoCurso}` : ""}]` : ""}
-              {c.peso !== null ? `, peso ${c.peso.toString().replace(".", ",")}` : ""}
-              {c.repasse !== "PRESENCIAL" ? `, ${c.repasse.replace("_", " ")}` : ""}
-              {mesAno(c.inicio)} ({reais.format(c.valor)})
-            </option>
-          ))}
+          {cursosVisiveis.filter((c) => !c.retida).map(opcaoDoCurso)}
+          {cursosVisiveis.some((c) => c.retida) && <optgroup label={NOME_DAS_TURMAS_RETIDAS}>{cursosVisiveis.filter((c) => c.retida).map(opcaoDoCurso)}</optgroup>}
         </select>
         {cursosVisiveis.length === 0 && <span>Nenhum curso com esse nome.</span>}
         {aviso && <span className="text-amber-700 dark:text-amber-400">{aviso}</span>}

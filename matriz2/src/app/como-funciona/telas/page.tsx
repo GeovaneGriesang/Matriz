@@ -5,6 +5,8 @@ import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { ITEM_INICIO, TODOS_OS_ITENS, gruposVisiveis } from "@/lib/menu";
 import { podeVerValores } from "@/lib/permissoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { carregarDadosDosExemplos } from "@/server/queries/exemplosDoGuia";
+import { montarExemplos } from "@/lib/exemplosDoGuia";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,7 @@ const PERFIS: { papel: Papel; nome: string; acesso: string }[] = [
   { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Também altera Valores recebidos e Correção manual, muda perfis e vê a Auditoria." },
 ];
 
-function Ficha({ href, rotulo, ficha }: { href: string; rotulo: string; ficha: FichaDaTela }) {
+function Ficha({ href, rotulo, ficha, exemplo }: { href: string; rotulo: string; ficha: FichaDaTela; exemplo?: string }) {
   const linha = "grid gap-x-4 gap-y-0.5 sm:grid-cols-[7rem_1fr]";
   const titulo = "text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 sm:pt-0.5";
   return (
@@ -69,6 +71,12 @@ function Ficha({ href, rotulo, ficha }: { href: string; rotulo: string; ficha: F
             <dd>{ficha.usar}</dd>
           </div>
         )}
+        {exemplo && (
+          <div className={linha}>
+            <dt className={titulo}>Exemplo</dt>
+            <dd className="rounded-md bg-if-green/10 px-2 py-1 text-neutral-800 dark:text-neutral-200">{exemplo}</dd>
+          </div>
+        )}
         {ficha.atencao && (
           <div className={linha}>
             <dt className={`${titulo} text-amber-800 dark:text-amber-300`}>Atenção</dt>
@@ -100,6 +108,7 @@ export default async function GuiaDasTelasPage() {
   const perguntas = PERGUNTAS_DO_GUIA.filter((p) => visiveis.has(p.href));
   const perfis = PERFIS.slice(0, PERFIS.findIndex((p) => p.papel === usuario.papel) + 1);
   const administracao = podeVerValores(usuario.papel) ? TELAS_DE_ADMINISTRACAO.filter((t) => !t.somenteSuperAdmin || usuario.papel === "SUPER_ADMIN") : [];
+  const exemplos = montarExemplos(await carregarDadosDosExemplos());
   const nomeDaTela = (href: string) => TODOS_OS_ITENS.find((i) => i.href === href)?.rotulo ?? href;
 
   return (
@@ -107,7 +116,7 @@ export default async function GuiaDasTelasPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">Guia das telas</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          O que cada tela responde, como usar e que cuidado ter ao ler os números. As fichas seguem a ordem do menu e explicam as telas do seu perfil. Para entender o cálculo, veja{" "}
+          O que cada tela responde, como usar, um exemplo com números reais e que cuidado ter ao ler os números. As fichas seguem a ordem do menu e explicam as telas do seu perfil. Para entender o cálculo, veja{" "}
           <Link href="/como-funciona" className={PROSE_LINK}>
             Como a matriz é calculada
           </Link>
@@ -176,14 +185,14 @@ export default async function GuiaDasTelasPage() {
       </section>
 
       <Grupo titulo="Início">
-        <Ficha href="/" rotulo={ITEM_INICIO.rotulo} ficha={FICHAS_DAS_TELAS["/"]!} />
+        <Ficha href="/" rotulo={ITEM_INICIO.rotulo} ficha={FICHAS_DAS_TELAS["/"]!} exemplo={exemplos["/"]} />
       </Grupo>
 
       {grupos.map((g) => (
         <Grupo key={g.id} titulo={g.rotulo} pergunta={g.pergunta}>
           {g.itens.map((i) => {
             const ficha = FICHAS_DAS_TELAS[i.href];
-            return ficha ? <Ficha key={i.href} href={i.href} rotulo={i.rotulo} ficha={ficha} /> : null;
+            return ficha ? <Ficha key={i.href} href={i.href} rotulo={i.rotulo} ficha={ficha} exemplo={exemplos[i.href]} /> : null;
           })}
         </Grupo>
       ))}
@@ -191,7 +200,7 @@ export default async function GuiaDasTelasPage() {
       {administracao.length > 0 && (
         <Grupo titulo="Administração" pergunta="Quem mantém os valores e os acessos?">
           {administracao.map((t) => (
-            <Ficha key={t.href} href={t.href} rotulo={t.rotulo} ficha={t.ficha} />
+            <Ficha key={t.href} href={t.href} rotulo={t.rotulo} ficha={t.ficha} exemplo={exemplos[t.href]} />
           ))}
         </Grupo>
       )}

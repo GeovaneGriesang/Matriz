@@ -18,6 +18,7 @@ import {
   type Premissas,
   type TurmaProjetada,
 } from "@/lib/mdo/projecaoCiclos";
+import { comCursoDoCatalogo, resolverCursosDoCatalogo, type CursoDoCatalogo } from "@/lib/cenarioProjecao";
 
 /** Um ciclo como vem do servidor: datas em texto, porque Date não atravessa para o componente de cliente. */
 export interface CicloSerial {
@@ -72,6 +73,8 @@ interface NovoCursoUI {
   unidadeId: number;
   /** Posição no catálogo; -1 enquanto a pessoa não escolheu o curso. */
   catalogoIdx: number;
+  /** O curso pelo nome: é o que vale ao carregar, porque a posição muda quando a tabela de pesos é recarregada. */
+  cursoDoCatalogo?: CursoDoCatalogo;
   busca: string;
   anoInicio: number;
   mes: number;
@@ -195,7 +198,7 @@ export function ProjecaoCiclos({
     if (typeof c.evEad === "number") setEvEad(Math.min(80, Math.max(0, c.evEad)));
     setReporExistentes(c.reporExistentes !== false);
     setEncerramentos(c.encerramentos && typeof c.encerramentos === "object" ? c.encerramentos : {});
-    setNovos((Array.isArray(c.novos) ? c.novos : []).filter((n) => campi.some((x) => x.id === n.unidadeId)));
+    setNovos(resolverCursosDoCatalogo((Array.isArray(c.novos) ? c.novos : []).filter((n) => campi.some((x) => x.id === n.unidadeId)), catalogo));
     if (c.campusId !== undefined) setCampusId(c.campusId !== null && campi.some((x) => x.id === c.campusId) ? c.campusId : null);
   }
 
@@ -214,18 +217,18 @@ export function ProjecaoCiclos({
   useEffect(() => {
     if (!restaurado) return;
     try {
-      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId };
+      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId };
       window.localStorage.setItem(chaveSalva, JSON.stringify(s));
     } catch {
       /* idem */
     }
-  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId]);
+  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId, catalogo]);
 
   // As simulações salvas no servidor (com nome, para compartilhar) usam o mesmo estado.
   useConfiguracaoSalvavel({
     chave: `simulador/projecao:${instituicao}:${anoCiclo}`,
     rotulo: "esta simulação",
-    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId }) satisfies CenarioSalvo,
+    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId }) satisfies CenarioSalvo,
     aplicar: aplicarCenario,
   });
 
