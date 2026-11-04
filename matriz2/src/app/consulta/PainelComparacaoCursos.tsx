@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useState, type ReactNode } from "react";
 import { PROSE_LINK } from "@/lib/layoutWidths";
 import { diferencaParaPrincipal, diferencasContra } from "@/lib/compararCursos";
+import { explicacaoDasTurmasRetidas, turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 import type { CursoLinha } from "./ConsultaTabelaCursos";
 
 export interface CursoComparavel extends CursoLinha {
@@ -63,7 +64,10 @@ export function PainelComparacaoCursos({
   onRemover,
   onLimpar,
   principalId,
+  ano,
 }: {
+  /** O ciclo comparado: com ele, a turma já encerrada antes do ano-base ganha um aviso na coluna. */
+  ano?: number;
   cursos: CursoComparavel[];
   onRemover?: (id: number) => void;
   onLimpar?: () => void;
@@ -79,6 +83,7 @@ export function PainelComparacaoCursos({
       return n;
     });
   const outros = principal ? cursos.filter((c) => c.id !== principal.id) : [];
+  const retida = (c: CursoComparavel) => ano !== undefined && turmaEncerradaAntesDoAnoBase(c.termino, ano);
 
   const linhas: Linha[] = [
     {
@@ -255,6 +260,11 @@ export function PainelComparacaoCursos({
           {abertas.size === linhas.length ? "Fechar todas as explicações" : "Explicar todos os itens"}
         </button>
       </p>
+      {ano !== undefined && cursos.some(retida) && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <strong>A comparação inclui turma já encerrada, com alunos retidos.</strong> {explicacaoDasTurmasRetidas(ano)} Por isso, o valor dela não é comparável com o de uma turma em andamento.
+        </p>
+      )}
       <div className="tabela-rolavel">
         <table className="w-full text-sm">
           <thead className="bg-white/60 text-left dark:bg-neutral-950/40">
@@ -273,6 +283,7 @@ export function PainelComparacaoCursos({
                             {c.instituicaoSigla}, {c.campus}
                           </span>
                         )}
+                        {retida(c) && <span className="block text-xs font-medium text-amber-700 dark:text-amber-400">turma encerrada, alunos retidos</span>}
                       </span>
                       {onRemover && (
                         <button type="button" onClick={() => onRemover(c.id)} aria-label={`Remover ${c.curso} da comparação`} className="text-neutral-400 hover:text-if-red">

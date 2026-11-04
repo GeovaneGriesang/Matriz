@@ -28,13 +28,13 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/consulta/comparar": {
     responde: "O mesmo curso rende igual em outro câmpus?",
     mostra: "Cursos de qualquer instituição da rede, lado a lado: duração do ciclo, carga horária, peso, matrícula equalizada e valor recebido.",
-    usar: "Escolha instituição, câmpus e curso. O primeiro é o principal, e a tela mostra o que ele ganha ou perde em relação aos outros.",
+    usar: "Escolha instituição, câmpus e curso. O primeiro é o principal, e a tela mostra o que ele ganha ou perde em relação aos outros. Na lista, as turmas já encerradas, com alunos retidos, ficam num grupo à parte.",
     atencao: "Peso, carga horária e duração não são comparáveis entre modalidades diferentes. A tela avisa quando isso ocorre.",
   },
   "/comparativo": {
     responde: "O que mudou de 2026 para 2027?",
     mostra: "Quanto cada instituição recebeu em cada ciclo e a variação, com abertura por câmpus e por curso. Para os câmpus do IFSul, mostra o valor calculado e o informado.",
-    usar: "Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil). Clique no + para abrir os câmpus e depois os cursos, que aparecem turma a turma, com os dois anos lado a lado. Uma célula em branco indica que a turma não contribuiu naquele ano.",
+    usar: "Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil). Clique no + para abrir os câmpus e depois os cursos, que aparecem turma a turma, com os dois anos lado a lado. Uma célula em branco indica que a turma não contribuiu naquele ano, e a marca de alunos retidos indica turma já encerrada antes do ano-base.",
     atencao: "A cor compara cada instituição com a variação da rede, e não com zero. Quem cresce menos que a rede perde fatia, mesmo com o valor em reais subindo.",
   },
   "/conferencia/quarta-fase": {
@@ -46,13 +46,13 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/consulta/valor-do-aluno": {
     responde: "Quanto um aluno de cada curso rende no orçamento do câmpus?",
     mostra: "O valor de um aluno em reais e em percentual do orçamento do câmpus, com a conta: peso × ICQA × (CH ÷ 800) × dias × valor de uma matrícula.",
-    usar: 'Clique num curso para abrir as turmas e a conta de cada uma. Use a coluna "Ano cheio" para comparar cursos sem a distorção de turmas que começaram ou terminaram no meio do ano-base.',
+    usar: 'Clique num curso para abrir as turmas e a conta de cada uma. Use a coluna "Ano cheio" para comparar cursos sem a distorção de turmas que começaram ou terminaram no meio do ano-base. As turmas já encerradas, com alunos retidos, aparecem separadas.',
     atencao: "No câmpus que está no Piso Mínimo, cada aluno vale menos para o orçamento real do que a tabela indica, porque o piso já cobre o que a matrícula não cobre.",
   },
   "/consulta": {
     responde: "Quanto cada um recebe, e de quais cursos vem esse valor?",
     mostra: 'O bloco Funcionamento de cada instituição, câmpus e curso. "Gerado pela matriz" é o valor homologado na MDO. No IFSul, aparece também o "Recebido", informado pela gestão.',
-    usar: "Escolha o ciclo e a instituição. Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha, e clique de novo para fechar. Aparecem só as turmas com alunos no ano-base (2025, no ciclo 2027).",
+    usar: "Escolha o ciclo e a instituição. Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha, e clique de novo para fechar. Aparecem só as turmas que contribuem para o ano. As turmas que terminaram antes do ano-base, mas ainda têm alunos retidos, ficam num grupo à parte.",
     atencao: "O Funcionamento é cerca de 80% da matriz. Qualidade e Eficiência, Reitorias e Assistência Estudantil não entram aqui, porque não são valores por câmpus.",
   },
   "/consulta/curso": {

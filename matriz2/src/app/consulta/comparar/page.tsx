@@ -12,6 +12,7 @@ import { AjustesDaSelecao } from "./AjustesDaSelecao";
 import { FiltroComparacao } from "./FiltroComparacao";
 import { FiltroDeModalidade } from "./FiltroDeModalidade";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
+import { turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 
 export const dynamic = "force-dynamic";
 
@@ -245,7 +246,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
             instituicaoEscolhida={nomePorCampus.get(slot.unidadeId)?.instituicaoSigla ?? ""}
             campusEscolhido={slot.unidadeId}
             campusTravado={slot.travado}
-            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio, modalidade: c.modalidadeRotulo ?? "", tipoCurso: c.tipoCursoLegivel ?? "" }))}
+            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio, modalidade: c.modalidadeRotulo ?? "", tipoCurso: c.tipoCursoLegivel ?? "", retida: turmaEncerradaAntesDoAnoBase(c.termino, ano) }))}
             cursoEscolhido={slot.cursoEscolhido?.id ?? null}
             paramsAtuais={paramsAtuais}
             podeRemover={quantosSlots > 2 && slot.indice === quantosSlots}
@@ -279,7 +280,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
       )}
 
       {comparaveis.length >= 2 ? (
-        <PainelComparacaoCursos cursos={comparaveis} principalId={principal?.id} />
+        <PainelComparacaoCursos cursos={comparaveis} principalId={principal?.id} ano={ano} />
       ) : (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {modalidade || ensino

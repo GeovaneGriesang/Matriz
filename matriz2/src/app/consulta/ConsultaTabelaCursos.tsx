@@ -7,6 +7,7 @@ import { PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelComparacaoCursos } from "./PainelComparacaoCursos";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { legendaConsultaCursos } from "@/components/legendas";
+import { NOME_DAS_TURMAS_RETIDAS, explicacaoDasTurmasRetidas, turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 
 export interface CursoLinha {
   id: number;
@@ -35,6 +36,9 @@ export interface CursoLinha {
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// As datas do ciclo são dias do calendário à meia-noite UTC: no fuso do navegador apareceriam como o dia anterior.
+const data = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+const periodo = (c: CursoLinha) => (c.inicio && c.termino ? `${data.format(new Date(c.inicio))} a ${data.format(new Date(c.termino))}` : "sem data");
 
 /**
  * Client Component só para hospedar `colunas` (com funções `valor`/`render`):
@@ -65,15 +69,13 @@ export function ConsultaTabelaCursos({
   }
 
   const comparando = cursos.filter((c) => selecionados.has(c.id));
+  const retidas = cursos.filter((c) => turmaEncerradaAntesDoAnoBase(c.termino, ano));
+  const regulares = cursos.filter((c) => !turmaEncerradaAntesDoAnoBase(c.termino, ano));
+  const somaRegulares = regulares.reduce((s, c) => s + c.valor, 0);
+  const somaRetidas = retidas.reduce((s, c) => s + c.valor, 0);
+  const exemploRetida = retidas[0];
 
-  return (
-    <div className="flex flex-col gap-4">
-      <LegendaDaTabela itens={legendaConsultaCursos(cursos[0])} exemplo={cursos[0]?.curso} />
-      <TabelaOrdenavel
-        linhas={cursos}
-        chaveLinha={(c) => c.id}
-        colunas={
-          [
+  const colunas = [
             {
               chave: "comparar",
               rotulo: "Comparar",
@@ -90,6 +92,7 @@ export function ConsultaTabelaCursos({
               ),
             },
             { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
+            { chave: "turma", rotulo: "Turma", valor: (c) => c.inicio, render: (c) => <span className="whitespace-nowrap text-xs">{periodo(c)}</span> },
             { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "não informado" },
             {
               chave: "repasse",
@@ -125,12 +128,36 @@ export function ConsultaTabelaCursos({
               valor: (c) => c.perda,
               render: (c) => <span className="text-if-red dark:text-red-400">{reais.format(c.perda)}</span>,
             },
-          ] satisfies ColunaOrdenavel<CursoLinha>[]
-        }
-      />
+          ] satisfies ColunaOrdenavel<CursoLinha>[];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <LegendaDaTabela itens={legendaConsultaCursos(cursos[0])} exemplo={cursos[0]?.curso} />
+      {regulares.length > 0 && <TabelaOrdenavel linhas={regulares} chaveLinha={(c) => c.id} colunas={colunas} />}
+
+      {retidas.length > 0 && (
+        <div className="flex flex-col gap-2 border-t-2 border-amber-300 px-4 pt-3 dark:border-amber-800">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {NOME_DAS_TURMAS_RETIDAS}: {retidas.length} {retidas.length === 1 ? "turma" : "turmas"}, {reais.format(somaRetidas)}
+          </h3>
+          <p className="text-xs font-normal text-neutral-600 dark:text-neutral-400">
+            {explicacaoDasTurmasRetidas(ano)}
+            {exemploRetida && (
+              <>
+                {" "}
+                Exemplo: a turma de {exemploRetida.curso} ({periodo(exemploRetida)}) ainda gera {reais.format(exemploRetida.valor)}.
+              </>
+            )}
+          </p>
+          <p className="text-xs font-normal text-neutral-600 dark:text-neutral-400">
+            A soma fecha com a matriz: {reais.format(somaRegulares)} das turmas do ano-base + {reais.format(somaRetidas)} destas = {reais.format(somaRegulares + somaRetidas)}.
+          </p>
+          <TabelaOrdenavel linhas={retidas} chaveLinha={(c) => c.id} colunas={colunas} />
+        </div>
+      )}
 
       {comparando.length >= 2 && (
-        <PainelComparacaoCursos cursos={comparando} onRemover={alternar} onLimpar={() => setSelecionados(new Set())} />
+        <PainelComparacaoCursos cursos={comparando} onRemover={alternar} onLimpar={() => setSelecionados(new Set())} ano={ano} />
       )}
 
       <p className="text-sm text-neutral-500 dark:text-neutral-400">
