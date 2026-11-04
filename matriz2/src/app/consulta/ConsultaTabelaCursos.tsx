@@ -93,8 +93,8 @@ export function ConsultaTabelaCursos({
               ),
             },
             { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
-            { chave: "ciclo", rotulo: "Ciclo", valor: (c) => c.codigoCiclo ?? null, render: (c) => <span className="whitespace-nowrap text-xs tabular-nums">{c.codigoCiclo ?? "-"}</span> },
-            { chave: "turma", rotulo: "Turma", valor: (c) => c.inicio, render: (c) => <span className="whitespace-nowrap text-xs">{periodo(c)}</span> },
+            { chave: "ciclo", rotulo: "Código da turma", valor: (c) => c.codigoCiclo ?? null, render: (c) => <span className="whitespace-nowrap text-xs tabular-nums">{c.codigoCiclo ?? "-"}</span> },
+            { chave: "turma", rotulo: "Período", valor: (c) => c.inicio, render: (c) => <span className="whitespace-nowrap text-xs">{periodo(c)}</span> },
             { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "não informado" },
             {
               chave: "repasse",

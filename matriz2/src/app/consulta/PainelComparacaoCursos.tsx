@@ -87,7 +87,7 @@ export function PainelComparacaoCursos({
   const retida = (c: CursoComparavel) => ano !== undefined && turmaEncerradaAntesDoAnoBase(c.termino, ano);
 
   const linhas: Linha[] = [
-    { rotulo: "Código do ciclo", ajuda: <>O número da turma na MDO, o mesmo em todos os anos. É ele que diz qual turma está sendo comparada quando o curso tem várias com o mesmo nome.</>, valor: (c) => c.codigoCiclo || "não informado" },
+    { rotulo: "Código da turma", ajuda: <>O número da turma na MDO, o mesmo em todos os anos. É ele que diz qual turma está sendo comparada quando o curso tem várias com o mesmo nome.</>, valor: (c) => c.codigoCiclo || "não informado" },
     {
       rotulo: "Modalidade",
       ajuda: <>O tipo de oferta: técnico integrado ao ensino médio, técnico subsequente ou concomitante, Proeja, superior (bacharelado, licenciatura, tecnologia), pós-graduação ou FIC. Define a duração e a carga horária esperadas e, com os laboratórios do catálogo, o peso do curso.</>,
@@ -97,10 +97,10 @@ export function PainelComparacaoCursos({
     { rotulo: "Forma de ensino", ajuda: <>Presencial ou a distância (EAD). Muda o valor de uma matrícula: o EAD vale 25% do presencial, o EAD MOOC 8% e o EAD com financiamento próprio 80% (Portaria MEC 243/2026).</>, valor: (c) => (c.ensino === "ead" ? "A distância (EAD)" : c.ensino === "presencial" ? "Presencial" : "não informada") },
     { rotulo: "Nível", ajuda: <>Como a PNP classifica o curso: educação básica (técnico, Proeja, FIC), graduação ou pós-graduação.</>, valor: (c) => c.nivel ?? "não informado" },
     { rotulo: "Repasse", ajuda: <>A categoria em que a MDO paga o ciclo: PRESENCIAL, EAD, EAD MOOC ou EAD FP (financiamento próprio). Cada uma tem o seu valor por matrícula, uma fração do presencial.</>, valor: (c) => c.repasse.replace("_", " ") },
-    { rotulo: "Início do ciclo", ajuda: <>O primeiro dia da turma, como está na PNP. Ciclo é uma turma: os alunos que entraram juntos no mesmo curso.</>, valor: (c) => formatarData(c.inicio) },
-    { rotulo: "Término do ciclo", ajuda: <>O último dia previsto da turma. Depois dele, quem ainda está matriculado é aluno retido: conta metade, e só até o prazo de jubilamento.</>, valor: (c) => formatarData(c.termino) },
+    { rotulo: "Início da turma", ajuda: <>O primeiro dia da turma, como está na PNP. Turma são os alunos que entraram juntos no mesmo curso; a MDO a chama de ciclo.</>, valor: (c) => formatarData(c.inicio) },
+    { rotulo: "Término da turma", ajuda: <>O último dia previsto da turma. Depois dele, quem ainda está matriculado é aluno retido: conta metade, e só até o prazo de jubilamento.</>, valor: (c) => formatarData(c.termino) },
     {
-      rotulo: "Dias do ciclo",
+      rotulo: "Dias da turma",
       ajuda: <>Término menos início. Entra na conta como divisor: o ciclo rende só os dias que caem no ano-base da PNP, na proporção dias no ano ÷ dias do ciclo.</>,
       conta: (c) => {
         const d = diasEntre(c.inicio, c.termino);

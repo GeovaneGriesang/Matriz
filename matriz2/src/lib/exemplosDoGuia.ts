@@ -45,7 +45,7 @@ export function montarExemplos(d: DadosDosExemplos): Record<string, string> {
   const anoBase = ano - 2;
   const e: Record<string, string> = {};
 
-  if (turmas) e["/"] = `O ciclo ${ano} tem ${int(turmas.quantidade)} turmas de ${VA} que geram valor, com alunos do ano-base ${anoBase}.`;
+  if (turmas) e["/"] = `A matriz de ${ano} tem ${int(turmas.quantidade)} turmas de ${VA} que geram valor, com alunos do ano-base ${anoBase}.`;
   if (rede) {
     e["/como-funciona"] = `Em ${ano}, a referência da Rede é ${reais(rede.referencia)}. Saem ${reais(rede.assistencia)} de Assistência Estudantil, e o bloco Funcionamento fica com ${reais(rede.funcionamento)}.`;
   }

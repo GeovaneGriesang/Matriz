@@ -21,6 +21,8 @@ export interface InstituicaoConferida {
   diferenca: number | null;
   /** A conta dos blocos IEA, RAP e IAPL, aberta pelo + da linha. */
   blocos: BlocoDaConferencia[];
+  /** O Funcionamento de cada câmpus: o gerado pela matriz e o refeito pela matrícula. */
+  funcionamento: BlocoDaConferencia | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,36 +30,40 @@ const percentual = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, ma
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** A conta de uma instituição, no quadro logo abaixo da linha dela. */
+function BlocoDaTabela({ b }: { b: BlocoDaConferencia }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{b.titulo}</h3>
+      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <table className="w-full text-sm" data-sem-ferramentas>
+          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+            <tr>
+              <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Componente</th>
+              <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Oficial (MDO)</th>
+              <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Recalculado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {b.linhas.map((x) => (
+              <tr key={x.rotulo} className="border-t border-neutral-200 dark:border-neutral-800">
+                <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{x.rotulo}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{x.oficial}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{x.recalculado ?? "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {b.aviso && <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">{b.aviso}</p>}
+    </div>
+  );
+}
+
 function DetalheDaInstituicao({ l }: { l: InstituicaoConferida }) {
   return (
     <div className="flex flex-col gap-4 rounded-md border-l-4 border-if-green bg-white p-4 font-normal dark:bg-neutral-950">
       {l.blocos.map((b) => (
-        <div key={b.titulo} className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{b.titulo}</h3>
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <table className="w-full text-sm" data-sem-ferramentas>
-              <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-                <tr>
-                  <th className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400">Componente</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Oficial (MDO)</th>
-                  <th className="px-4 py-2 text-right font-medium text-neutral-600 dark:text-neutral-400">Recalculado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {b.linhas.map((x) => (
-                  <tr key={x.rotulo} className="border-t border-neutral-200 dark:border-neutral-800">
-                    <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">{x.rotulo}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{x.oficial}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{x.recalculado ?? "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {b.aviso && (
-            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">{b.aviso}</p>
-          )}
-        </div>
+        <BlocoDaTabela key={b.titulo} b={b} />
       ))}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-if-green/40 bg-if-green/5 p-3 text-sm">
         <span className="font-medium text-neutral-900 dark:text-neutral-100">Total Qualidade e Eficiência (IEA + RAP + IAPL)</span>
@@ -71,6 +77,7 @@ function DetalheDaInstituicao({ l }: { l: InstituicaoConferida }) {
           )}
         </span>
       </div>
+      {l.funcionamento && <BlocoDaTabela b={l.funcionamento} />}
     </div>
   );
 }

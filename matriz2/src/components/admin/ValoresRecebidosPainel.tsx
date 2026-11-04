@@ -162,7 +162,7 @@ export function ValoresRecebidosPainel({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
         <div className="flex gap-1">
           {anos.map((a) => (
             <Link

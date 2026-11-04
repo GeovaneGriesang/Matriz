@@ -95,7 +95,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
         <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo orçamentário</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
         <div className="flex flex-wrap gap-1">
           {(anosDaInstituicao.includes(ano) ? anosDaInstituicao : [...anosDaInstituicao, ano].sort((a, b) => b - a)).map((a) => (
             <Link
@@ -341,7 +341,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                               <tr>
                                 <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300">
                                   {dataCurta(t.inicio)} a {dataCurta(t.termino)}
-                                  <span className="block text-[10px] text-neutral-500">ciclo {t.codigoCiclo}</span>
+                                  <span className="block text-[10px] text-neutral-500">código {t.codigoCiclo}</span>
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums">{inteiro.format(t.alunos)}</td>
                                 <td className="px-2 py-1.5 text-right tabular-nums">
@@ -442,7 +442,7 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; c
         return (
           <details key={t.id} open={i === 0} className="rounded-md border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
             <summary className="text-neutral-800 dark:text-neutral-200">
-              Ciclo {t.codigoCiclo}, turma de {dia(t.inicio)} a {dia(t.termino)}{t.retida ? " (encerrada, alunos retidos)" : ""}: um aluno vale <strong>{reais.format(porAluno)}</strong>
+              Turma {t.codigoCiclo}, de {dia(t.inicio)} a {dia(t.termino)}{t.retida ? " (encerrada, alunos retidos)" : ""}: um aluno vale <strong>{reais.format(porAluno)}</strong>
             </summary>
             <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-neutral-700 dark:text-neutral-300">
               <li>

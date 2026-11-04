@@ -60,7 +60,7 @@ export function DadosImportadosTabela({ fontes }: { fontes: FonteLinha[] }) {
         [
           {
             chave: "ciclo",
-            rotulo: "Ciclo",
+            rotulo: "Ano da matriz",
             alinhamento: "right",
             valor: (f) => f.cicloOrcamento,
             render: (f) => <span className="font-medium">{f.cicloOrcamento}</span>,

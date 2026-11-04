@@ -34,7 +34,7 @@ function TurmasDoCurso({ c }: { c: CursoLinha }) {
       <table className="w-full text-xs" data-sem-ferramentas>
         <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900">
           <tr>
-            <th className="px-3 py-1.5 font-medium">Ciclo e período</th>
+            <th className="px-3 py-1.5 font-medium">Turma e período</th>
             {c.turmas.some((t) => t.campus) && <th className="px-3 py-1.5 font-medium">Câmpus</th>}
             <th className="px-3 py-1.5 text-right font-medium">Recebido</th>
             <th className="px-3 py-1.5 text-right font-medium">Perda</th>
@@ -87,7 +87,7 @@ export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
           { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "-" },
           {
             chave: "ciclos",
-            rotulo: "Ciclos",
+            rotulo: "Turmas",
             alinhamento: "right",
             valor: (c) => c.ciclos,
             render: (c) => <span className="text-neutral-600 dark:text-neutral-400">{inteiro.format(c.ciclos)}</span>,

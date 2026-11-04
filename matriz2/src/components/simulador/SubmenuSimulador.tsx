@@ -32,7 +32,7 @@ export const ABAS_UM_CURSO: Aba[] = [
 
 const GRUPOS: { rotulo: string; abas: Aba[] }[] = [
   { rotulo: "Onde o câmpus pode ganhar", abas: ABAS_ONDE_GANHAR },
-  { rotulo: "Abrir ou mudar um curso", abas: ABAS_UM_CURSO },
+  { rotulo: "Quanto vale um curso", abas: ABAS_UM_CURSO },
   { rotulo: "Cenários, anos à frente", abas: [{ href: "/simulador/projecao", rotulo: "Cenários, anos à frente", descricao: "" }] },
 ];
 

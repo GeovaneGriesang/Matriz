@@ -40,7 +40,7 @@ const data = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 const dia = (iso: string | null) => (iso ? data.format(new Date(iso)) : "sem data");
 
 function rotuloDaTurma(t: TurmaDeEntrada): string {
-  const partes = [t.codigoCiclo ? `Ciclo ${t.codigoCiclo}` : null, t.modalidadeRotulo, t.repasse !== "PRESENCIAL" ? t.repasse.replace("_", " ") : null, `${dia(t.inicio)} a ${dia(t.termino)}`];
+  const partes = [t.codigoCiclo ? `Turma ${t.codigoCiclo}` : null, t.modalidadeRotulo, t.repasse !== "PRESENCIAL" ? t.repasse.replace("_", " ") : null, `${dia(t.inicio)} a ${dia(t.termino)}`];
   return partes.filter(Boolean).join(", ");
 }
 

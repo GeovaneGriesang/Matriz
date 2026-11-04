@@ -166,8 +166,8 @@ export function SeletorSlotCurso({
       </label>
 
       <div className="flex flex-col gap-1 text-xs text-neutral-500">
-        3. Curso e ciclo ({cursos.length} {cursos.length === 1 ? "opção" : "opções"})
-        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="digite o nome ou o código do ciclo" className={classeSelect} aria-label={`Filtrar os cursos do slot ${indice}`} />
+        3. Curso e turma ({cursos.length} {cursos.length === 1 ? "opção" : "opções"})
+        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="digite o nome ou o código da turma" className={classeSelect} aria-label={`Filtrar os cursos do slot ${indice}`} />
         <div
           ref={lista}
           role="group"

@@ -64,7 +64,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   const anosComCiclo = (await prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } })).map((a) => a.ano);
   const seletorDeAno = (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
       <div className="flex gap-1">
         {anosComCiclo.map((a) => (
           <Link
@@ -94,7 +94,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         <h1 className="text-2xl font-semibold">Comparar cursos entre câmpus</h1>
         <p className="mt-3 text-neutral-600 dark:text-neutral-400">
           Esta tela depende da 6ª fase da MDO, que ainda não foi carregada para {ano}.
-          {anosComCiclo.length > 0 ? " Escolha um dos ciclos que têm dado:" : " Nenhum ciclo tem a 6ª fase carregada."}
+          {anosComCiclo.length > 0 ? " Escolha um dos anos que têm dado:" : " Nenhum ano tem a 6ª fase carregada."}
         </p>
         <div className="mt-4">{seletorDeAno}</div>
       </main>
@@ -229,7 +229,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
           outros.
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Aparecem só as turmas com valor em {ano}, ou seja, com alunos contados no ano-base {ano - 2}. Cada uma traz o <strong>código do ciclo</strong> e o período, porque o mesmo curso costuma ter várias turmas no câmpus.
+          Aparecem só as turmas com valor em {ano}, ou seja, com alunos contados no ano-base {ano - 2}. Cada uma traz o <strong>código</strong> e o período, porque o mesmo curso costuma ter várias turmas no câmpus.
           {principal && <> Exemplo: {principal.curso}, {rotuloDoCiclo(principal)}, gera {reais.format(principal.valor)} em {ano}.</>}
         </p>
       </div>

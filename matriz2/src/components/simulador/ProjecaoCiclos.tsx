@@ -448,7 +448,7 @@ export function ProjecaoCiclos({
   const quantosParados = Object.keys(encerramentos).filter((k) => campusId === null || k.startsWith(`${campusId}|`)).length;
 
   const textoParaOChat = [
-    `Cenário de ${nomeDoRecorte}, ciclos orçamentários ${anoCiclo} a ${anoCiclo + anos - 1}.`,
+    `Cenário de ${nomeDoRecorte}, matrizes de ${anoCiclo} a ${anoCiclo + anos - 1}.`,
     `Evasão anual: ${decimal.format(evPresencial)}% presencial e ${decimal.format(evEad)}% a distância. Repor as turmas dos cursos existentes: ${reporExistentes ? "sim" : "não"}. Cursos que deixam de ser ofertados: ${quantosParados}. Cursos novos: ${novosDoRecorte.length}.`,
     ...linhas.map(
       (l, k) =>
@@ -477,7 +477,7 @@ export function ProjecaoCiclos({
             className={campo}
           />
           <span className="text-xs text-neutral-500">
-            Ciclos orçamentários de {anoCiclo} a {anoCiclo + anos - 1}. De 1 a {MAX_ANOS}.{" "}
+            Matrizes de {anoCiclo} a {anoCiclo + anos - 1}. De 1 a {MAX_ANOS}.{" "}
             <button
               type="button"
               className="font-medium text-if-green underline"
@@ -565,7 +565,7 @@ export function ProjecaoCiclos({
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
               <tr>
-                <th className="px-3 py-2">Ciclo orçamentário</th>
+                <th className="px-3 py-2">Ano da matriz</th>
                 <th className="px-3 py-2">Dado da PNP de</th>
                 <th className="px-3 py-2 text-right">Alunos que a MDO conta</th>
                 <th className="px-3 py-2 text-right">Já matriculados</th>
@@ -609,9 +609,9 @@ export function ProjecaoCiclos({
           </table>
         </div>
         <p className="text-xs text-neutral-500">
-          Valores em reais de hoje, com o valor da matrícula de cada ciclo como está no ciclo {anoCiclo}. {primeiro > 0 ? "" : ""}
+          Valores em reais de hoje, com o valor da matrícula de cada turma como está na matriz de {anoCiclo}. {primeiro > 0 ? "" : ""}
           Os anos que você digita nos cursos novos e nas paradas são anos reais do curso (quando a turma entra); a matriz de cada ano usa os dados de dois anos antes, por isso a
-          primeira coluna é o ciclo orçamentário (o ano real mais dois).
+          primeira coluna é o ano da matriz (o ano real mais dois).
         </p>
       </section>
 
@@ -657,7 +657,7 @@ export function ProjecaoCiclos({
               <tr>
                 <th className="px-3 py-2">Curso</th>
                 {campusId === null && <th className="px-3 py-2">Câmpus</th>}
-                <th className="px-3 py-2 text-right">Ciclos</th>
+                <th className="px-3 py-2 text-right">Turmas</th>
                 <th className="px-3 py-2 text-right">Alunos hoje</th>
                 <th className="px-3 py-2 text-right">Termina em</th>
                 <th className="px-3 py-2 text-right">Sem turmas novas a partir de</th>
@@ -727,7 +727,7 @@ export function ProjecaoCiclos({
           </button>
         )}
         <p className="text-xs text-neutral-500">
-          O + de um curso abre as turmas somadas nele, com o código do ciclo e o período. As colunas de anos mostram só quem já está matriculado (até seis anos); o efeito de parar um curso aparece na tabela do cenário, na coluna Reposição e em Sobre manter tudo.
+          O + de um curso abre as turmas somadas nele, com o código e o período. As colunas de anos mostram só quem já está matriculado (até seis anos); o efeito de parar um curso aparece na tabela do cenário, na coluna Reposição e em Sobre manter tudo.
           "Atrasado" quer dizer que todos os ciclos do curso já passaram do término.
         </p>
       </section>
@@ -892,7 +892,7 @@ export function ProjecaoCiclos({
         <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-neutral-100">Como este simulador funciona</summary>
         <div className="mt-3 flex flex-col gap-2">
           <p>
-            <strong>Ponto de partida.</strong> Cada ciclo de curso do ciclo orçamentário {anoCiclo} de {instituicao}, com os alunos que a MDO contou (matrículas de {anoBase0}), as datas de
+            <strong>Ponto de partida.</strong> Cada turma da matriz de {anoCiclo} de {instituicao}, com os alunos que a MDO contou (matrículas de {anoBase0}), as datas de
             início e término, a carga horária, o peso e o valor da matrícula do ciclo. O primeiro ano da tabela é exatamente o valor de hoje.
           </p>
           <p>

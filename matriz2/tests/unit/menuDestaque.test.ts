@@ -34,22 +34,27 @@ describe("menu", () => {
     for (const g of GRUPOS_MENU) for (const i of g.itens) expect(i.descricao.length).toBeGreaterThan(20);
   });
 
-  it("o simulador do integrado de 3 ou 4 anos é aba de Abrir ou mudar um curso, no grupo Onde melhorar", () => {
-    const melhorar = GRUPOS_MENU.find((g) => g.id === "melhorar")!;
+  it("o simulador do integrado de 3 ou 4 anos é aba de Quanto vale um curso, no grupo E se...?", () => {
+    const melhorar = GRUPOS_MENU.find((g) => g.id === "e-se")!;
     expect(melhorar.itens.some((i) => i.abas?.includes("/simulador/curso"))).toBe(true);
   });
 
-  it("o perfil padrão não vê o grupo Dados e conferência; o admin vê; a distribuição aparece para todos os perfis", async () => {
+  it("as três perguntas têm duas telas cada; o perfil padrão não vê as telas técnicas de Mais; a distribuição aparece para todos os perfis", async () => {
     const { gruposVisiveis } = await import("@/lib/menu");
     const ids = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).map((g) => g.id);
     const itens = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).flatMap((g) => g.itens.map((i) => i.href));
-    expect(ids("PADRAO")).toEqual(["entender", "melhorar", "como-funciona"]);
-    expect(ids("ADMIN")).toEqual(["entender", "melhorar", "dados", "como-funciona"]);
+    const principais = ["recebemos", "confiar", "e-se", "mais", "como-funciona"];
+    expect(ids("PADRAO")).toEqual(principais);
+    expect(ids("ADMIN")).toEqual(principais);
+    for (const id of ["recebemos", "confiar", "e-se"]) expect(GRUPOS_MENU.find((g) => g.id === id)!.itens).toHaveLength(2);
+    expect(itens("PADRAO")).not.toContain("/evasao");
+    expect(itens("ADMIN")).toContain("/evasao");
+    expect(itens("PADRAO")).toContain("/situacao-dos-dados");
     for (const papel of ["PADRAO", "ADMIN", "SUPER_ADMIN"] as const) expect(itens(papel)).toContain("/simulador/distribuicao");
   });
 
   it("marca o item de endereço mais longo, não o prefixo", () => {
-    // "/simulador/curso" e "/simulador/novo-curso" são abas de "Abrir ou mudar um curso".
+    // "/simulador/curso" e "/simulador/novo-curso" são abas de "Quanto vale um curso".
     expect(itemAtivo("/simulador/curso")?.href).toBe("/consulta/curso");
     expect(itemAtivo("/simulador/novo-curso")?.href).toBe("/consulta/curso");
     expect(itemAtivo("/consulta/curso")?.href).toBe("/consulta/curso");

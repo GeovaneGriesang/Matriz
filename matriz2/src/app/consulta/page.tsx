@@ -8,7 +8,6 @@ import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
 import { CICLO_QUE_CONTRIBUI, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
-import { carregarTaxasFuncionamento, calcularFuncionamentoCampus } from "@/server/queries/funcionamentoCampus";
 import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 
@@ -50,7 +49,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-semibold">Consulta</h1>
         <p className="mt-3 text-neutral-600 dark:text-neutral-400">
           Ainda não há dados carregados. Rode <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">npm run carregar -- 2027</code>{" "}
-          para trazer o ciclo 2027 das exportações da MDO.
+          para trazer a matriz de 2027 das exportações da MDO.
         </p>
       </main>
     );
@@ -185,7 +184,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
 
         {semSextaFase && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
+            A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
             detalhamento por curso nem perda por evasão. Os valores abaixo vêm da 5ª fase (Funcionamento
             por câmpus).
           </p>
@@ -254,25 +253,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     distribuicaoCampus.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
   );
 
-  // Funcionamento calculado: refeito a partir da matrícula equalizada por modalidade
-  // e das taxas oficiais (DADOS BASE), não copiado de `vlMatrFinal`. Só existe quando
-  // o ciclo tem essas taxas (não em 2026, que saiu sem o valor final por matrícula).
-  const taxasFuncionamento = await carregarTaxasFuncionamento(ano);
-  const funcionamentoPorId = new Map(
-    taxasFuncionamento
-      ? distribuicaoCampus.map((d) => [
-          d.unidadeId,
-          calcularFuncionamentoCampus(taxasFuncionamento, {
-            mtPresencial: Number(d.mtPresencial ?? 0),
-            mtEad: Number(d.mtEad ?? 0),
-            mtEadMooc: Number(d.mtEadMooc ?? 0),
-            mtEadFp: Number(d.mtEadFp ?? 0),
-            elegivelPiso: d.elegivelPiso,
-          }),
-        ])
-      : [],
-  );
-
   const linhas = idsCampus
     .map((unidadeId) => {
       const c = somaCicloPorId.get(unidadeId);
@@ -284,7 +264,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         perda: Number(c?._sum.perdaEvasaoReais ?? 0),
         matricula: Number(c?._sum.matriculaTotal ?? 0),
         recebidoReal: recebidoPorId.get(unidadeId) ?? null,
-        funcionamentoCalculado: funcionamentoPorId.get(unidadeId) ?? null,
       };
     })
     .sort((a, b) => b.valor - a.valor);
@@ -297,10 +276,8 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
       matricula: acc.matricula + l.matricula,
       recebidoReal: acc.recebidoReal + (l.recebidoReal ?? 0),
       campusComRecebido: acc.campusComRecebido + (l.recebidoReal !== null ? 1 : 0),
-      funcionamentoCalculado: acc.funcionamentoCalculado + (l.funcionamentoCalculado ?? 0),
-      campusComFuncionamento: acc.campusComFuncionamento + (l.funcionamentoCalculado !== null ? 1 : 0),
     }),
-    { ciclos: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0, funcionamentoCalculado: 0, campusComFuncionamento: 0 },
+    { ciclos: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 },
   );
 
   // Rede inteira, para situar a participação da instituição. `vlMatrFinal` (5ª fase,
@@ -346,14 +323,11 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             Funcionamento
           </Link>{" "}
           (cerca de 80% do total, já com o Piso Mínimo aplicado), homologado pela MDO; não inclui
-          Qualidade e Eficiência, Reitorias nem Assistência, que não são valores por câmpus. A coluna
-          &quot;Funcionamento calculado&quot; refaz esse mesmo bloco a partir da matrícula equalizada por
-          modalidade e das taxas oficiais, para conferência: as duas colunas devem ficar bem próximas, e
-          uma diferença grande é sinal de algo errado, na fórmula ou nos dados.
+          Qualidade e Eficiência, Reitorias nem Assistência, que não são valores por câmpus.
           {ehIfsul && (
             <>
               {" "}
-              &quot;Recebido&quot; é diferente dos dois: é o que foi de fato depositado, informado à mão em{" "}
+              &quot;Recebido&quot; é diferente: é o que foi de fato depositado, informado à mão em{" "}
               <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
                 Valores recebidos
               </Link>
@@ -364,7 +338,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </p>
         {semSextaFaseInstituicao && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
+            A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
             detalhamento por curso nem perda por evasão para {instituicao.sigla}. Os valores abaixo vêm
             da 5ª fase (Funcionamento por câmpus).
           </p>
@@ -373,7 +347,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
           <div className="flex gap-1">
             {anosDisponiveis.map((a) => (
               <Link
@@ -402,7 +376,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className={`grid gap-4 sm:grid-cols-2 ${ehIfsul ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${ehIfsul ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         <Cartao rotulo="Gerado pela matriz" valor={reais.format(total.valor)} />
         {ehIfsul && (
           <Cartao
@@ -410,10 +384,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             valor={total.campusComRecebido > 0 ? reais.format(total.recebidoReal) : "não informado"}
           />
         )}
-        <Cartao
-          rotulo="Funcionamento calculado"
-          valor={total.campusComFuncionamento > 0 ? reais.format(total.funcionamentoCalculado) : "não informado"}
-        />
         <Cartao
           rotulo="Participação na rede"
           valor={totalRede > 0 ? `${decimal.format((total.valor / totalRede) * 100)}%` : "não informado"}
@@ -441,7 +411,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           totalMatricula={total.matricula}
           totalRecebidoReal={total.campusComRecebido > 0 ? total.recebidoReal : null}
           comRecebido={ehIfsul}
-          totalFuncionamentoCalculado={total.campusComFuncionamento > 0 ? total.funcionamentoCalculado : null}
           detalheDoCampus={
             campusEscolhido && (
               // w-0 min-w-full: o quadro fica da largura da tabela de câmpus, em vez de alargá-la; a tabela de cursos rola dentro dele.
@@ -469,7 +438,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
                 {cursos.length === 0 ? (
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">
                     {semSextaFaseInstituicao
-                      ? `Sem detalhamento por curso: o ciclo ${ano} não tem a 6ª fase da MDO (participação por curso) carregada.`
+                      ? `Sem detalhamento por curso: a matriz de ${ano} não tem a 6ª fase da MDO (participação por curso) carregada.`
                       : `Este câmpus não tem turmas que contribuam para o orçamento de ${ano} (nenhuma com alunos no ano-base ${ano - 2}), por isso não há cursos para mostrar. O valor dele está na linha acima.`}
                   </p>
                 ) : (

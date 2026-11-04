@@ -120,7 +120,7 @@ export function ComparativoTabelaCampus({
     valor: (l) => variacaoDoCampus(def, valores(l))?.absoluta ?? null,
     render: (l) =>
       def.chave === "calcA_calcB" && l.a === 0 && l.b > 0 ? (
-        <span className="text-xs text-neutral-500">novo no ciclo</span>
+        <span className="text-xs text-neutral-500">novo neste ano</span>
       ) : (
         <CelulaVariacao v={variacaoDoCampus(def, valores(l))} />
       ),
@@ -220,7 +220,7 @@ export function ComparativoTabelaCampus({
         <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe{bloco === "ae" ? " de Assistência Estudantil (presencial, EAD e RIP)" : bloco === "totalSpo" ? ", somando Funcionamento e Assistência Estudantil" : " de Funcionamento (já com o Piso Mínimo)"}.
         {comInformado
           ? " Informado é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor). Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença."
-          : " Aqui só há a variação entre os dois ciclos calculados. O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul e aparece quando a opção \"Considerar dados informados para o IFSul\" está marcada."}
+          : " Aqui só há a variação entre os dois anos calculados. O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul e aparece quando a opção \"Considerar dados informados para o IFSul\" está marcada."}
       </p>
     </div>
   );
@@ -285,7 +285,7 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-neutral-600 dark:text-neutral-400">
-        Cada linha é uma turma, reconhecida pelo código do ciclo na MDO, que é o mesmo nos dois anos e aparece no início do texto dela, com a modalidade e o período. Uma célula em branco
+        Cada linha é uma turma, reconhecida pelo código na MDO, que é o mesmo nos dois anos e aparece no início do texto dela, com a modalidade e o período. Uma célula em branco
         indica que a turma não contribuiu naquele ano, porque não tem alunos contados no ano-base ({anoA - 2} para {anoA}, {anoB - 2} para {anoB}). Os valores são do bloco Funcionamento, antes do Piso Mínimo.
         {emAmbos && (
           <>

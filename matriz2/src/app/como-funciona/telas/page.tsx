@@ -17,7 +17,7 @@ const AVISOS = [
   },
   {
     titulo: "Simulação não é previsão",
-    texto: 'As telas de "Onde melhorar" estimam o efeito de uma decisão. Servem para dimensionar e comparar caminhos. O valor oficial continua sendo o que a MDO publicar.',
+    texto: 'As telas de "E se...?" e as de simulação em "Mais" estimam o efeito de uma decisão. Servem para dimensionar e comparar caminhos. O valor oficial continua sendo o que a MDO publicar.',
   },
   {
     titulo: "Calculado não é recebido",
@@ -27,8 +27,8 @@ const AVISOS = [
 
 /** Da menor para a maior permissão. Cada perfil lê só a própria linha e as de baixo: o que ele não acessa não entra no guia. */
 const PERFIS: { papel: Papel; nome: string; acesso: string }[] = [
-  { papel: "PADRAO", nome: "Padrão", acesso: "Início, Entender a matriz, Onde melhorar, Como funciona e a própria conta." },
-  { papel: "ADMIN", nome: "Administrador", acesso: "Também Dados e conferência. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
+  { papel: "PADRAO", nome: "Padrão", acesso: "Início, Quanto recebemos?, Posso confiar?, E se...?, parte de Mais, Como funciona e a própria conta." },
+  { papel: "ADMIN", nome: "Administrador", acesso: "Também as telas técnicas de Mais. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
   { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Também altera Valores recebidos e Correção manual, muda perfis e vê a Auditoria." },
 ];
 

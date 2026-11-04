@@ -3,7 +3,7 @@ import { periodoCurtoDoCiclo, rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 
 describe("identificação do ciclo", () => {
   it("escreve o código e o período, sem recuar o mês por causa do fuso", () => {
-    expect(rotuloDoCiclo({ codigoCiclo: "2986225", inicio: "2025-03-01T00:00:00.000Z", termino: "2028-12-31T00:00:00.000Z" })).toBe("ciclo 2986225, 03/2025 a 12/2028");
+    expect(rotuloDoCiclo({ codigoCiclo: "2986225", inicio: "2025-03-01T00:00:00.000Z", termino: "2028-12-31T00:00:00.000Z" })).toBe("turma 2986225, 03/2025 a 12/2028");
   });
 
   it("aceita data como objeto e fica só com o período quando não há código", () => {
@@ -12,6 +12,6 @@ describe("identificação do ciclo", () => {
 
   it("diz quando falta o término ou não há data nenhuma", () => {
     expect(periodoCurtoDoCiclo({ inicio: "2024-08-01T00:00:00.000Z", termino: null })).toBe("início em 08/2024");
-    expect(rotuloDoCiclo({ codigoCiclo: "7", inicio: null, termino: null })).toBe("ciclo 7, sem data");
+    expect(rotuloDoCiclo({ codigoCiclo: "7", inicio: null, termino: null })).toBe("turma 7, sem data");
   });
 });

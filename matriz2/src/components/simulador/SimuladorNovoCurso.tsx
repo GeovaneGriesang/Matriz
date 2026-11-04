@@ -154,7 +154,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
         <h2 className="col-span-full text-sm font-semibold text-neutral-900 dark:text-neutral-100">Regras que valem para o curso (já preenchidas, pode mudar)</h2>
         <Numero rotulo="Peso do curso" valor={peso} passo={0.25} min={1} max={3.75} onChange={setPeso} ajuda={`Peso efetivo de ${base.rotulo}, da tabela de pesos`} />
         <Numero rotulo="Teto de CH da matriz (h)" valor={teto} passo={100} min={100} max={6000} onChange={setTeto} ajuda={`Curso com CH mínima do MEC de ${inteiro.format(base.chMinimaMec)} h`} />
-        <Numero rotulo={`Valor de uma matrícula (R$, ciclo ${base.anoDoValor})`} valor={valorMatricula} passo={10} min={1} max={5000} onChange={setValorMatricula} ajuda="Vem dos ciclos deste câmpus" />
+        <Numero rotulo={`Valor de uma matrícula (R$, matriz de ${base.anoDoValor})`} valor={valorMatricula} passo={10} min={1} max={5000} onChange={setValorMatricula} ajuda="Vem dos ciclos deste câmpus" />
         <Numero rotulo="Reajuste do valor por ano (%)" valor={Math.round(reajuste * 1000) / 10} passo={0.5} min={-10} max={30} onChange={(v) => setReajuste(v / 100)} ajuda="Zero é o conservador: o valor real só se conhece quando a MDO fecha o ciclo" />
         <MarcadorDiluicao marcado={diluir} onChange={setDiluir} matriculasRede={base.matriculasRede} matriculaDoCurso={r.regime.matriculaTotal} valorMatricula={valorMatricula} />
       </section>
@@ -176,7 +176,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
         <Cartao
           titulo="Em relação ao câmpus hoje"
           valor={base.orcamentoCampusHoje > 0 && linhaRegime ? `+${percentual.format(linhaRegime.valor / base.orcamentoCampusHoje)}` : "-"}
-          nota={`${reais.format(base.orcamentoCampusHoje)} de Funcionamento no ciclo ${base.anoDoValor}`}
+          nota={`${reais.format(base.orcamentoCampusHoje)} de Funcionamento na matriz de ${base.anoDoValor}`}
         />
       </section>
 
@@ -232,7 +232,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
           pelo valor de uma matrícula, dá o repasse do ano. As turmas se somam até o curso chegar ao regime.
         </p>
         <p>
-          <strong>É uma estimativa.</strong> O valor da matrícula de {primeiroAno} em diante é uma hipótese (o do ciclo {base.anoDoValor}, mais o reajuste que você
+          <strong>É uma estimativa.</strong> O valor da matrícula de {primeiroAno} em diante é uma hipótese (o da matriz de {base.anoDoValor}, mais o reajuste que você
           informar), porque ele muda a cada ciclo conforme o orçamento e as matrículas da rede. O repasse mede só o que o curso rende: custo de
           professor, laboratório, sala e permanência não entra.
         </p>
