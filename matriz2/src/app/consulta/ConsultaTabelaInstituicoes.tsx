@@ -2,6 +2,8 @@
 
 import { ehInstituicaoDestaque } from "@/lib/destaque";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { exemploDeInstituicao, legendaConsultaInstituicoes } from "@/components/legendas";
@@ -21,18 +23,22 @@ const numero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
- * Visão macro (rede inteira): uma linha por instituição, clicável para abrir o
- * detalhamento por câmpus de cada uma. Client Component pelo mesmo motivo de
+ * A rede inteira: uma linha por instituição, que abre os câmpus dela logo abaixo, pelo +. Client Component pelo mesmo motivo de
  * sempre: `TabelaOrdenavel` é "use client" e não aceita função vinda de fora.
  */
 export function ConsultaTabelaInstituicoes({
   linhas,
   ano,
   totalRede,
+  aberta,
+  detalhe,
 }: {
   linhas: InstituicaoLinha[];
   ano: number;
   totalRede: number;
+  /** A instituição aberta, com o quadro dos câmpus dela logo abaixo da linha. */
+  aberta: string | null;
+  detalhe: ReactNode;
 }) {
   return (
     <>
@@ -41,6 +47,8 @@ export function ConsultaTabelaInstituicoes({
       linhas={linhas}
       chaveLinha={(l) => l.sigla}
       linhaDestaque={(l) => ehInstituicaoDestaque(l.sigla)}
+      idDaLinha={(l) => `instituicao-${l.sigla}`}
+      detalhe={aberta && detalhe ? { chave: aberta, conteudo: detalhe } : null}
       colunas={
         [
           {
@@ -48,9 +56,14 @@ export function ConsultaTabelaInstituicoes({
             rotulo: "Instituição",
             valor: (l) => l.sigla,
             render: (l) => (
-              <Link href={`/consulta?ano=${ano}&instituicao=${l.sigla}`} className="hover:underline">
+              <Link
+                href={l.sigla === aberta ? `/consulta?ano=${ano}#instituicao-${l.sigla}` : `/consulta?ano=${ano}&instituicao=${l.sigla}#instituicao-${l.sigla}`}
+                aria-expanded={l.sigla === aberta}
+                className="inline-flex items-center gap-2 hover:text-if-green"
+              >
+                <SinalMaisMenos aberto={l.sigla === aberta} />
                 <span className="font-medium">{l.sigla}</span>
-                <span className="ml-2 text-xs text-neutral-500">{l.nome}</span>
+                <span className="text-xs font-normal text-neutral-500">{l.nome}</span>
               </Link>
             ),
           },

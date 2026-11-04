@@ -4,7 +4,8 @@ import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
-import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { EvasaoTabelaCampus } from "./EvasaoTabelaCampus";
 import { EvasaoTabelaCursos } from "./EvasaoTabelaCursos";
 import { EvasaoTabelaInstituicoes } from "./EvasaoTabelaInstituicoes";
@@ -31,7 +32,6 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   await requireAcessoPlenoOrRedirect("/evasao");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
-  const modoMacro = !params.instituicao;
   const sigla = params.instituicao ?? "IFSUL";
   const campusId = params.campus ? Number(params.campus) : null;
 
@@ -67,8 +67,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const redePerda = Number(rede._sum.perdaEvasaoReais ?? 0);
   const redePct = pct(redePerda, redeRecebido);
 
-  // Todas as instituições, para o ranking (são só 42, cabe em memória) — é também a
-  // visão macro (modoMacro), então serve às duas telas.
+  // Todas as instituições, para o ranking (são só 42, cabe em memória).
   const porInstituicao = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
     where: { ano },
@@ -131,56 +130,17 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
     .map(([id, a]) => ({ id, ...a, taxa: pct(a.perda, a.recebido) }))
     .sort((x, y) => x.taxa - y.taxa);
 
-  if (modoMacro) {
-    const linhasInstituicoes = ranking.map((r, i) => {
-      const inst = nomePorInstId.get(r.id);
-      return {
-        sigla: inst?.sigla ?? "?",
-        nome: inst?.nome ?? "",
-        posicao: i + 1,
-        recebido: r.recebido,
-        perda: r.perda,
-        taxa: r.taxa,
-      };
-    });
-
-    return (
-      <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Quanto cada instituição perde por evasão, e essa perda como proporção do que recebe. Ordenado do
-            menor para o maior percentual. Clique numa instituição para descer a câmpus e a curso.
-          </p>
-        </div>
-
-        <div className="flex gap-1">
-          {anos.map((a) => (
-            <Link
-              key={a.ano}
-              href={`/evasao?ano=${a.ano}`}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${
-                a.ano === ano
-                  ? "bg-if-green text-white"
-                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-              }`}
-            >
-              {a.ano}
-            </Link>
-          ))}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Cartao rotulo="Perda da rede" valor={reais.format(redePerda)} destaque="text-if-red dark:text-red-400" />
-          <Cartao rotulo="Média da rede" valor={`${doisDecimais.format(redePct)}%`} />
-        </div>
-
-        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <EvasaoTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} redePct={redePct} />
-        </div>
-      </main>
-    );
-  }
+  const linhasInstituicoes = ranking.map((r, i) => {
+    const inst = nomePorInstId.get(r.id);
+    return {
+      sigla: inst?.sigla ?? "?",
+      nome: inst?.nome ?? "",
+      posicao: i + 1,
+      recebido: r.recebido,
+      perda: r.perda,
+      taxa: r.taxa,
+    };
+  });
 
   const instituicao = instituicoes.find((i) => i.sigla === sigla) ?? instituicoes[0]!;
   const posicao = ranking.findIndex((r) => r.id === instituicao.id) + 1;
@@ -305,57 +265,53 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   }
   const melhorQueRede = daInstituicao.taxa < redePct;
 
+  const instituicaoAberta = params.instituicao && linhasInstituicoes.some((l) => l.sigla === params.instituicao) ? params.instituicao : null;
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Link href={`/evasao?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-            ← todas as instituições
-          </Link>
-        </div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Perda por evasão</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          A MDO publica, para cada ciclo de curso, quanto se perdeu por evasão. É o dado mais acionável
-          da matriz: ao contrário do orçamento total, que depende de decisão federal, esta parcela
-          responde ao que a instituição faz com os alunos que já tem.
-        </p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          O valor vem pronto da coluna <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Perda Evasão (R$)</code> da
-          6ª fase. Este sistema não o recalcula, e a definição exata de como a MDO o apura é dela.
+          Quanto cada instituição, câmpus e curso deixa de receber por causa da evasão. Clique no <strong>+</strong> para abrir, e no <strong>−</strong> para fechar.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
-          <div className="flex gap-1">
-            {anos.map((a) => (
-              <Link
-                key={a.ano}
-                href={href({ ano: String(a.ano), campus: undefined })}
-                className={`rounded px-3 py-1.5 text-sm font-medium ${
-                  a.ano === ano
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {a.ano}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div className="flex min-w-64 flex-1 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao
-            instituicoes={instituicoes}
-            siglaEscolhida={sigla}
-            urlPorSigla={Object.fromEntries(
-              instituicoes.map((i) => [i.sigla, href({ instituicao: i.sigla, campus: undefined })]),
-            )}
-          />
-        </div>
+      <SeletorDeContexto
+        anos={anos.map((a) => ({ ano: a.ano, href: `/evasao?ano=${a.ano}${params.instituicao ? `&instituicao=${encodeURIComponent(params.instituicao)}` : ""}` }))}
+        anoEscolhido={ano}
+        instituicao={{
+          instituicoes,
+          sigla: params.instituicao ?? "",
+          opcaoVazia: "Escolha uma instituição para abrir",
+          rolar: true,
+          urlPorSigla: Object.fromEntries(instituicoes.map((i) => [i.sigla, `/evasao?ano=${ano}&instituicao=${encodeURIComponent(i.sigla)}#instituicao-${i.sigla}`])),
+        }}
+      />
+
+      <ComoLerEstaTela>
+        <p>
+          A MDO publica, para cada turma, quanto se perdeu por evasão. É o dado mais acionável da matriz: ao contrário do orçamento total, que depende de decisão federal, esta parcela responde ao que a instituição faz com os alunos que já tem.
+        </p>
+        <p>
+          O valor vem pronto da coluna <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Perda Evasão (R$)</code> da 6ª fase. Este sistema não o recalcula, e a definição exata de como a MDO o apura é dela.
+        </p>
+        <p>As instituições estão em ordem da menor para a maior taxa. Exemplo: a primeira da tabela é a que menos perde em proporção do que recebe.</p>
+      </ComoLerEstaTela>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Cartao rotulo="Perda da rede" valor={reais.format(redePerda)} destaque="text-if-red dark:text-red-400" />
+        <Cartao rotulo="Média da rede" valor={`${doisDecimais.format(redePct)}%`} />
       </div>
 
+      <div className={`${instituicaoAberta ? "overflow-x-auto" : "tabela-rolavel"} rounded-lg border border-neutral-200 dark:border-neutral-800`}>
+        <EvasaoTabelaInstituicoes
+          linhas={linhasInstituicoes}
+          ano={ano}
+          redePct={redePct}
+          aberta={instituicaoAberta}
+          detalhe={
+            instituicaoAberta ? (
+              <div className="flex w-0 min-w-full flex-col gap-4 rounded-md border-l-4 border-if-green bg-white p-4 font-normal dark:bg-neutral-950">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Cartao rotulo="Perda no ano" valor={reais.format(daInstituicao.perda)} destaque="text-if-red dark:text-red-400" />
         <Cartao rotulo="Sobre o recebido" valor={`${doisDecimais.format(daInstituicao.taxa)}%`} />
@@ -427,7 +383,11 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
         </details>
       )}
 
-      {fonte && <PainelProcedencia fonte={fonte} />}
+              </div>
+            ) : null
+          }
+        />
+      </div>
     </main>
   );
 }

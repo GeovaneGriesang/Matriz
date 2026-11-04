@@ -1,3 +1,5 @@
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
@@ -160,41 +162,19 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
       <SubmenuSimulador />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde o câmpus pode ganhar: indicadores e evasão</h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
-          Clique no <strong>+</strong> em frente a uma instituição para simular a RAP e o IAPL dela, e
-          para abrir os câmpus e simular evasão e crescimento de matrícula de cada um. Pode abrir
-          quantos quadros quiser ao mesmo tempo, em várias instituições e câmpus: cada um soma no total
-          daquela instituição e no total da rede, sem precisar escolher um alvo por vez.
-        </p>
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          <strong>É uma estimativa, não um recálculo da metodologia da CONIF.</strong> Evasão: valor
-          recuperado = perda atual × redução simulada. Crescimento de matrícula: ganho = recebido hoje ×
-          crescimento simulado, proporcional. RAP e IAPL: reencaixam a instituição numa faixa hipotética
-          e recalculam a fatia dela na rede. Serve para dimensionar o efeito, não para prever o valor
-          exato que a MDO publicaria.
-        </p>
+        <p className="text-neutral-600 dark:text-neutral-400">Quanto muda se a evasão cair ou se a RAP e o IAPL mudarem de faixa. Clique no <strong>+</strong> de uma instituição para simular.</p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
-          <div className="flex gap-1">
-            {anos.map((a) => (
-              <Link
-                key={a.ano}
-                href={href({ ano: String(a.ano) })}
-                className={`rounded px-3 py-1.5 text-sm font-medium ${
-                  a.ano === ano
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {a.ano}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      <SeletorDeContexto anos={anos.map((a) => ({ ano: a.ano, href: href({ ano: String(a.ano) }) }))} anoEscolhido={ano} />
+
+      <ComoLerEstaTela>
+        <p>
+          Clique no + em frente a uma instituição para simular a RAP e o IAPL dela, e para abrir os câmpus e simular evasão e crescimento de matrícula de cada um. Pode abrir quantos quadros quiser ao mesmo tempo: cada um soma no total daquela instituição e no total da rede.
+        </p>
+        <p>
+          <strong>É uma estimativa, não um recálculo da metodologia da CONIF.</strong> Evasão: valor recuperado = perda atual × redução simulada. Crescimento de matrícula: ganho = recebido hoje × crescimento simulado, proporcional. RAP e IAPL: reencaixam a instituição numa faixa hipotética e recalculam a fatia dela na rede. Serve para dimensionar o efeito, não para prever o valor exato que a MDO publicaria.
+        </p>
+      </ComoLerEstaTela>
 
       {arvore.length === 0 ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">

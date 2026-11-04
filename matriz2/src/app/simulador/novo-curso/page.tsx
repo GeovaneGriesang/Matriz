@@ -6,6 +6,9 @@ import { padroesDoCurso } from "@/lib/mdo/padroesCurso";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { PainelConfianca } from "@/components/Confianca";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
+import { cursoDaChave } from "@/lib/cursoEscolhido";
 import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { SimuladorNovoCurso, type CursoNovoBase } from "@/components/simulador/SimuladorNovoCurso";
 import { carregarContextoDoCampus, chaveDoCatalogo } from "@/server/queries/contextoSimulador";
@@ -54,11 +57,12 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto um curso novo rende, ano a ano</h1>
-      <p className="text-neutral-600 dark:text-neutral-400">
-        Escolha o câmpus e um curso parecido com o que se quer abrir (dele vêm o peso e a carga horária máxima que a MDO paga), diga em que ano a primeira turma entra, quanto dura, a carga
-        horária e as vagas. Serve para qualquer tipo de curso (técnico, bacharelado, licenciatura, tecnologia, FIC, pós) em qualquer câmpus da rede. A tela mostra o repasse de cada ano, até o
-        curso chegar ao regime, e o acumulado.
-      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">O repasse de cada ano de um curso novo, até ele chegar ao regime, e o acumulado.</p>
+      <ComoLerEstaTela>
+        <p>
+          Escolha o câmpus e um curso parecido com o que se quer abrir (dele vêm o peso e a carga horária máxima que a MDO paga), diga em que ano a primeira turma entra, quanto dura, a carga horária e as vagas. Serve para qualquer tipo de curso (técnico, bacharelado, licenciatura, tecnologia, FIC, pós) em qualquer câmpus da rede.
+        </p>
+      </ComoLerEstaTela>
     </div>
   );
 
@@ -117,11 +121,17 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
         take: filtrando ? 40 : 14,
       })
     : [];
-  const [tipoP, ofertaP, cursoP, mecP] = (params.curso ?? CURSO_PADRAO).split("|");
+  // O curso vem da aba anterior: com a chave completa da tabela de pesos, ou só com o nome e a oferta (quando vem da aba do integrado).
+  const partesDoCurso = (params.curso ?? CURSO_PADRAO).split("|");
+  const nomeEOferta = cursoDaChave(params.curso ?? CURSO_PADRAO);
   const escolhido =
-    (anoTabela
+    (anoTabela && nomeEOferta
       ? await prisma.pesoEfetivoCurso.findFirst({
-          where: { anoReferencia: anoTabela, tipoCurso: tipoP, tipoOferta: ofertaP, curso: cursoP, chMinimaMec: Number(mecP) },
+          where:
+            partesDoCurso.length === 4
+              ? { anoReferencia: anoTabela, tipoCurso: partesDoCurso[0], tipoOferta: partesDoCurso[1], curso: partesDoCurso[2], chMinimaMec: Number(partesDoCurso[3]) }
+              : { anoReferencia: anoTabela, tipoOferta: nomeEOferta.oferta, curso: nomeEOferta.curso },
+          orderBy: { ciclosObservados: "desc" },
         })
       : null) ?? lista[0];
 
@@ -170,30 +180,11 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
       {cabecalho}
       <PainelConfianca ids={["regra-matricula-total", "simulador-curso", "peso-efetivo-tabela"]} />
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 md:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/simulador/novo-curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}&curso=${encodeURIComponent(chaveEscolhida)}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1">
+      <SeletorDeContexto
+        instituicao={{ instituicoes, sigla: instituicao.sigla, urlPorSigla }}
+        campus={{ escolhido: campus.id, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/simulador/novo-curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}&curso=${encodeURIComponent(chaveEscolhida)}` })) }}
+      >
+        <div className="flex min-w-64 flex-1 flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Curso de referência</span>
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{rotuloCurso}</span>
           <span className="text-xs text-neutral-500">
@@ -233,7 +224,7 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
             </ul>
           </details>
         </div>
-      </div>
+      </SeletorDeContexto>
 
       <SimuladorNovoCurso key={`${campus.id}-${chaveEscolhida}-${ano}`} campus={campus.nome} base={base} campusNoPiso={contexto.noPiso} />
     </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 interface Aba {
   href: string;
@@ -21,8 +21,8 @@ export const ABAS_ONDE_GANHAR: Aba[] = [
 ];
 
 /**
- * "Abrir ou mudar um curso" junta, do mesmo modo (2026-10-27), as três telas sobre um curso só: quanto ele vale, quanto rende
- * ano a ano se for aberto, e o integrado em 3 ou 4 anos.
+ * "Quanto vale um curso" junta, do mesmo modo (2026-10-27), as três telas sobre um curso só: quanto ele vale, quanto rende
+ * ano a ano se for aberto, e o integrado em 3 ou 4 anos. Desde 2026-11-04 o curso e o câmpus escolhidos vão junto de uma aba para a outra.
  */
 export const ABAS_UM_CURSO: Aba[] = [
   { href: "/consulta/curso", rotulo: "Quanto vale um curso", descricao: "peso, carga horária mínima e quanto a MDO paga por um aluno que faz o curso inteiro" },
@@ -44,7 +44,13 @@ const classe = (ativa: boolean) =>
 /** Abas das simulações, repetidas no topo de cada uma para não ser preciso voltar ao menu. */
 export function SubmenuSimulador() {
   const pathname = usePathname();
+  const busca = useSearchParams();
   const grupoAtivo = GRUPOS.find((g) => g.abas.some((a) => a.href === pathname));
+  // Só as abas do mesmo curso levam a escolha junto; nas outras, cada aba tem filtros próprios.
+  const naMesmaEscolha = grupoAtivo?.abas === ABAS_UM_CURSO;
+  const levar = new URLSearchParams();
+  if (naMesmaEscolha) for (const p of ["ano", "instituicao", "campus", "curso"]) { const v = busca.get(p); if (v) levar.set(p, v); }
+  const sufixo = levar.toString() ? `?${levar.toString()}` : "";
   return (
     <div className="flex flex-col gap-2 border-b border-neutral-200 pb-3 dark:border-neutral-800">
       <div className="flex flex-wrap gap-1">
@@ -65,7 +71,7 @@ export function SubmenuSimulador() {
               return (
                 <Link
                   key={a.href}
-                  href={a.href}
+                  href={`${a.href}${sufixo}`}
                   aria-current={ativa ? "page" : undefined}
                   title={a.descricao}
                   className={`rounded-md px-3 py-1 text-sm ${ativa ? "bg-white font-semibold text-if-green shadow-sm dark:bg-neutral-900" : "text-neutral-600 hover:bg-white/70 dark:text-neutral-400 dark:hover:bg-neutral-900"}`}

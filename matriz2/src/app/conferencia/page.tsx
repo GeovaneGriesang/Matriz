@@ -11,6 +11,7 @@ import {
   rapEqualizadoRecalc,
 } from "@/server/queries/qualidadeEficienciaRede";
 import { ConferenciaTabela, type InstituicaoConferida } from "./ConferenciaTabela";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 
 export const dynamic = "force-dynamic";
 
@@ -168,19 +169,20 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência de cálculo</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Refaz o Funcionamento de cada câmpus e o cálculo dos blocos{" "}
-          <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
-            IEA, RAP e IAPL de Qualidade e Eficiência
-          </Link>{" "}
-          a partir dos mesmos componentes que a MDO já publica por instituição, e compara com o valor
-          que a MDO calculou. Serve para auditoria: se a diferença for grande, ou a fórmula usada aqui
-          está desatualizada, ou algo mudou na metodologia que ainda não foi conferido. Este recálculo
-          nunca decide quanto uma instituição recebe, só serve para conferir.
+          O sistema refaz os blocos de cada instituição e compara com o valor da MDO. Clique no <strong>+</strong> para ver a conta.
         </p>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Clique no <strong>+</strong> de uma instituição para abrir a conta de cada bloco logo abaixo da linha, e no <strong>−</strong> para fechar. Exemplo: a tabela começa por {exemplo.sigla},
-          {exemplo.diferenca !== null ? ` com diferença de ${reais.format(exemplo.diferenca)}` : " que não pôde ser conferida"}; o + dela mostra de qual bloco isso vem.
-        </p>
+        <ComoLerEstaTela>
+          <p>
+            Refaz o Funcionamento de cada câmpus e o cálculo dos blocos{" "}
+            <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
+              IEA, RAP e IAPL de Qualidade e Eficiência
+            </Link>{" "}
+            a partir dos mesmos componentes que a MDO já publica. Serve para auditoria: se a diferença for grande, ou a fórmula usada aqui está desatualizada, ou algo mudou na metodologia que ainda não foi conferido. Este recálculo nunca decide quanto uma instituição recebe.
+          </p>
+          <p>
+            Exemplo: a tabela começa por {exemplo.sigla},{exemplo.diferenca !== null ? ` com diferença de ${reais.format(exemplo.diferenca)}` : " que não pôde ser conferida"}; o + dela mostra de qual bloco isso vem.
+          </p>
+        </ComoLerEstaTela>
         {!temFaixaIea && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Não há tabela de faixas de IEA cadastrada para {ano} (as faixas mudam a cada ciclo, porque

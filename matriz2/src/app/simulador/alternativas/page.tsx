@@ -5,6 +5,8 @@ import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { PainelConfianca } from "@/components/Confianca";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { ComparadorAlternativas, type ContextoBase } from "@/components/simulador/ComparadorAlternativas";
 import { carregarCatalogo, carregarContextoDoCampus, carregarIndicadoresDaInstituicao } from "@/server/queries/contextoSimulador";
@@ -31,11 +33,13 @@ export default async function AlternativasPage({ searchParams }: { searchParams:
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Onde o câmpus pode ganhar: comparar alternativas</h1>
-      <p className="text-neutral-600 dark:text-neutral-400">
-        Ponha lado a lado as coisas que um câmpus pode fazer para receber mais: um curso de 3 anos contra um de 4, melhorar a RAP, abrir uma turma FIC de 160 h, um
-        bacharelado novo, reduzir a evasão, ocupar mais vagas. Cada uma vira o mesmo número, o ganho em reais por ano, e a tela mostra qual rende mais, qual começa antes e o que cada uma exige
-        de alunos novos. Já abre com quatro exemplos; mude, remova ou adicione o que quiser.
-      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">O que um câmpus pode fazer para receber mais, lado a lado, em reais por ano.</p>
+      <ComoLerEstaTela>
+        <p>
+          Compare um curso de 3 anos contra um de 4, melhorar a RAP, abrir uma turma FIC de 160 h, um bacharelado novo, reduzir a evasão ou ocupar mais vagas. Cada alternativa vira o mesmo número, o
+          ganho em reais por ano, e a tela mostra qual rende mais, qual começa antes e o que cada uma exige de alunos novos. Já abre com quatro exemplos; mude, remova ou adicione o que quiser.
+        </p>
+      </ComoLerEstaTela>
     </div>
   );
 
@@ -96,30 +100,10 @@ export default async function AlternativasPage({ searchParams }: { searchParams:
       {cabecalho}
       <PainelConfianca ids={["regra-matricula-total", "simulador-curso", "peso-efetivo-tabela", "distribuicao-indices"]} />
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 md:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/simulador/alternativas?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      <SeletorDeContexto
+        instituicao={{ instituicoes, sigla: instituicao.sigla, urlPorSigla }}
+        campus={{ escolhido: campus.id, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/simulador/alternativas?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}` })) }}
+      />
 
       <ComparadorAlternativas key={`${campus.id}-${ano}`} campus={campus.nome} instituicao={instituicao.sigla} base={base} catalogo={catalogo} campusNoPiso={contexto.noPiso} />
     </main>

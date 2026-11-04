@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
 import { LinhaDeCurso } from "@/app/consulta/valor-do-aluno/LinhaDeCurso";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { prisma } from "@/server/db/prisma";
@@ -154,30 +155,10 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
       <SubmenuSimulador />
       {cabecalho}
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 md:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/simulador/oportunidades?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      <SeletorDeContexto
+        instituicao={{ instituicoes, sigla: instituicao.sigla, urlPorSigla }}
+        campus={{ escolhido: campus.id, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/simulador/oportunidades?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}` })) }}
+      />
 
       <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Que tipo de curso rende mais por vaga</h2>
