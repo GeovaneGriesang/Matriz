@@ -34,7 +34,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/comparativo": {
     responde: "O que mudou de 2026 para 2027?",
     mostra: "Quanto cada instituição recebeu em cada ciclo e a variação, com abertura por câmpus e por curso. Para os câmpus do IFSul, mostra o valor calculado e o informado.",
-    usar: "Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil). Clique no + para abrir os câmpus e depois os cursos.",
+    usar: "Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil). Clique no + para abrir os câmpus e depois os cursos, que aparecem turma a turma, com os dois anos lado a lado. Uma célula em branco indica que a turma não contribuiu naquele ano.",
     atencao: "A cor compara cada instituição com a variação da rede, e não com zero. Quem cresce menos que a rede perde fatia, mesmo com o valor em reais subindo.",
   },
   "/conferencia/quarta-fase": {

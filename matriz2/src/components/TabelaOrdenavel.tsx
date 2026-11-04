@@ -177,7 +177,7 @@ export function TabelaOrdenavel<T>({
                 ))}
               </tr>
               {aberta && conteudoExpandido != null && (
-                <tr className="border-t border-neutral-200 dark:border-neutral-800">
+                <tr data-detalhe="1" className="border-t border-neutral-200 dark:border-neutral-800">
                   <td colSpan={colunas.length + 1} className="bg-neutral-50 p-3 dark:bg-neutral-900/40">
                     {conteudoExpandido}
                   </td>

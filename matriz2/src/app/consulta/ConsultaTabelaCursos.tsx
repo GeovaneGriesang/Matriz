@@ -10,6 +10,8 @@ import { legendaConsultaCursos } from "@/components/legendas";
 
 export interface CursoLinha {
   id: number;
+  /** O código do ciclo na MDO, o mesmo nos dois anos: identifica a turma no Comparativo. */
+  codigoCiclo?: string;
   curso: string;
   nivel: string | null;
   repasse: string;
