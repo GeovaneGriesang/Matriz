@@ -92,16 +92,11 @@ describe("dataDeGeracao", () => {
   it("lê a data que a planilha declara no cabeçalho", () => {
     const d = dataDeGeracao("Gerado em 30/08/2026, 12:07:47");
     expect(d).not.toBeNull();
-    expect(d!.getFullYear()).toBe(2026);
-    expect(d!.getMonth()).toBe(7); // agosto
-    expect(d!.getDate()).toBe(30);
-    expect(d!.getHours()).toBe(12);
+    expect(d!.toISOString()).toBe("2026-08-30T12:07:47.000Z");
   });
 
-  it("aceita a data sem hora", () => {
-    const d = dataDeGeracao("Gerado em 27/08/2026");
-    expect(d!.getDate()).toBe(27);
-    expect(d!.getHours()).toBe(0);
+  it("aceita a data sem hora, sem recuar o dia em servidor de outro fuso", () => {
+    expect(dataDeGeracao("Gerado em 27/08/2026")!.toISOString()).toBe("2026-08-27T00:00:00.000Z");
   });
 
   it("devolve nulo quando não há data no texto", () => {

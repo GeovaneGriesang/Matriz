@@ -3,6 +3,18 @@
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { legendaEvasao } from "@/components/legendas";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
+
+export interface TurmaDaEvasao {
+  id: number;
+  codigoCiclo: string;
+  inicio: string | null;
+  termino: string | null;
+  /** O câmpus da turma, quando a tabela cobre a instituição inteira. */
+  campus: string | null;
+  recebido: number;
+  perda: number;
+}
 
 export interface CursoLinha {
   curso: string;
@@ -11,6 +23,38 @@ export interface CursoLinha {
   recebido: number;
   perda: number;
   taxa: number;
+  /** As turmas do curso, abertas pelo + da linha. */
+  turmas: TurmaDaEvasao[];
+}
+
+/** As turmas de um curso, no quadro logo abaixo da linha dele: a soma delas é a linha do curso. */
+function TurmasDoCurso({ c }: { c: CursoLinha }) {
+  return (
+    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+      <table className="w-full text-xs" data-sem-ferramentas>
+        <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900">
+          <tr>
+            <th className="px-3 py-1.5 font-medium">Ciclo e período</th>
+            {c.turmas.some((t) => t.campus) && <th className="px-3 py-1.5 font-medium">Câmpus</th>}
+            <th className="px-3 py-1.5 text-right font-medium">Recebido</th>
+            <th className="px-3 py-1.5 text-right font-medium">Perda</th>
+            <th className="px-3 py-1.5 text-right font-medium">Taxa</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          {c.turmas.map((t) => (
+            <tr key={t.id}>
+              <td className="whitespace-nowrap px-3 py-1.5">{rotuloDoCiclo(t)}</td>
+              {t.campus && <td className="px-3 py-1.5">{t.campus}</td>}
+              <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(t.recebido)}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-if-red dark:text-red-400">{reais.format(t.perda)}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{t.recebido > 0 ? `${doisDecimais.format((t.perda / t.recebido) * 100)}%` : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -29,9 +73,10 @@ export function EvasaoTabelaCursos({ cursos }: { cursos: CursoLinha[] }) {
     <TabelaOrdenavel
       linhas={cursos}
       chaveLinha={(c) => `${c.curso}-${c.nivel}-${cursos.indexOf(c)}`}
+      linhaExpandida={(c) => <TurmasDoCurso c={c} />}
       corpoVazio={
         <tr>
-          <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+          <td colSpan={7} className="px-4 py-6 text-center text-neutral-500">
             Nenhum curso com perda registrada neste recorte.
           </td>
         </tr>

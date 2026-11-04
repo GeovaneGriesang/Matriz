@@ -72,19 +72,13 @@ export function checksumArquivo(caminho: string): string {
 /**
  * As planilhas da MDO carregam a data de geração num texto solto do cabeçalho, no
  * formato "Gerado em 30/08/2026, 12:07:47". É a data do DADO, diferente da data da
- * carga, e é ela que precisa aparecer na tela ao lado do número.
+ * carga, e é ela que precisa aparecer na tela ao lado do número. As telas mostram essa data em UTC, então ela é guardada em UTC:
+ * no fuso local, um servidor à frente de UTC (o nosso está em Europe/Berlin) gravava a meia-noite no dia anterior.
  */
 export function dataDeGeracao(textoDoCabecalho: string | null): Date | null {
   if (!textoDoCabecalho) return null;
   const m = textoDoCabecalho.match(/(\d{2})\/(\d{2})\/(\d{4})(?:[,\s]+(\d{2}):(\d{2}):(\d{2}))?/);
   if (!m) return null;
   const [, dia, mes, ano, hh, mm, ss] = m;
-  return new Date(
-    Number(ano),
-    Number(mes) - 1,
-    Number(dia),
-    Number(hh ?? 0),
-    Number(mm ?? 0),
-    Number(ss ?? 0),
-  );
+  return new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia), Number(hh ?? 0), Number(mm ?? 0), Number(ss ?? 0)));
 }

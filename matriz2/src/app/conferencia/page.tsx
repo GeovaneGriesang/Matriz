@@ -19,6 +19,7 @@ interface Busca {
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const percentual = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = (v: number) => `${percentual.format(v * 100)}%`;
 
 export default async function ConferenciaPage({ searchParams }: { searchParams: Promise<Busca> }) {
   await requireAcessoPlenoOrRedirect("/conferencia");
@@ -69,145 +70,71 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       valorOficial,
       valorRecalc,
       diferenca: valorRecalc !== null ? valorRecalc - valorOficial : null,
+      blocos: [
+        {
+          titulo: "IEA, Índice de Eficiência Acadêmica",
+          linhas: [
+            { rotulo: "Conclusão do ciclo", oficial: pct(l.ieaConclusao) },
+            { rotulo: "Evasão do ciclo", oficial: pct(l.ieaEvasao) },
+            { rotulo: "Retenção do ciclo", oficial: pct(l.ieaRetencao) },
+            {
+              rotulo: "IEA (Conclusão + Retenção × Conclusão/(Conclusão+Evasão))",
+              oficial: l.ieaOficial !== null ? pct(l.ieaOficial) : "não informado",
+              recalculado: l.ieaRecalc !== null ? pct(l.ieaRecalc) : "não informado",
+            },
+            {
+              rotulo: "IEA ponderado (× peso da faixa)",
+              oficial: l.ieaPonderadoOficial !== null ? decimal.format(l.ieaPonderadoOficial) : "não informado",
+              recalculado: l.ieaPonderadoRecalc !== null ? decimal.format(l.ieaPonderadoRecalc) : "não informado",
+            },
+            {
+              rotulo: "IEA equalizado (fatia na rede)",
+              oficial: l.ieaEqualizadoOficial !== null ? pct(l.ieaEqualizadoOficial) : "não informado",
+              recalculado: ieaEq !== null ? pct(ieaEq) : "não informado",
+            },
+            { rotulo: "Valor recebido (bloco IEA)", oficial: reais.format(l.vlIeaOficial) },
+          ],
+        },
+        {
+          titulo: "RAP, Relação Aluno-Professor Presencial",
+          linhas: [
+            { rotulo: "RAP Presencial (alunos por professor)", oficial: decimal.format(l.rapPresencial) },
+            {
+              rotulo: "RAP ponderado (× peso da faixa)",
+              oficial: l.rapPonderadoOficial !== null ? decimal.format(l.rapPonderadoOficial) : "não informado",
+              recalculado: l.rapConfiavel ? decimal.format(l.rapPonderadoRecalc) : "não conferido",
+            },
+            {
+              rotulo: "RAP equalizado (fatia na rede)",
+              oficial: l.rapEqualizadoOficial !== null ? pct(l.rapEqualizadoOficial) : "não informado",
+              recalculado: rapEq !== null ? pct(rapEq) : "não conferido",
+            },
+            { rotulo: "Valor recebido (bloco RAP)", oficial: reais.format(l.vlRapOficial) },
+          ],
+          aviso: l.rapConfiavel
+            ? undefined
+            : `O RAP ponderado oficial desta instituição (${decimal.format(l.rapPonderadoOficial ?? 0)}) não bate com o que a fórmula de faixas prevê para RAP Presencial ${decimal.format(l.rapPresencial)} (${decimal.format(l.rapPonderadoRecalc)}): provavelmente esta instituição segue uma regra própria que este sistema ainda não reproduz. Por isso o RAP dela fica de fora da conferência, para não distorcer o recálculo das outras instituições também.`,
+        },
+        {
+          titulo: "IAPL, Atendimento a Percentuais Legais",
+          linhas: [
+            { rotulo: "%ME Cursos Técnicos", oficial: pct(l.aplTecnico), recalculado: `ponderado: ${decimal.format(l.iaplTecnicoPonderadoRecalc)}` },
+            { rotulo: "%ME Formação de Professores", oficial: pct(l.aplFormacaoProfessor), recalculado: `ponderado: ${decimal.format(l.iaplFormacaoPonderadoRecalc)}` },
+            { rotulo: "%ME Proeja", oficial: pct(l.aplProeja), recalculado: `ponderado: ${decimal.format(l.iaplProejaPonderadoRecalc)}` },
+            {
+              rotulo: "IAPL equalizado (0,7×Técnicos + 0,2×Formação + 0,1×Proeja, cada um normalizado pela rede)",
+              oficial: l.iaplEqualizadoOficial !== null ? pct(l.iaplEqualizadoOficial) : "não informado",
+              recalculado: iaplEq !== null ? pct(iaplEq) : "não informado",
+            },
+            { rotulo: "Valor recebido (bloco IAPL)", oficial: reais.format(l.vlIaplOficial) },
+          ],
+        },
+      ],
     };
   });
   conferidas.sort((a, b) => Math.abs(b.diferenca ?? 0) - Math.abs(a.diferenca ?? 0));
-
-  if (params.instituicao) {
-    const detalheBruto = linhas.find((l) => l.sigla === params.instituicao);
-    if (detalheBruto) {
-      const conferida = conferidas.find((c) => c.sigla === params.instituicao)!;
-
-      const ieaEqRecalc = ieaEqualizadoRecalc(rede, detalheBruto.ieaPonderadoRecalc);
-      const rapEqRecalc = detalheBruto.rapConfiavel ? rapEqualizadoRecalc(rede, detalheBruto.rapPonderadoRecalc) : null;
-      const iaplEqRecalc = iaplEqualizadoRecalc(
-        rede,
-        detalheBruto.iaplTecnicoPonderadoRecalc,
-        detalheBruto.iaplFormacaoPonderadoRecalc,
-        detalheBruto.iaplProejaPonderadoRecalc,
-      );
-
-      return (
-        <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
-          <div className="flex flex-col gap-2">
-            <Link href={`/conferencia?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-              ← todas as instituições
-            </Link>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-              Conferência, {detalheBruto.nome}, {ano}
-            </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
-              Refaz o cálculo dos blocos IEA, RAP e IAPL a partir dos mesmos componentes que a MDO já
-              publica (Conclusão, Evasão e Retenção do ciclo; RAP Presencial; %ME de cada categoria do
-              IAPL), e compara com o que a MDO calculou. Veja o que cada indicador significa em{" "}
-              <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
-                Qualidade e Eficiência
-              </Link>
-              .
-            </p>
-          </div>
-
-          <BlocoConferencia
-            titulo="IEA, Índice de Eficiência Acadêmica"
-            linhas={[
-              { rotulo: "Conclusão do ciclo", oficial: percentual.format(detalheBruto.ieaConclusao * 100) + "%" },
-              { rotulo: "Evasão do ciclo", oficial: percentual.format(detalheBruto.ieaEvasao * 100) + "%" },
-              { rotulo: "Retenção do ciclo", oficial: percentual.format(detalheBruto.ieaRetencao * 100) + "%" },
-              {
-                rotulo: "IEA (Conclusão + Retenção × Conclusão/(Conclusão+Evasão))",
-                oficial: detalheBruto.ieaOficial !== null ? percentual.format(detalheBruto.ieaOficial * 100) + "%" : "não informado",
-                recalculado: detalheBruto.ieaRecalc !== null ? percentual.format(detalheBruto.ieaRecalc * 100) + "%" : "não informado",
-              },
-              {
-                rotulo: "IEA ponderado (× peso da faixa)",
-                oficial: detalheBruto.ieaPonderadoOficial !== null ? decimal.format(detalheBruto.ieaPonderadoOficial) : "não informado",
-                recalculado: detalheBruto.ieaPonderadoRecalc !== null ? decimal.format(detalheBruto.ieaPonderadoRecalc) : "não informado",
-              },
-              {
-                rotulo: "IEA equalizado (fatia na rede)",
-                oficial: detalheBruto.ieaEqualizadoOficial !== null ? percentual.format(detalheBruto.ieaEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: ieaEqRecalc !== null ? percentual.format(ieaEqRecalc * 100) + "%" : "não informado",
-              },
-              { rotulo: "Valor recebido (bloco IEA)", oficial: reais.format(detalheBruto.vlIeaOficial) },
-            ]}
-          />
-
-          <BlocoConferencia
-            titulo="RAP, Relação Aluno-Professor Presencial"
-            linhas={[
-              { rotulo: "RAP Presencial (alunos por professor)", oficial: decimal.format(detalheBruto.rapPresencial) },
-              {
-                rotulo: "RAP ponderado (× peso da faixa)",
-                oficial: detalheBruto.rapPonderadoOficial !== null ? decimal.format(detalheBruto.rapPonderadoOficial) : "não informado",
-                recalculado: detalheBruto.rapConfiavel ? decimal.format(detalheBruto.rapPonderadoRecalc) : "não conferido",
-              },
-              {
-                rotulo: "RAP equalizado (fatia na rede)",
-                oficial: detalheBruto.rapEqualizadoOficial !== null ? percentual.format(detalheBruto.rapEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: rapEqRecalc !== null ? percentual.format(rapEqRecalc * 100) + "%" : "não conferido",
-              },
-              { rotulo: "Valor recebido (bloco RAP)", oficial: reais.format(detalheBruto.vlRapOficial) },
-            ]}
-          />
-          {!detalheBruto.rapConfiavel && (
-            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-              O RAP ponderado oficial desta instituição ({decimal.format(detalheBruto.rapPonderadoOficial ?? 0)}) não
-              bate com o que a fórmula de faixas prevê para RAP Presencial {decimal.format(detalheBruto.rapPresencial)}{" "}
-              ({decimal.format(detalheBruto.rapPonderadoRecalc)}): provavelmente esta instituição segue uma regra
-              própria que este sistema ainda não reproduz. Por isso o RAP dela fica de fora da conferência, para
-              não distorcer o recálculo das outras instituições também.
-            </p>
-          )}
-
-          <BlocoConferencia
-            titulo="IAPL, Atendimento a Percentuais Legais"
-            linhas={[
-              {
-                rotulo: "%ME Cursos Técnicos",
-                oficial: percentual.format(detalheBruto.aplTecnico * 100) + "%",
-                recalculado: `ponderado: ${decimal.format(detalheBruto.iaplTecnicoPonderadoRecalc)}`,
-              },
-              {
-                rotulo: "%ME Formação de Professores",
-                oficial: percentual.format(detalheBruto.aplFormacaoProfessor * 100) + "%",
-                recalculado: `ponderado: ${decimal.format(detalheBruto.iaplFormacaoPonderadoRecalc)}`,
-              },
-              {
-                rotulo: "%ME Proeja",
-                oficial: percentual.format(detalheBruto.aplProeja * 100) + "%",
-                recalculado: `ponderado: ${decimal.format(detalheBruto.iaplProejaPonderadoRecalc)}`,
-              },
-              {
-                rotulo: "IAPL equalizado (0,7×Técnicos + 0,2×Formação + 0,1×Proeja, cada um normalizado pela rede)",
-                oficial: detalheBruto.iaplEqualizadoOficial !== null ? percentual.format(detalheBruto.iaplEqualizadoOficial * 100) + "%" : "não informado",
-                recalculado: iaplEqRecalc !== null ? percentual.format(iaplEqRecalc * 100) + "%" : "não informado",
-              },
-              { rotulo: "Valor recebido (bloco IAPL)", oficial: reais.format(detalheBruto.vlIaplOficial) },
-            ]}
-          />
-
-          <div className="rounded-lg border border-if-green/40 bg-if-green/5 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                Total Qualidade e Eficiência (IEA + RAP + IAPL)
-              </span>
-              <span className="tabular-nums">
-                oficial {reais.format(conferida.valorOficial)}
-                {conferida.valorRecalc !== null && (
-                  <>
-                    {" "}, recalculado {reais.format(conferida.valorRecalc)}, diferença{" "}
-                    <strong className={Math.abs(conferida.diferenca ?? 0) > 1 ? "text-if-red" : "text-if-green"}>
-                      {reais.format(conferida.diferenca ?? 0)}
-                    </strong>
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        </main>
-      );
-    }
-  }
+  // O exemplo da explicação: a instituição de maior diferença, a que mais vale abrir primeiro.
+  const exemplo = conferidas[0]!;
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
@@ -223,6 +150,10 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
           está desatualizada, ou algo mudou na metodologia que ainda não foi conferido. Este recálculo
           nunca decide quanto uma instituição recebe, só serve para conferir.
         </p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Clique no <strong>+</strong> de uma instituição para abrir a conta de cada bloco logo abaixo da linha, e no <strong>−</strong> para fechar. Exemplo: a tabela começa por {exemplo.sigla},
+          {exemplo.diferenca !== null ? ` com diferença de ${reais.format(exemplo.diferenca)}` : " que não pôde ser conferida"}; o + dela mostra de qual bloco isso vem.
+        </p>
         {!temFaixaIea && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Não há tabela de faixas de IEA cadastrada para {ano} (as faixas mudam a cada ciclo, porque
@@ -233,42 +164,8 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       </div>
 
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <ConferenciaTabela linhas={conferidas} ano={ano} />
+        <ConferenciaTabela linhas={conferidas} abertaDeInicio={params.instituicao} />
       </div>
     </main>
-  );
-}
-
-function BlocoConferencia({
-  titulo,
-  linhas,
-}: {
-  titulo: string;
-  linhas: { rotulo: string; oficial: string; recalculado?: string }[];
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>
-      <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
-            <tr>
-              <th className="px-4 py-2.5 font-medium text-neutral-600 dark:text-neutral-400">Componente</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Oficial (MDO)</th>
-              <th className="px-4 py-2.5 text-right font-medium text-neutral-600 dark:text-neutral-400">Recalculado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((l) => (
-              <tr key={l.rotulo} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-400">{l.rotulo}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{l.oficial}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{l.recalculado ?? "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

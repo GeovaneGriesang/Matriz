@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
+import { LinhaDeCurso } from "@/app/consulta/valor-do-aluno/LinhaDeCurso";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
@@ -60,7 +62,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
   }
 
   const urlPorSigla = Object.fromEntries(instituicoes.map((i) => [i.sigla, `/simulador/oportunidades?ano=${ano}&instituicao=${encodeURIComponent(i.sigla)}`]));
-  const porCampus = await prisma.distribuicaoCiclo.groupBy({ by: ["unidadeId"], where: { ano, unidade: { instituicaoId: instituicao.id } } });
+  const porCampus = await prisma.distribuicaoCiclo.groupBy({ by: ["unidadeId"], where: { ano, ...CICLO_QUE_CONTRIBUI, unidade: { instituicaoId: instituicao.id } } });
   const unidades = await prisma.unidade.findMany({
     where: { id: { in: porCampus.map((c) => c.unidadeId) } },
     select: { id: true, nome: true },
@@ -90,7 +92,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
     carregarCatalogo(),
     prisma.distribuicaoCiclo.findMany({
       where: { ano, unidadeId: campus.id, chMatriz: { gt: 0 }, ...CICLO_QUE_CONTRIBUI },
-      select: { curso: true, tipoOferta: true, cargaHoraria: true, chMatriz: true, qtdAlunosMatriz: true, valorReais: true },
+      select: { id: true, codigoCiclo: true, inicio: true, termino: true, curso: true, tipoOferta: true, cargaHoraria: true, chMatriz: true, qtdAlunosMatriz: true, valorReais: true },
     }),
   ]);
 
@@ -131,11 +133,12 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
     `rounded px-2 py-1 text-xs font-medium ${ativo ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"}`;
 
   // Horas que não rendem: ciclos do câmpus em que a CH do ciclo passa do teto da matriz.
-  const acima = new Map<string, { curso: string; oferta: string; alunos: number; chCiclo: number; chMatriz: number; valor: number }>();
+  const acima = new Map<string, { curso: string; oferta: string; alunos: number; chCiclo: number; chMatriz: number; valor: number; turmas: typeof ciclos }>();
   for (const c of ciclos) {
     if ((c.cargaHoraria ?? 0) <= (c.chMatriz ?? 0)) continue;
     const chave = `${c.curso}|${c.tipoOferta ?? ""}|${c.cargaHoraria}|${c.chMatriz}`;
-    const g = acima.get(chave) ?? { curso: c.curso, oferta: c.tipoOferta ?? "", alunos: 0, chCiclo: c.cargaHoraria ?? 0, chMatriz: c.chMatriz ?? 0, valor: 0 };
+    const g = acima.get(chave) ?? { curso: c.curso, oferta: c.tipoOferta ?? "", alunos: 0, chCiclo: c.cargaHoraria ?? 0, chMatriz: c.chMatriz ?? 0, valor: 0, turmas: [] };
+    g.turmas.push(c);
     g.alunos += Number(c.qtdAlunosMatriz ?? 0);
     g.valor += Number(c.valorReais);
     acima.set(chave, g);
@@ -287,7 +290,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">2. Onde {campus.nome} tem horas que a MDO não paga</h2>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           A MDO conta no máximo um teto de carga horária por aluno (3.000, 3.100 ou 3.200 h no integrado, a mínima do MEC nos demais). Horas acima do teto não rendem nada. Estes são os cursos do câmpus cujo ciclo tem
-          mais horas do que a MDO paga: {totalCiclosComExcesso === 0 ? "nenhum." : `${inteiro.format(totalCiclosComExcesso)} grupos de ciclos, os 25 maiores abaixo.`}
+          mais horas do que a MDO paga: {totalCiclosComExcesso === 0 ? "nenhum." : `${inteiro.format(totalCiclosComExcesso)} grupos de ciclos, os 25 maiores abaixo. O + de cada um abre as turmas, com o código do ciclo e o período.`}
         </p>
         {horasQueNaoRendem.length > 0 && (
           <div className="tabela-rolavel">
@@ -302,21 +305,32 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
                   <th className="px-3 py-2 text-right">Horas de aluno sem repasse</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {horasQueNaoRendem.map((g) => (
-                  <tr key={`${g.curso}-${g.oferta}-${g.chCiclo}-${g.chMatriz}`}>
-                    <td className="py-1.5 pr-3">
-                      {g.curso}
-                      {g.oferta && g.oferta !== "NÃO SE APLICA" ? ` (${g.oferta.toLowerCase()})` : ""}
-                    </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.chCiclo)} h</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.chMatriz)} h</td>
-                    <td className="px-3 py-1.5 text-right font-medium tabular-nums">{inteiro.format(g.excesso)} h</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.alunos)}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.horasAlunoPerdidas)}</td>
-                  </tr>
-                ))}
-              </tbody>
+              {horasQueNaoRendem.map((g) => (
+                <LinhaDeCurso
+                  key={`${g.curso}-${g.oferta}-${g.chCiclo}-${g.chMatriz}`}
+                  rotulo={`${g.curso}${g.oferta && g.oferta !== "NÃO SE APLICA" ? ` (${g.oferta.toLowerCase()})` : ""}, ${inteiro.format(g.turmas.length)} ${g.turmas.length === 1 ? "turma" : "turmas"}`}
+                  colunas={6}
+                  manterCelulas
+                  detalhe={
+                    <ul className="flex flex-col gap-1 text-xs text-neutral-700 dark:text-neutral-300">
+                      {g.turmas.map((t) => (
+                        <li key={t.id}>
+                          {rotuloDoCiclo(t)}: {inteiro.format(Number(t.qtdAlunosMatriz ?? 0))} alunos, {reais.format(Number(t.valorReais))}
+                        </li>
+                      ))}
+                    </ul>
+                  }
+                  celulas={
+                    <>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.chCiclo)} h</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.chMatriz)} h</td>
+                      <td className="px-3 py-1.5 text-right font-medium tabular-nums">{inteiro.format(g.excesso)} h</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.alunos)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inteiro.format(g.horasAlunoPerdidas)}</td>
+                    </>
+                  }
+                />
+              ))}
             </table>
           </div>
         )}

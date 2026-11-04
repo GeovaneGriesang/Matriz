@@ -5,7 +5,7 @@ import { ehCampusDestaque, ehInstituicaoDestaque } from "@/lib/destaque";
 import { modoDoParametro, passaNoFiltro } from "@/lib/compararCursos";
 import { ehChaveDeModalidade, ehFormaDeEnsino, rotuloDaModalidade, type ChaveModalidade } from "@/lib/modalidadeCurso";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
-import { carregarCampiComCursosAfins, carregarCampiComFiltro, carregarCursosDoCampus, type FiltroDeCursos } from "@/server/queries/cursosCampus";
+import { CICLO_QUE_CONTRIBUI, carregarCampiComCursosAfins, carregarCampiComFiltro, carregarCursosDoCampus, type FiltroDeCursos } from "@/server/queries/cursosCampus";
 import type { CursoLinha } from "../ConsultaTabelaCursos";
 import { PainelComparacaoCursos, type CursoComparavel } from "../PainelComparacaoCursos";
 import { AjustesDaSelecao } from "./AjustesDaSelecao";
@@ -13,8 +13,11 @@ import { FiltroComparacao } from "./FiltroComparacao";
 import { FiltroDeModalidade } from "./FiltroDeModalidade";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
 import { turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 
 export const dynamic = "force-dynamic";
+
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 const MAX_SLOTS = 4;
 
@@ -82,7 +85,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   // esse câmpus está de fato num dos slots, para não carregar os cursos de mais de 600 câmpus de uma vez.
   const porCampusRede = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
-    where: { ano },
+    where: { ano, ...CICLO_QUE_CONTRIBUI },
     _sum: { valorReais: true },
   });
   if (porCampusRede.length === 0) {
@@ -225,6 +228,10 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
           recebido. Em cada um, escolha primeiro a instituição, depois o câmpus e então o curso. <strong>O primeiro é o principal</strong>: a tela mostra o que ele ganha ou perde em relação aos
           outros.
         </p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Aparecem só as turmas com valor em {ano}, ou seja, com alunos contados no ano-base {ano - 2}. Cada uma traz o <strong>código do ciclo</strong> e o período, porque o mesmo curso costuma ter várias turmas no câmpus.
+          {principal && <> Exemplo: {principal.curso}, {rotuloDoCiclo(principal)}, gera {reais.format(principal.valor)} em {ano}.</>}
+        </p>
       </div>
 
       {seletorDeAno}
@@ -246,7 +253,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
             instituicaoEscolhida={nomePorCampus.get(slot.unidadeId)?.instituicaoSigla ?? ""}
             campusEscolhido={slot.unidadeId}
             campusTravado={slot.travado}
-            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio, modalidade: c.modalidadeRotulo ?? "", tipoCurso: c.tipoCursoLegivel ?? "", retida: turmaEncerradaAntesDoAnoBase(c.termino, ano) }))}
+            cursos={slot.cursos.map((c) => ({ id: c.id, curso: c.curso, codigoCiclo: c.codigoCiclo ?? "", termino: c.termino, valor: c.valor, peso: c.peso, repasse: c.repasse, inicio: c.inicio, modalidade: c.modalidadeRotulo ?? "", tipoCurso: c.tipoCursoLegivel ?? "", retida: turmaEncerradaAntesDoAnoBase(c.termino, ano) }))}
             cursoEscolhido={slot.cursoEscolhido?.id ?? null}
             paramsAtuais={paramsAtuais}
             podeRemover={quantosSlots > 2 && slot.indice === quantosSlots}

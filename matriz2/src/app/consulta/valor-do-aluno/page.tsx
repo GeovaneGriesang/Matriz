@@ -70,7 +70,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
 
   const porCampus = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
-    where: { ano, unidade: { instituicaoId: instituicao.id } },
+    where: { ano, ...CICLO_QUE_CONTRIBUI, unidade: { instituicaoId: instituicao.id } },
     _sum: { valorReais: true },
   });
   const unidades = await prisma.unidade.findMany({
@@ -146,6 +146,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
   interface CicloAnalisado {
     id: number;
     ciclo: string;
+    codigoCiclo: string;
     inicio: Date | null;
     termino: Date | null;
     alunos: number;
@@ -182,6 +183,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     const item: CicloAnalisado = {
       id: c.id,
       ciclo: c.ciclo,
+      codigoCiclo: c.codigoCiclo,
       inicio: c.inicio,
       termino: c.termino,
       alunos: n(c.qtdAlunosMatriz),
@@ -339,6 +341,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
                               <tr>
                                 <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300">
                                   {dataCurta(t.inicio)} a {dataCurta(t.termino)}
+                                  <span className="block text-[10px] text-neutral-500">ciclo {t.codigoCiclo}</span>
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums">{inteiro.format(t.alunos)}</td>
                                 <td className="px-2 py-1.5 text-right tabular-nums">
@@ -426,7 +429,7 @@ const dia = (d: Date | null) => dataCurta(d);
  * A conta de cada turma, fator a fator, com os números reais: a mesma fórmula da legenda, preenchida. A primeira turma vem aberta
  * como exemplo; as outras se abrem com um clique (o padrão de "ver detalhes" em tabela, sem empurrar a página).
  */
-function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; inicio: Date | null; termino: Date | null; alunos: number; valor: number; valorMatricula: number; mtPublicada: number; analise: AnaliseAluno | null; retida: boolean }[]; totalCampus: number; ano: number }) {
+function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; codigoCiclo: string; inicio: Date | null; termino: Date | null; alunos: number; valor: number; valorMatricula: number; mtPublicada: number; analise: AnaliseAluno | null; retida: boolean }[]; totalCampus: number; ano: number }) {
   const comConta = turmas.filter((t) => t.analise && t.alunos > 0);
   if (comConta.length === 0) return null;
   return (
@@ -438,8 +441,8 @@ function ContasDasTurmas({ turmas, totalCampus, ano }: { turmas: { id: number; i
         const regra = d.icqa === 1 ? "turma regular: todos os alunos contam" : d.icqa === 0.5 ? "turma que já devia ter terminado (alunos retidos): conta metade, e só 182,5 dias" : "alunos além do prazo de jubilamento: não contam";
         return (
           <details key={t.id} open={i === 0} className="rounded-md border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
-            <summary className="cursor-pointer text-neutral-800 dark:text-neutral-200">
-              Turma de {dia(t.inicio)} a {dia(t.termino)}{t.retida ? " (encerrada, alunos retidos)" : ""}: um aluno vale <strong>{reais.format(porAluno)}</strong>
+            <summary className="text-neutral-800 dark:text-neutral-200">
+              Ciclo {t.codigoCiclo}, turma de {dia(t.inicio)} a {dia(t.termino)}{t.retida ? " (encerrada, alunos retidos)" : ""}: um aluno vale <strong>{reais.format(porAluno)}</strong>
             </summary>
             <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-neutral-700 dark:text-neutral-300">
               <li>

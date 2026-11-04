@@ -232,19 +232,33 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const algumNoPiso = campusLinhas.some((c) => c.estaNoPiso);
 
   // Cursos: do câmpus escolhido, ou de toda a instituição.
-  const cursosBrutos = await prisma.distribuicaoCiclo.groupBy({
-    by: ["curso", "nivel"],
+  const ciclosDoRecorte = await prisma.distribuicaoCiclo.findMany({
     where: campusId
       ? { ano, unidadeId: campusId, ...CICLO_QUE_CONTRIBUI }
       : { ano, ...CICLO_QUE_CONTRIBUI, unidade: { instituicaoId: instituicao.id } },
-    _sum: { valorReais: true, perdaEvasaoReais: true },
-    _count: { _all: true },
+    select: { id: true, curso: true, nivel: true, codigoCiclo: true, inicio: true, termino: true, unidadeId: true, valorReais: true, perdaEvasaoReais: true },
   });
-  const cursos = cursosBrutos
-    .map((c) => {
-      const recebido = Number(c._sum.valorReais ?? 0);
-      const perda = Number(c._sum.perdaEvasaoReais ?? 0);
-      return { curso: c.curso, nivel: c.nivel, ciclos: c._count._all, recebido, perda, taxa: pct(perda, recebido) };
+  const porCursoENivel = new Map<string, typeof ciclosDoRecorte>();
+  for (const c of ciclosDoRecorte) {
+    const chave = `${c.curso}|${c.nivel ?? ""}`;
+    porCursoENivel.set(chave, [...(porCursoENivel.get(chave) ?? []), c]);
+  }
+  const cursos = [...porCursoENivel.values()]
+    .map((lista) => {
+      const recebido = lista.reduce((s, c) => s + Number(c.valorReais), 0);
+      const perda = lista.reduce((s, c) => s + Number(c.perdaEvasaoReais ?? 0), 0);
+      const turmas = lista
+        .map((c) => ({
+          id: c.id,
+          codigoCiclo: c.codigoCiclo,
+          inicio: c.inicio ? c.inicio.toISOString() : null,
+          termino: c.termino ? c.termino.toISOString() : null,
+          campus: campusId ? null : (nomePorUnidade.get(c.unidadeId) ?? null),
+          recebido: Number(c.valorReais),
+          perda: Number(c.perdaEvasaoReais ?? 0),
+        }))
+        .sort((a, b) => b.perda - a.perda);
+      return { curso: lista[0]!.curso, nivel: lista[0]!.nivel, ciclos: lista.length, recebido, perda, taxa: pct(perda, recebido), turmas };
     })
     .filter((c) => c.perda > 0)
     .sort((a, b) => b.perda - a.perda);
@@ -272,7 +286,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
     return (
       <div className={fechar ? "flex w-0 min-w-full flex-col gap-2 rounded-md border-l-4 border-if-green bg-white p-4 dark:bg-neutral-950" : "flex flex-col gap-2"}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>
+          {titulo && <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>}
           {fechar && (
             <Link href={fechar} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
               fechar
@@ -281,7 +295,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
         </div>
         <p className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
           Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
-          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
+          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe. O <strong>+</strong> de um curso abre as turmas dele, com o código do ciclo e o período.
         </p>
         <div className={`tabela-rolavel isolate rounded-lg border border-neutral-200 dark:border-neutral-800 ${fechar ? "max-h-[60vh]" : ""}`}>
           <EvasaoTabelaCursos cursos={cursos} />
@@ -377,7 +391,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus</h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha. Clique de novo para fechar.</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no <strong>+</strong> de um câmpus para abrir os cursos dele logo abaixo da linha, e no <strong>−</strong> para fechar.</p>
         {algumNoPiso && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Os câmpus marcados <strong>&quot;no piso&quot;</strong> já recebem o{" "}
@@ -405,8 +419,13 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
         </div>
       </div>
 
-      {/* Sem câmpus aberto, os cursos da instituição inteira. Com câmpus aberto, os dele ficam no quadro, logo abaixo da linha. */}
-      {!campusNaTabela && quadroDeCursos(`Por curso, em ${nomeCampus ?? `todo o ${instituicao.sigla}`}`)}
+      {/* Sem câmpus aberto, os cursos da instituição inteira, num quadro fechado. Com câmpus aberto, os dele ficam no quadro, logo abaixo da linha. */}
+      {!campusNaTabela && (
+        <details className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          <summary className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por curso, em {nomeCampus ?? `todo o ${instituicao.sigla}`}</summary>
+          <div className="mt-3">{quadroDeCursos("")}</div>
+        </details>
+      )}
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

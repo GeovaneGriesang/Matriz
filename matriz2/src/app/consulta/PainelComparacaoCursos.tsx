@@ -5,6 +5,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { PROSE_LINK } from "@/lib/layoutWidths";
 import { diferencaParaPrincipal, diferencasContra } from "@/lib/compararCursos";
 import { explicacaoDasTurmasRetidas, turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import type { CursoLinha } from "./ConsultaTabelaCursos";
 
 export interface CursoComparavel extends CursoLinha {
@@ -86,6 +87,7 @@ export function PainelComparacaoCursos({
   const retida = (c: CursoComparavel) => ano !== undefined && turmaEncerradaAntesDoAnoBase(c.termino, ano);
 
   const linhas: Linha[] = [
+    { rotulo: "Código do ciclo", ajuda: <>O número da turma na MDO, o mesmo em todos os anos. É ele que diz qual turma está sendo comparada quando o curso tem várias com o mesmo nome.</>, valor: (c) => c.codigoCiclo || "não informado" },
     {
       rotulo: "Modalidade",
       ajuda: <>O tipo de oferta: técnico integrado ao ensino médio, técnico subsequente ou concomitante, Proeja, superior (bacharelado, licenciatura, tecnologia), pós-graduação ou FIC. Define a duração e a carga horária esperadas e, com os laboratórios do catálogo, o peso do curso.</>,
@@ -213,7 +215,7 @@ export function PainelComparacaoCursos({
         <div className="flex flex-col gap-2 rounded-md border border-if-green/40 bg-white p-3 dark:bg-neutral-950">
           <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             O que {principal.curso}
-            {principal.campus ? ` (${principal.instituicaoSigla}, ${principal.campus})` : ""} ganha ou perde em relação a cada um
+            {` (${principal.campus ? `${principal.instituicaoSigla}, ${principal.campus}; ` : ""}${rotuloDoCiclo(principal)})`} ganha ou perde em relação a cada um
           </h4>
           <ul className="flex flex-col gap-1.5 text-sm text-neutral-700 dark:text-neutral-300">
             {outros.map((o) => {
@@ -235,7 +237,7 @@ export function PainelComparacaoCursos({
               return (
                 <li key={o.id}>
                   <strong>Contra {o.curso}</strong>
-                  {o.campus ? ` (${o.instituicaoSigla}, ${o.campus})` : ""}: {frases.join("; ")}.
+                  {` (${o.campus ? `${o.instituicaoSigla}, ${o.campus}; ` : ""}${rotuloDoCiclo(o)})`}: {frases.join("; ")}.
                 </li>
               );
             })}
@@ -283,6 +285,7 @@ export function PainelComparacaoCursos({
                             {c.instituicaoSigla}, {c.campus}
                           </span>
                         )}
+                        <span className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">{rotuloDoCiclo(c)}</span>
                         {retida(c) && <span className="block text-xs font-medium text-amber-700 dark:text-amber-400">turma encerrada, alunos retidos</span>}
                       </span>
                       {onRemover && (
