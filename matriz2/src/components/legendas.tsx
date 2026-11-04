@@ -65,13 +65,13 @@ export function legendaConsultaInstituicoes(
 }
 
 export function legendaConsultaCampus(
-  l: { nome: string; ciclos: number; matricula: number; valor: number; perda: number; recebidoReal: number | null; funcionamentoCalculado: number | null } | undefined,
+  l: { nome: string; ciclos: number; matricula: number; valor: number; perda: number; recebidoReal: number | null } | undefined,
   comRecebido: boolean,
 ): ItemDeLegenda[] {
   if (!l) return [];
   const n = nomeCurto(l.nome);
   const itens: ItemDeLegenda[] = [
-    { coluna: "Ciclos", texto: <>quantas turmas (ciclos de curso) do câmpus contribuem para o orçamento do ano, ou seja, têm alunos no ano-base. {n}: {inteiro.format(l.ciclos)}.</> },
+    { coluna: "Turmas", texto: <>quantas turmas do câmpus (a MDO as chama de ciclos) contribuem para o orçamento do ano, ou seja, têm alunos no ano-base. {n}: {inteiro.format(l.ciclos)}.</> },
     { coluna: "Matrícula", texto: <>{MATRICULA_TOTAL}. {n}: {dec2.format(l.matricula)}.</> },
     {
       coluna: "Gerado pela matriz",
@@ -104,16 +104,6 @@ export function legendaConsultaCampus(
     );
   }
   itens.push(
-    {
-      coluna: "Funcionamento calculado",
-      texto: (
-        <>
-          a mesma conta refeita por este sistema: Matrícula Total de cada modalidade × valor de uma matrícula da modalidade. Serve para conferir o
-          gerado pela matriz; a diferença costuma vir do Piso Mínimo. {n}:{" "}
-          {l.funcionamentoCalculado !== null ? reais.format(l.funcionamentoCalculado) : "não informado"}.
-        </>
-      ),
-    },
     { coluna: "Perda por evasão", texto: <>o Custo Evadido da 6ª fase, somado dos cursos do câmpus. {n}: {reais.format(l.perda)}.</> },
   );
   return itens;

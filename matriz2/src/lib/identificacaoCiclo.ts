@@ -25,7 +25,7 @@ export function periodoCurtoDoCiclo(c: Pick<CicloIdentificavel, "inicio" | "term
   return "sem data";
 }
 
-/** "ciclo 2986225, 03/2025 a 12/2028". */
+/** "turma 2986225, 03/2025 a 12/2028". O código é o que a MDO chama de ciclo. */
 export function rotuloDoCiclo(c: CicloIdentificavel): string {
-  return `${c.codigoCiclo ? `ciclo ${c.codigoCiclo}, ` : ""}${periodoCurtoDoCiclo(c)}`;
+  return `${c.codigoCiclo ? `turma ${c.codigoCiclo}, ` : ""}${periodoCurtoDoCiclo(c)}`;
 }

@@ -177,7 +177,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
           <div className="flex gap-1">
             {anos.map((a) => (
               <Link
@@ -198,7 +198,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
 
       {arvore.length === 0 ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          O ciclo {ano} não tem nem 6ª fase (evasão) nem indicadores por instituição (RAP/IAPL)
+          A matriz de {ano} não tem nem 6ª fase (evasão) nem indicadores por instituição (RAP/IAPL)
           carregados, então não há nada para simular aqui.
         </p>
       ) : (

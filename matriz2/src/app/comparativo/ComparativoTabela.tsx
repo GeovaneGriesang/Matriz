@@ -107,7 +107,7 @@ export function ComparativoTabela({
             valor: (l) => (l.a === 0 && l.b > 0 ? null : l.variacao),
             render: (l) =>
               l.a === 0 && l.b > 0 ? (
-                <span className="text-xs text-neutral-500">novo no ciclo</span>
+                <span className="text-xs text-neutral-500">novo neste ano</span>
               ) : (
                 <span className={l.variacao >= variacaoRede ? "text-if-green" : "text-if-red dark:text-red-400"}>
                   {l.variacao >= 0 ? "+" : ""}

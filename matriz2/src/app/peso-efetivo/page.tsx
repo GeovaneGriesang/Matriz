@@ -150,7 +150,7 @@ export default async function PesoEfetivoPage({ searchParams }: { searchParams: 
               <th className="px-3 py-2 text-right">CH mínima MEC</th>
               <th className="px-3 py-2 text-right">Peso efetivo</th>
               <th className="px-3 py-2 text-right">Coluna "Peso do Curso"</th>
-              <th className="px-3 py-2 text-right">Ciclos</th>
+              <th className="px-3 py-2 text-right">Turmas</th>
               <th className="px-3 py-2">Fonte</th>
             </tr>
           </thead>

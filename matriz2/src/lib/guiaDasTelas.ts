@@ -28,7 +28,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/consulta/comparar": {
     responde: "O mesmo curso rende igual em outro câmpus?",
     mostra: "Cursos de qualquer instituição da rede, lado a lado: duração do ciclo, carga horária, peso, matrícula equalizada e valor recebido.",
-    usar: "Escolha instituição, câmpus e curso. A lista traz só as turmas com valor no ano, cada uma com o código do ciclo e o período. O primeiro curso é o principal, e a tela mostra o que ele ganha ou perde em relação aos outros. As turmas já encerradas, com alunos retidos, ficam num grupo à parte.",
+    usar: "Escolha instituição, câmpus e curso. A lista traz só as turmas com valor no ano, cada uma com o código e o período. O primeiro curso é o principal, e a tela mostra o que ele ganha ou perde em relação aos outros. As turmas já encerradas, com alunos retidos, ficam num grupo à parte.",
     atencao: "Peso, carga horária e duração não são comparáveis entre modalidades diferentes. A tela avisa quando isso ocorre.",
   },
   "/comparativo": {
@@ -52,7 +52,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/consulta": {
     responde: "Quanto cada um recebe, e de quais cursos vem esse valor?",
     mostra: 'O bloco Funcionamento de cada instituição, câmpus e curso. "Gerado pela matriz" é o valor homologado na MDO. No IFSul, aparece também o "Recebido", informado pela gestão.',
-    usar: "Escolha o ciclo e a instituição. Clique no + de um câmpus para abrir os cursos dele logo abaixo da linha, e no − para fechar. Aparecem só as turmas que contribuem para o ano, cada uma com o código do ciclo e o período. As turmas que terminaram antes do ano-base, mas ainda têm alunos retidos, ficam num grupo à parte.",
+    usar: "Escolha o ciclo e a instituição. Clique no + de um câmpus para abrir os cursos dele logo abaixo da linha, e no − para fechar. Aparecem só as turmas que contribuem para o ano, cada uma com o código e o período. As turmas que terminaram antes do ano-base, mas ainda têm alunos retidos, ficam num grupo à parte.",
     atencao: "O Funcionamento é cerca de 80% da matriz. Qualidade e Eficiência, Reitorias e Assistência Estudantil não entram aqui, porque não são valores por câmpus.",
   },
   "/consulta/curso": {
@@ -87,7 +87,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   },
   "/conferencia": {
     responde: "Os indicadores publicados pela MDO fecham com a fórmula?",
-    mostra: "IEA, RAP e IAPL de cada instituição, refeitos a partir dos componentes publicados e comparados com o valor da MDO.",
+    mostra: "IEA, RAP, IAPL e o Funcionamento dos câmpus de cada instituição, refeitos a partir dos componentes publicados e comparados com o valor da MDO.",
     usar: "Clique no + de uma instituição para abrir a conta de cada bloco logo abaixo da linha, e no − para fechar.",
     atencao: "Serve só para auditoria: esse recálculo nunca decide quanto uma instituição recebe. Uma diferença grande indica fórmula desatualizada ou mudança de metodologia a conferir.",
   },
@@ -104,7 +104,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/evasao": {
     responde: "Quanto se deixa de receber por causa da evasão?",
     mostra: "A perda de cada instituição, em reais e em proporção do que recebe, com abertura por câmpus e por curso. O valor vem pronto da 6ª fase da MDO.",
-    usar: "Clique numa instituição para ver os câmpus, e no + de um câmpus para abrir os cursos dele logo abaixo da linha. O + de um curso abre as turmas, com o código do ciclo e o período. É o dado mais acionável da matriz, porque responde ao que a instituição faz com os alunos que já tem.",
+    usar: "Clique numa instituição para ver os câmpus, e no + de um câmpus para abrir os cursos dele logo abaixo da linha. O + de um curso abre as turmas, com o código e o período. É o dado mais acionável da matriz, porque responde ao que a instituição faz com os alunos que já tem.",
     atencao: 'Nos câmpus marcados "no piso", reduzir a evasão pode não aumentar o que recebem.',
   },
   "/peso-efetivo": {

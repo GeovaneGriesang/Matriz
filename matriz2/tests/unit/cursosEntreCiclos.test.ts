@@ -43,7 +43,7 @@ describe("cursos lado a lado entre dois ciclos", () => {
 
   it("o rótulo traz sempre o ciclo, a modalidade e o período, sem errar o dia por causa do fuso", () => {
     const [c] = compararCursosEntreCiclos([turma(1, "A", "CURSO", 1, "2023-04-01")], [], 2026, 2027);
-    expect(c!.turmas[0]!.rotulo).toBe("Ciclo A, Técnico integrado, 01/04/2023 a 18/03/2026");
+    expect(c!.turmas[0]!.rotulo).toBe("Turma A, Técnico integrado, 01/04/2023 a 18/03/2026");
   });
 
   it("repasse a distância entra no rótulo, e turmas iguais em tudo se diferenciam pelo código do ciclo", () => {
@@ -54,8 +54,8 @@ describe("cursos lado a lado entre dois ciclos", () => {
       2027,
     );
     expect(c!.turmas.map((t) => t.rotulo)).toEqual([
-      "Ciclo A, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
-      "Ciclo B, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
+      "Turma A, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
+      "Turma B, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
     ]);
   });
 });

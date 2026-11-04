@@ -453,7 +453,7 @@ export default async function OrcamentoDaUniaoPage() {
             </table>
           </div>
           <p className="text-xs text-neutral-500">
-            Fontes: valor da matriz em MDO, 5ª fase, ciclo {ANO_EXECUCAO} (Funcionamento final do câmpus, já com o Piso Mínimo; Assistência = presencial, EAD e
+            Fontes: valor da matriz em MDO, 5ª fase, matriz de {ANO_EXECUCAO} (Funcionamento final do câmpus, já com o Piso Mínimo; Assistência = presencial, EAD e
             Regime de Internato Pleno); execução em {fonteExecucao}, UG a UG, somando os planos orçamentários, sem restos a pagar. A Reitoria concentra despesa
             central (contratos e serviços de toda a instituição) e o bloco Reitorias da matriz, que não é aberto por câmpus; por isso fica fora da soma.
           </p>

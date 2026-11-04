@@ -38,7 +38,7 @@ export function CalculoAoVivo({ ciclos }: { ciclos: CicloResumoCalculo[] }) {
         return (
           <div key={c.ano} className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Ciclo {c.ano}</span>
+              <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Matriz de {c.ano}</span>
               <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
                 referência {reais.format(c.valorReferenciaSpo)}
               </span>

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { prisma } from "@/server/db/prisma";
+import { calcularFuncionamentoCampus, carregarTaxasFuncionamento } from "@/server/queries/funcionamentoCampus";
+import type { BlocoDaConferencia } from "./ConferenciaTabela";
 import {
   calcularQualidadeEficienciaRede,
   iaplEqualizadoRecalc,
@@ -41,6 +44,27 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
     );
   }
 
+  // O Funcionamento de cada câmpus, refeito a partir da matrícula equalizada por modalidade e das taxas oficiais. As duas colunas devem ficar bem próximas:
+  // uma diferença grande é sinal de algo errado, na fórmula ou nos dados. Sem as taxas do ano (2026 saiu sem o valor final por matrícula), fica só o gerado.
+  const [taxas, campi] = await Promise.all([
+    carregarTaxasFuncionamento(ano),
+    prisma.distribuicaoCampus.findMany({
+      where: { ano },
+      select: { vlMatrFinal: true, elegivelPiso: true, mtPresencial: true, mtEad: true, mtEadMooc: true, mtEadFp: true, unidade: { select: { nome: true, instituicao: { select: { sigla: true } } } } },
+      orderBy: { vlMatrFinal: "desc" },
+    }),
+  ]);
+  const funcionamentoPorSigla = new Map<string, BlocoDaConferencia["linhas"]>();
+  for (const c of campi) {
+    const calculado = taxas
+      ? calcularFuncionamentoCampus(taxas, { mtPresencial: Number(c.mtPresencial ?? 0), mtEad: Number(c.mtEad ?? 0), mtEadMooc: Number(c.mtEadMooc ?? 0), mtEadFp: Number(c.mtEadFp ?? 0), elegivelPiso: c.elegivelPiso })
+      : null;
+    if (Number(c.vlMatrFinal ?? 0) <= 0 && !calculado) continue;
+    const lista = funcionamentoPorSigla.get(c.unidade.instituicao.sigla) ?? [];
+    lista.push({ rotulo: c.unidade.nome, oficial: reais.format(Number(c.vlMatrFinal ?? 0)), recalculado: calculado !== null ? reais.format(calculado) : "não informado" });
+    funcionamentoPorSigla.set(c.unidade.instituicao.sigla, lista);
+  }
+
   const conferidas: InstituicaoConferida[] = linhas.map((l) => {
     const ieaEq = ieaEqualizadoRecalc(rede, l.ieaPonderadoRecalc);
     // Institução sem RAP confiável (ver `rapConfiavel`): não entra na conferência,
@@ -70,6 +94,9 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       valorOficial,
       valorRecalc,
       diferenca: valorRecalc !== null ? valorRecalc - valorOficial : null,
+      funcionamento: funcionamentoPorSigla.has(l.sigla)
+        ? { titulo: "Funcionamento por câmpus: o gerado pela matriz e o refeito pela Matrícula Total de cada modalidade × valor da matrícula", linhas: funcionamentoPorSigla.get(l.sigla)! }
+        : null,
       blocos: [
         {
           titulo: "IEA, Índice de Eficiência Acadêmica",
@@ -141,7 +168,7 @@ export default async function ConferenciaPage({ searchParams }: { searchParams: 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência de cálculo</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Refaz o cálculo dos blocos{" "}
+          Refaz o Funcionamento de cada câmpus e o cálculo dos blocos{" "}
           <Link href="/como-funciona#qualidade-eficiencia" className={PROSE_LINK}>
             IEA, RAP e IAPL de Qualidade e Eficiência
           </Link>{" "}

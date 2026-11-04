@@ -57,7 +57,7 @@ export default async function ComparativoPage({
   if (registros.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} px-6 py-16 lg:px-12`}>
-        <h1 className="text-2xl font-semibold">Comparativo entre ciclos</h1>
+        <h1 className="text-2xl font-semibold">Comparativo entre anos</h1>
         <p className="mt-3 text-neutral-600 dark:text-neutral-400">
           Depende dos relatórios da pasta &quot;03 - Indicadores&quot; da MDO, que ainda não foram carregados.
         </p>
@@ -200,7 +200,7 @@ export default async function ComparativoPage({
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           Quanto cada instituição recebeu em cada ciclo, e o que mudou entre eles. É a pergunta que a
-          MDO não responde numa tela só, porque lá cada ciclo se consulta separado.
+          MDO não responde numa tela só, porque lá cada ano se consulta separado.
         </p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil): a tabela das instituições e a dos

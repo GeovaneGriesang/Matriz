@@ -183,7 +183,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Que tipo de curso rende mais por vaga</h2>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Para cada curso da rede, quanto um aluno que entra rende do ingresso à formatura em {campus.nome}, com a carga horária no teto que a MDO paga. A conta é peso do curso × (carga horária ÷ 800) × valor da matrícula
-          ({reais.format(contexto.valorMatricula)} no ciclo {ano}). O que mais pesa é o <strong>peso do curso</strong> (de 1 a 3,75): com a mesma carga horária, um curso de peso 2,5 rende 2,5 vezes o de peso 1.
+          ({reais.format(contexto.valorMatricula)} na matriz de {ano}). O que mais pesa é o <strong>peso do curso</strong> (de 1 a 3,75): com a mesma carga horária, um curso de peso 2,5 rende 2,5 vezes o de peso 1.
         </p>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           <strong>De onde vêm os cursos e os pesos:</strong> da{" "}
@@ -290,7 +290,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">2. Onde {campus.nome} tem horas que a MDO não paga</h2>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           A MDO conta no máximo um teto de carga horária por aluno (3.000, 3.100 ou 3.200 h no integrado, a mínima do MEC nos demais). Horas acima do teto não rendem nada. Estes são os cursos do câmpus cujo ciclo tem
-          mais horas do que a MDO paga: {totalCiclosComExcesso === 0 ? "nenhum." : `${inteiro.format(totalCiclosComExcesso)} grupos de ciclos, os 25 maiores abaixo. O + de cada um abre as turmas, com o código do ciclo e o período.`}
+          mais horas do que a MDO paga: {totalCiclosComExcesso === 0 ? "nenhum." : `${inteiro.format(totalCiclosComExcesso)} grupos de ciclos, os 25 maiores abaixo. O + de cada um abre as turmas, com o código e o período.`}
         </p>
         {horasQueNaoRendem.length > 0 && (
           <div className="tabela-rolavel">

@@ -7,8 +7,7 @@ import type { Papel } from "@prisma/client";
 import { ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
 
 /**
- * O menu em grupos pelos objetivos do sistema (Entender a matriz, Onde melhorar e, para administradores, Dados e conferência),
- * mais "Início". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
+ * O menu em grupos por pergunta (Quanto recebemos?, Posso confiar?, E se...?), mais "Início", "Mais" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
  * vem de `lib/menu.ts`, o mesmo da página inicial, e o que cada perfil vê sai de `gruposVisiveis`.
  *
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do
@@ -48,7 +47,7 @@ export function SiteNav({ papel }: { papel: Papel }) {
         {ITEM_INICIO.rotulo}
       </Link>
 
-      {gruposVisiveis(papel).map((g) => {
+      {gruposVisiveis(papel).map((g, i, todos) => {
         const grupoAtivo = g.itens.some((i) => i.href === ativo?.href);
         const estaAberto = aberto === g.id;
         return (
@@ -66,22 +65,22 @@ export function SiteNav({ papel }: { papel: Papel }) {
               </span>
             </button>
             {estaAberto && (
-              <div className="absolute left-0 top-full z-40 mt-1 flex w-80 max-w-[90vw] flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-950">
-                {g.itens.map((i) => {
-                  const esta = i.href === ativo?.href;
+              <div className={`absolute ${i >= todos.length - 2 ? "right-0" : "left-0"} top-full z-40 mt-1 flex max-h-[75vh] w-80 max-w-[90vw] flex-col gap-0.5 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-950`}>
+                {g.itens.map((item) => {
+                  const esta = item.href === ativo?.href;
                   return (
                     <Link
-                      key={i.href}
-                      href={i.href}
+                      key={item.href}
+                      href={item.href}
                       aria-current={esta ? "page" : undefined}
                       className={`flex flex-col gap-0.5 rounded-md px-3 py-2 ${
                         esta ? "bg-if-green/10" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       }`}
                     >
                       <span className={`text-sm font-medium ${esta ? "text-if-green dark:text-green-400" : "text-neutral-900 dark:text-neutral-100"}`}>
-                        {i.rotulo}
+                        {item.rotulo}
                       </span>
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400">{i.descricao}</span>
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.descricao}</span>
                     </Link>
                   );
                 })}

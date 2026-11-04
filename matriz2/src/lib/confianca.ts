@@ -39,6 +39,12 @@ export const NIVEIS: Record<NivelConfianca, { rotulo: string; descricao: string;
   },
 };
 
+/** O nível que resume uma tela: o de menor certeza entre os itens dela. Atenção pesa mais que estimado, e estimado mais que conferido. */
+export function nivelDaTela(niveis: NivelConfianca[]): NivelConfianca {
+  if (niveis.includes("ATENCAO")) return "ATENCAO";
+  return niveis.includes("ESTIMADO") ? "ESTIMADO" : "CONFERIDO";
+}
+
 export const CONFIANCA = {
   "sexta-fase-ifsul": {
     nivel: "CONFERIDO",

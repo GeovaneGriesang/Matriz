@@ -40,7 +40,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador de cenários: o que os ciclos rendem nos próximos anos</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador de cenários: o que as turmas rendem nos próximos anos</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Um curso de 5 anos que começou em 2025 só termina em 2030. Esta tela projeta, ano a ano e pelo número de anos que você escolher, o que cada ciclo em andamento continua
         valendo na matriz enquanto os alunos terminam o curso, com a evasão média do instituto na modalidade. Depois você monta o cenário: cursos novos que um câmpus pretende
@@ -55,7 +55,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <SubmenuSimulador />
         {cabecalho}
-        <p className="text-neutral-600 dark:text-neutral-400">Nenhuma instituição tem ciclos com datas carregados no ciclo {ano}.</p>
+        <p className="text-neutral-600 dark:text-neutral-400">Nenhuma instituição tem turmas com datas carregadas na matriz de {ano}.</p>
       </main>
     );
   }

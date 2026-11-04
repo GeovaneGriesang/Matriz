@@ -53,7 +53,7 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Abrir ou mudar um curso: quanto vale um curso?</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto vale um curso?</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Procure um curso que você pensa em ofertar e veja o que a matriz considera dele: o <strong>peso</strong>, a <strong>carga horária mínima</strong> do MEC, a
         carga horária que vale na matriz e quanto a MDO paga, em média, por um aluno que faz o curso inteiro. Serve para comparar cursos antes de abrir turma.
@@ -179,7 +179,7 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
           <p className="text-xs text-neutral-500">
             {inteiro.format(total)} curso(s) encontrado(s){total > LIMITE ? `; mostrando os ${LIMITE} com mais ciclos, refine a busca para ver os demais` : ""}. Valor de uma matrícula
             presencial usado: <strong>{reais2.format(valorMatriculaPresencial)}</strong> (o mais comum entre os ciclos presenciais do IFSul em {ano}); na modalidade escolhida, a MDO paga{" "}
-            {modalidade === "PRESENCIAL" ? "o valor inteiro" : `uma fração dele`}. Os pesos vêm da tabela de pesos do ciclo {ano}.
+            {modalidade === "PRESENCIAL" ? "o valor inteiro" : `uma fração dele`}. Os pesos vêm da tabela de pesos da matriz de {ano}.
           </p>
           {linhas.length === 0 ? (
             <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -208,8 +208,8 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
                       R$ por aluno, curso inteiro
                     </th>
                     {anosDeCurso && <th className="px-3 py-2 text-right">R$ por aluno por ano</th>}
-                    <th className="px-3 py-2 text-right" title="Em quantos ciclos reais da MDO este peso foi observado.">
-                      Ciclos
+                    <th className="px-3 py-2 text-right" title="Em quantas turmas reais da MDO este peso foi observado.">
+                      Turmas
                     </th>
                   </tr>
                 </thead>

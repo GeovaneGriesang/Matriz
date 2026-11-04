@@ -97,8 +97,8 @@ export default async function Home() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {gruposVisiveis(usuario.papel).map((g) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {gruposVisiveis(usuario.papel).filter((g) => !g.foraDoInicio).map((g) => (
             <section
               key={g.id}
               className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
@@ -120,6 +120,7 @@ export default async function Home() {
             </section>
           ))}
         </div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">As demais telas, como Comparar cursos entre câmpus, estão no menu <strong>Mais</strong>.</p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -129,7 +130,7 @@ export default async function Home() {
           (mdo.iftm.edu.br), o sistema oficial da Rede Federal operado pelo IFTM, onde as 42
           instituições homologam os dados em sete etapas. Aqui os resultados já homologados são
           importados e organizados para responder perguntas que a MDO não responde: como um câmpus
-          se compara a outro, o que mudou de um ciclo para o próximo, e quanto se deixa de receber
+          se compara a outro, o que mudou de um ano para o próximo, e quanto se deixa de receber
           por evasão.
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -145,7 +146,7 @@ export default async function Home() {
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           Ainda não há dados carregados. Rode{" "}
           <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">npm run carregar -- 2027</code> para
-          trazer o ciclo 2027 a partir das exportações da MDO.
+          trazer a matriz de 2027 a partir das exportações da MDO.
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -257,8 +258,8 @@ export default async function Home() {
           />
           <Atalho
             href="/comparativo"
-            titulo="Comparativo entre ciclos"
-            resumo="O que mudou de um ciclo para o outro, por instituição."
+            titulo="Comparativo entre anos"
+            resumo="O que mudou de um ano para o outro, por instituição."
           />
         </div>
       </div>

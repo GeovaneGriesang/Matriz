@@ -103,7 +103,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
           ))}
         </div>
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          O ciclo {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
+          A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso), única fonte de perda
           por evasão. Não é que a evasão esteja zerada: este sistema simplesmente ainda não tem esse
           dado para {ano}.
         </p>
@@ -295,7 +295,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
         </div>
         <p className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
           Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
-          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe. O <strong>+</strong> de um curso abre as turmas dele, com o código do ciclo e o período.
+          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe. O <strong>+</strong> de um curso abre as turmas dele, com o código e o período.
         </p>
         <div className={`tabela-rolavel isolate rounded-lg border border-neutral-200 dark:border-neutral-800 ${fechar ? "max-h-[60vh]" : ""}`}>
           <EvasaoTabelaCursos cursos={cursos} />
@@ -327,7 +327,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ciclo</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
           <div className="flex gap-1">
             {anos.map((a) => (
               <Link
@@ -357,7 +357,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Cartao rotulo="Perda no ciclo" valor={reais.format(daInstituicao.perda)} destaque="text-if-red dark:text-red-400" />
+        <Cartao rotulo="Perda no ano" valor={reais.format(daInstituicao.perda)} destaque="text-if-red dark:text-red-400" />
         <Cartao rotulo="Sobre o recebido" valor={`${doisDecimais.format(daInstituicao.taxa)}%`} />
         <Cartao rotulo="Média da rede" valor={`${doisDecimais.format(redePct)}%`} />
         <Cartao

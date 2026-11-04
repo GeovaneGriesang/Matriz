@@ -49,7 +49,7 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
         A 4ª fase da MDO (&quot;Checagem de Matrículas Totais&quot;) é a planilha em que cada instituição confere a Matrícula Total de cada ciclo de curso, a
         base de tudo o que a matriz distribui. Esta tela carrega essa planilha e refaz <strong>todas as colunas calculadas</strong>, com as mesmas fórmulas do
         Excel, ciclo a ciclo. Ao lado, mostra o que o arquivo traz e se os dois números são iguais. Assim dá para ver, sem abrir o Excel, que o sistema usa os
-        mesmos dados e a mesma regra que a planilha.
+        mesmos dados e a mesma regra que a planilha. Aqui mantemos o vocabulário dela: &quot;ciclo&quot; é a turma, e cada ciclo é uma linha.
       </p>
     </div>
   );
