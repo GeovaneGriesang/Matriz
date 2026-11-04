@@ -1,5 +1,6 @@
 import { destaqueNaFrente } from "@/lib/destaque";
 import Link from "next/link";
+import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
@@ -234,8 +235,8 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   const cursosBrutos = await prisma.distribuicaoCiclo.groupBy({
     by: ["curso", "nivel"],
     where: campusId
-      ? { ano, unidadeId: campusId }
-      : { ano, unidade: { instituicaoId: instituicao.id } },
+      ? { ano, unidadeId: campusId, ...CICLO_QUE_CONTRIBUI }
+      : { ano, ...CICLO_QUE_CONTRIBUI, unidade: { instituicaoId: instituicao.id } },
     _sum: { valorReais: true, perdaEvasaoReais: true },
     _count: { _all: true },
   });
@@ -264,6 +265,30 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
   }
 
   const nomeCampus = campusId ? nomePorUnidade.get(campusId) : null;
+  const campusNaTabela = campusId !== null && campusLinhas.some((c) => c.unidadeId === campusId);
+
+  /** A tabela de cursos: da instituição inteira, abaixo da tabela de câmpus, ou de um câmpus, no quadro aberto na linha dele (com o link para fechar). */
+  function quadroDeCursos(titulo: string, fechar?: string) {
+    return (
+      <div className={fechar ? "flex w-0 min-w-full flex-col gap-2 rounded-md border-l-4 border-if-green bg-white p-4 dark:bg-neutral-950" : "flex flex-col gap-2"}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{titulo}</h2>
+          {fechar && (
+            <Link href={fechar} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
+              fechar
+            </Link>
+          )}
+        </div>
+        <p className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
+          Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
+          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
+        </p>
+        <div className={`tabela-rolavel isolate rounded-lg border border-neutral-200 dark:border-neutral-800 ${fechar ? "max-h-[60vh]" : ""}`}>
+          <EvasaoTabelaCursos cursos={cursos} />
+        </div>
+      </div>
+    );
+  }
   const melhorQueRede = daInstituicao.taxa < redePct;
 
   return (
@@ -352,6 +377,7 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Por câmpus</h2>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha. Clique de novo para fechar.</p>
         {algumNoPiso && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             Os câmpus marcados <strong>&quot;no piso&quot;</strong> já recebem o{" "}
@@ -374,29 +400,13 @@ export default async function EvasaoPage({ searchParams }: { searchParams: Promi
             totalRecebido={daInstituicao.recebido}
             totalPerda={daInstituicao.perda}
             totalTaxa={daInstituicao.taxa}
+            detalheDoCampus={quadroDeCursos(nomeCampus ? `Por curso, em ${nomeCampus}` : "Por curso", href({ campus: undefined }))}
           />
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-            Por curso {nomeCampus ? `, em ${nomeCampus}` : `, em todo o ${instituicao.sigla}`}
-          </h2>
-          {campusId && (
-            <Link href={href({ campus: undefined })} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-              ver a instituição inteira
-            </Link>
-          )}
-        </div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Ordenado pela perda em reais. A coluna <strong>Taxa</strong> mostra outra história: um curso pequeno
-          pode perder pouco dinheiro e ainda assim estar perdendo quase tudo que recebe.
-        </p>
-        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <EvasaoTabelaCursos cursos={cursos} />
-        </div>
-      </div>
+      {/* Sem câmpus aberto, os cursos da instituição inteira. Com câmpus aberto, os dele ficam no quadro, logo abaixo da linha. */}
+      {!campusNaTabela && quadroDeCursos(`Por curso, em ${nomeCampus ?? `todo o ${instituicao.sigla}`}`)}
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

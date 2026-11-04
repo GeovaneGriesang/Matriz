@@ -71,7 +71,7 @@ export function legendaConsultaCampus(
   if (!l) return [];
   const n = nomeCurto(l.nome);
   const itens: ItemDeLegenda[] = [
-    { coluna: "Ciclos", texto: <>quantas turmas (ciclos de curso) do câmpus estão na 6ª fase. {n}: {inteiro.format(l.ciclos)}.</> },
+    { coluna: "Ciclos", texto: <>quantas turmas (ciclos de curso) do câmpus contribuem para o orçamento do ano, ou seja, têm alunos no ano-base. {n}: {inteiro.format(l.ciclos)}.</> },
     { coluna: "Matrícula", texto: <>{MATRICULA_TOTAL}. {n}: {dec2.format(l.matricula)}.</> },
     {
       coluna: "Gerado pela matriz",

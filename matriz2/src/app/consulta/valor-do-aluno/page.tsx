@@ -1,5 +1,6 @@
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
+import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -130,7 +131,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
   const campus = unidades.find((u) => u.id === campusId) ?? unidades[0]!;
 
   const [ciclos, fonteParametros] = await Promise.all([
-    prisma.distribuicaoCiclo.findMany({ where: { ano, unidadeId: campus.id }, orderBy: { valorReais: "desc" } }),
+    prisma.distribuicaoCiclo.findMany({ where: { ano, unidadeId: campus.id, ...CICLO_QUE_CONTRIBUI }, orderBy: { valorReais: "desc" } }),
     prisma.parametrosParticipacao.findUnique({ where: { ano_instituicaoId: { ano, instituicaoId: instituicao.id } } }),
   ]);
   const periodo = fonteParametros

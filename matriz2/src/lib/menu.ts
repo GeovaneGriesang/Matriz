@@ -138,6 +138,23 @@ const GRUPOS: GrupoMenu[] = [
       },
     ],
   },
+  {
+    id: "como-funciona",
+    rotulo: "Como funciona",
+    pergunta: "Como a matriz é calculada e para que serve cada tela?",
+    itens: [
+      {
+        href: "/como-funciona",
+        rotulo: "Como a matriz é calculada",
+        descricao: "O manual: como a matriz reparte o orçamento, bloco a bloco.",
+      },
+      {
+        href: "/como-funciona/telas",
+        rotulo: "Guia das telas",
+        descricao: "O que cada tela do sistema responde, como usar e que cuidado ter ao ler os números.",
+      },
+    ],
+  },
 ];
 
 /** Dentro de cada grupo, as telas ficam em ordem alfabética (pedido do usuário em 2026-10-29), para achar pelo nome. */
@@ -154,14 +171,9 @@ export function gruposVisiveis(papel: Papel | null | undefined): GrupoMenu[] {
 }
 
 export const ITEM_INICIO: ItemMenu = { href: "/", rotulo: "Início", descricao: "A visão geral dos ciclos carregados." };
-export const ITEM_COMO_FUNCIONA: ItemMenu = {
-  href: "/como-funciona",
-  rotulo: "Como funciona",
-  descricao: "O manual: como a matriz é calculada, bloco a bloco.",
-};
 
 /** Todos os itens, achatados, para saber qual tela está aberta. */
-export const TODOS_OS_ITENS: ItemMenu[] = [ITEM_INICIO, ...GRUPOS_MENU.flatMap((g) => g.itens), ITEM_COMO_FUNCIONA];
+export const TODOS_OS_ITENS: ItemMenu[] = [ITEM_INICIO, ...GRUPOS_MENU.flatMap((g) => g.itens)];
 
 /**
  * O item da tela aberta: o de endereço mais longo que coincide com o começo do caminho, para `/simulador` não valer

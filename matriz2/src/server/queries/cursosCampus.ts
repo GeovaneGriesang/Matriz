@@ -17,6 +17,12 @@ export interface FiltroDeCursos {
   ensino?: FormaDeEnsino;
 }
 
+/**
+ * Só os ciclos que contribuem para o orçamento do ano. Um ciclo sem alunos no ano-base (já encerrado, por exemplo) vem na exportação da MDO com
+ * valor, Matrícula Total e perda iguais a zero (conferido em 2026 e 2027: nenhum tem um desses valores sem os outros). Tirá-lo não muda nenhuma soma.
+ */
+export const CICLO_QUE_CONTRIBUI = { valorReais: { gt: 0 } };
+
 function condicaoDoFiltro(filtro: FiltroDeCursos | undefined): Record<string, unknown>[] {
   const condicoes: Record<string, unknown>[] = [];
   if (filtro?.modalidade) condicoes.push(condicaoDaModalidade(filtro.modalidade));
@@ -33,7 +39,7 @@ function condicaoDoFiltro(filtro: FiltroDeCursos | undefined): Record<string, un
  */
 export async function carregarCursosDoCampus(ano: number, unidadeId: number, filtro?: FiltroDeCursos): Promise<CursoLinha[]> {
   const cursosBrutos = await prisma.distribuicaoCiclo.findMany({
-    where: { ano, unidadeId, AND: condicaoDoFiltro(filtro) },
+    where: { ano, unidadeId, ...CICLO_QUE_CONTRIBUI, AND: condicaoDoFiltro(filtro) },
     orderBy: { valorReais: "desc" },
     select: {
       id: true, curso: true, nivel: true, tipoCurso: true, turno: true, repasse: true,
@@ -67,7 +73,7 @@ export async function carregarCursosDoCampus(ano: number, unidadeId: number, fil
 export async function carregarCampiComFiltro(ano: number, filtro: FiltroDeCursos): Promise<Set<number>> {
   const linhas = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
-    where: { ano, AND: condicaoDoFiltro(filtro) },
+    where: { ano, ...CICLO_QUE_CONTRIBUI, AND: condicaoDoFiltro(filtro) },
   });
   return new Set(linhas.map((l) => l.unidadeId));
 }
@@ -86,7 +92,7 @@ export async function carregarCampiComCursosAfins(
   if (modo === "peso" && principal.peso === null) return new Set();
   const linhas = await prisma.distribuicaoCiclo.groupBy({
     by: ["unidadeId"],
-    where: { ...(modo === "curso" ? { ano, curso: principal.curso } : { ano, pesoCursoMatriz: principal.peso! }), AND: condicaoDoFiltro(filtro) },
+    where: { ...CICLO_QUE_CONTRIBUI, ...(modo === "curso" ? { ano, curso: principal.curso } : { ano, pesoCursoMatriz: principal.peso! }), AND: condicaoDoFiltro(filtro) },
   });
   return new Set(linhas.map((l) => l.unidadeId));
 }

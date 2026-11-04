@@ -1,5 +1,6 @@
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
+import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -89,7 +90,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
   const campus = unidades.find((u) => u.id === campusId) ?? unidades[0]!;
 
   const ciclos = await prisma.distribuicaoCiclo.findMany({
-    where: { ano, unidadeId: campus.id },
+    where: { ano, unidadeId: campus.id, ...CICLO_QUE_CONTRIBUI },
     select: {
       curso: true,
       tipoOferta: true,

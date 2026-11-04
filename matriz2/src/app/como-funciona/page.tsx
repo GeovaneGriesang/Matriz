@@ -79,6 +79,13 @@ export default async function ComoFuncionaPage() {
     <main className={`mx-auto flex ${FORM_MAX_WIDTH} flex-col gap-8 px-6 py-16`}>
       <div className="flex flex-col gap-3">
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">Como funciona a matriz</h1>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Para saber o que cada tela do sistema faz, veja o{" "}
+          <Link href="/como-funciona/telas" className={PROSE_LINK}>
+            Guia das telas
+          </Link>
+          .
+        </p>
         <p className="text-neutral-600 dark:text-neutral-400">
           A Matriz de Distribuição Orçamentária é calculada pela MDO (mdo.iftm.edu.br), sistema oficial da Rede
           Federal operado pelo IFTM. Este sistema <strong>não recalcula</strong> nada disso: importa o resultado

@@ -71,6 +71,7 @@ export const CONHECIMENTO_POR_TELA: Record<string, string> = {
   "/conferencia": "Refaz IEA, RAP e IAPL de cada instituição e compara com o que a MDO publicou, só para apontar divergência.",
   "/situacao-dos-dados": "Lista o que está conferido, o que precisa de revisão e o que é estimativa.",
   "/como-funciona": "O manual do cálculo da matriz, bloco a bloco.",
+  "/como-funciona/telas": "O guia das telas: o que cada tela do sistema responde, como usar e que cuidado ter ao ler os números.",
 };
 
 export function conhecimentoDaTela(rota: string): string {

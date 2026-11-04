@@ -2,6 +2,7 @@
 
 import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { exemploDeCampus, legendaEvasao } from "@/components/legendas";
@@ -55,7 +56,10 @@ export function EvasaoTabelaCampus({
   totalRecebido,
   totalPerda,
   totalTaxa,
+  detalheDoCampus,
 }: {
+  /** O quadro com os cursos do câmpus escolhido, montado no servidor e aberto logo abaixo da linha dele. */
+  detalheDoCampus?: ReactNode;
   linhas: CampusLinha[];
   campusId: number | null;
   redePct: number;
@@ -74,6 +78,8 @@ export function EvasaoTabelaCampus({
       chaveLinha={(c) => c.unidadeId}
       linhaDestaque={(c) => ehCampusDestaque(c.nome)}
       linhaClasse={(c) => (c.unidadeId === campusId ? "bg-if-green/5" : "")}
+      idDaLinha={(c) => `campus-${c.unidadeId}`}
+      detalhe={campusId !== null && detalheDoCampus ? { chave: campusId, conteudo: detalheDoCampus } : null}
       colunas={
         [
           {
@@ -82,9 +88,16 @@ export function EvasaoTabelaCampus({
             valor: (c) => c.nome,
             render: (c) => (
               <Link
-                href={`/evasao?ano=${ano}&instituicao=${encodeURIComponent(sigla)}&campus=${c.unidadeId}`}
-                className="hover:underline"
+                href={
+                  c.unidadeId === campusId
+                    ? `/evasao?ano=${ano}&instituicao=${encodeURIComponent(sigla)}#campus-${c.unidadeId}`
+                    : `/evasao?ano=${ano}&instituicao=${encodeURIComponent(sigla)}&campus=${c.unidadeId}#campus-${c.unidadeId}`
+                }
+                aria-expanded={c.unidadeId === campusId}
+                title={c.unidadeId === campusId ? `Fechar os cursos de ${c.nome}` : `Abrir os cursos de ${c.nome}, logo abaixo desta linha`}
+                className={`text-if-green underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-green-400 ${c.unidadeId === campusId ? "font-semibold" : ""}`}
               >
+                <span aria-hidden className="mr-1 inline-block w-3 no-underline">{c.unidadeId === campusId ? "▾" : "▸"}</span>
                 {c.nome}
                 {c.estaNoPiso && (
                   <span
