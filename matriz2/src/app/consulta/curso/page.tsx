@@ -147,7 +147,7 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
         </label>
         <label className="flex flex-col gap-1" title="Opcional. Com a duração, a tela também mostra quanto a MDO paga por aluno em cada ano.">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Duração (anos, opcional)</span>
-          <input name="anos" type="number" min={0.25} max={10} step={0.5} defaultValue={params.anos ?? ""} placeholder="ex.: 3" className={campo} />
+          <input name="anos" type="number" min={0.25} max={10} step={0.25} defaultValue={params.anos ?? ""} placeholder="ex.: 3" className={campo} />
         </label>
         <div className="flex items-end lg:col-span-1">
           <button type="submit" className="w-full rounded-md bg-if-green px-4 py-2 text-sm font-medium text-white hover:bg-if-green/90">

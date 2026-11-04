@@ -42,7 +42,7 @@ export async function carregarCursosDoCampus(ano: number, unidadeId: number, fil
     where: { ano, unidadeId, ...CICLO_QUE_CONTRIBUI, AND: condicaoDoFiltro(filtro) },
     orderBy: { valorReais: "desc" },
     select: {
-      id: true, curso: true, nivel: true, tipoCurso: true, turno: true, repasse: true,
+      id: true, codigoCiclo: true, curso: true, nivel: true, tipoCurso: true, turno: true, repasse: true,
       matriculaTotal: true, valorReais: true, perdaEvasaoReais: true, pesoCursoMatriz: true,
       inicio: true, termino: true, chMinimaMec: true, chMatriz: true, qtdAlunosMatriz: true,
       tipoOferta: true, modalidade: true,
@@ -50,6 +50,7 @@ export async function carregarCursosDoCampus(ano: number, unidadeId: number, fil
   });
   return cursosBrutos.map((c) => ({
     id: c.id,
+    codigoCiclo: c.codigoCiclo,
     curso: c.curso,
     nivel: c.nivel,
     repasse: c.repasse,

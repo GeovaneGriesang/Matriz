@@ -7,6 +7,7 @@ import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdena
 import { carregarCursosComparativoCampusAction } from "@/server/actions/comparativoCursos";
 import { explicarVariacaoCampusAction, type ResultadoExplicacao } from "@/server/actions/explicarVariacao";
 import type { CursoLinha } from "@/app/consulta/ConsultaTabelaCursos";
+import { compararCursosEntreCiclos, type CursoComparado } from "@/lib/cursosEntreCiclos";
 import { VARIACOES, totalDaVariacao, variacaoDoCampus, type ValoresDoCampus, type Variacao } from "@/lib/variacoesComparativo";
 
 export interface LinhaComparativoCampus {
@@ -229,8 +230,8 @@ const reaisCurso = new Intl.NumberFormat("pt-BR", { style: "currency", currency:
  * Segundo nível do "+/-": os cursos de um câmpus, carregados só quando a pessoa
  * abre esse câmpus (não faz sentido puxar os cursos de todos os câmpus da rede
  * antecipadamente). Mostra os dois ciclos lado a lado; como o nome de um curso pode
- * mudar de um ciclo para o outro, cada lista é ordenada por valor, sem tentar casar
- * curso a curso.
+ * mudar de um ciclo para o outro, as turmas são alinhadas pelo código do ciclo
+ * (ver `lib/cursosEntreCiclos.ts`).
  */
 function CursosDoCampus({ unidadeId, anoA, anoB }: { unidadeId: number; anoA: number; anoB: number }) {
   const [estado, setEstado] = useState<
@@ -266,30 +267,69 @@ function CursosDoCampus({ unidadeId, anoA, anoB }: { unidadeId: number; anoA: nu
     );
   }
 
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <ListaCursos ano={anoA} cursos={estado.cursosA} />
-      <ListaCursos ano={anoB} cursos={estado.cursosB} />
-    </div>
-  );
+  return <CursosLadoALado anoA={anoA} anoB={anoB} cursos={compararCursosEntreCiclos(estado.cursosA, estado.cursosB)} />;
 }
 
-function ListaCursos({ ano, cursos }: { ano: number; cursos: CursoLinha[] }) {
+/** Os dois ciclos na mesma tabela: uma linha por turma, agrupadas por curso, e em branco o ano em que a turma não contribuiu. */
+function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; cursos: CursoComparado[] }) {
+  const celula = "px-3 py-1.5 text-right tabular-nums";
+  const turmas = cursos.flatMap((c) => c.turmas.map((t) => ({ ...t, curso: c.curso })));
+  const emAmbos = turmas.find((t) => t.valorA !== null && t.valorB !== null);
+  const totalA = cursos.reduce((a, c) => a + c.totalA, 0);
+  const totalB = cursos.reduce((a, c) => a + c.totalB, 0);
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Cursos em {ano}</span>
-      {cursos.length === 0 ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">Sem 6ª fase carregada em {ano}.</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white text-sm dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+        Cada linha é uma turma (ciclo de curso), reconhecida pelo código do ciclo na MDO, que é o mesmo nos dois anos. O período e a modalidade diferenciam as turmas de mesmo nome. Uma célula em branco
+        indica que a turma não contribuiu naquele ano, porque não tem alunos contados no ano-base ({anoA - 2} para {anoA}, {anoB - 2} para {anoB}). Os valores são do bloco Funcionamento, antes do Piso Mínimo.
+        {emAmbos && (
+          <>
+            {" "}
+            Exemplo: a turma de {emAmbos.curso} ({emAmbos.rotulo}) gerou {reaisCurso.format(emAmbos.valorA ?? 0)} em {anoA} e {reaisCurso.format(emAmbos.valorB ?? 0)} em {anoB}.
+          </>
+        )}
+      </p>
+      <div className="tabela-rolavel isolate max-h-[70vh] rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-50 text-xs text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Curso e turma</th>
+              <th scope="col" className="w-36 px-3 py-2 text-right font-medium">{anoA}</th>
+              <th scope="col" className="w-36 px-3 py-2 text-right font-medium">{anoB}</th>
+              <th scope="col" className="w-36 px-3 py-2 text-right font-medium">Diferença</th>
+            </tr>
+          </thead>
           {cursos.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
-              <span className="text-neutral-700 dark:text-neutral-300">{c.curso}</span>
-              <span className="shrink-0 tabular-nums text-neutral-900 dark:text-neutral-100">{reaisCurso.format(c.valor)}</span>
-            </li>
+            <tbody key={c.curso} className="border-t-2 border-neutral-200 dark:border-neutral-800">
+              <tr className="bg-neutral-50/60 font-semibold text-neutral-900 dark:bg-neutral-900/40 dark:text-neutral-100">
+                <td className="px-3 py-1.5">
+                  {c.curso}
+                  {c.turmas.length > 1 && <span className="ml-2 text-xs font-normal text-neutral-500">{c.turmas.length} turmas</span>}
+                </td>
+                <td className={celula}>{c.totalA > 0 ? reaisCurso.format(c.totalA) : ""}</td>
+                <td className={celula}>{c.totalB > 0 ? reaisCurso.format(c.totalB) : ""}</td>
+                <td className={celula}><Sinal v={c.totalB - c.totalA} /></td>
+              </tr>
+              {c.turmas.map((t) => (
+                <tr key={t.chave} className="border-t border-neutral-100 text-neutral-700 dark:border-neutral-900 dark:text-neutral-300">
+                  <td className="py-1.5 pl-7 pr-3 text-xs">{t.rotulo}</td>
+                  <td className={celula}>{t.valorA !== null ? reaisCurso.format(t.valorA) : ""}</td>
+                  <td className={celula}>{t.valorB !== null ? reaisCurso.format(t.valorB) : ""}</td>
+                  <td className={celula}>{t.valorA !== null && t.valorB !== null ? <Sinal v={t.valorB - t.valorA} /> : ""}</td>
+                </tr>
+              ))}
+            </tbody>
           ))}
-        </ul>
-      )}
+          <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+            <tr>
+              <td className="px-3 py-2">Soma dos cursos</td>
+              <td className={celula}>{reaisCurso.format(totalA)}</td>
+              <td className={celula}>{reaisCurso.format(totalB)}</td>
+              <td className={celula}><Sinal v={totalB - totalA} /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }

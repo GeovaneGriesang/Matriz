@@ -1,3 +1,4 @@
+import type { Papel } from "@prisma/client";
 import Link from "next/link";
 import { FICHAS_DAS_TELAS, PERGUNTAS_DO_GUIA, TELAS_DE_ADMINISTRACAO, idDaFicha, type FichaDaTela } from "@/lib/guiaDasTelas";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -22,10 +23,11 @@ const AVISOS = [
   },
 ];
 
-const PERFIS = [
-  ["Padrão", "Início, Como funciona, Entender a matriz, Onde melhorar e a própria conta."],
-  ["Administrador", "Também Dados e conferência. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão."],
-  ["Super-admin", "Também altera Valores recebidos e Correção manual, muda perfis e vê a Auditoria."],
+/** Da menor para a maior permissão. Cada perfil lê só a própria linha e as de baixo: o que ele não acessa não entra no guia. */
+const PERFIS: { papel: Papel; nome: string; acesso: string }[] = [
+  { papel: "PADRAO", nome: "Padrão", acesso: "Início, Entender a matriz, Onde melhorar, Como funciona e a própria conta." },
+  { papel: "ADMIN", nome: "Administrador", acesso: "Também Dados e conferência. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
+  { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Também altera Valores recebidos e Correção manual, muda perfis e vê a Auditoria." },
 ];
 
 function Ficha({ href, rotulo, ficha }: { href: string; rotulo: string; ficha: FichaDaTela }) {
@@ -90,12 +92,13 @@ function Grupo({ titulo, pergunta, children }: { titulo: string; pergunta?: stri
   );
 }
 
-/** O guia mostra só as telas que o perfil de quem está lendo consegue abrir: um link que devolve à tela inicial só confundiria. */
+/** O guia explica só o que o perfil de quem está lendo vê no menu: as telas dos outros perfis não entram (pedido em 2026-11-04). */
 export default async function GuiaDasTelasPage() {
   const usuario = await requireAcessoPlenoOrRedirect("/como-funciona/telas");
   const grupos = gruposVisiveis(usuario.papel);
   const visiveis = new Set(grupos.flatMap((g) => g.itens.map((i) => i.href)));
   const perguntas = PERGUNTAS_DO_GUIA.filter((p) => visiveis.has(p.href));
+  const perfis = PERFIS.slice(0, PERFIS.findIndex((p) => p.papel === usuario.papel) + 1);
   const administracao = podeVerValores(usuario.papel) ? TELAS_DE_ADMINISTRACAO.filter((t) => !t.somenteSuperAdmin || usuario.papel === "SUPER_ADMIN") : [];
   const nomeDaTela = (href: string) => TODOS_OS_ITENS.find((i) => i.href === href)?.rotulo ?? href;
 
@@ -104,7 +107,7 @@ export default async function GuiaDasTelasPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">Guia das telas</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          O que cada tela responde, como usar e que cuidado ter ao ler os números. As fichas seguem a ordem do menu e mostram as telas que o seu perfil pode abrir. Para entender o cálculo, veja{" "}
+          O que cada tela responde, como usar e que cuidado ter ao ler os números. As fichas seguem a ordem do menu e explicam as telas do seu perfil. Para entender o cálculo, veja{" "}
           <Link href="/como-funciona" className={PROSE_LINK}>
             Como a matriz é calculada
           </Link>
@@ -148,7 +151,7 @@ export default async function GuiaDasTelasPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Quem vê o quê</h2>
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{perfis.length > 1 ? "Quem vê o quê" : "O que o seu perfil vê"}</h2>
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
@@ -158,10 +161,10 @@ export default async function GuiaDasTelasPage() {
               </tr>
             </thead>
             <tbody>
-              {PERFIS.map(([perfil, acesso]) => (
-                <tr key={perfil} className="border-t border-neutral-200 dark:border-neutral-800">
-                  <td className="whitespace-nowrap px-4 py-2 font-medium text-neutral-900 dark:text-neutral-100">{perfil}</td>
-                  <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{acesso}</td>
+              {perfis.map((p) => (
+                <tr key={p.papel} className="border-t border-neutral-200 dark:border-neutral-800">
+                  <td className="whitespace-nowrap px-4 py-2 font-medium text-neutral-900 dark:text-neutral-100">{p.nome}</td>
+                  <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{p.acesso}</td>
                 </tr>
               ))}
             </tbody>
