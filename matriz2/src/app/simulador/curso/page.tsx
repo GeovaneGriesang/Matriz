@@ -1,8 +1,12 @@
+import type React from "react";
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { PainelConfianca } from "@/components/Confianca";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
+import { cursoDaChave, rotuloDoCursoEscolhido } from "@/lib/cursoEscolhido";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
@@ -63,12 +67,12 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Técnico integrado em 3 ou 4 anos?</h1>
-      <p className="text-neutral-600 dark:text-neutral-400">
-        Esta simulação vale <strong>só para o curso técnico integrado ao ensino médio</strong>, o único em que a escolha entre 3 e 4 anos se
-        coloca (Proeja, subsequente, concomitante e superior têm outra organização). Escolha um câmpus e um curso integrado como ponto de
-        partida e compare as duas formas de ofertá-lo: quanto cada uma rende pela regra de Matrícula Total da MDO e que rotina ela exige do
-        câmpus (horas por dia, turnos, salas e professores).
-      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">Quanto o integrado rende em cada duração e que rotina cada uma exige do câmpus.</p>
+      <ComoLerEstaTela>
+        <p>
+          Esta simulação vale <strong>só para o curso técnico integrado ao ensino médio</strong>, o único em que a escolha entre 3 e 4 anos se coloca (Proeja, subsequente, concomitante e superior têm outra organização). Escolha um câmpus e um curso integrado como ponto de partida e compare as duas formas de ofertá-lo: quanto cada uma rende pela regra de Matrícula Total da MDO e que rotina ela exige do câmpus (horas por dia, turnos, salas e professores).
+        </p>
+      </ComoLerEstaTela>
     </div>
   );
 
@@ -128,23 +132,17 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
     .filter((c) => c.integrado)
     .sort((a, b) => b.valor - a.valor);
 
-  const escolhido = cursos.find((c) => c.chave === params.curso) ?? cursos[0];
-  const chipsDeCampus = (
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/simulador/curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
+  // O curso pode vir da aba anterior, com a chave da tabela de pesos. Se ele não é integrado neste câmpus, a tela avisa e parte do maior curso integrado.
+  const pedido = cursoDaChave(params.curso);
+  const doPedido = pedido ? cursos.find((c) => c.chave === `${pedido.curso}|${pedido.oferta}`) : undefined;
+  const escolhido = doPedido ?? cursos[0];
+  const seletorDeCampus = (filhos?: React.ReactNode) => (
+    <SeletorDeContexto
+      instituicao={{ instituicoes, sigla: instituicao.sigla, urlPorSigla }}
+      campus={{ escolhido: campus.id, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/simulador/curso?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}${params.curso ? `&curso=${encodeURIComponent(params.curso)}` : ""}` })) }}
+    >
+      {filhos}
+    </SeletorDeContexto>
   );
 
   if (!escolhido) {
@@ -152,10 +150,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
       <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
         <SubmenuSimulador />
         {cabecalho}
-        <div className="flex flex-col gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          {chipsDeCampus}
-        </div>
+        {seletorDeCampus()}
         <p className="text-neutral-600 dark:text-neutral-400">
           {campus.nome} não tem curso técnico integrado com ciclos em {ano}. Escolha outro câmpus.
         </p>
@@ -212,16 +207,8 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
       {cabecalho}
       <PainelConfianca ids={["regra-matricula-total", "simulador-curso", ...(instituicao.sigla === "IFSUL" ? (["ifsul-5a-vs-6a"] as const) : [])]} />
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 md:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          {chipsDeCampus}
-        </div>
-        <div className="flex flex-col gap-1">
+      {seletorDeCampus(
+        <div className="flex min-w-64 flex-1 flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Curso de partida</span>
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{escolhido.rotulo}</span>
           <details className="text-xs">
@@ -235,7 +222,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
             </ul>
           </details>
           <details className="text-xs">
-            <summary className="cursor-pointer text-if-green">trocar curso ({cursos.length})</summary>
+            <summary className="text-if-green">trocar curso ({cursos.length})</summary>
             <ul className="mt-1 max-h-56 overflow-y-auto rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
               {cursos.map((c) => (
                 <li key={c.chave}>
@@ -246,8 +233,14 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
               ))}
             </ul>
           </details>
-        </div>
-      </div>
+        </div>,
+      )}
+
+      {pedido && !doPedido && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {rotuloDoCursoEscolhido(pedido)} não é ofertado como integrado em {campus.nome}. A simulação partiu de {escolhido.rotulo}.
+        </p>
+      )}
 
       <SimuladorCursoAnos
         key={`${campus.id}-${escolhido.chave}-${ano}`}

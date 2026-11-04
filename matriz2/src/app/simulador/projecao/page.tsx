@@ -6,6 +6,7 @@ import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { ProjecaoCiclos, type CicloSerial, type TaxasPadrao } from "@/components/simulador/ProjecaoCiclos";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { taxasDeEvasaoDaInstituicao } from "@/server/queries/taxaEvasaoInstituicao";
 import { retencaoObservada } from "@/lib/mdo/projecaoCiclos";
 
@@ -41,12 +42,15 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Simulador de cenários: o que as turmas rendem nos próximos anos</h1>
-      <p className="text-neutral-600 dark:text-neutral-400">
-        Um curso de 5 anos que começou em 2025 só termina em 2030. Esta tela projeta, ano a ano e pelo número de anos que você escolher, o que cada ciclo em andamento continua
-        valendo na matriz enquanto os alunos terminam o curso, com a evasão média do instituto na modalidade. Depois você monta o cenário: cursos novos que um câmpus pretende
-        abrir, em anos diferentes, e cursos que deixam de ser ofertados (as turmas em andamento terminam, mas não entram turmas novas), em um ou em vários câmpus. Responde:
-        quanto de orçamento é preciso para que todos completem o ciclo e como ficam os anos seguintes com as mudanças planejadas.
-      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">Quanto o câmpus recebe nos próximos anos, com os cursos de hoje, os que param e os que abrem. Para testar uma mudança, abra os quadros abaixo da tabela.</p>
+      <ComoLerEstaTela>
+        <p>
+          Um curso de 5 anos que começou em 2025 só termina em 2030. Esta tela projeta, ano a ano e pelo número de anos que você escolher, o que cada turma em andamento continua valendo na matriz enquanto os alunos terminam o curso, com a evasão média do instituto na modalidade.
+        </p>
+        <p>
+          Depois você monta o cenário: cursos novos que um câmpus pretende abrir, em anos diferentes, e cursos que deixam de ser ofertados (as turmas em andamento terminam, mas não entram turmas novas), em um ou em vários câmpus. Responde: quanto de orçamento é preciso para que todos terminem o curso e como ficam os anos seguintes com as mudanças planejadas.
+        </p>
+      </ComoLerEstaTela>
     </div>
   );
 
@@ -174,11 +178,8 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
       <SubmenuSimulador />
       {cabecalho}
       <PainelConfianca ids={["regra-matricula-total", "projecao-ciclos"]} />
-      <div className="max-w-md">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-        <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-      </div>
       <ProjecaoCiclos
+        seletorInstituicao={<SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />}
         key={`${instituicao.sigla}-${ano}`}
         instituicao={instituicao.sigla}
         anoCiclo={ano}

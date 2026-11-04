@@ -4,6 +4,8 @@ import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { PainelConfianca } from "@/components/Confianca";
+import { cursoDaChave, rotuloDoCursoEscolhido } from "@/lib/cursoEscolhido";
+import { chaveDoCatalogo } from "@/server/queries/contextoSimulador";
 import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { valorDoCurso } from "@/lib/mdo/valorDoCurso";
 import type { Repasse } from "@/lib/mdo/matriculaTotal";
@@ -18,6 +20,11 @@ interface Busca {
   anos?: string;
   /** "1" quando a pessoa clicou em Buscar. */
   buscar?: string;
+  /** O curso escolhido, que vale também nas outras abas. */
+  curso?: string;
+  campus?: string;
+  instituicao?: string;
+  ano?: string;
 }
 
 const LIMITE = 80;
@@ -54,11 +61,10 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto vale um curso?</h1>
-      <p className="text-neutral-600 dark:text-neutral-400">
-        Procure um curso que você pensa em ofertar e veja o que a matriz considera dele: o <strong>peso</strong>, a <strong>carga horária mínima</strong> do MEC, a
-        carga horária que vale na matriz e quanto a MDO paga, em média, por um aluno que faz o curso inteiro. Serve para comparar cursos antes de abrir turma.
-      </p>
       <SubmenuSimulador />
+      <p className="text-neutral-600 dark:text-neutral-400">
+        Procure um curso e veja o <strong>peso</strong>, a carga horária que vale na matriz e quanto a MDO paga por um aluno que faz o curso inteiro. Clique em <strong>Usar este curso</strong>: as abas ao lado abrem com ele.
+      </p>
     </div>
   );
 
@@ -76,7 +82,8 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
   const tipos = await prisma.pesoEfetivoCurso.groupBy({ by: ["tipoCurso"], where: { anoReferencia: ano }, orderBy: { tipoCurso: "asc" } });
   const ofertas = await prisma.pesoEfetivoCurso.groupBy({ by: ["tipoOferta"], where: { anoReferencia: ano }, orderBy: { tipoOferta: "asc" } });
 
-  const buscou = params.buscar === "1" || Boolean(params.q);
+  const cursoEscolhido = cursoDaChave(params.curso);
+  const buscou = params.buscar === "1" || Boolean(params.q) || Boolean(cursoEscolhido);
   const modalidade = (MODALIDADES.find((m) => m.valor === params.modalidade)?.valor ?? "PRESENCIAL") as Repasse;
   const anosDeCurso = Number(params.anos?.replace(",", ".")) > 0 ? Number(params.anos?.replace(",", ".")) : undefined;
 
@@ -91,8 +98,20 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
 
   const where: Prisma.PesoEfetivoCursoWhereInput = { anoReferencia: ano };
   if (params.q?.trim()) where.curso = { contains: params.q.trim() };
+  else if (cursoEscolhido) {
+    where.curso = cursoEscolhido.curso;
+    where.tipoOferta = cursoEscolhido.oferta;
+  }
   if (params.tipo) where.tipoCurso = params.tipo;
   if (params.oferta) where.tipoOferta = params.oferta;
+  const hrefUsar = (chave: string) => {
+    const q = new URLSearchParams({ curso: chave });
+    if (params.q) q.set("q", params.q);
+    if (params.modalidade) q.set("modalidade", params.modalidade);
+    if (params.anos) q.set("anos", params.anos);
+    for (const p of ["ano", "instituicao", "campus"] as const) if (params[p]) q.set(p, params[p]!);
+    return `/consulta/curso?${q.toString()}`;
+  };
   const [linhas, total] = buscou
     ? await Promise.all([
         prisma.pesoEfetivoCurso.findMany({ where, orderBy: [{ ciclosObservados: "desc" }, { curso: "asc" }], take: LIMITE }),
@@ -156,6 +175,15 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
         </div>
       </form>
 
+      {cursoEscolhido && (
+        <p className="rounded-md border border-if-green/40 bg-if-green/5 px-3 py-2 text-sm text-neutral-800 dark:text-neutral-200">
+          <strong>Curso escolhido:</strong> {rotuloDoCursoEscolhido(cursoEscolhido)}. As abas Curso novo, ano a ano e Integrado: 3 ou 4 anos abrem com ele.{" "}
+          <Link href="/consulta/curso" className={PROSE_LINK}>
+            limpar
+          </Link>
+        </p>
+      )}
+
       {!buscou && (
         <div className="flex flex-col gap-3 rounded-lg border border-sky-300 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
           <p className="font-medium">Digite o nome de um curso e clique em Buscar.</p>
@@ -211,6 +239,7 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
                     <th className="px-3 py-2 text-right" title="Em quantas turmas reais da MDO este peso foi observado.">
                       Turmas
                     </th>
+                    <th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -238,6 +267,11 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
                         <td className="px-3 py-2 text-right font-medium tabular-nums">{reais.format(v.valorPorAlunoNoCurso)}</td>
                         {anosDeCurso && <td className="px-3 py-2 text-right tabular-nums">{v.valorPorAlunoPorAno !== null ? reais.format(v.valorPorAlunoPorAno) : "-"}</td>}
                         <td className="px-3 py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-400">{inteiro.format(l.ciclosObservados)}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs">
+                          <Link href={hrefUsar(chaveDoCatalogo(l))} className={PROSE_LINK}>
+                            Usar este curso
+                          </Link>
+                        </td>
                       </tr>
                     );
                   })}
@@ -248,8 +282,8 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
         </>
       )}
 
-      <details open={!buscou} className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
-        <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-neutral-100">Como ler esta tela</summary>
+      <details className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Como ler esta tela</summary>
         <dl className="mt-3 flex flex-col gap-3">
           <Termo nome="Peso do curso">
             Quantas vezes um aluno deste curso conta, em relação a um aluno de peso 1,0. Vem do custo do curso (laboratórios, por exemplo): peso 1,5 quer dizer que cada aluno conta uma
@@ -274,13 +308,13 @@ export default async function QuantoValeUmCursoPage({ searchParams }: { searchPa
           </Termo>
           <Termo nome="Cuidado">
             Este é um valor de referência, não o que o câmpus recebe. O aluno que evade deixa de contar, o valor de uma matrícula muda a cada ciclo (depende do orçamento total e das matrículas de toda
-            a Rede), e a matriz só repassa depois de somar todos os cursos e aplicar o Piso Mínimo e os demais blocos. Para simular um curso novo ano a ano, com evasão, use{" "}
+            a Rede), e a matriz só repassa depois de somar todos os cursos e aplicar o Piso Mínimo e os demais blocos. Para simular um curso novo ano a ano, com evasão, use as abas{" "}
             <Link href="/simulador/novo-curso" className={PROSE_LINK}>
-              Abrir um curso novo
+              Curso novo, ano a ano
             </Link>{" "}
             ou{" "}
             <Link href="/simulador/curso" className={PROSE_LINK}>
-              Curso de 3 ou 4 anos
+              Integrado: 3 ou 4 anos
             </Link>
             . Para o valor real de cada curso de um câmpus, veja{" "}
             <Link href="/consulta/valor-do-aluno" className={PROSE_LINK}>

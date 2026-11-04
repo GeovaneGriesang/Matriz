@@ -277,6 +277,69 @@ export function ciclosComSucessora(ciclos: Array<Pick<CicloProjetavel, "id" | "u
   return comSucessora;
 }
 
+/** Duração mínima para falar em oferta anual: os ciclos curtos (FIC, um semestre) têm outro ritmo e seguem turma a turma. */
+const DURACAO_MINIMA_OFERTA_ANUAL_DIAS = 1.5 * ANO_EM_DIAS;
+
+/**
+ * Os cursos que abrem uma turma por ano: as turmas regulares do mesmo curso, câmpus, oferta e repasse começam em anos seguidos, uma em cada ano. Devolve, para cada
+ * uma, o id da turma mais recente, que serve de modelo da reposição. Decidido em 2026-11-04: copiar cada turma antiga repetia o passado (em Venâncio Aires, a turma de
+ * 2023 tinha 3 anos e as seguintes têm 4), criava ano sem entrada, ano com duas e uma oscilação que não existe no curso.
+ */
+export function modelosDeOfertaAnual(ciclos: CicloProjetavel[], anoBase0: number): Map<number, number> {
+  const inicioDoPeriodo = periodoDoAnoBase(anoBase0).inicio.getTime();
+  const grupos = new Map<string, CicloProjetavel[]>();
+  for (const c of ciclos) {
+    if (c.alunos <= 0 || c.termino.getTime() < inicioDoPeriodo) continue;
+    const k = `${c.unidadeId}|${c.curso}|${c.tipoCurso}|${c.tipoOferta}|${c.repasse}`;
+    grupos.set(k, [...(grupos.get(k) ?? []), c]);
+  }
+  const modelos = new Map<number, number>();
+  for (const lista of grupos.values()) {
+    if (lista.length < 2) continue;
+    const ordenada = [...lista].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+    const anosSeguidos = ordenada.every((c, i) => i === 0 || c.inicio.getUTCFullYear() === ordenada[i - 1]!.inicio.getUTCFullYear() + 1);
+    const modelo = ordenada[ordenada.length - 1]!;
+    if (!anosSeguidos || diasDoCiclo(modelo) < DURACAO_MINIMA_OFERTA_ANUAL_DIAS) continue;
+    for (const c of ordenada) modelos.set(c.id, modelo.id);
+  }
+  return modelos;
+}
+
+/**
+ * As turmas futuras de um curso de oferta anual: uma por ano, com a data de início, a duração e o tamanho da turma mais recente. O tamanho é o da turma no ano em que
+ * ela entrou, medido como a própria MDO conta (a matrícula do ano-base, desfeita só dos anos já passados desde a entrada).
+ */
+function turmasDeOfertaAnual(modelo: CicloProjetavel, anoBase0: number, anos: number, p: Premissas): TurmaProjetada[] {
+  const e = taxaDoCiclo(modelo, p.evasao);
+  const duracao = diasDoCiclo(modelo);
+  const anoDoModelo = modelo.inicio.getUTCFullYear();
+  const fator = Math.min(MAX_FATOR_ENTRADA, 1 / Math.pow(1 - e, Math.max(0, anoBase0 - anoDoModelo)));
+  const entrada = modelo.alunos * fator;
+  const prazo = prazoDeJubilamentoEmDias(modelo.tipoCurso);
+  const turmas: TurmaProjetada[] = [];
+  for (let ano = Math.max(anoDoModelo, anoBase0) + 1; ano <= anoBase0 + anos - 1; ano++) {
+    const inicio = inicioDaTurma(modelo, ano - anoDoModelo);
+    const termino = inicio + (duracao - 1) * MS_DIA;
+    const turma: CicloProjetavel = { ...modelo, inicio: new Date(inicio), termino: new Date(termino), jubilamento: new Date(termino + prazo * MS_DIA) };
+    turmas.push({ anoEntrada: ano, pontos: pontosDaTurma(turma, entrada, ano, e, p.retencao, anoBase0, anos) });
+  }
+  return turmas;
+}
+
+/**
+ * A reposição de todos os ciclos, na mesma ordem da lista. Curso de oferta anual: as turmas futuras ficam na turma mais recente, e as demais não repõem nada. Os outros
+ * cursos seguem turma a turma, como em `turmasDeReposicao`.
+ */
+export function turmasDeReposicaoDoConjunto(ciclos: CicloProjetavel[], anoBase0: number, anos: number, p: Premissas): TurmaProjetada[][] {
+  const modelos = modelosDeOfertaAnual(ciclos, anoBase0);
+  const comSucessora = ciclosComSucessora(ciclos);
+  return ciclos.map((c) => {
+    const modelo = modelos.get(c.id);
+    if (modelo === undefined) return turmasDeReposicao(c, anoBase0, anos, p, comSucessora.has(c.id));
+    return modelo === c.id ? turmasDeOfertaAnual(c, anoBase0, anos, p) : [];
+  });
+}
+
 /**
  * A soma da reposição. `ultimoAnoDeEntrada` é o último ano em que ainda entra turma nova (curso que deixa de ser ofertado depois dele);
  * sem ele, o curso continua sendo ofertado em todo o horizonte. As turmas que já entraram terminam o curso normalmente.
@@ -454,9 +517,9 @@ export function somarProjecao(ciclos: CicloProjetavel[], anoBase0: number, anos:
  * novos nem encerramentos, com o valor da matrícula de hoje.
  */
 export function valorPorCampusNosAnos(ciclos: CicloProjetavel[], anoBase0: number, anos: number, p: Premissas): Map<number, number[]> {
-  const comSucessora = ciclosComSucessora(ciclos);
+  const reposicao = turmasDeReposicaoDoConjunto(ciclos, anoBase0, anos, p);
   const porCampus = new Map<number, number[]>();
-  for (const c of ciclos) {
+  ciclos.forEach((c, i) => {
     let linha = porCampus.get(c.unidadeId);
     if (!linha) {
       linha = Array.from({ length: anos }, () => 0);
@@ -466,11 +529,11 @@ export function valorPorCampusNosAnos(ciclos: CicloProjetavel[], anoBase0: numbe
     projetarMatriculados(c, anoBase0, anos, p).forEach((ponto, k) => {
       doCampus[k]! += ponto.valor;
     });
-    for (const turma of turmasDeReposicao(c, anoBase0, anos, p, comSucessora.has(c.id))) {
+    for (const turma of reposicao[i]!) {
       turma.pontos.forEach((ponto, k) => {
         doCampus[k]! += ponto.valor;
       });
     }
-  }
+  });
   return porCampus;
 }

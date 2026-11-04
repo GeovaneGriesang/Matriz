@@ -7,7 +7,7 @@ import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
-import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
 import { analisarCiclo, periodoDoCiclo, type AnaliseAluno } from "@/lib/mdo/valorAluno";
 import { LinhaDeCurso } from "./LinhaDeCurso";
 
@@ -50,7 +50,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto vale um aluno</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
         Para cada curso de um câmpus: quanto um aluno rende no orçamento, em reais e em percentual do orçamento do câmpus, e por
-        quê. Clique num curso para abrir, logo abaixo dele, as turmas e a conta de cada uma, fator por fator. Detalhes da regra em{" "}
+        quê. Clique no <strong>+</strong> de um curso para abrir, logo abaixo dele, as turmas e a conta de cada uma, fator por fator. Detalhes da regra em{" "}
         <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
           Como funciona
         </Link>
@@ -88,40 +88,25 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
     .map((a) => a.ano)
     .sort((a, b) => b - a);
 
-  const seletorInstituicao = (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-        <SeletorInstituicao instituicoes={instituicoes} siglaEscolhida={instituicao.sigla} urlPorSigla={urlPorSigla} />
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
-        <div className="flex flex-wrap gap-1">
-          {(anosDaInstituicao.includes(ano) ? anosDaInstituicao : [...anosDaInstituicao, ano].sort((a, b) => b - a)).map((a) => (
-            <Link
-              key={a}
-              href={`/consulta/valor-do-aluno?ano=${a}&instituicao=${encodeURIComponent(instituicao.sigla)}${params.campus ? `&campus=${params.campus}` : ""}`}
-              title={`A matriz de ${a} usa os alunos da PNP de ${a - 2} (ano-base)`}
-              className={`rounded px-2 py-1 text-xs font-medium ${
-                a === ano
-                  ? "bg-if-green text-white"
-                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-              }`}
-            >
-              {a} <span className="font-normal opacity-80">(PNP {a - 2})</span>
-            </Link>
-          ))}
-        </div>
-        <span className="text-xs text-neutral-500">Cada matriz usa os alunos da PNP de dois anos antes (o ano-base).</span>
-      </div>
-    </div>
+  const anosDoSeletor = anosDaInstituicao.includes(ano) ? anosDaInstituicao : [...anosDaInstituicao, ano].sort((a, b) => b - a);
+  const seletor = (campusEscolhido?: number) => (
+    <SeletorDeContexto
+      anos={anosDoSeletor.map((a) => ({ ano: a, href: `/consulta/valor-do-aluno?ano=${a}&instituicao=${encodeURIComponent(instituicao.sigla)}${params.campus ? `&campus=${params.campus}` : ""}` }))}
+      anoEscolhido={ano}
+      instituicao={{ instituicoes, sigla: instituicao.sigla, urlPorSigla }}
+      campus={
+        campusEscolhido !== undefined
+          ? { escolhido: campusEscolhido, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/consulta/valor-do-aluno?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}` })) }
+          : undefined
+      }
+    />
   );
 
   if (unidades.length === 0) {
     return (
       <main className={`mx-auto ${TABLE_MAX_WIDTH} flex flex-col gap-6 px-6 py-12 lg:px-12`}>
         {cabecalho}
-        <div className="max-w-md">{seletorInstituicao}</div>
+        {seletor()}
         <p className="text-neutral-600 dark:text-neutral-400">
           {instituicao.sigla} não tem ciclos (6ª fase) carregados em {ano}.
         </p>
@@ -240,27 +225,7 @@ export default async function ValorDoAlunoPage({ searchParams }: { searchParams:
         ]}
       />
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900 md:grid-cols-[minmax(0,20rem)_1fr]">
-        {seletorInstituicao}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
-          <div className="flex flex-wrap gap-1">
-            {unidades.map((u) => (
-              <Link
-                key={u.id}
-                href={`/consulta/valor-do-aluno?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}`}
-                className={`rounded px-2 py-1 text-xs font-medium ${
-                  u.id === campus.id
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {u.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      {seletor(campus.id)}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Cartao rotulo={`Orçamento de ${campus.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}, por matrícula`} valor={reais0.format(totalCampus)} nota={`soma dos ciclos de ${ano}, antes do Piso Mínimo`} />

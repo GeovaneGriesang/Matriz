@@ -4,6 +4,7 @@ import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { PainelProcedencia } from "@/components/Procedencia";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { ehCampusDestaque } from "@/lib/destaque";
 import { COLUNAS_QUARTA_FASE, contaDaColuna, valorDaColuna } from "@/lib/mdo/quartaFase";
 import { arquivosQuartaFase, conferenciaQuartaFase, SITUACOES, type LinhaConferida } from "@/server/queries/quartaFase";
@@ -45,12 +46,13 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência da 4ª fase: a Matrícula Total, coluna a coluna</h1>
-      <p className="max-w-4xl text-neutral-600 dark:text-neutral-400">
-        A 4ª fase da MDO (&quot;Checagem de Matrículas Totais&quot;) é a planilha em que cada instituição confere a Matrícula Total de cada ciclo de curso, a
-        base de tudo o que a matriz distribui. Esta tela carrega essa planilha e refaz <strong>todas as colunas calculadas</strong>, com as mesmas fórmulas do
-        Excel, ciclo a ciclo. Ao lado, mostra o que o arquivo traz e se os dois números são iguais. Assim dá para ver, sem abrir o Excel, que o sistema usa os
-        mesmos dados e a mesma regra que a planilha. Aqui mantemos o vocabulário dela: &quot;ciclo&quot; é a turma, e cada ciclo é uma linha.
-      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">A planilha da 4ª fase refeita pelo sistema e comparada com o que o Excel gravou, para conferir sem abrir o Excel.</p>
+      <ComoLerEstaTela>
+        <p>
+          A 4ª fase da MDO (&quot;Checagem de Matrículas Totais&quot;) é a planilha em que cada instituição confere a Matrícula Total de cada turma, a base de tudo o que a matriz distribui. Esta tela carrega essa planilha e refaz <strong>todas as colunas calculadas</strong>, com as mesmas fórmulas do Excel, e mostra ao lado o que o arquivo traz e se os dois números são iguais.
+        </p>
+        <p>Aqui mantemos o vocabulário da planilha: &quot;ciclo&quot; é a turma, e cada ciclo é uma linha.</p>
+      </ComoLerEstaTela>
     </div>
   );
 

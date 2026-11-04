@@ -52,7 +52,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/consulta": {
     responde: "Quanto cada um recebe, e de quais cursos vem esse valor?",
     mostra: 'O bloco Funcionamento de cada instituição, câmpus e curso. "Gerado pela matriz" é o valor homologado na MDO. No IFSul, aparece também o "Recebido", informado pela gestão.',
-    usar: "Escolha o ciclo e a instituição. Clique no + de um câmpus para abrir os cursos dele logo abaixo da linha, e no − para fechar. Aparecem só as turmas que contribuem para o ano, cada uma com o código e o período. As turmas que terminaram antes do ano-base, mas ainda têm alunos retidos, ficam num grupo à parte.",
+    usar: "Escolha o ano e clique no + de uma instituição para abrir os câmpus. No + de um câmpus aparecem os cursos, logo abaixo da linha. O − fecha. Aparecem só as turmas que contribuem para o ano, cada uma com o código e o período. As turmas que terminaram antes do ano-base, mas ainda têm alunos retidos, ficam num grupo à parte.",
     atencao: "O Funcionamento é cerca de 80% da matriz. Qualidade e Eficiência, Reitorias e Assistência Estudantil não entram aqui, porque não são valores por câmpus.",
   },
   "/consulta/curso": {
@@ -104,7 +104,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   "/evasao": {
     responde: "Quanto se deixa de receber por causa da evasão?",
     mostra: "A perda de cada instituição, em reais e em proporção do que recebe, com abertura por câmpus e por curso. O valor vem pronto da 6ª fase da MDO.",
-    usar: "Clique numa instituição para ver os câmpus, e no + de um câmpus para abrir os cursos dele logo abaixo da linha. O + de um curso abre as turmas, com o código e o período. É o dado mais acionável da matriz, porque responde ao que a instituição faz com os alunos que já tem.",
+    usar: "Clique no + de uma instituição para ver os câmpus, e no + de um câmpus para abrir os cursos dele logo abaixo da linha. O + de um curso abre as turmas, com o código e o período. É o dado mais acionável da matriz, porque responde ao que a instituição faz com os alunos que já tem.",
     atencao: 'Nos câmpus marcados "no piso", reduzir a evasão pode não aumentar o que recebem.',
   },
   "/peso-efetivo": {

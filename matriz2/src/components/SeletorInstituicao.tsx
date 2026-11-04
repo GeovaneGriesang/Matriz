@@ -18,10 +18,16 @@ export function SeletorInstituicao({
   instituicoes,
   siglaEscolhida,
   urlPorSigla,
+  opcaoVazia,
+  rolar,
 }: {
   instituicoes: Instituicao[];
   siglaEscolhida: string;
   urlPorSigla: Record<string, string>;
+  /** O texto da opção "nenhuma aberta", nas telas em que a instituição abre dentro da tabela. */
+  opcaoVazia?: string;
+  /** Rola até o endereço escolhido, quando ele traz o ponto da página (#). */
+  rolar?: boolean;
 }) {
   const router = useRouter();
 
@@ -31,10 +37,11 @@ export function SeletorInstituicao({
       onChange={(e) => {
         const url = urlPorSigla[e.target.value];
         // scroll: false mantém a página onde está ao trocar de instituição.
-        if (url) router.push(url, { scroll: false });
+        if (url) router.push(url, { scroll: rolar === true });
       }}
       className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
     >
+      {opcaoVazia !== undefined && <option value="">{opcaoVazia}</option>}
       {instituicoes.map((i) => (
         <option key={i.sigla} value={i.sigla}>
           {ehInstituicaoDestaque(i.sigla) ? "★ " : ""}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 import { useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { PESO_REPASSE_PADRAO, type Repasse } from "@/lib/mdo/matriculaTotal";
@@ -10,8 +10,7 @@ import {
   projetarMatriculados,
   situacaoDoCiclo,
   turmasDeCursoNovo,
-  turmasDeReposicao,
-  ciclosComSucessora,
+  turmasDeReposicaoDoConjunto,
   ultimoAnoDeTermino,
   type CicloProjetavel,
   type CursoNovo,
@@ -156,6 +155,7 @@ interface LinhaAno {
 const linhasVazias = (n: number): LinhaAno[] => Array.from({ length: n }, () => ({ matric: 0, repos: 0, reposTudo: 0, novos: 0, alunos: 0 }));
 
 export function ProjecaoCiclos({
+  seletorInstituicao,
   instituicao,
   anoCiclo,
   anoBase0,
@@ -171,6 +171,8 @@ export function ProjecaoCiclos({
   anoCiclo: number;
   anoBase0: number;
   campi: Array<{ id: number; nome: string }>;
+  /** A lista de instituições, montada no servidor, para ficar junto da escolha do câmpus. */
+  seletorInstituicao: ReactNode;
   ciclos: CicloSerial[];
   catalogo: ItemCatalogo[];
   valorMatriculaPresencial: number;
@@ -243,8 +245,7 @@ export function ProjecaoCiclos({
 
   // Os cálculos pesados (um por ciclo) só são refeitos quando muda o horizonte ou a evasão; mexer no cenário só refaz as somas.
   const matriculadosPorCiclo = useMemo(() => todos.map((c) => projetarMatriculados(c, anoBase0, anos, premissas)), [todos, anoBase0, anos, premissas]);
-  const comSucessora = useMemo(() => ciclosComSucessora(todos), [todos]);
-  const turmasPorCiclo = useMemo<TurmaProjetada[][]>(() => todos.map((c) => turmasDeReposicao(c, anoBase0, anos, premissas, comSucessora.has(c.id))), [todos, anoBase0, anos, premissas, comSucessora]);
+  const turmasPorCiclo = useMemo<TurmaProjetada[][]>(() => turmasDeReposicaoDoConjunto(todos, anoBase0, anos, premissas), [todos, anoBase0, anos, premissas]);
 
   // Cursos novos: o que o catálogo sabe de cada um vira a especificação que o motor usa.
   const novosEspec = useMemo(
@@ -461,75 +462,22 @@ export function ProjecaoCiclos({
     <div className="flex flex-col gap-6">
       <ContextoDaTela texto={textoParaOChat} />
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
-        <h2 className="col-span-full text-sm font-semibold text-neutral-900 dark:text-neutral-100">1. O horizonte e o que a projeção supõe</h2>
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor="anos" className="font-medium text-neutral-700 dark:text-neutral-300">
-            Anos à frente
-          </label>
-          <input
-            id="anos"
-            type="number"
-            min={1}
-            max={MAX_ANOS}
-            value={anos}
-            onChange={(e) => setAnos(Math.min(MAX_ANOS, Math.max(1, Math.round(Number(e.target.value) || 1))))}
-            className={campo}
-          />
-          <span className="text-xs text-neutral-500">
-            Matrizes de {anoCiclo} a {anoCiclo + anos - 1}. De 1 a {MAX_ANOS}.{" "}
-            <button
-              type="button"
-              className="font-medium text-if-green underline"
-              onClick={() => setAnos(Math.min(MAX_ANOS, Math.max(1, ultimoNecessario - anoBase0 + 1)))}
-              title="Ajusta o horizonte para o ano do último término entre os cursos de hoje e os cursos novos do cenário."
-            >
-              até o último ciclo terminar ({ultimoNecessario})
-            </button>
-          </span>
+      <section className="flex flex-wrap items-start gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-w-64 flex-1 flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
+          {seletorInstituicao}
         </div>
-        <Percentual
-          rotulo="Evasão anual, presencial (%)"
-          valor={evPresencial}
-          onChange={setEvPresencial}
-          padrao={Math.round(taxasPadrao.presencial * 1000) / 10}
-          ajuda={taxasPadrao.semDado ? "Sem dado da PNP: valor de partida" : "Média do instituto na PNP"}
-        />
-        <Percentual
-          rotulo="Evasão anual, a distância (%)"
-          valor={evEad}
-          onChange={setEvEad}
-          padrao={Math.round(taxasPadrao.ead * 1000) / 10}
-          ajuda={taxasPadrao.semDado ? "Sem dado da PNP: valor de partida" : "Média do instituto na PNP"}
-        />
-        <div className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">De onde vêm as taxas</span>
-          <span>{taxasPadrao.origem}</span>
-          {taxasPadrao.porAno.length > 0 && (
-            <span>{taxasPadrao.porAno.map((a) => `${a.anoBase}: ${a.presencial !== null ? pct(a.presencial) : "-"} presencial, ${a.ead !== null ? pct(a.ead) : "-"} a distância`).join("; ")}</span>
-          )}
-          <span className="mt-1">
-            <strong className="font-medium text-neutral-700 dark:text-neutral-300">Retidos depois do término:</strong> de cada 100 alunos no término, ficam{" "}
-            {retencao.retencao.map((r) => inteiro.format(Math.round(r * 100))).join(", ")} um, dois e três anos depois.{" "}
-            {retencao.observada
-              ? `Medido nos ${inteiro.format(Math.round(retencao.alunosNoTermino))} alunos dos ciclos que terminam em ${anoBase0}, contra os ciclos terminados nos três anos anteriores.`
-              : "Sem alunos suficientes para medir: valor de partida."}
-          </span>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus que você está vendo (os cursos novos e as paradas valem para o câmpus de cada um)</span>
-        <div className="flex flex-wrap gap-1">
-          <BotaoCampus ativo={campusId === null} onClick={() => setCampusId(null)}>
-            {instituicao} inteiro
-          </BotaoCampus>
-          {campi.map((c) => (
-            <BotaoCampus key={c.id} ativo={campusId === c.id} onClick={() => setCampusId(c.id)}>
-              {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-            </BotaoCampus>
-          ))}
-        </div>
+        <label className="flex min-w-56 flex-1 flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Câmpus</span>
+          <select value={campusId ?? ""} onChange={(e) => setCampusId(e.target.value === "" ? null : Number(e.target.value))} className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+            <option value="">{instituicao} inteiro</option>
+            {campi.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -560,7 +508,7 @@ export function ProjecaoCiclos({
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">2. Cenário ano a ano, {nomeDoRecorte}</h2>
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cenário ano a ano, {nomeDoRecorte}</h2>
         <div className="tabela-rolavel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
@@ -615,8 +563,111 @@ export function ProjecaoCiclos({
         </p>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">3. Cursos que deixam de ser ofertados</h2>
+      {campusId === null && (
+        <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Total do cenário por câmpus</h2>
+          <div className="tabela-rolavel">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-3 py-2">Câmpus</th>
+                  {linhas.map((_, k) => (
+                    <th key={k} className="px-3 py-2 text-right">
+                      {anoCiclo + k}
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 text-right">Sobre manter tudo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                {campi.map((c) => {
+                  const l = porCampus.get(c.id);
+                  if (!l) return null;
+                  const t = l.reduce((s, x) => s + x.matric + x.repos + x.novos, 0);
+                  const m = l.reduce((s, x) => s + x.matric + x.reposTudo, 0);
+                  if (t <= 0 && m <= 0) return null;
+                  return (
+                    <tr key={c.id} className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900" onClick={() => setCampusId(c.id)}>
+                      <td className="px-3 py-2 font-medium">{c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}</td>
+                      {l.map((x, k) => (
+                        <td key={k} className="px-3 py-2 text-right tabular-nums">
+                          {reais.format(x.matric + x.repos + x.novos)}
+                        </td>
+                      ))}
+                      <td className={`px-3 py-2 text-right tabular-nums ${Math.abs(t - m) < 1 ? "text-neutral-400" : t > m ? "text-if-green" : "text-if-red dark:text-red-400"}`}>
+                        {Math.abs(t - m) < 1 ? "-" : comSinal(t - m)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <details className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">O horizonte e o que a projeção supõe</summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-1 text-sm">
+          <label htmlFor="anos" className="font-medium text-neutral-700 dark:text-neutral-300">
+            Anos à frente
+          </label>
+          <input
+            id="anos"
+            type="number"
+            min={1}
+            max={MAX_ANOS}
+            value={anos}
+            onChange={(e) => setAnos(Math.min(MAX_ANOS, Math.max(1, Math.round(Number(e.target.value) || 1))))}
+            className={campo}
+          />
+          <span className="text-xs text-neutral-500">
+            Matrizes de {anoCiclo} a {anoCiclo + anos - 1}. De 1 a {MAX_ANOS}.{" "}
+            <button
+              type="button"
+              className="font-medium text-if-green underline"
+              onClick={() => setAnos(Math.min(MAX_ANOS, Math.max(1, ultimoNecessario - anoBase0 + 1)))}
+              title="Ajusta o horizonte para o ano do último término entre os cursos de hoje e os cursos novos do cenário."
+            >
+              até o último ciclo terminar ({ultimoNecessario})
+            </button>
+          </span>
+        </div>
+        <Percentual
+          rotulo="Evasão anual, presencial (%)"
+          valor={evPresencial}
+          onChange={setEvPresencial}
+          padrao={Math.round(taxasPadrao.presencial * 1000) / 10}
+          ajuda={taxasPadrao.semDado ? "Sem dado da PNP: valor de partida" : "Média do instituto na PNP"}
+        />
+        <Percentual
+          rotulo="Evasão anual, a distância (%)"
+          valor={evEad}
+          onChange={setEvEad}
+          padrao={Math.round(taxasPadrao.ead * 1000) / 10}
+          ajuda={taxasPadrao.semDado ? "Sem dado da PNP: valor de partida" : "Média do instituto na PNP"}
+        />
+        <div className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">De onde vêm as taxas</span>
+          <span>{taxasPadrao.origem}</span>
+          {taxasPadrao.porAno.length > 0 && (
+            <span>{taxasPadrao.porAno.map((a) => `${a.anoBase}: ${a.presencial !== null ? pct(a.presencial) : "-"} presencial, ${a.ead !== null ? pct(a.ead) : "-"} a distância`).join("; ")}</span>
+          )}
+          <span className="mt-1">
+            <strong className="font-medium text-neutral-700 dark:text-neutral-300">Retidos depois do término:</strong> de cada 100 alunos no término, ficam{" "}
+            {retencao.retencao.map((r) => inteiro.format(Math.round(r * 100))).join(", ")} um, dois e três anos depois.{" "}
+            {retencao.observada
+              ? `Medido nos ${inteiro.format(Math.round(retencao.alunosNoTermino))} alunos dos ciclos que terminam em ${anoBase0}, contra os ciclos terminados nos três anos anteriores.`
+              : "Sem alunos suficientes para medir: valor de partida."}
+          </span>
+        </div>
+        </div>
+      </details>
+
+      <details open={Object.keys(encerramentos).length > 0} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cursos que deixam de ser ofertados ({Object.keys(encerramentos).length})</summary>
+        <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Escolha, para cada curso, o ano a partir do qual não entram turmas novas. As turmas que já estão em andamento terminam o curso normalmente (e entram na conta). Deixe em
           branco o curso que continua sendo ofertado.
@@ -730,10 +781,12 @@ export function ProjecaoCiclos({
           O + de um curso abre as turmas somadas nele, com o código e o período. As colunas de anos mostram só quem já está matriculado (até seis anos); o efeito de parar um curso aparece na tabela do cenário, na coluna Reposição e em Sobre manter tudo.
           "Atrasado" quer dizer que todos os ciclos do curso já passaram do término.
         </p>
-      </section>
+        </div>
+      </details>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">4. Cursos novos</h2>
+      <details open={novos.length > 0} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cursos novos ({novos.length})</summary>
+        <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Acrescente os cursos que um câmpus pretende abrir. Escolha o curso na tabela de pesos (o peso e a carga horária vêm dela), o ano e o mês da primeira turma, quantos
           ingressantes entram em cada turma e, se a oferta se repete, até que ano ela entra. Curso semestral: escolha duas entradas por ano. A duração vem dos cursos parecidos que o instituto já oferta; ajuste se precisar.
@@ -843,61 +896,18 @@ export function ProjecaoCiclos({
           </button>
         </div>
         <p className="text-xs text-neutral-500">O cenário fica guardado neste navegador: ao voltar, você continua de onde parou.</p>
-      </section>
+        </div>
+      </details>
 
-      {campusId === null && (
-        <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">5. Total do cenário por câmpus</h2>
-          <div className="tabela-rolavel">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-3 py-2">Câmpus</th>
-                  {linhas.map((_, k) => (
-                    <th key={k} className="px-3 py-2 text-right">
-                      {anoCiclo + k}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2 text-right">Sobre manter tudo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {campi.map((c) => {
-                  const l = porCampus.get(c.id);
-                  if (!l) return null;
-                  const t = l.reduce((s, x) => s + x.matric + x.repos + x.novos, 0);
-                  const m = l.reduce((s, x) => s + x.matric + x.reposTudo, 0);
-                  if (t <= 0 && m <= 0) return null;
-                  return (
-                    <tr key={c.id} className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900" onClick={() => setCampusId(c.id)}>
-                      <td className="px-3 py-2 font-medium">{c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}</td>
-                      {l.map((x, k) => (
-                        <td key={k} className="px-3 py-2 text-right tabular-nums">
-                          {reais.format(x.matric + x.repos + x.novos)}
-                        </td>
-                      ))}
-                      <td className={`px-3 py-2 text-right tabular-nums ${Math.abs(t - m) < 1 ? "text-neutral-400" : t > m ? "text-if-green" : "text-if-red dark:text-red-400"}`}>
-                        {Math.abs(t - m) < 1 ? "-" : comSinal(t - m)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      <details open className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-700 dark:border-neutral-800 dark:text-neutral-300">
-        <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-neutral-100">Como este simulador funciona</summary>
+      <details className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-700 dark:border-neutral-800 dark:text-neutral-300">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Como este simulador funciona</summary>
         <div className="mt-3 flex flex-col gap-2">
           <p>
             <strong>Ponto de partida.</strong> Cada turma da matriz de {anoCiclo} de {instituicao}, com os alunos que a MDO contou (matrículas de {anoBase0}), as datas de
             início e término, a carga horária, o peso e o valor da matrícula do ciclo. O primeiro ano da tabela é exatamente o valor de hoje.
           </p>
           <p>
-            <strong>Três parcelas.</strong> "Já matriculados" são os alunos de hoje terminando o curso. "Reposição" são as turmas novas dos cursos que continuam sendo ofertados, no tamanho da
-            matrícula de entrada de hoje. "Cursos novos" são os que você acrescentou. O total é a soma das três; "Sobre manter tudo" compara com o cenário em que nada muda (todos os cursos
+            <strong>Três parcelas.</strong> "Já matriculados" são os alunos de hoje terminando o curso. "Reposição" são as turmas novas dos cursos que continuam sendo ofertados. Curso que abre uma turma por ano repete a turma mais recente, uma por ano, com o mesmo tamanho e a mesma duração; os demais repetem cada turma quando ela termina. "Cursos novos" são os que você acrescentou. O total é a soma das três; "Sobre manter tudo" compara com o cenário em que nada muda (todos os cursos
             continuam e nenhum curso novo abre).
           </p>
           <p>
@@ -991,20 +1001,6 @@ function Percentual({ rotulo, valor, onChange, padrao, ajuda }: { rotulo: string
   );
 }
 
-function BotaoCampus({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={ativo}
-      className={`rounded px-2 py-1 text-xs font-medium ${
-        ativo ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function Cartao({ titulo, valor, nota }: { titulo: string; valor: string; nota: string }) {
   return (

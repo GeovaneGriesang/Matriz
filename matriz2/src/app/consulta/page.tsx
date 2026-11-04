@@ -3,7 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
-import { SeletorInstituicao } from "@/components/SeletorInstituicao";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
 import { CICLO_QUE_CONTRIBUI, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
@@ -27,7 +28,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   await requireAcessoPlenoOrRedirect("/consulta");
   const params = await searchParams;
   const ano = Number(params.ano) || 2027;
-  const modoMacro = !params.instituicao;
   const siglaEscolhida = params.instituicao ?? "IFSUL";
   const campusEscolhido = params.campus ? Number(params.campus) : null;
 
@@ -55,153 +55,83 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  // Visão macro (rede inteira): uma linha por instituição, sem exigir escolher uma
-  // primeiro. É a porta de entrada: clicar numa instituição leva ao detalhamento
-  // por câmpus abaixo.
-  if (modoMacro) {
-    const [porCampusRede, distribuicaoCampusRede] = await Promise.all([
-      prisma.distribuicaoCiclo.groupBy({
-        by: ["unidadeId"],
-        where: { ano },
-        _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
-      }),
-      // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
-      // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
-      // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato
-      // recebe. Além disso, um ciclo pode não ter 6ª fase nenhuma (2026): por isso a
-      // lista de câmpus é a UNIÃO das duas fontes, não só quem tem curso.
-      prisma.distribuicaoCampus.findMany({
-        where: { ano },
-        select: { unidadeId: true, vlMatrFinal: true },
-      }),
-    ]);
-    const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
-    const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
-
-    const somaCicloPorId = new Map(porCampusRede.map((c) => [c.unidadeId, c._sum]));
-    const vlMatrFinalPorId = new Map(
-      distribuicaoCampusRede.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
-    );
-    const idsCampusRede = new Set<number>([
-      ...porCampusRede.map((c) => c.unidadeId),
-      ...distribuicaoCampusRede.map((d) => d.unidadeId),
-    ]);
-    const semSextaFase = porCampusRede.length === 0 && distribuicaoCampusRede.length > 0;
-
-    const recebidosRede = await prisma.valorRecebidoCampus.findMany({
+  // A rede inteira: uma linha por instituição, que abre os câmpus dela logo abaixo, pelo +.
+  const [porCampusRede, distribuicaoCampusRede] = await Promise.all([
+    prisma.distribuicaoCiclo.groupBy({
+      by: ["unidadeId"],
       where: { ano },
-      select: { unidadeId: true, valorRecebido: true },
-    });
+      _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
+    }),
+    // `vlMatrFinal` (5ª fase, já com o Piso Mínimo aplicado) em vez da soma dos
+    // cursos (6ª fase): a 6ª fase traz a participação de cada curso ANTES do piso, e
+    // para os câmpus elegíveis a soma fica bem abaixo do que o câmpus de fato
+    // recebe. Além disso, um ciclo pode não ter 6ª fase nenhuma (2026): por isso a
+    // lista de câmpus é a UNIÃO das duas fontes, não só quem tem curso.
+    prisma.distribuicaoCampus.findMany({
+      where: { ano },
+      select: { unidadeId: true, vlMatrFinal: true },
+    }),
+  ]);
+  const unidadesRede = await prisma.unidade.findMany({ select: { id: true, instituicaoId: true } });
+  const instituicaoPorUnidade = new Map(unidadesRede.map((u) => [u.id, u.instituicaoId]));
 
-    const acumulado = new Map<
-      number,
-      { campus: number; valor: number; perda: number; matricula: number; recebidoReal: number; campusComRecebido: number }
-    >();
-    for (const unidadeId of idsCampusRede) {
-      const instId = instituicaoPorUnidade.get(unidadeId);
-      if (instId === undefined) continue;
-      const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
-      a.campus += 1;
-      const somaCiclo = somaCicloPorId.get(unidadeId);
-      a.valor += vlMatrFinalPorId.get(unidadeId) ?? Number(somaCiclo?.valorReais ?? 0);
-      a.perda += Number(somaCiclo?.perdaEvasaoReais ?? 0);
-      a.matricula += Number(somaCiclo?.matriculaTotal ?? 0);
-      acumulado.set(instId, a);
-    }
-    for (const r of recebidosRede) {
-      const instId = instituicaoPorUnidade.get(r.unidadeId);
-      if (instId === undefined) continue;
-      const a = acumulado.get(instId);
-      if (!a) continue;
-      a.recebidoReal += Number(r.valorRecebido);
-      a.campusComRecebido += 1;
-    }
+  const somaDaRedePorId = new Map(porCampusRede.map((c) => [c.unidadeId, c._sum]));
+  const vlDaRedePorId = new Map(
+    distribuicaoCampusRede.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
+  );
+  const idsCampusRede = new Set<number>([
+    ...porCampusRede.map((c) => c.unidadeId),
+    ...distribuicaoCampusRede.map((d) => d.unidadeId),
+  ]);
+  const semSextaFase = porCampusRede.length === 0 && distribuicaoCampusRede.length > 0;
 
-    const linhasInstituicoes = instituicoes
-      .map((i) => {
-        const a = acumulado.get(i.id) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
-        return {
-          sigla: i.sigla,
-          nome: i.nome,
-          campus: a.campus,
-          valor: a.valor,
-          perda: a.perda,
-          matricula: a.matricula,
-          recebidoReal: a.campusComRecebido > 0 ? a.recebidoReal : null,
-          campusComRecebido: a.campusComRecebido,
-        };
-      })
-      .filter((l) => l.campus > 0)
-      .sort((a, b) => b.valor - a.valor);
+  const recebidosRede = await prisma.valorRecebidoCampus.findMany({
+    where: { ano },
+    select: { unidadeId: true, valorRecebido: true },
+  });
 
-    const totalRede = linhasInstituicoes.reduce((s, l) => s + l.valor, 0);
-
-    return (
-      <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Quanto cada instituição recebe no bloco{" "}
-            <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
-              Funcionamento
-            </Link>{" "}
-            da Matriz de Distribuição Orçamentária (cerca de 80% do total; não inclui Qualidade e
-            Eficiência, Reitorias nem Assistência, que não são valores por câmpus). Clique numa
-            instituição para descer a câmpus e, dentro de um câmpus, a curso. &quot;Gerado pela
-            matriz&quot; é o valor homologado pela MDO. Para o IFSul, ao abri-lo, aparece também o &quot;Recebido&quot;, o que foi de fato
-            informado em{" "}
-            <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
-              Valores recebidos
-            </Link>
-            , que pode ser diferente porque contingenciamento e outras decisões orçamentárias não passam pela
-            matriz (só o IFSul tem esse valor). Para comparar cursos de câmpus diferentes lado a lado, veja{" "}
-            <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
-              Comparar entre câmpus
-            </Link>
-            . Para saber quanto um aluno de cada curso vale no orçamento de um câmpus, em reais e em percentual, veja{" "}
-            <Link href={`/consulta/valor-do-aluno?ano=${ano}`} className={PROSE_LINK}>
-              Quanto vale um aluno
-            </Link>
-            .
-          </p>
-        </div>
-
-        <div className="flex gap-1">
-          {anosDisponiveis.map((a) => (
-            <Link
-              key={a.ano}
-              href={`/consulta?ano=${a.ano}`}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${
-                a.ano === ano
-                  ? "bg-if-green text-white"
-                  : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-              }`}
-            >
-              {a.ano}
-            </Link>
-          ))}
-        </div>
-
-        {semSextaFase && (
-          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
-            detalhamento por curso nem perda por evasão. Os valores abaixo vêm da 5ª fase (Funcionamento
-            por câmpus).
-          </p>
-        )}
-
-        {linhasInstituicoes.length === 0 ? (
-          <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            Nenhuma instituição com dado de Funcionamento (5ª ou 6ª fase) neste ciclo ainda.
-          </p>
-        ) : (
-          <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <ConsultaTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} totalRede={totalRede} />
-          </div>
-        )}
-      </main>
-    );
+  const acumulado = new Map<
+    number,
+    { campus: number; valor: number; perda: number; matricula: number; recebidoReal: number; campusComRecebido: number }
+  >();
+  for (const unidadeId of idsCampusRede) {
+    const instId = instituicaoPorUnidade.get(unidadeId);
+    if (instId === undefined) continue;
+    const a = acumulado.get(instId) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
+    a.campus += 1;
+    const somaCiclo = somaDaRedePorId.get(unidadeId);
+    a.valor += vlDaRedePorId.get(unidadeId) ?? Number(somaCiclo?.valorReais ?? 0);
+    a.perda += Number(somaCiclo?.perdaEvasaoReais ?? 0);
+    a.matricula += Number(somaCiclo?.matriculaTotal ?? 0);
+    acumulado.set(instId, a);
   }
+  for (const r of recebidosRede) {
+    const instId = instituicaoPorUnidade.get(r.unidadeId);
+    if (instId === undefined) continue;
+    const a = acumulado.get(instId);
+    if (!a) continue;
+    a.recebidoReal += Number(r.valorRecebido);
+    a.campusComRecebido += 1;
+  }
+
+  const linhasInstituicoes = instituicoes
+    .map((i) => {
+      const a = acumulado.get(i.id) ?? { campus: 0, valor: 0, perda: 0, matricula: 0, recebidoReal: 0, campusComRecebido: 0 };
+      return {
+        sigla: i.sigla,
+        nome: i.nome,
+        campus: a.campus,
+        valor: a.valor,
+        perda: a.perda,
+        matricula: a.matricula,
+        recebidoReal: a.campusComRecebido > 0 ? a.recebidoReal : null,
+        campusComRecebido: a.campusComRecebido,
+      };
+    })
+    .filter((l) => l.campus > 0)
+    .sort((a, b) => b.valor - a.valor);
+
+  const totalDaRede = linhasInstituicoes.reduce((s, l) => s + l.valor, 0);
 
   const instituicao = instituicoes.find((i) => i.sigla === siglaEscolhida) ?? instituicoes[0]!;
 
@@ -307,35 +237,10 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     return `/consulta?${q.toString()}`;
   }
 
-  return (
-    <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Link href={`/consulta?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-            ← todas as instituições
-          </Link>
-        </div>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Consulta</h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
-          Quanto cada câmpus recebe da Matriz de Distribuição Orçamentária, e de quais cursos esse
-          valor vem. &quot;Gerado pela matriz&quot; é o bloco{" "}
-          <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
-            Funcionamento
-          </Link>{" "}
-          (cerca de 80% do total, já com o Piso Mínimo aplicado), homologado pela MDO; não inclui
-          Qualidade e Eficiência, Reitorias nem Assistência, que não são valores por câmpus.
-          {ehIfsul && (
-            <>
-              {" "}
-              &quot;Recebido&quot; é diferente: é o que foi de fato depositado, informado à mão em{" "}
-              <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
-                Valores recebidos
-              </Link>
-              , porque contingenciamento e outras decisões orçamentárias podem mudar o valor real sem passar
-              pela matriz.
-            </>
-          )}
-        </p>
+  const instituicaoAberta = params.instituicao && linhasInstituicoes.some((l) => l.sigla === params.instituicao) ? params.instituicao : null;
+  const exemploDaRede = linhasInstituicoes.find((l) => ehInstituicaoDestaque(l.sigla)) ?? linhasInstituicoes[0];
+  const detalheDaInstituicao = params.instituicao ? (
+    <div className="flex w-0 min-w-full flex-col gap-4 rounded-md border-l-4 border-if-green bg-white p-4 font-normal dark:bg-neutral-950">
         {semSextaFaseInstituicao && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
             A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há
@@ -343,39 +248,6 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
             da 5ª fase (Funcionamento por câmpus).
           </p>
         )}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
-          <div className="flex gap-1">
-            {anosDisponiveis.map((a) => (
-              <Link
-                key={a.ano}
-                href={href({ ano: String(a.ano), campus: undefined })}
-                className={`rounded px-3 py-1.5 text-sm font-medium ${
-                  a.ano === ano
-                    ? "bg-if-green text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {a.ano}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div className="flex min-w-64 flex-1 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Instituição</span>
-          <SeletorInstituicao
-            instituicoes={instituicoes}
-            siglaEscolhida={siglaEscolhida}
-            urlPorSigla={Object.fromEntries(
-              instituicoes.map((i) => [i.sigla, href({ instituicao: i.sigla, campus: undefined })]),
-            )}
-          />
-        </div>
-      </div>
-
       <div className={`grid gap-4 sm:grid-cols-2 ${ehIfsul ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         <Cartao rotulo="Gerado pela matriz" valor={reais.format(total.valor)} />
         {ehIfsul && (
@@ -452,7 +324,79 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         />
       </div>
 
-      {fonte && <PainelProcedencia fonte={fonte} />}
+    </div>
+  ) : null;
+
+  return (
+    <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Quanto recebemos?</h1>
+        <p className="text-neutral-600 dark:text-neutral-400">
+          Quanto cada instituição, câmpus e turma recebe no bloco Funcionamento da matriz de {ano}. Clique no <strong>+</strong> para abrir, e no <strong>−</strong> para fechar.
+        </p>
+      </div>
+
+      <SeletorDeContexto
+        anos={anosDisponiveis.map((a) => ({ ano: a.ano, href: `/consulta?ano=${a.ano}${params.instituicao ? `&instituicao=${encodeURIComponent(params.instituicao)}` : ""}` }))}
+        anoEscolhido={ano}
+        instituicao={{
+          instituicoes,
+          sigla: params.instituicao ?? "",
+          opcaoVazia: "Escolha uma instituição para abrir",
+          rolar: true,
+          urlPorSigla: Object.fromEntries(instituicoes.map((i) => [i.sigla, `/consulta?ano=${ano}&instituicao=${encodeURIComponent(i.sigla)}#instituicao-${i.sigla}`])),
+        }}
+      />
+
+      <ComoLerEstaTela>
+        <p>
+          O{" "}
+          <Link href="/como-funciona#funcionamento" className={PROSE_LINK}>
+            Funcionamento
+          </Link>{" "}
+          é cerca de 80% da matriz, já com o Piso Mínimo aplicado. Qualidade e Eficiência, Reitorias e Assistência Estudantil não entram aqui, porque não são valores por câmpus.
+        </p>
+        <p>
+          &quot;Gerado pela matriz&quot; é o valor homologado pela MDO. &quot;Recebido&quot; existe só para o IFSul: é o que foi de fato depositado, informado em{" "}
+          <Link href="/admin/valores-recebidos" className={PROSE_LINK}>
+            Valores recebidos
+          </Link>
+          , e pode ser diferente porque contingenciamento e outras decisões orçamentárias não passam pela matriz.
+        </p>
+        {exemploDaRede && (
+          <p>
+            Exemplo: {exemploDaRede.sigla} gera {reais.format(exemploDaRede.valor)} em {ano}. Abra o + dele para ver cada câmpus; no + de um câmpus aparecem as turmas, com os alunos de {ano - 2}.
+          </p>
+        )}
+        <p>
+          Para ver cursos lado a lado, use{" "}
+          <Link href={`/consulta/comparar?ano=${ano}`} className={PROSE_LINK}>
+            Comparar cursos entre câmpus
+          </Link>
+          . Para o valor de um aluno de cada curso, use{" "}
+          <Link href={`/consulta/valor-do-aluno?ano=${ano}`} className={PROSE_LINK}>
+            Quanto vale um aluno
+          </Link>
+          . Os dois estão no menu Mais.
+        </p>
+      </ComoLerEstaTela>
+
+      {semSextaFase && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          A matriz de {ano} ainda não tem a 6ª fase da MDO (participação por curso): sem ela, não há detalhamento por curso nem perda por evasão. Os valores vêm da 5ª fase (Funcionamento por câmpus).
+        </p>
+      )}
+
+      {linhasInstituicoes.length === 0 ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          Nenhuma instituição com dado de Funcionamento (5ª ou 6ª fase) neste ano ainda.
+        </p>
+      ) : (
+        <div className={`${instituicaoAberta ? "overflow-x-auto" : "tabela-rolavel"} rounded-lg border border-neutral-200 dark:border-neutral-800`}>
+          <ConsultaTabelaInstituicoes linhas={linhasInstituicoes} ano={ano} totalRede={totalDaRede} aberta={instituicaoAberta} detalhe={instituicaoAberta ? detalheDaInstituicao : null} />
+        </div>
+      )}
+      {!instituicaoAberta && detalheDaInstituicao}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
@@ -199,25 +200,22 @@ export default async function ComparativoPage({
           Comparativo {anoA} e {anoB}
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Quanto cada instituição recebeu em cada ciclo, e o que mudou entre eles. É a pergunta que a
-          MDO não responde numa tela só, porque lá cada ano se consulta separado.
+          O que cada instituição recebeu em cada ano e o que mudou. Clique no <strong>+</strong> de uma instituição para ver os câmpus, e no + de um câmpus para ver as turmas.
         </p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil): a tabela das instituições e a dos
-          câmpus passam a mostrar só aquele bloco. Clique no <strong>+</strong> na frente de uma instituição para abrir os câmpus dela;
-          clique no <strong>+</strong> de um câmpus para ver os cursos dele. Os valores por câmpus vêm da 5ª fase (a mesma fonte da
-          Consulta), e não do relatório comparativo que desce a câmpus, porque esse relatório atribui valores à unidade errada (no
-          IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça).
+      </div>
+
+      <ComoLerEstaTela>
+        <p>É a pergunta que a MDO não responde numa tela só, porque lá cada ano se consulta separado. Escolha o bloco (Total, Funcionamento, Qualidade e Eficiência ou Assistência Estudantil): as tabelas passam a mostrar só aquele bloco.</p>
+        <p>
+          Os valores por câmpus vêm da 5ª fase (a mesma fonte da Consulta), e não do relatório comparativo que desce a câmpus, porque esse relatório atribui valores à unidade errada (no IFSul, o Câmpus Pelotas aparece com o valor do Pelotas Visconde da Graça).
         </p>
         {informadoNoBloco && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Na lista de câmpus do IFSul, cada ciclo tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o{" "}
-          <strong>informado</strong> (o que ele de fato recebeu, cadastrado em Valores recebidos). Ao lado deles estão as cinco variações:
-          calculado {anoA} para informado {anoA}; calculado {anoA} para calculado {anoB}; informado {anoA} para calculado {anoB}; informado{" "}
-          {anoA} para informado {anoB}; e calculado {anoB} para informado {anoB}. Onde falta o informado, a variação fica vazia.
-        </p>
+          <p>
+            Na lista de câmpus do IFSul, cada ano tem dois valores: o <strong>calculado</strong> (o que a matriz diz que o câmpus recebe) e o <strong>informado</strong> (o que ele de fato recebeu, cadastrado em Valores recebidos). Ao lado deles estão as cinco variações: calculado {anoA} para informado {anoA}; calculado {anoA} para calculado {anoB}; informado {anoA} para calculado {anoB}; informado {anoA} para informado {anoB}; e calculado {anoB} para informado {anoB}. Onde falta o informado, a variação fica vazia.
+          </p>
         )}
-      </div>
+        <p>A cor da variação compara cada instituição com a variação da rede, não com zero: crescer menos que a rede significa perder fatia, mesmo com o valor em reais subindo.</p>
+      </ComoLerEstaTela>
 
       <PainelConfianca ids={["comparativo-institucional", ...(comInformados ? (["valor-informado"] as const) : []), "piso-2026", "mooc-2027", "explicacao-variacao"]} />
 
@@ -261,8 +259,6 @@ export default async function ComparativoPage({
         )}
       </div>
 
-      <ExplicacaoBlocos bloco={bloco} exemplo={exemplo} />
-
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ComparativoTabela
           linhas={linhas}
@@ -278,10 +274,7 @@ export default async function ComparativoPage({
         />
       </div>
 
-      <p className="text-sm text-neutral-500 dark:text-neutral-400">
-        A cor da variação compara cada instituição com a variação da rede, não com zero: crescer menos
-        que a rede significa perder fatia, mesmo com o valor em reais subindo.
-      </p>
+      <ExplicacaoBlocos bloco={bloco} exemplo={exemplo} />
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

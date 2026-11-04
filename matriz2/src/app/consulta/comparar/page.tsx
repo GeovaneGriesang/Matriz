@@ -14,6 +14,8 @@ import { FiltroDeModalidade } from "./FiltroDeModalidade";
 import { SeletorSlotCurso, type CampusOpcao } from "./SeletorSlotCurso";
 import { turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
+import { SeletorDeContexto } from "@/components/SeletorDeContexto";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 
 export const dynamic = "force-dynamic";
 
@@ -62,24 +64,7 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   // Os ciclos que têm a 6ª fase carregada: são os únicos que fazem sentido como opção, e a escolha do ciclo precisa
   // continuar à vista mesmo quando o ciclo da URL não tem dado (senão a pessoa fica sem como voltar).
   const anosComCiclo = (await prisma.distribuicaoCiclo.findMany({ distinct: ["ano"], select: { ano: true }, orderBy: { ano: "desc" } })).map((a) => a.ano);
-  const seletorDeAno = (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Ano da matriz</span>
-      <div className="flex gap-1">
-        {anosComCiclo.map((a) => (
-          <Link
-            key={a}
-            href={`/consulta/comparar?${new URLSearchParams({ ano: String(a) }).toString()}`}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${
-              a === ano ? "bg-if-green text-white" : "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            }`}
-          >
-            {a}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+  const seletorDeAno = <SeletorDeContexto anos={anosComCiclo.map((a) => ({ ano: a, href: `/consulta/comparar?${new URLSearchParams({ ano: String(a) }).toString()}` }))} anoEscolhido={ano} />;
 
   // Câmpus da rede inteira com curso carregado neste ano. Só nome e sigla: os cursos de cada um só são buscados quando
   // esse câmpus está de fato num dos slots, para não carregar os cursos de mais de 600 câmpus de uma vez.
@@ -219,19 +204,17 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <div className="flex flex-col gap-2">
-        <Link href={`/consulta?ano=${ano}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-          ← Consulta
-        </Link>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Comparar cursos entre câmpus</h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
-          Escolha até {MAX_SLOTS} cursos, de qualquer instituição da rede (o IFSul vem primeiro), para comparar lado a lado: duração do ciclo, carga horária, peso, matrícula equalizada e valor
-          recebido. Em cada um, escolha primeiro a instituição, depois o câmpus e então o curso. <strong>O primeiro é o principal</strong>: a tela mostra o que ele ganha ou perde em relação aos
-          outros.
-        </p>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Aparecem só as turmas com valor em {ano}, ou seja, com alunos contados no ano-base {ano - 2}. Cada uma traz o <strong>código</strong> e o período, porque o mesmo curso costuma ter várias turmas no câmpus.
-          {principal && <> Exemplo: {principal.curso}, {rotuloDoCiclo(principal)}, gera {reais.format(principal.valor)} em {ano}.</>}
-        </p>
+        <p className="text-neutral-600 dark:text-neutral-400">Até {MAX_SLOTS} turmas lado a lado. O primeiro curso é o principal: a tela mostra o que ele ganha ou perde em relação aos outros.</p>
+        <ComoLerEstaTela>
+          <p>
+            Compare duração, carga horária, peso, matrícula equalizada e valor recebido, de qualquer instituição da rede (o IFSul vem primeiro). Em cada bloco, escolha a instituição, o câmpus e o curso.
+          </p>
+          <p>
+            Aparecem só as turmas com valor em {ano}, ou seja, com alunos contados no ano-base {ano - 2}. Cada uma traz o <strong>código</strong> e o período, porque o mesmo curso costuma ter várias turmas no câmpus.
+            {principal && <> Exemplo: {principal.curso}, {rotuloDoCiclo(principal)}, gera {reais.format(principal.valor)} em {ano}.</>}
+          </p>
+        </ComoLerEstaTela>
       </div>
 
       {seletorDeAno}
@@ -270,6 +253,13 @@ export default async function CompararCursosPage({ searchParams }: { searchParam
         >
           + adicionar outro curso
         </Link>
+      )}
+
+      {/* Item 9 da revisão: em 2027 só o IFSul está com os parâmetros de 03/10. Comparar valores com outra instituição engana até a rede ser atualizada. */}
+      {ano === 2027 && new Set(comparaveis.map((c) => c.instituicaoSigla)).size > 1 && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <strong>Os valores em reais não são comparáveis entre estas instituições.</strong> Em {ano}, o IFSul já usa os parâmetros de 03/10 (matrícula presencial de R$ 1.239,71), e as demais ainda estão com a exportação de 31/08 (R$ 1.201,47). Peso, carga horária e alunos podem ser comparados; para comparar valores, escolha câmpus da mesma instituição.
+        </p>
       )}
 
       {modalidadesDiferentes.length > 1 && principal?.modalidade && (
