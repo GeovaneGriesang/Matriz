@@ -2,6 +2,7 @@
 
 import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { exemploDeCampus, legendaConsultaCampus } from "@/components/legendas";
@@ -67,7 +68,10 @@ export function ConsultaTabelaCampus({
   totalRecebidoReal,
   totalFuncionamentoCalculado,
   comRecebido,
+  detalheDoCampus,
 }: {
+  /** O quadro com os cursos do câmpus escolhido, montado no servidor e aberto logo abaixo da linha dele. */
+  detalheDoCampus?: ReactNode;
   linhas: CampusLinha[];
   campusEscolhido: number | null;
   ano: number;
@@ -91,6 +95,8 @@ export function ConsultaTabelaCampus({
       chaveLinha={(l) => l.unidadeId}
       linhaDestaque={(l) => ehCampusDestaque(l.nome)}
       linhaClasse={(l) => (l.unidadeId === campusEscolhido ? "bg-if-green/5" : "")}
+      idDaLinha={(l) => `campus-${l.unidadeId}`}
+      detalhe={campusEscolhido !== null && detalheDoCampus ? { chave: campusEscolhido, conteudo: detalheDoCampus } : null}
       colunas={
         [
           {
@@ -99,9 +105,16 @@ export function ConsultaTabelaCampus({
             valor: (l) => l.nome,
             render: (l) => (
               <Link
-                href={`/consulta?ano=${ano}&instituicao=${encodeURIComponent(sigla)}&campus=${l.unidadeId}`}
-                className="hover:underline"
+                href={
+                  l.unidadeId === campusEscolhido
+                    ? `/consulta?ano=${ano}&instituicao=${encodeURIComponent(sigla)}#campus-${l.unidadeId}`
+                    : `/consulta?ano=${ano}&instituicao=${encodeURIComponent(sigla)}&campus=${l.unidadeId}#campus-${l.unidadeId}`
+                }
+                aria-expanded={l.unidadeId === campusEscolhido}
+                title={l.unidadeId === campusEscolhido ? `Fechar os cursos de ${l.nome}` : `Abrir os cursos de ${l.nome}, logo abaixo desta linha`}
+                className={`text-if-green underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-green-400 ${l.unidadeId === campusEscolhido ? "font-semibold" : ""}`}
               >
+                <span aria-hidden className="mr-1 inline-block w-3 no-underline">{l.unidadeId === campusEscolhido ? "▾" : "▸"}</span>
                 {l.nome}
               </Link>
             ),

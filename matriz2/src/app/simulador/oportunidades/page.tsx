@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
@@ -88,7 +89,7 @@ export default async function OportunidadesPage({ searchParams }: { searchParams
     carregarContextoDoCampus(ano, instituicao.id, campus.id),
     carregarCatalogo(),
     prisma.distribuicaoCiclo.findMany({
-      where: { ano, unidadeId: campus.id, chMatriz: { gt: 0 } },
+      where: { ano, unidadeId: campus.id, chMatriz: { gt: 0 }, ...CICLO_QUE_CONTRIBUI },
       select: { curso: true, tipoOferta: true, cargaHoraria: true, chMatriz: true, qtdAlunosMatriz: true, valorReais: true },
     }),
   ]);

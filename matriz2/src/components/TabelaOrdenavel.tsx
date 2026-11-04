@@ -32,6 +32,8 @@ export function TabelaOrdenavel<T>({
   corpoVazio,
   linhaDestaque,
   linhaExpandida,
+  idDaLinha,
+  detalhe,
 }: {
   linhas: T[];
   colunas: ColunaOrdenavel<T>[];
@@ -53,6 +55,13 @@ export function TabelaOrdenavel<T>({
    * tempo, cada uma independente das outras.
    */
   linhaExpandida?: (linha: T) => ReactNode | null | undefined;
+  /** O `id` do `<tr>` de cada linha, para um link poder rolar a página até ela. */
+  idDaLinha?: (linha: T) => string;
+  /**
+   * Um quadro aberto logo abaixo de uma linha, controlado de fora (pelo endereço da página, e não por um botão "+"). O conteúdo chega
+   * pronto do servidor, por isso é um `ReactNode` e não uma função.
+   */
+  detalhe?: { chave: string | number; conteudo: ReactNode } | null;
 }) {
   const [ordenacao, setOrdenacao] = useState<{ chave: string; direcao: "asc" | "desc" } | null>(null);
   const [expandidas, setExpandidas] = useState<Set<string | number>>(new Set());
@@ -140,7 +149,8 @@ export function TabelaOrdenavel<T>({
           return (
             <Fragment key={chave}>
               <tr
-                className={`border-t border-neutral-200 dark:border-neutral-800 ${linhaDestaque?.(linha) ? "bg-if-green/10 font-semibold" : ""} ${linhaClasse?.(linha) ?? ""}`}
+                id={idDaLinha?.(linha)}
+                className={`scroll-mt-28 border-t border-neutral-200 dark:border-neutral-800 ${linhaDestaque?.(linha) ? "bg-if-green/10 font-semibold" : ""} ${linhaClasse?.(linha) ?? ""}`}
               >
                 {linhaExpandida && (
                   <td className="px-2 py-2.5 text-center">
@@ -170,6 +180,14 @@ export function TabelaOrdenavel<T>({
                 <tr className="border-t border-neutral-200 dark:border-neutral-800">
                   <td colSpan={colunas.length + 1} className="bg-neutral-50 p-3 dark:bg-neutral-900/40">
                     {conteudoExpandido}
+                  </td>
+                </tr>
+              )}
+              {detalhe != null && detalhe.chave === chave && (
+                // data-detalhe tira esta linha do CSV da tabela de fora: a tabela de dentro tem o CSV dela.
+                <tr data-detalhe="1" className="border-t border-neutral-200 dark:border-neutral-800">
+                  <td colSpan={colunas.length + (linhaExpandida ? 1 : 0)} className="bg-neutral-100 p-3 dark:bg-neutral-900/60">
+                    {detalhe.conteudo}
                   </td>
                 </tr>
               )}

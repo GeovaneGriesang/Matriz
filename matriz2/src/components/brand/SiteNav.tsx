@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Papel } from "@prisma/client";
-import { ITEM_COMO_FUNCIONA, ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
+import { ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
 
 /**
  * O menu em grupos pelos objetivos do sistema (Entender a matriz, Onde melhorar e, para administradores, Dados e conferência),
- * mais "Início" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
+ * mais "Início". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
  * vem de `lib/menu.ts`, o mesmo da página inicial, e o que cada perfil vê sai de `gruposVisiveis`.
  *
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do
@@ -90,14 +90,6 @@ export function SiteNav({ papel }: { papel: Papel }) {
           </div>
         );
       })}
-
-      <Link
-        href={ITEM_COMO_FUNCIONA.href}
-        aria-current={ativo?.href === ITEM_COMO_FUNCIONA.href ? "page" : undefined}
-        className={botao(ativo?.href === ITEM_COMO_FUNCIONA.href)}
-      >
-        {ITEM_COMO_FUNCIONA.rotulo}
-      </Link>
     </nav>
   );
 }

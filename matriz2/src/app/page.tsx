@@ -226,6 +226,11 @@ export default async function Home() {
             resumo="O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado."
           />
           <Atalho
+            href="/como-funciona/telas"
+            titulo="Guia das telas"
+            resumo="O que cada tela do sistema responde, como usar e que cuidado ter ao ler os números."
+          />
+          <Atalho
             href="/dados-importados"
             titulo="Dados importados"
             resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."

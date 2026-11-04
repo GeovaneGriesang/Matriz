@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { destaqueNaFrente, ehInstituicaoDestaque } from "@/lib/destaque";
+import { FICHAS_DAS_TELAS, PERGUNTAS_DO_GUIA } from "@/lib/guiaDasTelas";
 import { GRUPOS_MENU, TODOS_OS_ITENS, itemAtivo } from "@/lib/menu";
 
 describe("destaque do IFSul", () => {
@@ -18,6 +19,12 @@ describe("destaque do IFSul", () => {
 });
 
 describe("menu", () => {
+  it("o Guia das telas explica toda tela do menu (só ele mesmo não tem ficha)", () => {
+    const semFicha = TODOS_OS_ITENS.map((i) => i.href).filter((h) => !FICHAS_DAS_TELAS[h]);
+    expect(semFicha).toEqual(["/como-funciona/telas"]);
+    for (const p of PERGUNTAS_DO_GUIA) expect(FICHAS_DAS_TELAS[p.href]).toBeDefined();
+  });
+
   it("não repete endereço entre os itens", () => {
     const enderecos = TODOS_OS_ITENS.map((i) => i.href);
     expect(new Set(enderecos).size).toBe(enderecos.length);
@@ -36,8 +43,8 @@ describe("menu", () => {
     const { gruposVisiveis } = await import("@/lib/menu");
     const ids = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).map((g) => g.id);
     const itens = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).flatMap((g) => g.itens.map((i) => i.href));
-    expect(ids("PADRAO")).toEqual(["entender", "melhorar"]);
-    expect(ids("ADMIN")).toEqual(["entender", "melhorar", "dados"]);
+    expect(ids("PADRAO")).toEqual(["entender", "melhorar", "como-funciona"]);
+    expect(ids("ADMIN")).toEqual(["entender", "melhorar", "dados", "como-funciona"]);
     for (const papel of ["PADRAO", "ADMIN", "SUPER_ADMIN"] as const) expect(itens(papel)).toContain("/simulador/distribuicao");
   });
 

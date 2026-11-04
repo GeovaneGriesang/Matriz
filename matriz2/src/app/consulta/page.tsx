@@ -6,7 +6,7 @@ import { PainelProcedencia } from "@/components/Procedencia";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
-import { carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import { CICLO_QUE_CONTRIBUI, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
 import { carregarTaxasFuncionamento, calcularFuncionamentoCampus } from "@/server/queries/funcionamentoCampus";
 import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
@@ -212,7 +212,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
   const [porCampus, distribuicaoCampus] = await Promise.all([
     prisma.distribuicaoCiclo.groupBy({
       by: ["unidadeId"],
-      where: { ano, unidade: { instituicaoId: instituicao.id } },
+      where: { ano, ...CICLO_QUE_CONTRIBUI, unidade: { instituicaoId: instituicao.id } },
       _count: { _all: true },
       _sum: { valorReais: true, perdaEvasaoReais: true, matriculaTotal: true },
     }),
@@ -425,6 +425,8 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         />
       </div>
 
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha. Clique de novo para fechar.</p>
+
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ConsultaTabelaCampus
           linhas={linhas}
@@ -439,38 +441,46 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           totalRecebidoReal={total.campusComRecebido > 0 ? total.recebidoReal : null}
           comRecebido={ehIfsul}
           totalFuncionamentoCalculado={total.campusComFuncionamento > 0 ? total.funcionamentoCalculado : null}
+          detalheDoCampus={
+            campusEscolhido && (
+              // w-0 min-w-full: o quadro fica da largura da tabela de câmpus, em vez de alargá-la; a tabela de cursos rola dentro dele.
+              <div className="flex w-0 min-w-full flex-col gap-3 rounded-md border-l-4 border-if-green bg-white p-4 font-normal dark:bg-neutral-950">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                    {nomePorId.get(campusEscolhido)}, por ciclo de curso
+                  </h2>
+                  <Link href={href({ campus: undefined })} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
+                    fechar
+                  </Link>
+                </div>
+                {cursoDestaque && (
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    O curso com maior participação no orçamento é <strong className="text-neutral-900 dark:text-neutral-100">{cursoDestaque.curso}</strong>,
+                    com aproximadamente <strong className="text-neutral-900 dark:text-neutral-100">{reais.format(cursoDestaque.valor)}</strong>.
+                    Marque as caixas da coluna &quot;Comparar&quot; para ver dois ou mais cursos lado a lado.
+                  </p>
+                )}
+                {cursos.length > 0 && (
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Aparecem só as turmas que contribuem para o orçamento de {ano}, ou seja, as que têm alunos no ano-base {ano - 2}. As demais não geram valor.
+                  </p>
+                )}
+                {cursos.length === 0 ? (
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {semSextaFaseInstituicao
+                      ? `Sem detalhamento por curso: o ciclo ${ano} não tem a 6ª fase da MDO (participação por curso) carregada.`
+                      : `Este câmpus não tem turmas que contribuam para o orçamento de ${ano} (nenhuma com alunos no ano-base ${ano - 2}), por isso não há cursos para mostrar. O valor dele está na linha acima.`}
+                  </p>
+                ) : (
+                  <div className="tabela-rolavel isolate max-h-[60vh] rounded-lg border border-neutral-200 dark:border-neutral-800">
+                    <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
+                  </div>
+                )}
+              </div>
+            )
+          }
         />
       </div>
-
-      {campusEscolhido && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              {nomePorId.get(campusEscolhido)}, por ciclo de curso
-            </h2>
-            <Link href={href({ campus: undefined })} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
-              limpar seleção
-            </Link>
-          </div>
-          {cursoDestaque && (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              O curso com maior participação no orçamento é <strong className="text-neutral-900 dark:text-neutral-100">{cursoDestaque.curso}</strong>,
-              com aproximadamente <strong className="text-neutral-900 dark:text-neutral-100">{reais.format(cursoDestaque.valor)}</strong>.
-              Marque as caixas da coluna &quot;Comparar&quot; para ver dois ou mais cursos lado a lado.
-            </p>
-          )}
-          {cursos.length === 0 ? (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Sem detalhamento por curso: o ciclo {ano} não tem a 6ª fase da MDO (participação por
-              curso) carregada.
-            </p>
-          ) : (
-            <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
-              <ConsultaTabelaCursos cursos={cursos} ano={ano} unidadeId={campusEscolhido} />
-            </div>
-          )}
-        </div>
-      )}
 
       {fonte && <PainelProcedencia fonte={fonte} />}
     </main>

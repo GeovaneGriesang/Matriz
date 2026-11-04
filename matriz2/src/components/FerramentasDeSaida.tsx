@@ -29,14 +29,18 @@ function textoDaCelula(cel: HTMLTableCellElement): string {
   // Os pedaços de texto de elementos diferentes são separados por espaço ("2027" e "hoje" não viram "2027hoje").
   const partes: string[] = [];
   const andador = document.createTreeWalker(cel, NodeFilter.SHOW_TEXT);
-  while (andador.nextNode()) partes.push(andador.currentNode.textContent ?? "");
+  // O que é só enfeite (setas de ordenar e de abrir, marcadas com aria-hidden) não vai para o arquivo.
+  while (andador.nextNode()) {
+    if (!andador.currentNode.parentElement?.closest("[aria-hidden]")) partes.push(andador.currentNode.textContent ?? "");
+  }
   return partes.join(" ");
 }
 
 /** As linhas da tabela como texto, com as células mescladas (colunas e linhas) espalhadas: a célula grande fica na primeira posição e as outras ficam vazias. */
 function extrairLinhas(tabela: HTMLTableElement): string[][] {
   const grade: Array<Array<string | undefined>> = [];
-  Array.from(tabela.rows).forEach((tr, r) => {
+  // Um quadro aberto dentro da tabela (data-detalhe) não entra: ele tem a sua própria tabela e o seu próprio CSV.
+  Array.from(tabela.rows).filter((tr) => !tr.hasAttribute("data-detalhe")).forEach((tr, r) => {
     const linha = (grade[r] ??= []);
     let c = 0;
     for (const cel of Array.from(tr.cells)) {
