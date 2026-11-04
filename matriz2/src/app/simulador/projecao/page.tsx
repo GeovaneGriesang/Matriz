@@ -75,6 +75,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
     },
     select: {
       id: true,
+      codigoCiclo: true,
       unidadeId: true,
       curso: true,
       tipoCurso: true,
@@ -100,6 +101,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
     const valorPorMT = mt > 0 ? Number(l.valorReais) / mt : Number(l.valorAluno ?? 0);
     return {
       id: l.id,
+      codigoCiclo: l.codigoCiclo,
       unidadeId: l.unidadeId,
       curso: l.curso,
       tipoCurso: l.tipoCurso ?? "",

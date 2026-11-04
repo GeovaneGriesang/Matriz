@@ -89,6 +89,32 @@
   }
 }
 
+/* Todo quadro que abre e fecha usa + e −, como as linhas das tabelas (ver SinalMaisMenos). A etiqueta de confiança, de summary.list-none, tem desenho próprio. */
+summary:not(.list-none) {
+  list-style: none;
+  cursor: pointer;
+}
+summary:not(.list-none)::-webkit-details-marker {
+  display: none;
+}
+summary:not(.list-none)::before {
+  content: "+";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4em;
+  height: 1.4em;
+  margin-right: 0.5em;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.75;
+}
+details[open] > summary:not(.list-none)::before {
+  content: "−";
+}
+
 /* A área de impressão de um bloco só existe durante a impressão. */
 #area-impressao {
   display: none;

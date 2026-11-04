@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { ContextoDaTela } from "@/components/chat/ChatDaTela";
 import { useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { PESO_REPASSE_PADRAO, type Repasse } from "@/lib/mdo/matriculaTotal";
@@ -19,10 +19,13 @@ import {
   type TurmaProjetada,
 } from "@/lib/mdo/projecaoCiclos";
 import { comCursoDoCatalogo, resolverCursosDoCatalogo, type CursoDoCatalogo } from "@/lib/cenarioProjecao";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 
 /** Um ciclo como vem do servidor: datas em texto, porque Date não atravessa para o componente de cliente. */
 export interface CicloSerial {
   id: number;
+  codigoCiclo?: string;
   unidadeId: number;
   curso: string;
   tipoCurso: string;
@@ -334,14 +337,17 @@ export function ProjecaoCiclos({
 
   // Por curso e câmpus: o que cada curso ainda rende só com os alunos de hoje, e a decisão de parar de ofertar.
   const cursos = useMemo(() => {
-    const m = new Map<string, { chave: string; unidadeId: number; curso: string; oferta: string; ciclos: number; alunos: number; anoTermino: number; valores: number[] }>();
+    const m = new Map<string, { chave: string; unidadeId: number; curso: string; oferta: string; ciclos: number; alunos: number; anoTermino: number; valores: number[]; turmas: { id: number; rotulo: string; alunos: number }[] }>();
+    const serialPorId = new Map(ciclos.map((s) => [s.id, s]));
     for (const c of ciclosDoRecorte) {
       if (c.alunos <= 0) continue;
       const chave = chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta);
       const i = todos.indexOf(c);
       const sit = situacaoDoCiclo(c, anoBase0);
-      const atual = m.get(chave) ?? { chave, unidadeId: c.unidadeId, curso: c.curso, oferta: c.tipoOferta, ciclos: 0, alunos: 0, anoTermino: 0, valores: Array(anos).fill(0) as number[] };
+      const atual = m.get(chave) ?? { chave, unidadeId: c.unidadeId, curso: c.curso, oferta: c.tipoOferta, ciclos: 0, alunos: 0, anoTermino: 0, valores: Array(anos).fill(0) as number[], turmas: [] };
       atual.ciclos += 1;
+      const serial = serialPorId.get(c.id);
+      atual.turmas.push({ id: c.id, rotulo: serial ? rotuloDoCiclo(serial) : "", alunos: c.alunos });
       atual.alunos += c.alunos;
       if (sit.regular) atual.anoTermino = Math.max(atual.anoTermino, sit.anoTermino);
       matriculadosPorCiclo[i]!.forEach((p, k) => {
@@ -350,7 +356,16 @@ export function ProjecaoCiclos({
       m.set(chave, atual);
     }
     return [...m.values()].sort((a, b) => b.valores[0]! - a.valores[0]!);
-  }, [ciclosDoRecorte, todos, anoBase0, anos, matriculadosPorCiclo]);
+  }, [ciclos, ciclosDoRecorte, todos, anoBase0, anos, matriculadosPorCiclo]);
+  const [cursosAbertos, setCursosAbertos] = useState<Set<string>>(new Set());
+  function alternarCurso(chave: string) {
+    setCursosAbertos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
+      return novo;
+    });
+  }
 
   const cursosFiltrados = useMemo(() => {
     const f = filtroCurso.trim().toLowerCase();
@@ -655,10 +670,16 @@ export function ProjecaoCiclos({
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {cursosVisiveis.map((c) => (
-                <tr key={c.chave} className={encerramentos[c.chave] !== undefined ? "bg-amber-50 dark:bg-amber-950/30" : ""}>
+                <Fragment key={c.chave}>
+                <tr className={encerramentos[c.chave] !== undefined ? "bg-amber-50 dark:bg-amber-950/30" : ""}>
                   <td className="px-3 py-2">
-                    {c.curso}
-                    {c.oferta && c.oferta !== "NÃO SE APLICA" ? <span className="text-xs text-neutral-500"> ({c.oferta.toLowerCase()})</span> : null}
+                    <button type="button" onClick={() => alternarCurso(c.chave)} aria-expanded={cursosAbertos.has(c.chave)} className="flex items-start gap-2 text-left hover:text-if-green">
+                      <SinalMaisMenos aberto={cursosAbertos.has(c.chave)} />
+                      <span>
+                        {c.curso}
+                        {c.oferta && c.oferta !== "NÃO SE APLICA" ? <span className="text-xs text-neutral-500"> ({c.oferta.toLowerCase()})</span> : null}
+                      </span>
+                    </button>
                   </td>
                   {campusId === null && <td className="px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400">{nomeDoCampus(c.unidadeId)}</td>}
                   <td className="px-3 py-2 text-right tabular-nums">{c.ciclos}</td>
@@ -682,6 +703,20 @@ export function ProjecaoCiclos({
                     </td>
                   ))}
                 </tr>
+                {cursosAbertos.has(c.chave) && (
+                  <tr data-detalhe="1">
+                    <td colSpan={99} className="bg-neutral-50 px-3 py-2 dark:bg-neutral-900">
+                      <ul className="flex flex-col gap-1 text-xs text-neutral-700 dark:text-neutral-300">
+                        {c.turmas.map((t) => (
+                          <li key={t.id}>
+                            {t.rotulo}: {inteiro.format(Math.round(t.alunos))} alunos
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -692,7 +727,7 @@ export function ProjecaoCiclos({
           </button>
         )}
         <p className="text-xs text-neutral-500">
-          As colunas de anos mostram só quem já está matriculado (até seis anos); o efeito de parar um curso aparece na tabela do cenário, na coluna Reposição e em Sobre manter tudo.
+          O + de um curso abre as turmas somadas nele, com o código do ciclo e o período. As colunas de anos mostram só quem já está matriculado (até seis anos); o efeito de parar um curso aparece na tabela do cenário, na coluna Reposição e em Sobre manter tudo.
           "Atrasado" quer dizer que todos os ciclos do curso já passaram do término.
         </p>
       </section>

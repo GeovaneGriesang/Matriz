@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { ehCampusDestaque } from "@/lib/destaque";
 import { PROPOSTAS_DE_TRANSICAO, transicaoDoCampus, type PropostaDeTransicao } from "@/lib/mdo/transicaoCumulativa";
 
@@ -81,7 +82,7 @@ export function TransicaoProposta({ campi }: { campi: CampusDaTransicao[] }) {
 }
 
 function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransicao[]; proposta: PropostaDeTransicao; cenario: Cenario }) {
-  const [abertoId, setAbertoId] = useState<number | null>(campi.find((c) => ehCampusDestaque(c.nome))?.id ?? null);
+  const [abertoId, setAbertoId] = useState<number | null>(null);
   const etapas = proposta.etapas;
   const ultimoAno = etapas[etapas.length - 1]!.ano;
 
@@ -100,7 +101,7 @@ function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransic
     valor: linhas.reduce((s, l) => s + l.anos[i]!.valor, 0),
   }));
   const somaFinal = somas[somas.length - 1]!.valor;
-  const aberto = linhas.find((l) => l.id === abertoId) ?? null;
+  const exemplo = linhas.find((l) => ehCampusDestaque(l.nome)) ?? linhas[0] ?? null;
 
   return (
     <>
@@ -141,9 +142,11 @@ function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransic
             {linhas.map((l) => {
               const dif = l.final - l.baseValor;
               return (
-                <tr key={l.id} className={l.id === abertoId ? "bg-if-green/10" : ehCampusDestaque(l.nome) ? "bg-if-green/5" : undefined}>
+                <Fragment key={l.id}>
+                <tr className={l.id === abertoId ? "bg-if-green/10" : ehCampusDestaque(l.nome) ? "bg-if-green/5" : undefined}>
                   <td className="whitespace-nowrap px-2 py-1 text-left">
-                    <button type="button" onClick={() => setAbertoId(l.id === abertoId ? null : l.id)} className="font-medium text-if-green underline decoration-if-green/40 underline-offset-2">
+                    <button type="button" onClick={() => setAbertoId(l.id === abertoId ? null : l.id)} aria-expanded={l.id === abertoId} className="inline-flex items-center gap-2 font-medium hover:text-if-green">
+                      <SinalMaisMenos aberto={l.id === abertoId} />
                       {l.nome}
                     </button>
                   </td>
@@ -154,6 +157,14 @@ function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransic
                   <td className={`${td} ${borda} ${cor(dif)}`}>{reais.format(dif)}</td>
                   <td className={`${td} ${cor(dif)}`}>{l.baseValor > 0 ? pct.format(dif / l.baseValor) : ""}</td>
                 </tr>
+                {l.id === abertoId && (
+                  <tr data-detalhe="1">
+                    <td colSpan={etapas.length * 3 + 4} className="bg-neutral-100 p-3 dark:bg-neutral-900/60">
+                      <ContaDoCampus campus={l} anos={l.anos} proposta={proposta} cenario={cenario} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
@@ -183,37 +194,42 @@ function TabelaDaProposta({ campi, proposta, cenario }: { campi: CampusDaTransic
       </div>
       <p className="max-w-4xl text-xs text-neutral-500 dark:text-neutral-400">
         A conta não reparte um total fixo: cada câmpus anda em direção à própria matriz. Por isso a soma dos câmpus pode não ser igual à soma da matriz, e a última linha mostra a diferença. Só entra o
-        Funcionamento dos câmpus: Reitoria, Qualidade e Eficiência e Assistência Estudantil ficam de fora. Clique num câmpus para ver a conta.
+        Funcionamento dos câmpus: Reitoria, Qualidade e Eficiência e Assistência Estudantil ficam de fora. Clique no + de um câmpus para ver a conta dele logo abaixo da linha, e no − para fechar.
+        {exemplo && ` Exemplo: o + de ${exemplo.nome} mostra como ${reais.format(exemplo.baseValor)} de 2026 chegam a ${reais.format(exemplo.final)} em ${ultimoAno}.`}
       </p>
 
-      {aberto && (
-        <div className="flex flex-col gap-2 rounded-lg border border-if-green/40 bg-if-green/5 p-4 text-sm">
-          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-            A conta de {aberto.nome}, na proposta do {proposta.campus}
-          </h3>
-          {aberto.base === null && <p className="text-amber-800 dark:text-amber-300">Este câmpus não tem valor em 2026: a transição parte de zero.</p>}
-          {!aberto.temCiclos && cenario === "projecao" && <p className="text-amber-800 dark:text-amber-300">Sem ciclos para projetar: a matriz fica igual à de 2027.</p>}
-          <ul className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
-            {aberto.anos.map((a) =>
-              a.fracao === 0 ? (
-                <li key={a.ano}>
-                  <strong>{a.ano}:</strong> mantém o valor de 2026 = <strong>{reais.format(a.valor)}</strong>
-                </li>
-              ) : a.fracao === 1 ? (
-                <li key={a.ano}>
-                  <strong>{a.ano}:</strong> adota a matriz do ano inteira = <strong>{reais.format(a.valor)}</strong>
-                </li>
-              ) : (
-                <li key={a.ano}>
-                  <strong>{a.ano}:</strong> {reais.format(a.base)} + {fracao.format(a.fracao)} × ({reais.format(a.matriz)} − {reais.format(a.base)}) = {reais.format(a.base)} {a.acrescimo < 0 ? "−" : "+"}{" "}
-                  {reais.format(Math.abs(a.acrescimo))} = <strong>{reais.format(a.valor)}</strong>
-                </li>
-              ),
-            )}
-          </ul>
-        </div>
-      )}
     </>
+  );
+}
+
+/** A conta de um câmpus, ano a ano, no quadro logo abaixo da linha dele. */
+function ContaDoCampus({ campus, anos, proposta, cenario }: { campus: CampusDaTransicao; anos: ReturnType<typeof trajetoria>; proposta: PropostaDeTransicao; cenario: Cenario }) {
+  return (
+    <div className="sticky left-0 flex w-[min(88vw,60rem)] flex-col gap-2 whitespace-normal rounded-md border-l-4 border-if-green bg-white p-4 text-left text-sm dark:bg-neutral-950">
+      <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
+        A conta de {campus.nome}, na proposta do {proposta.campus}
+      </h3>
+      {campus.base === null && <p className="text-amber-800 dark:text-amber-300">Este câmpus não tem valor em 2026: a transição parte de zero.</p>}
+      {!campus.temCiclos && cenario === "projecao" && <p className="text-amber-800 dark:text-amber-300">Sem ciclos para projetar: a matriz fica igual à de 2027.</p>}
+      <ul className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
+        {anos.map((a) =>
+          a.fracao === 0 ? (
+            <li key={a.ano}>
+              <strong>{a.ano}:</strong> mantém o valor de 2026 = <strong>{reais.format(a.valor)}</strong>
+            </li>
+          ) : a.fracao === 1 ? (
+            <li key={a.ano}>
+              <strong>{a.ano}:</strong> adota a matriz do ano inteira = <strong>{reais.format(a.valor)}</strong>
+            </li>
+          ) : (
+            <li key={a.ano}>
+              <strong>{a.ano}:</strong> {reais.format(a.base)} + {fracao.format(a.fracao)} × ({reais.format(a.matriz)} − {reais.format(a.base)}) = {reais.format(a.base)} {a.acrescimo < 0 ? "−" : "+"}{" "}
+              {reais.format(Math.abs(a.acrescimo))} = <strong>{reais.format(a.valor)}</strong>
+            </li>
+          ),
+        )}
+      </ul>
+    </div>
   );
 }
 

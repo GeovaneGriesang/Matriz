@@ -32,6 +32,7 @@ export function TabelaOrdenavel<T>({
   corpoVazio,
   linhaDestaque,
   linhaExpandida,
+  abertasDeInicio,
   idDaLinha,
   detalhe,
 }: {
@@ -55,6 +56,8 @@ export function TabelaOrdenavel<T>({
    * tempo, cada uma independente das outras.
    */
   linhaExpandida?: (linha: T) => ReactNode | null | undefined;
+  /** As linhas que já chegam abertas, para um endereço poder abrir uma delas (ex.: `?instituicao=IFSUL`). */
+  abertasDeInicio?: (string | number)[];
   /** O `id` do `<tr>` de cada linha, para um link poder rolar a página até ela. */
   idDaLinha?: (linha: T) => string;
   /**
@@ -64,7 +67,7 @@ export function TabelaOrdenavel<T>({
   detalhe?: { chave: string | number; conteudo: ReactNode } | null;
 }) {
   const [ordenacao, setOrdenacao] = useState<{ chave: string; direcao: "asc" | "desc" } | null>(null);
-  const [expandidas, setExpandidas] = useState<Set<string | number>>(new Set());
+  const [expandidas, setExpandidas] = useState<Set<string | number>>(new Set(abertasDeInicio));
 
   function alternarExpandida(chave: string | number) {
     setExpandidas((atual) => {

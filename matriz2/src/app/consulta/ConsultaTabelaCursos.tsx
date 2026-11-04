@@ -8,6 +8,7 @@ import { PainelComparacaoCursos } from "./PainelComparacaoCursos";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { legendaConsultaCursos } from "@/components/legendas";
 import { NOME_DAS_TURMAS_RETIDAS, explicacaoDasTurmasRetidas, turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 
 export interface CursoLinha {
   id: number;
@@ -92,6 +93,7 @@ export function ConsultaTabelaCursos({
               ),
             },
             { chave: "curso", rotulo: "Curso", valor: (c) => c.curso },
+            { chave: "ciclo", rotulo: "Ciclo", valor: (c) => c.codigoCiclo ?? null, render: (c) => <span className="whitespace-nowrap text-xs tabular-nums">{c.codigoCiclo ?? "-"}</span> },
             { chave: "turma", rotulo: "Turma", valor: (c) => c.inicio, render: (c) => <span className="whitespace-nowrap text-xs">{periodo(c)}</span> },
             { chave: "nivel", rotulo: "Nível", valor: (c) => c.nivel, render: (c) => c.nivel ?? "não informado" },
             {
@@ -132,7 +134,7 @@ export function ConsultaTabelaCursos({
 
   return (
     <div className="flex flex-col gap-4">
-      <LegendaDaTabela itens={legendaConsultaCursos(cursos[0])} exemplo={cursos[0]?.curso} />
+      <LegendaDaTabela itens={legendaConsultaCursos(cursos[0])} exemplo={cursos[0] ? `${cursos[0].curso}, ${rotuloDoCiclo(cursos[0])}` : undefined} />
       {regulares.length > 0 && <TabelaOrdenavel linhas={regulares} chaveLinha={(c) => c.id} colunas={colunas} />}
 
       {retidas.length > 0 && (
@@ -145,7 +147,7 @@ export function ConsultaTabelaCursos({
             {exemploRetida && (
               <>
                 {" "}
-                Exemplo: a turma de {exemploRetida.curso} ({periodo(exemploRetida)}) ainda gera {reais.format(exemploRetida.valor)}.
+                Exemplo: a turma de {exemploRetida.curso} ({rotuloDoCiclo(exemploRetida)}) ainda gera {reais.format(exemploRetida.valor)}.
               </>
             )}
           </p>

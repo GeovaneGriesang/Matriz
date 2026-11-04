@@ -3,6 +3,7 @@
 import { ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { LegendaDaTabela } from "@/components/LegendaDaTabela";
 import { exemploDeCampus, legendaConsultaCampus } from "@/components/legendas";
@@ -112,9 +113,9 @@ export function ConsultaTabelaCampus({
                 }
                 aria-expanded={l.unidadeId === campusEscolhido}
                 title={l.unidadeId === campusEscolhido ? `Fechar os cursos de ${l.nome}` : `Abrir os cursos de ${l.nome}, logo abaixo desta linha`}
-                className={`text-if-green underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-green-400 ${l.unidadeId === campusEscolhido ? "font-semibold" : ""}`}
+                className={`inline-flex items-center gap-2 hover:text-if-green ${l.unidadeId === campusEscolhido ? "font-semibold" : ""}`}
               >
-                <span aria-hidden className="mr-1 inline-block w-3 no-underline">{l.unidadeId === campusEscolhido ? "▾" : "▸"}</span>
+                <SinalMaisMenos aberto={l.unidadeId === campusEscolhido} />
                 {l.nome}
               </Link>
             ),

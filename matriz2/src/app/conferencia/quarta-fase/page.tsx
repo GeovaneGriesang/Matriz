@@ -1,5 +1,7 @@
+import { Fragment } from "react";
 import Link from "next/link";
-import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { ehCampusDestaque } from "@/lib/destaque";
@@ -69,23 +71,159 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
   const { totais, temResultados } = dados;
 
   const unidadesDoArquivo = dados.unidades.map((u) => u.unidade);
-  const unidade = unidadesDoArquivo.find((u) => u === params.unidade) ?? unidadesDoArquivo.find((u) => ehCampusDestaque(u)) ?? unidadesDoArquivo[0]!;
+  const unidade = unidadesDoArquivo.find((u) => u === params.unidade) ?? null;
   const busca = (params.q ?? "").trim().toUpperCase();
   const soDiferentes = params.so === "diferentes";
+  // Só os ciclos com valor no ano; o que difere da referência aparece mesmo com valor zero, porque é o que a conferência precisa mostrar.
+  const temValor = (l: LinhaConferida) => l.colunas.mt > 0 || (!l.confere && (temResultados || l.sextaFase !== null));
+  const semValorNaUnidade = dados.linhas.filter((l) => l.unidade === unidade && !temValor(l)).length;
   const daUnidade = dados.linhas.filter(
     (l) =>
       l.unidade === unidade &&
+      temValor(l) &&
       (!busca || l.curso.toUpperCase().includes(busca) || l.codigoCiclo.includes(busca)) &&
       (!soDiferentes || !l.confere),
   );
-  const selecionada = dados.linhas.find((l) => String(l.linha) === params.linha) ?? null;
+  const selecionada = dados.linhas.find((l) => l.unidade === unidade && String(l.linha) === params.linha) ?? null;
 
   const url = (extra: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const base: Record<string, string | undefined> = { arquivo: String(escolhido.id), unidade, q: params.q, so: params.so, ...extra };
+    const base: Record<string, string | undefined> = { arquivo: String(escolhido.id), unidade: unidade ?? undefined, linha: selecionada ? String(selecionada.linha) : undefined, q: params.q, so: params.so, ...extra };
     for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
     return `/conferencia/quarta-fase?${p.toString()}`;
   };
+
+  const indiceDaUnidade = unidade ? unidadesDoArquivo.indexOf(unidade) : -1;
+  // O quadro aberto sob a linha da unidade: os ciclos dela, um por linha.
+  const ciclosDaUnidade = unidade && (
+    <div className="flex w-0 min-w-full flex-col gap-3 rounded-md border-l-4 border-if-green bg-white p-4 font-normal dark:bg-neutral-950">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Aba &quot;Ciclos de Matrículas&quot;: {unidade}</h3>
+        <Link href={`${url({ unidade: undefined, linha: undefined, q: undefined, so: undefined })}#unidade-${indiceDaUnidade}`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
+          fechar
+        </Link>
+      </div>
+      <form method="get" action={`#unidade-${indiceDaUnidade}`} className="flex flex-wrap items-end gap-3 text-sm">
+        <input type="hidden" name="arquivo" value={escolhido.id} />
+        <input type="hidden" name="unidade" value={unidade ?? ""} />
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-neutral-500">Curso ou código do ciclo</span>
+          <input name="q" defaultValue={params.q ?? ""} className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 dark:border-neutral-700 dark:bg-neutral-900" />
+        </label>
+        <label className="flex items-center gap-2 pb-1.5">
+          <input type="checkbox" name="so" value="diferentes" defaultChecked={soDiferentes} />
+          <span>Só os que não conferem</span>
+        </label>
+        <button type="submit" className="rounded-md bg-if-green px-3 py-1.5 font-medium text-white">
+          Mostrar
+        </button>
+      </form>
+
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        {inteiro.format(daUnidade.length)} ciclo(s) com valor. Os valores calculados são os do sistema; a coluna &quot;{temResultados ? "MT na planilha" : "MT na 6ª fase"}&quot;
+        traz o número de referência. Clique no <strong>+</strong> de um ciclo para ver, logo abaixo dele, cada coluna com os números daquele ciclo.
+        {semValorNaUnidade > 0 && ` ${inteiro.format(semValorNaUnidade)} ciclo(s) desta unidade sem Matrícula Total no ano ficam fora da lista, mas continuam na contagem da conferência acima.`}
+      </p>
+      <div className="max-h-[70vh] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <table className="min-w-full text-xs">
+          <thead className="sticky top-0 bg-neutral-50 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+            <tr>
+              <th className={thE} aria-label="Abrir a conta" />
+              <th className={th}>Linha</th>
+              <th className={thE}>Ciclo</th>
+              <th className={thE}>Curso</th>
+              <th className={thE}>Oferta</th>
+              <th className={thE}>Situação</th>
+              <th className={th}>DIC</th>
+              <th className={th}>DTC</th>
+              <th className={th}>CHC</th>
+              <th className={th}>CHMC</th>
+              <th className={th}>CHM</th>
+              <th className={th}>PC</th>
+              <th className={th}>QTM</th>
+              <th className={th}>QDTC</th>
+              <th className={th}>CHMD</th>
+              <th className={th}>CHA</th>
+              <th className={th}>FECH</th>
+              <th className={th}>DACP1</th>
+              <th className={th}>DACP2</th>
+              <th className={th}>DACP3</th>
+              <th className={th}>DACP4</th>
+              <th className={th}>DACP5</th>
+              <th className={th}>FEDA</th>
+              <th className={th}>FECHDA</th>
+              <th className={th}>MECHDA</th>
+              <th className={th}>MP</th>
+              <th className={th}>BA</th>
+              <th className={th}>MT sistema</th>
+              <th className={th}>{temResultados ? "MT na planilha" : "MT na 6ª fase"}</th>
+              <th className={th}>Confere</th>
+              {!temResultados && <th className={thE}>Por que difere</th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {daUnidade.map((l) => {
+              const c = l.colunas;
+              const referencia = temResultados ? l.planilha?.mt ?? 0 : l.sextaFase?.matriculaTotal ?? null;
+              return (
+                <Fragment key={l.id}>
+                <tr id={`linha-${l.linha}`} className={`scroll-mt-28 ${l.linha === selecionada?.linha ? "bg-if-green/10" : !l.confere ? "bg-if-red/5" : ""}`}>
+                  <td className="px-2 py-1">
+                    <Link href={`${url({ linha: l.linha === selecionada?.linha ? undefined : String(l.linha) })}#linha-${l.linha}`} aria-expanded={l.linha === selecionada?.linha} aria-label={`A conta do ciclo ${l.codigoCiclo}`} className="inline-flex">
+                      <SinalMaisMenos aberto={l.linha === selecionada?.linha} />
+                    </Link>
+                  </td>
+                  <td className={td}>{l.linha}</td>
+                  <td className={`${tdE} whitespace-nowrap`}>{l.codigoCiclo}</td>
+                  <td className={`${tdE} min-w-56`}>{l.curso}</td>
+                  <td className={`${tdE} whitespace-nowrap`}>{l.tipoOferta}</td>
+                  <td className={`${tdE} whitespace-nowrap`}>{l.situacao}</td>
+                  <td className={td}>{dia.format(l.entrada.inicio)}</td>
+                  <td className={td}>{dia.format(l.entrada.termino)}</td>
+                  <td className={td}>{inteiro.format(l.entrada.chCiclo)}</td>
+                  <td className={td}>{inteiro.format(l.entrada.chMec)}</td>
+                  <td className={td}>{inteiro.format(c.chm)}</td>
+                  <td className={td}>{fator.format(l.entrada.peso)}</td>
+                  <td className={td}>{inteiro.format(l.entrada.matriculas)}</td>
+                  <td className={td}>{inteiro.format(c.qdtc)}</td>
+                  <td className={td}>{fator.format(c.chmd)}</td>
+                  <td className={td}>{decimal.format(c.cha)}</td>
+                  <td className={td}>{fator.format(c.fech)}</td>
+                  {c.dacp.map((x, i) => (
+                    <td key={i} className={td}>{x ? exato.format(x) : ""}</td>
+                  ))}
+                  <td className={td}>{fator.format(c.feda)}</td>
+                  <td className={td}>{fator.format(c.fechda)}</td>
+                  <td className={td}>{fator.format(c.mechda)}</td>
+                  <td className={td}>{fator.format(c.mp)}</td>
+                  <td className={td}>{c.ba ? fator.format(c.ba) : ""}</td>
+                  <td className={`${td} font-medium`}>{fator.format(c.mt)}</td>
+                  <td className={td}>
+                    {referencia === null ? "sem par" : fator.format(referencia)}
+                    {!temResultados && l.sextaFase && l.sextaFase.linhasNaQuartaFase > 1 && (
+                      <span className="block text-[10px] text-neutral-500">ciclo em {l.sextaFase.linhasNaQuartaFase} linhas</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1 text-center">{l.confere ? OK : NAO}</td>
+                  {!temResultados && <td className={`${tdE} min-w-56 text-[11px]`}>{l.sextaFase?.motivos.join("; ")}</td>}
+                </tr>
+                {l.linha === selecionada?.linha && (
+                  <tr data-detalhe="1">
+                    <td colSpan={temResultados ? 30 : 31} className="bg-neutral-100 p-3 dark:bg-neutral-900/60">
+                      <div className="sticky left-0 w-[min(88vw,72rem)]">
+                        <DetalheDoCiclo l={l} temResultados={temResultados} fechar={`${url({ linha: undefined })}#linha-${l.linha}`} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-12 lg:px-12`}>
@@ -168,7 +306,7 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Aba &quot;Instituição&quot;: alunos e Matrícula Total por unidade</h2>
         <p className="max-w-4xl text-sm text-neutral-600 dark:text-neutral-400">
           Como na planilha: a soma dos alunos (coluna QTM) e da Matrícula Total (coluna MT) dos ciclos de cada unidade, separada pela situação de
-          financiamento (coluna AP). {temResultados ? "Os números são os que o Excel gravou; a última coluna diz se a soma refeita pelo sistema é igual." : "Como o arquivo não traz os resultados, os números são os refeitos pelo sistema, e a última coluna compara com a 6ª fase."}
+          financiamento (coluna AP). Clique no <strong>+</strong> de uma unidade para abrir os ciclos dela logo abaixo da linha, e no <strong>−</strong> para fechar. {temResultados ? "Os números são os que o Excel gravou; a última coluna diz se a soma refeita pelo sistema é igual." : "Como o arquivo não traz os resultados, os números são os refeitos pelo sistema, e a última coluna compara com a 6ª fase."}
         </p>
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="min-w-full text-xs">
@@ -192,16 +330,23 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {dados.unidades.map((u) => {
+              {dados.unidades.map((u, i) => {
+                const aberta = u.unidade === unidade;
                 const alunos = (s: string) => (u.planilha ? u.planilha.alunos[s] ?? 0 : u.alunos[s] ?? 0);
                 const mt = (s: string) => (u.planilha ? u.planilha.mt[s] ?? 0 : u.mt[s] ?? 0);
                 const totalAlunos = SITUACOES.reduce((s, x) => s + alunos(x), 0);
                 const mtSistema = SITUACOES.reduce((s, x) => s + (u.mt[x] ?? 0), 0);
                 const confere = temResultados ? u.confere : u.mtSextaFase === null ? null : Math.abs(u.mtSextaFase - mtSistema) < 1e-3;
                 return (
-                  <tr key={u.unidade} className={ehCampusDestaque(u.unidade) ? "bg-if-green/5" : undefined}>
+                  <Fragment key={u.unidade}>
+                  <tr id={`unidade-${i}`} className={`scroll-mt-28 ${ehCampusDestaque(u.unidade) ? "bg-if-green/5" : ""}`}>
                     <td className={`${tdE} whitespace-nowrap`}>
-                      <Link href={url({ unidade: u.unidade, linha: undefined })} className={PROSE_LINK}>
+                      <Link
+                        href={`${url({ unidade: aberta ? undefined : u.unidade, linha: undefined, q: undefined, so: undefined })}#unidade-${i}`}
+                        aria-expanded={aberta}
+                        className={`inline-flex items-center gap-2 hover:text-if-green ${aberta ? "font-semibold" : ""}`}
+                      >
+                        <SinalMaisMenos aberto={aberta} />
                         {u.unidade}
                       </Link>
                     </td>
@@ -215,6 +360,14 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
                     <td className={`${td} font-medium`}>{decimal.format(temResultados ? mtSistema : (u.mtSextaFase ?? 0))}</td>
                     <td className="px-2 py-1 text-center">{confere === null ? "" : confere ? OK : NAO}</td>
                   </tr>
+                  {aberta && (
+                    <tr data-detalhe="1">
+                      <td colSpan={12} className="bg-neutral-100 p-3 dark:bg-neutral-900/60">
+                        {ciclosDaUnidade}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -223,8 +376,9 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
       </section>
 
       {/* Fórmulas */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Como cada coluna é calculada</h2>
+      <details className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <summary className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Como cada coluna é calculada</summary>
+        <div className="mt-3 flex flex-col gap-2">
         <p className="max-w-4xl text-sm text-neutral-600 dark:text-neutral-400">
           As fórmulas são as da linha 4 do arquivo, copiadas do Excel (as letras são as colunas da planilha). Em quatro colunas, o texto do cabeçalho da planilha
           não diz o mesmo que a fórmula da própria coluna; o número sai da fórmula, e o sistema segue a fórmula. Essas quatro estão marcadas em amarelo.
@@ -261,130 +415,8 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
           (CHC), R mínima do MEC (CHMC), T peso (PC), U apto (jubilamento do início do período em diante), AB e AC início e fim do período (DIP e DFP), AD
           matrículas (QTM).
         </p>
-      </section>
-
-      {/* Ciclos */}
-      <section className="flex flex-col gap-3" id="ciclos">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Aba &quot;Ciclos de Matrículas&quot;: {unidade}</h2>
-        <form method="get" action="" className="flex flex-wrap items-end gap-3 text-sm">
-          <input type="hidden" name="arquivo" value={escolhido.id} />
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-neutral-500">Unidade</span>
-            <select name="unidade" defaultValue={unidade} className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 dark:border-neutral-700 dark:bg-neutral-900">
-              {unidadesDoArquivo.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-neutral-500">Curso ou código do ciclo</span>
-            <input name="q" defaultValue={params.q ?? ""} className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 dark:border-neutral-700 dark:bg-neutral-900" />
-          </label>
-          <label className="flex items-center gap-2 pb-1.5">
-            <input type="checkbox" name="so" value="diferentes" defaultChecked={soDiferentes} />
-            <span>Só os que não conferem</span>
-          </label>
-          <button type="submit" className="rounded-md bg-if-green px-3 py-1.5 font-medium text-white">
-            Mostrar
-          </button>
-        </form>
-
-        {selecionada && <DetalheDoCiclo l={selecionada} temResultados={temResultados} fechar={url({ linha: undefined })} />}
-
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {inteiro.format(daUnidade.length)} ciclo(s). Os valores calculados são os do sistema; a coluna &quot;{temResultados ? "MT na planilha" : "MT na 6ª fase"}&quot;
-          traz o número de referência. Clique em &quot;ver a conta&quot; para ver cada coluna com os números do ciclo.
-        </p>
-        <div className="max-h-[70vh] overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="min-w-full text-xs">
-            <thead className="sticky top-0 bg-neutral-50 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
-              <tr>
-                <th className={th}>Linha</th>
-                <th className={thE}>Ciclo</th>
-                <th className={thE}>Curso</th>
-                <th className={thE}>Oferta</th>
-                <th className={thE}>Situação</th>
-                <th className={th}>DIC</th>
-                <th className={th}>DTC</th>
-                <th className={th}>CHC</th>
-                <th className={th}>CHMC</th>
-                <th className={th}>CHM</th>
-                <th className={th}>PC</th>
-                <th className={th}>QTM</th>
-                <th className={th}>QDTC</th>
-                <th className={th}>CHMD</th>
-                <th className={th}>CHA</th>
-                <th className={th}>FECH</th>
-                <th className={th}>DACP1</th>
-                <th className={th}>DACP2</th>
-                <th className={th}>DACP3</th>
-                <th className={th}>DACP4</th>
-                <th className={th}>DACP5</th>
-                <th className={th}>FEDA</th>
-                <th className={th}>FECHDA</th>
-                <th className={th}>MECHDA</th>
-                <th className={th}>MP</th>
-                <th className={th}>BA</th>
-                <th className={th}>MT sistema</th>
-                <th className={th}>{temResultados ? "MT na planilha" : "MT na 6ª fase"}</th>
-                <th className={th}>Confere</th>
-                {!temResultados && <th className={thE}>Por que difere</th>}
-                <th className={thE}></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {daUnidade.map((l) => {
-                const c = l.colunas;
-                const referencia = temResultados ? l.planilha?.mt ?? 0 : l.sextaFase?.matriculaTotal ?? null;
-                return (
-                  <tr key={l.id} className={l.linha === selecionada?.linha ? "bg-if-green/10" : !l.confere ? "bg-if-red/5" : undefined}>
-                    <td className={td}>{l.linha}</td>
-                    <td className={`${tdE} whitespace-nowrap`}>{l.codigoCiclo}</td>
-                    <td className={`${tdE} min-w-56`}>{l.curso}</td>
-                    <td className={`${tdE} whitespace-nowrap`}>{l.tipoOferta}</td>
-                    <td className={`${tdE} whitespace-nowrap`}>{l.situacao}</td>
-                    <td className={td}>{dia.format(l.entrada.inicio)}</td>
-                    <td className={td}>{dia.format(l.entrada.termino)}</td>
-                    <td className={td}>{inteiro.format(l.entrada.chCiclo)}</td>
-                    <td className={td}>{inteiro.format(l.entrada.chMec)}</td>
-                    <td className={td}>{inteiro.format(c.chm)}</td>
-                    <td className={td}>{fator.format(l.entrada.peso)}</td>
-                    <td className={td}>{inteiro.format(l.entrada.matriculas)}</td>
-                    <td className={td}>{inteiro.format(c.qdtc)}</td>
-                    <td className={td}>{fator.format(c.chmd)}</td>
-                    <td className={td}>{decimal.format(c.cha)}</td>
-                    <td className={td}>{fator.format(c.fech)}</td>
-                    {c.dacp.map((x, i) => (
-                      <td key={i} className={td}>{x ? exato.format(x) : ""}</td>
-                    ))}
-                    <td className={td}>{fator.format(c.feda)}</td>
-                    <td className={td}>{fator.format(c.fechda)}</td>
-                    <td className={td}>{fator.format(c.mechda)}</td>
-                    <td className={td}>{fator.format(c.mp)}</td>
-                    <td className={td}>{c.ba ? fator.format(c.ba) : ""}</td>
-                    <td className={`${td} font-medium`}>{fator.format(c.mt)}</td>
-                    <td className={td}>
-                      {referencia === null ? "sem par" : fator.format(referencia)}
-                      {!temResultados && l.sextaFase && l.sextaFase.linhasNaQuartaFase > 1 && (
-                        <span className="block text-[10px] text-neutral-500">ciclo em {l.sextaFase.linhasNaQuartaFase} linhas</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1 text-center">{l.confere ? OK : NAO}</td>
-                    {!temResultados && <td className={`${tdE} min-w-56 text-[11px]`}>{l.sextaFase?.motivos.join("; ")}</td>}
-                    <td className={`${tdE} whitespace-nowrap`}>
-                      <Link href={`${url({ linha: String(l.linha) })}#conta`} className={PROSE_LINK}>
-                        ver a conta
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
-      </section>
+      </details>
     </main>
   );
 }
@@ -405,7 +437,7 @@ function Cartao({ titulo, valor, texto, destaque }: { titulo: string; valor: str
 function DetalheDoCiclo({ l, temResultados, fechar }: { l: LinhaConferida; temResultados: boolean; fechar: string }) {
   const e = l.entrada;
   return (
-    <div id="conta" className="flex flex-col gap-3 rounded-lg border border-if-green/40 bg-if-green/5 p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-if-green/40 bg-if-green/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
@@ -419,7 +451,7 @@ function DetalheDoCiclo({ l, temResultados, fechar }: { l: LinhaConferida; temRe
             {inteiro.format(e.matriculas)} matrículas; ano-base de {dia.format(e.inicioPeriodo)} a {dia.format(e.fimPeriodo)}.
           </p>
         </div>
-        <Link href={`${fechar}#ciclos`} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
+        <Link href={fechar} className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:hover:text-neutral-200">
           fechar
         </Link>
       </div>

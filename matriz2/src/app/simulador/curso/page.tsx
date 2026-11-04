@@ -1,6 +1,7 @@
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -92,6 +93,10 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
   const ciclos = await prisma.distribuicaoCiclo.findMany({
     where: { ano, unidadeId: campus.id, ...CICLO_QUE_CONTRIBUI },
     select: {
+      id: true,
+      codigoCiclo: true,
+      inicio: true,
+      termino: true,
       curso: true,
       tipoOferta: true,
       cargaHoraria: true,
@@ -219,6 +224,16 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Curso de partida</span>
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{escolhido.rotulo}</span>
+          <details className="text-xs">
+            <summary className="text-if-green">turmas somadas neste curso ({l.length})</summary>
+            <ul className="mt-1 flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+              {l.map((c) => (
+                <li key={c.id}>
+                  {rotuloDoCiclo(c)}: {Number(c.valorReais).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </li>
+              ))}
+            </ul>
+          </details>
           <details className="text-xs">
             <summary className="cursor-pointer text-if-green">trocar curso ({cursos.length})</summary>
             <ul className="mt-1 max-h-56 overflow-y-auto rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">

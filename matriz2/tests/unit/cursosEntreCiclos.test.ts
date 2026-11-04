@@ -41,12 +41,12 @@ describe("cursos lado a lado entre dois ciclos", () => {
     expect(c!.turmas[0]).toMatchObject({ retidaA: false, retidaB: true });
   });
 
-  it("o rótulo diferencia as turmas pela modalidade e pelo período, sem errar o dia por causa do fuso", () => {
+  it("o rótulo traz sempre o ciclo, a modalidade e o período, sem errar o dia por causa do fuso", () => {
     const [c] = compararCursosEntreCiclos([turma(1, "A", "CURSO", 1, "2023-04-01")], [], 2026, 2027);
-    expect(c!.turmas[0]!.rotulo).toBe("Técnico integrado, 01/04/2023 a 18/03/2026");
+    expect(c!.turmas[0]!.rotulo).toBe("Ciclo A, Técnico integrado, 01/04/2023 a 18/03/2026");
   });
 
-  it("repasse a distância entra no rótulo, e turmas iguais em tudo são diferenciadas pelo código do ciclo", () => {
+  it("repasse a distância entra no rótulo, e turmas iguais em tudo se diferenciam pelo código do ciclo", () => {
     const [c] = compararCursosEntreCiclos(
       [turma(1, "A", "CURSO", 1, "2023-04-01", { repasse: "EAD_FP" }), turma(2, "B", "CURSO", 1, "2023-04-01", { repasse: "EAD_FP" })],
       [],
@@ -54,8 +54,8 @@ describe("cursos lado a lado entre dois ciclos", () => {
       2027,
     );
     expect(c!.turmas.map((t) => t.rotulo)).toEqual([
-      "Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026 (ciclo A)",
-      "Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026 (ciclo B)",
+      "Ciclo A, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
+      "Ciclo B, Técnico integrado, EAD FP, 01/04/2023 a 18/03/2026",
     ]);
   });
 });

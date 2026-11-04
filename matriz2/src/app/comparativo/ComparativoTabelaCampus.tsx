@@ -3,6 +3,7 @@
 import { ehCampusDestaque } from "@/lib/destaque";
 import { useEffect, useState } from "react";
 import { SeloConfianca } from "@/components/Confianca";
+import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
 import { carregarCursosComparativoCampusAction } from "@/server/actions/comparativoCursos";
 import { explicarVariacaoCampusAction, type ResultadoExplicacao } from "@/server/actions/explicarVariacao";
@@ -284,7 +285,7 @@ function CursosLadoALado({ anoA, anoB, cursos }: { anoA: number; anoB: number; c
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-neutral-600 dark:text-neutral-400">
-        Cada linha é uma turma (ciclo de curso), reconhecida pelo código do ciclo na MDO, que é o mesmo nos dois anos. O período e a modalidade diferenciam as turmas de mesmo nome. Uma célula em branco
+        Cada linha é uma turma, reconhecida pelo código do ciclo na MDO, que é o mesmo nos dois anos e aparece no início do texto dela, com a modalidade e o período. Uma célula em branco
         indica que a turma não contribuiu naquele ano, porque não tem alunos contados no ano-base ({anoA - 2} para {anoA}, {anoB - 2} para {anoB}). Os valores são do bloco Funcionamento, antes do Piso Mínimo.
         {emAmbos && (
           <>
@@ -387,9 +388,11 @@ function ExplicacaoVariacao({ unidadeId, anoA, anoB, nome }: { unidadeId: number
         <button
           type="button"
           onClick={alternar}
-          className="rounded-md border border-if-green px-3 py-1.5 text-sm font-medium text-if-green hover:bg-if-green/10"
+          aria-expanded={aberto}
+          className="inline-flex items-center gap-2 rounded-md border border-if-green px-3 py-1.5 text-sm font-medium text-if-green hover:bg-if-green/10"
         >
-          {aberto ? "Esconder" : "O que ocorreu com o valor da matriz?"}
+          <SinalMaisMenos aberto={aberto} />
+          O que ocorreu com o valor da matriz?
         </button>
       </div>
       {aberto && estado?.status === "carregando" && <p className="text-sm text-neutral-500">Calculando...</p>}

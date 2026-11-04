@@ -7,6 +7,7 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ConsultaTabelaCampus } from "./ConsultaTabelaCampus";
 import { ConsultaTabelaCursos } from "./ConsultaTabelaCursos";
 import { CICLO_QUE_CONTRIBUI, carregarCursosDoCampus } from "@/server/queries/cursosCampus";
+import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { carregarTaxasFuncionamento, calcularFuncionamentoCampus } from "@/server/queries/funcionamentoCampus";
 import { ConsultaTabelaInstituicoes } from "./ConsultaTabelaInstituicoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
@@ -425,7 +426,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
         />
       </div>
 
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no nome de um câmpus para abrir os cursos dele logo abaixo da linha. Clique de novo para fechar.</p>
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no <strong>+</strong> de um câmpus para abrir os cursos dele logo abaixo da linha, e no <strong>−</strong> para fechar.</p>
 
       <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
         <ConsultaTabelaCampus
@@ -455,7 +456,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
                 </div>
                 {cursoDestaque && (
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    O curso com maior participação no orçamento é <strong className="text-neutral-900 dark:text-neutral-100">{cursoDestaque.curso}</strong>,
+                    A turma com maior participação no orçamento é <strong className="text-neutral-900 dark:text-neutral-100">{cursoDestaque.curso}</strong> ({rotuloDoCiclo(cursoDestaque)}),
                     com aproximadamente <strong className="text-neutral-900 dark:text-neutral-100">{reais.format(cursoDestaque.valor)}</strong>.
                     Marque as caixas da coluna &quot;Comparar&quot; para ver dois ou mais cursos lado a lado.
                   </p>

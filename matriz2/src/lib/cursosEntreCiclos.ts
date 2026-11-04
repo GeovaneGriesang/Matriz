@@ -19,7 +19,7 @@ export interface TurmaDeEntrada {
 
 export interface TurmaComparada {
   chave: string;
-  /** Diferencia as turmas de mesmo nome: modalidade, forma de repasse (quando não é presencial) e período. */
+  /** Diferencia as turmas de mesmo nome: código do ciclo, modalidade, forma de repasse (quando não é presencial) e período. */
   rotulo: string;
   valorA: number | null;
   valorB: number | null;
@@ -40,7 +40,7 @@ const data = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 const dia = (iso: string | null) => (iso ? data.format(new Date(iso)) : "sem data");
 
 function rotuloDaTurma(t: TurmaDeEntrada): string {
-  const partes = [t.modalidadeRotulo, t.repasse !== "PRESENCIAL" ? t.repasse.replace("_", " ") : null, `${dia(t.inicio)} a ${dia(t.termino)}`];
+  const partes = [t.codigoCiclo ? `Ciclo ${t.codigoCiclo}` : null, t.modalidadeRotulo, t.repasse !== "PRESENCIAL" ? t.repasse.replace("_", " ") : null, `${dia(t.inicio)} a ${dia(t.termino)}`];
   return partes.filter(Boolean).join(", ");
 }
 
@@ -74,10 +74,7 @@ export function compararCursosEntreCiclos(cursosA: TurmaDeEntrada[], cursosB: Tu
 
   return [...porCurso.values()]
     .map(({ inicios, ...g }) => {
-      const repetidos = new Set(g.turmas.map((t) => t.rotulo).filter((r, i, todos) => todos.indexOf(r) !== i));
       const turmas = g.turmas
-        // Duas turmas do mesmo curso, com a mesma modalidade e o mesmo período: só o código do ciclo as diferencia.
-        .map((t) => (repetidos.has(t.rotulo) ? { ...t, rotulo: `${t.rotulo} (ciclo ${t.chave})` } : t))
         .sort((x, y) => (inicios.get(x.chave) ?? "").localeCompare(inicios.get(y.chave) ?? "") || x.chave.localeCompare(y.chave));
       return { ...g, turmas };
     })
