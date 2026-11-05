@@ -1,3 +1,5 @@
+import { GRUPOS_MENU, visivelNaPreConfiguracao } from "@/lib/menu";
+
 /**
  * Os exemplos do Guia das telas, com números reais de Venâncio Aires e do IFSul. A busca está em `server/queries/exemplosDoGuia.ts`; aqui só se monta
  * o texto, para o teste poder conferir que toda ficha tem exemplo. Um dado que falta no banco tira o exemplo daquela ficha, sem inventar número.
@@ -90,6 +92,8 @@ export function montarExemplos(d: DadosDosExemplos): Record<string, string> {
   if (rede) e["/admin/orcamento"] = `Um dos parâmetros de ${ano} é o valor de referência da Rede: ${reais(rede.referencia)}.`;
   if (recebidoAnterior !== null) e["/admin/valores-recebidos"] = `${VA} tem ${reais(recebidoAnterior)} informados para ${ano - 1}.`;
   if (d.usuarios !== null) e["/admin/usuarios"] = `Hoje o sistema tem ${int(d.usuarios)} ${d.usuarios === 1 ? "conta ativa" : "contas ativas"}.`;
+  const telas = GRUPOS_MENU.flatMap((g) => g.itens);
+  e["/admin/telas-por-perfil"] = `Na pré-configuração, o perfil Padrão vê ${int(telas.filter((t) => visivelNaPreConfiguracao(t, "PADRAO")).length)} das ${int(telas.length)} telas do menu, e o Administrador vê todas.`;
   if (d.registrosDeAuditoria !== null) e["/admin/auditoria"] = `Hoje há ${int(d.registrosDeAuditoria)} ${d.registrosDeAuditoria === 1 ? "ação registrada" : "ações registradas"}.`;
   return e;
 }

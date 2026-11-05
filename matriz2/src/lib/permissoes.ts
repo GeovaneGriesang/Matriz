@@ -34,6 +34,11 @@ export function podeMudarPerfil(solicitante: Papel, alvo: Papel, ehOProprio: boo
   return solicitante === "SUPER_ADMIN" && alvo !== "SUPER_ADMIN" && !ehOProprio;
 }
 
+/** Escolher as telas que os perfis Administrador e Padrão veem no menu: só o super-admin. */
+export function podeEscolherTelasDosPerfis(papel: Papel): boolean {
+  return papel === "SUPER_ADMIN";
+}
+
 /** Quem abre a tela Usuários: o administrador e o super-admin. A Auditoria continua só do super-admin. */
 export function podeGerirUsuarios(papel: Papel): boolean {
   return papel === "ADMIN" || papel === "SUPER_ADMIN";

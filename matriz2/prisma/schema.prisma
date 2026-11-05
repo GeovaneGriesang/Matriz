@@ -1440,3 +1440,15 @@ model ConfiguracaoCompartilhada {
   @@unique([configuracaoId, usuarioId])
   @@index([usuarioId])
 }
+
+/// O que o super-admin mudou nas telas que cada perfil vê no menu (tela Telas por perfil). Só guarda o que difere da pré-configuração
+/// de `lib/menu.ts`: sem linha, vale a pré-configuração, e uma tela nova nasce com ela. Não bloqueia o endereço, só tira ou põe no menu.
+model VisibilidadeDaTela {
+  papel        Papel
+  /// O endereço do item no menu, ex.: "/consulta".
+  href         String   @db.VarChar(191)
+  visivel      Boolean
+  atualizadoEm DateTime @updatedAt
+
+  @@id([papel, href])
+}

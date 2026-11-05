@@ -177,11 +177,56 @@ const alfabetica = (a: ItemMenu, b: ItemMenu) => a.rotulo.localeCompare(b.rotulo
 
 export const GRUPOS_MENU: GrupoMenu[] = GRUPOS.map((g) => ({ ...g, itens: [...g.itens].sort(alfabetica) }));
 
-/** Os grupos e itens que cada perfil vê no menu e no Início. As telas continuam abertas pelo endereço; só saem da vista. */
-export function gruposVisiveis(papel: Papel | null | undefined): GrupoMenu[] {
-  const admin = papel === "ADMIN" || papel === "SUPER_ADMIN";
-  return GRUPOS_MENU.map((g) => ({ ...g, itens: g.itens.filter((i) => (!i.somenteAdmin || admin) && (!i.somenteSuperAdmin || papel === "SUPER_ADMIN")) }))
-    .filter((g) => g.itens.length > 0);
+/** As telas que o super-admin pode dar ou tirar de um perfil. "Início" fica fora: é a porta de entrada e aparece sempre. */
+const TELAS_CONFIGURAVEIS: ItemMenu[] = GRUPOS_MENU.flatMap((g) => g.itens).filter((i) => !i.somenteSuperAdmin);
+
+/** Os perfis cujas telas o super-admin escolhe. O próprio super-admin vê sempre todas, para ninguém perder o acesso à configuração. */
+export const PERFIS_CONFIGURAVEIS = ["ADMIN", "PADRAO"] as const;
+export type PerfilConfiguravel = (typeof PERFIS_CONFIGURAVEIS)[number];
+
+/** O que o super-admin mudou em relação à pré-configuração. Sem ajuste para uma tela, vale a pré-configuração. */
+export interface AjusteDeTela {
+  papel: PerfilConfiguravel;
+  href: string;
+  visivel: boolean;
+}
+
+/** A pré-configuração: o que cada perfil vê enquanto o super-admin não mudar nada. */
+export function visivelNaPreConfiguracao(item: ItemMenu, papel: PerfilConfiguravel): boolean {
+  if (item.somenteSuperAdmin) return false;
+  return !item.somenteAdmin || papel === "ADMIN";
+}
+
+function telaAparece(item: ItemMenu, papel: Papel, ajustes: AjusteDeTela[]): boolean {
+  if (papel === "SUPER_ADMIN") return true;
+  if (item.somenteSuperAdmin) return false;
+  const ajuste = ajustes.find((a) => a.papel === papel && a.href === item.href);
+  return ajuste ? ajuste.visivel : visivelNaPreConfiguracao(item, papel);
+}
+
+/** Os grupos e itens que cada perfil vê no menu e no Início. As telas continuam abertas pelo endereço; só saem da vista. Grupo sem nenhuma tela some. */
+export function gruposVisiveis(papel: Papel | null | undefined, ajustes: AjusteDeTela[] = []): GrupoMenu[] {
+  const perfil = papel ?? "PADRAO";
+  return GRUPOS_MENU.map((g) => ({ ...g, itens: g.itens.filter((i) => telaAparece(i, perfil, ajustes)) })).filter((g) => g.itens.length > 0);
+}
+
+/** A chave de uma marcação na tela Telas por perfil. */
+export const chaveDaMarcacao = (papel: PerfilConfiguravel, href: string) => `${papel}|${href}`;
+
+/** O que fica marcado na tela, dados os ajustes gravados. */
+export function marcacoesAtuais(ajustes: AjusteDeTela[]): string[] {
+  return PERFIS_CONFIGURAVEIS.flatMap((papel) => TELAS_CONFIGURAVEIS.filter((i) => telaAparece(i, papel, ajustes)).map((i) => chaveDaMarcacao(papel, i.href)));
+}
+
+/** Transforma as marcações da tela no que se grava: só o que difere da pré-configuração. Chave desconhecida é ignorada. */
+export function ajustesDasMarcacoes(marcadas: Iterable<string>): AjusteDeTela[] {
+  const conjunto = new Set(marcadas);
+  return PERFIS_CONFIGURAVEIS.flatMap((papel) =>
+    TELAS_CONFIGURAVEIS.flatMap((item) => {
+      const visivel = conjunto.has(chaveDaMarcacao(papel, item.href));
+      return visivel === visivelNaPreConfiguracao(item, papel) ? [] : [{ papel, href: item.href, visivel }];
+    }),
+  );
 }
 
 export const ITEM_INICIO: ItemMenu = { href: "/", rotulo: "Início", descricao: "A visão geral dos anos carregados." };
