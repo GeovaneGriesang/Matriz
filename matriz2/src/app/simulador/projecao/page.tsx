@@ -9,6 +9,7 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { taxasDeEvasaoDaInstituicao } from "@/server/queries/taxaEvasaoInstituicao";
 import { retencaoObservada } from "@/lib/mdo/projecaoCiclos";
+import { chaveDoFatorEsforco, fatorEsforcoPadrao, fatorMatriculaEquivalente } from "@/lib/mdo/matriculaEquivalente";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
       id: true,
       codigoCiclo: true,
       unidadeId: true,
+      fonteFinanciamento: true,
       curso: true,
       tipoCurso: true,
       tipoOferta: true,
@@ -100,7 +102,22 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
     },
   });
 
+  // A Mateq de cada turma: o fec e a carga horária vêm dos microdados da PNP, ligados à MDO pelo código da turma, que é o mesmo nos dois.
+  const daPnp = await prisma.pnpMicrodadoCiclo.findMany({
+    where: { tipo: "MATRICULAS", anoBase: anoBase0, instituicaoId: instituicao.id, ciclo: { in: linhas.map((l) => l.codigoCiclo) } },
+    select: { ciclo: true, fatorEsforco: true, cargaHoraria: true },
+  });
+  const pnpPorCiclo = new Map(daPnp.map((p) => [p.ciclo, p]));
+
   const ciclos: CicloSerial[] = linhas.map((l) => {
+    const pnp = pnpPorCiclo.get(l.codigoCiclo);
+    const tipoCurso = l.tipoCurso ?? "";
+    const fatorDaPnp = pnp?.fatorEsforco != null;
+    const fatorMateq = fatorMatriculaEquivalente({
+      tipoCurso,
+      fatorEsforco: pnp?.fatorEsforco != null ? Number(pnp.fatorEsforco) : fatorEsforcoPadrao(tipoCurso),
+      cargaHoraria: pnp?.cargaHoraria ?? l.cargaHoraria ?? l.chMatriz!,
+    });
     const mt = Number(l.matriculaTotal);
     const valorPorMT = mt > 0 ? Number(l.valorReais) / mt : Number(l.valorAluno ?? 0);
     return {
@@ -121,6 +138,9 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
       agropecuaria: l.agropecuaria === true,
       alunos: Number(l.qtdAlunosMatriz),
       valorPorMT,
+      fonteFinanciamento: l.fonteFinanciamento,
+      fatorMateq,
+      fatorDaPnp,
     };
   });
 
@@ -165,6 +185,16 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
         pesoEfetivo: Number(p.pesoEfetivo),
       }))
     : [];
+  // O fec de quem abre um curso novo: o que a PNP aplica ao mesmo curso na rede (o mais comum, quando há mais de um).
+  const fecDaRede = await prisma.pnpMicrodadoCiclo.groupBy({
+    by: ["tipoCurso", "nomeCurso", "fatorEsforco"],
+    where: { tipo: "MATRICULAS", anoBase: anoBase0, fatorEsforco: { not: null } },
+    _count: { _all: true },
+    orderBy: { _count: { id: "asc" } },
+  });
+  const fecPorCurso = new Map(fecDaRede.map((f) => [chaveDoFatorEsforco(f.tipoCurso, f.nomeCurso), Number(f.fatorEsforco)]));
+  const catalogoComFec = catalogo.map((c) => ({ ...c, fatorEsforco: fecPorCurso.get(chaveDoFatorEsforco(c.tipoCurso, c.curso)) ?? fatorEsforcoPadrao(c.tipoCurso) }));
+
   const contagemDeValores = new Map<number, number>();
   for (const l of linhas) {
     if (l.repasse !== "PRESENCIAL") continue;
@@ -186,7 +216,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
         anoBase0={anoBase0}
         campi={unidades}
         ciclos={ciclos}
-        catalogo={catalogo}
+        catalogo={catalogoComFec}
         valorMatriculaPresencial={valorMatriculaPresencial}
         taxasPadrao={taxasPadrao}
         retencao={retencao}

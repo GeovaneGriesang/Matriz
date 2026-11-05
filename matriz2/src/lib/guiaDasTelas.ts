@@ -66,8 +66,8 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   },
   "/simulador/projecao": {
     responde: "Quanto os cursos atuais e os planejados rendem nos próximos anos?",
-    mostra: "Ano a ano, o que cada ciclo em andamento continua valendo na matriz enquanto os alunos terminam o curso, com a evasão média da instituição em cada modalidade.",
-    usar: "Escolha quantos anos projetar e monte o cenário: cursos novos, em anos diferentes, e cursos que deixam de ser ofertados. As turmas em andamento terminam, mas não entram turmas novas.",
+    mostra: "Ano a ano, o que cada ciclo em andamento continua valendo na matriz enquanto os alunos terminam o curso, com a evasão média da instituição em cada modalidade. A tabela aparece em reais, alunos matriculados, alunos que a MDO conta ou matrícula equivalente.",
+    usar: "Escolha quantos anos projetar e monte o cenário: cursos novos, em anos diferentes, e cursos que deixam de ser ofertados. As turmas em andamento terminam, mas não entram turmas novas. Os filtros escolhem as turmas da conta, por exemplo só as presenciais e regulares.",
     atencao: "É uma projeção com evasão média. O resultado real depende do orçamento aprovado e da matrícula de toda a rede em cada ano.",
   },
   "/simulador/distribuicao": {
@@ -156,6 +156,16 @@ export const TELAS_DE_ADMINISTRACAO: { href: string; rotulo: string; somenteSupe
     ficha: {
       responde: "Quem tem acesso, e com qual perfil?",
       mostra: "As contas do sistema. Quem é cadastrado recebe um código por e-mail para o primeiro acesso, e a tela também permite resetar a senha. O administrador cria perfis padrão, e o super-admin cria administradores e muda perfis.",
+    },
+  },
+  {
+    href: "/admin/telas-por-perfil",
+    rotulo: "Telas por perfil",
+    somenteSuperAdmin: true,
+    ficha: {
+      responde: "Quais telas cada perfil vê no menu?",
+      mostra: "Uma linha por tela, com uma marcação para Administrador e outra para Padrão. A escolha vale para o menu, a página inicial e o Guia das telas daquele perfil. O botão Voltar à pré-configuração desfaz as mudanças.",
+      atencao: "Tirar uma tela do menu não bloqueia o endereço: quem tem o link continua conseguindo abrir.",
     },
   },
   {

@@ -96,7 +96,7 @@ Perfis de usuário:
 - Padrão: vê os dados e faz as simulações; não vê Correção manual nem Valores recebidos; usa o chat com o modelo do próprio servidor.
 - Todos alteram os dados da própria conta (senha) em Minha conta.
 
-O menu tem três perguntas (Quanto recebemos?, Posso confiar? e E se...?), o grupo Mais, com as demais telas, e Como funciona. Parte de Mais é só para administradores.
+O menu tem três perguntas (Quanto recebemos?, Posso confiar? e E se...?), o grupo Mais, com as demais telas, e Como funciona. Parte de Mais costuma ser só para administradores, e cada perfil vê no menu as telas definidas para ele.
 
 Telas e o que respondem:
 - Quanto recebemos? > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
@@ -106,9 +106,9 @@ Telas e o que respondem:
 - E se...? > Quanto vale um curso: uma tela com três abas, Quanto vale um curso (peso, carga horária mínima e quanto a MDO paga por um aluno que faz o curso inteiro), Curso novo ano a ano, e Integrado: 3 ou 4 anos.
 - Aba Integrado: 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
 - Mais > Onde o câmpus pode ganhar: uma tela com três abas, Comparar alternativas (curso novo, turma FIC, RAP, evasão, vagas, lado a lado), Ideias de cursos e horas não pagas, e Indicadores e evasão.
-- E se...? > Cenários, anos à frente: quanto os ciclos rendem nos próximos anos, com cursos novos e cursos que deixam de ser ofertados. Nas simulações, o padrão é 32 estudantes por ano.
+- E se...? > Cenários, anos à frente: quanto os ciclos rendem nos próximos anos, com cursos novos e cursos que deixam de ser ofertados. Tem filtros (modalidade, tipo de curso, oferta, financiamento, situação da turma) e mostra a tabela em reais, alunos matriculados, alunos que a MDO conta ou matrícula equivalente (Portaria Setec 146/2021: matrícula x fech x fec). Nas simulações, o padrão é 32 estudantes por ano.
 - Distribuição entre câmpus: simula as propostas dos câmpus Sapucaia do Sul e Venâncio Aires e compara as duas; nenhuma é a regra do IFSul, e os valores não são o que os câmpus vão receber.
-- Mais (só administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão e Conferência de cálculo. Posso confiar? > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
+- Mais (normalmente só para administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão e Conferência de cálculo. Posso confiar? > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 
 Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.

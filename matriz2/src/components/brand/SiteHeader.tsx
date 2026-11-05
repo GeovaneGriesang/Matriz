@@ -6,6 +6,7 @@ import { SiteNav } from "./SiteNav";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
+import { carregarAjustesDeTelas } from "@/server/queries/ajustesDeTelas";
 
 const LINK_CLASS = "text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
 
@@ -19,6 +20,8 @@ const LINK_CLASS = "text-sm text-neutral-600 hover:text-neutral-900 dark:text-ne
 export async function SiteHeader() {
   const usuario = await getAdminSession();
   const acessoPleno = usuario && temAcessoPleno(usuario.papel);
+  // O super-admin vê todas as telas, então não precisa ler os ajustes.
+  const ajustes = acessoPleno && usuario.papel !== "SUPER_ADMIN" ? await carregarAjustesDeTelas() : [];
 
   return (
     <header className="sticky top-0 z-30 print:static border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
@@ -31,7 +34,7 @@ export async function SiteHeader() {
         </Link>
         {acessoPleno && (
           <div className="print:hidden">
-            <SiteNav papel={usuario.papel} />
+            <SiteNav papel={usuario.papel} ajustes={ajustes} />
           </div>
         )}
         {usuario && !acessoPleno && (

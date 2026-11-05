@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Papel } from "@prisma/client";
-import { ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
+import { ITEM_INICIO, gruposVisiveis, itemAtivo, type AjusteDeTela } from "@/lib/menu";
 
 /**
  * O menu em grupos por pergunta (Quanto recebemos?, Posso confiar?, E se...?), mais "Início", "Mais" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
@@ -13,7 +13,7 @@ import { ITEM_INICIO, gruposVisiveis, itemAtivo } from "@/lib/menu";
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do
  * cabeçalho (sessão, nome, Sair) continua no Server Component.
  */
-export function SiteNav({ papel }: { papel: Papel }) {
+export function SiteNav({ papel, ajustes }: { papel: Papel; ajustes: AjusteDeTela[] }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState<string | null>(null);
   const raiz = useRef<HTMLElement>(null);
@@ -47,7 +47,7 @@ export function SiteNav({ papel }: { papel: Papel }) {
         {ITEM_INICIO.rotulo}
       </Link>
 
-      {gruposVisiveis(papel).map((g, i, todos) => {
+      {gruposVisiveis(papel, ajustes).map((g, i, todos) => {
         const grupoAtivo = g.itens.some((i) => i.href === ativo?.href);
         const estaAberto = aberto === g.id;
         return (

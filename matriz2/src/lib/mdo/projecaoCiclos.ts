@@ -72,6 +72,8 @@ export interface PontoProjecao {
   valor: number;
   /** Alunos que a MDO contaria: os do ciclo vezes o ICQA (retido conta metade, jubilado zero). */
   alunosContados: number;
+  /** Alunos matriculados, cada um valendo 1: o retido conta inteiro, e o jubilado sai a partir do ano seguinte ao de hoje. */
+  alunos: number;
 }
 
 export function taxaDoCiclo(ciclo: Pick<CicloProjetavel, "repasse">, taxas: TaxasEvasao): number {
@@ -131,7 +133,9 @@ export function projetarMatriculados(c: CicloProjetavel, anoBase0: number, anos:
     const alunos = alunosNoAno({ alunos: c.alunos, ano: anoBase0 }, c.termino, anoBase, e, p.retencao);
     const ciclo = paraCalculo(c, alunos);
     const mt = matriculaTotalDoCiclo(ciclo, periodo);
-    pontos.push({ anoBase, matriculaTotal: mt, valor: mt * c.valorPorMT, alunosContados: alunos * icqaDoCiclo(ciclo, periodo) });
+    const icqa = icqaDoCiclo(ciclo, periodo);
+    // O primeiro ano é a matrícula como a PNP publicou, que inclui quem já passou do prazo de jubilamento.
+    pontos.push({ anoBase, matriculaTotal: mt, valor: mt * c.valorPorMT, alunosContados: alunos * icqa, alunos: k === 0 || icqa > 0 ? alunos : 0 });
   }
   return pontos;
 }
@@ -144,7 +148,7 @@ export interface TurmaProjetada {
 }
 
 const pontosVazios = (anoBase0: number, anos: number): PontoProjecao[] =>
-  Array.from({ length: anos }, (_, k) => ({ anoBase: anoBase0 + k, matriculaTotal: 0, valor: 0, alunosContados: 0 }));
+  Array.from({ length: anos }, (_, k) => ({ anoBase: anoBase0 + k, matriculaTotal: 0, valor: 0, alunosContados: 0, alunos: 0 }));
 
 /** O que uma turma (ciclo) com `alunos` rende em cada ano-base, dado o ano em que entrou. */
 function pontosDaTurma(
@@ -166,7 +170,9 @@ function pontosDaTurma(
     const mt = matriculaTotalDoCiclo(ciclo, periodo);
     pontos[k]!.matriculaTotal += mt;
     pontos[k]!.valor += mt * turma.valorPorMT;
-    pontos[k]!.alunosContados += alunos * icqaDoCiclo(ciclo, periodo);
+    const icqa = icqaDoCiclo(ciclo, periodo);
+    pontos[k]!.alunosContados += alunos * icqa;
+    if (icqa > 0) pontos[k]!.alunos += alunos;
   }
   return pontos;
 }
@@ -179,6 +185,7 @@ const somarPontos = (turmas: TurmaProjetada[], anoBase0: number, anos: number, a
       soma[k]!.matriculaTotal += p.matriculaTotal;
       soma[k]!.valor += p.valor;
       soma[k]!.alunosContados += p.alunosContados;
+      soma[k]!.alunos += p.alunos;
     });
   }
   return soma;

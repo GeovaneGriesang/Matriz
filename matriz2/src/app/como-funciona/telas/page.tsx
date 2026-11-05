@@ -5,6 +5,7 @@ import { TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { ITEM_INICIO, TODOS_OS_ITENS, gruposVisiveis } from "@/lib/menu";
 import { podeVerValores } from "@/lib/permissoes";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { carregarAjustesDeTelas } from "@/server/queries/ajustesDeTelas";
 import { carregarDadosDosExemplos } from "@/server/queries/exemplosDoGuia";
 import { montarExemplos } from "@/lib/exemplosDoGuia";
 
@@ -27,9 +28,9 @@ const AVISOS = [
 
 /** Da menor para a maior permissão. Cada perfil lê só a própria linha e as de baixo: o que ele não acessa não entra no guia. */
 const PERFIS: { papel: Papel; nome: string; acesso: string }[] = [
-  { papel: "PADRAO", nome: "Padrão", acesso: "Início, Quanto recebemos?, Posso confiar?, E se...?, parte de Mais, Como funciona e a própria conta." },
-  { papel: "ADMIN", nome: "Administrador", acesso: "Também as telas técnicas de Mais. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
-  { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Também altera Valores recebidos e Correção manual, muda perfis e vê a Auditoria." },
+  { papel: "PADRAO", nome: "Padrão", acesso: "As telas definidas para o perfil, normalmente Início, Quanto recebemos?, Posso confiar?, E se...?, parte de Mais e Como funciona, além da própria conta." },
+  { papel: "ADMIN", nome: "Administrador", acesso: "As telas definidas para o perfil, normalmente também as telas técnicas de Mais. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
+  { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Vê todas as telas, altera Valores recebidos e Correção manual, muda perfis, vê a Auditoria e escolhe as telas de cada perfil." },
 ];
 
 function Ficha({ href, rotulo, ficha, exemplo }: { href: string; rotulo: string; ficha: FichaDaTela; exemplo?: string }) {
@@ -103,7 +104,7 @@ function Grupo({ titulo, pergunta, children }: { titulo: string; pergunta?: stri
 /** O guia explica só o que o perfil de quem está lendo vê no menu: as telas dos outros perfis não entram (pedido em 2026-11-04). */
 export default async function GuiaDasTelasPage() {
   const usuario = await requireAcessoPlenoOrRedirect("/como-funciona/telas");
-  const grupos = gruposVisiveis(usuario.papel);
+  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas());
   const visiveis = new Set(grupos.flatMap((g) => g.itens.map((i) => i.href)));
   const perguntas = PERGUNTAS_DO_GUIA.filter((p) => visiveis.has(p.href));
   const perfis = PERFIS.slice(0, PERFIS.findIndex((p) => p.papel === usuario.papel) + 1);

@@ -4,8 +4,21 @@ import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
 import { gruposVisiveis } from "@/lib/menu";
 import { getAdminSession } from "@/server/auth/session";
+import { carregarAjustesDeTelas } from "@/server/queries/ajustesDeTelas";
 
 export const dynamic = "force-dynamic";
+
+/** Os atalhos da seção Telas. Só aparecem os das telas que o perfil vê no menu. */
+const ATALHOS = [
+  { href: "/como-funciona", titulo: "Como funciona", resumo: "O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado." },
+  { href: "/como-funciona/telas", titulo: "Guia das telas", resumo: "O que cada tela do sistema responde, como usar e que cuidado ter ao ler os números." },
+  { href: "/dados-importados", titulo: "Dados importados", resumo: "Quais arquivos alimentam o sistema, de que etapa vieram e de quando são." },
+  { href: "/consulta", titulo: "Consulta", resumo: "Quanto cada instituição e câmpus recebe, e de quais cursos esse valor vem." },
+  { href: "/evasao", titulo: "Perda por evasão", resumo: "Quanto se deixa de receber por aluno evadido, por instituição, câmpus e curso." },
+  { href: "/conferencia", titulo: "Conferência", resumo: "Refaz o cálculo de IEA, RAP e IAPL a partir dos mesmos componentes da MDO, para comparar com o oficial." },
+  { href: "/simulador", titulo: "Simulador", resumo: "E se a evasão caísse e a RAP e o IAPL mudassem de faixa, ao mesmo tempo? Veja o efeito combinado." },
+  { href: "/comparativo", titulo: "Comparativo entre anos", resumo: "O que mudou de um ano para o outro, por instituição." },
+];
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const numero = new Intl.NumberFormat("pt-BR");
@@ -83,6 +96,10 @@ export default async function Home() {
   });
 
   const semNenhumDado = resumoAnos.length === 0;
+  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas());
+  const exemploEmMais = grupos.find((g) => g.id === "mais")?.itens[0];
+  const enderecosVisiveis = new Set(grupos.flatMap((g) => g.itens.flatMap((i) => [i.href, ...(i.abas ?? [])])));
+  const atalhos = ATALHOS.filter((a) => enderecosVisiveis.has(a.href));
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-16 lg:px-12`}>
@@ -98,7 +115,7 @@ export default async function Home() {
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {gruposVisiveis(usuario.papel).filter((g) => !g.foraDoInicio).map((g) => (
+          {grupos.filter((g) => !g.foraDoInicio).map((g) => (
             <section
               key={g.id}
               className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
@@ -120,7 +137,11 @@ export default async function Home() {
             </section>
           ))}
         </div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">As demais telas, como Comparar cursos entre câmpus, estão no menu <strong>Mais</strong>.</p>
+        {exemploEmMais && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            As demais telas, como {exemploEmMais.rotulo}, estão no menu <strong>Mais</strong>.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -221,46 +242,9 @@ export default async function Home() {
             depois Qualidade e Eficiência), até o Comparativo, que olha tudo isso ao
             longo de vários ciclos. */}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Atalho
-            href="/como-funciona"
-            titulo="Como funciona"
-            resumo="O que é cada bloco da matriz (Funcionamento, Qualidade e Eficiência, Assistência) e como é calculado."
-          />
-          <Atalho
-            href="/como-funciona/telas"
-            titulo="Guia das telas"
-            resumo="O que cada tela do sistema responde, como usar e que cuidado ter ao ler os números."
-          />
-          <Atalho
-            href="/dados-importados"
-            titulo="Dados importados"
-            resumo="Quais arquivos alimentam o sistema, de que etapa vieram e de quando são."
-          />
-          <Atalho
-            href="/consulta"
-            titulo="Consulta"
-            resumo="Quanto cada instituição e câmpus recebe, e de quais cursos esse valor vem."
-          />
-          <Atalho
-            href="/evasao"
-            titulo="Perda por evasão"
-            resumo="Quanto se deixa de receber por aluno evadido, por instituição, câmpus e curso."
-          />
-          <Atalho
-            href="/conferencia"
-            titulo="Conferência"
-            resumo="Refaz o cálculo de IEA, RAP e IAPL a partir dos mesmos componentes da MDO, para comparar com o oficial."
-          />
-          <Atalho
-            href="/simulador"
-            titulo="Simulador"
-            resumo="E se a evasão caísse e a RAP e o IAPL mudassem de faixa, ao mesmo tempo? Veja o efeito combinado."
-          />
-          <Atalho
-            href="/comparativo"
-            titulo="Comparativo entre anos"
-            resumo="O que mudou de um ano para o outro, por instituição."
-          />
+          {atalhos.map((a) => (
+            <Atalho key={a.href} {...a} />
+          ))}
         </div>
       </div>
     </main>
