@@ -86,8 +86,8 @@ export const CONFIANCA = {
     nivel: "CONFERIDO",
     titulo: "Piso Mínimo de 2027: 53 câmpus, como na 5ª fase online do MDO",
     porque:
-      "A planilha oficial marca 79 câmpus no piso, mas a 5ª fase online do MDO (consultada em 05/10/2026) paga R$ 700 mil a 53, igual aos 53 do parâmetro e à reserva de R$ 37,1 mi. O sistema usa a lista do MDO. Dos 65 câmpus da aba EXPANSÃO, 24 não estão nela (entre eles Triunfo e Rosário do Sul, do IFSul, que nem aparecem na 5ª fase do MDO). No IFSul só São Leopoldo tem piso em 2027, e o total do IFSul fica em R$ 40.368.716,10, igual ao do MDO. Restam 2 unidades repetidas do IFRJ, com o nome digitado errado na planilha, que o sistema ainda conta (55 marcadas, 53 pagas).",
-    paraResolver: "Se o IFTM publicar a portaria dos câmpus novos, conferir se Triunfo e Rosário do Sul entram em 2027.",
+      "A planilha oficial marca 79 câmpus no piso, mas a 5ª fase online do MDO (consultada em 05/10/2026) paga R$ 700 mil a 53, igual aos 53 do parâmetro e à reserva de R$ 37,1 mi. O sistema usa a lista do MDO. Dos 65 câmpus da aba EXPANSÃO, 24 não estão nela (entre eles Triunfo e Rosário do Sul, do IFSul, que não aparecem na 5ª fase do MDO, embora o Painel de Unidades da PNP, consultado em 07/11/2026, já os mostre como câmpus autorizados do Novo PAC). Pelo painel, São Leopoldo foi autorizado pela Portaria MEC 267, de 24/03/2026, e Triunfo e Rosário do Sul pela Portaria MEC 591, de 06/07/2026. O art. 8º da Portaria MEC 243/2026 diz que câmpus autorizado depois da publicação da PNP só entra na matriz no exercício seguinte, o que explicaria os dois ficarem para 2028. No IFSul só São Leopoldo tem piso em 2027, e o total do IFSul fica em R$ 40.368.716,10, igual ao do MDO. Restam 2 unidades repetidas do IFRJ, com o nome digitado errado na planilha, que o sistema ainda conta (55 marcadas, 53 pagas).",
+    paraResolver: "Confirmar com o IFTM se Triunfo e Rosário do Sul entram no piso só em 2028, por terem sido autorizados em 06/07/2026. Se uma nova fase da MDO os incluir antes, o sistema segue a lista nova.",
   },
   "piso-2026": {
     nivel: "CONFERIDO",
