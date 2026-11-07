@@ -117,8 +117,8 @@ export function normalizarFiltros(bruto: unknown): FiltrosCenario {
 
 /** Em que unidade a tabela do cenário mostra os números. */
 export const MEDIDAS = [
-  { valor: "reais", rotulo: "Reais", noTexto: "reais" },
-  { valor: "alunos", rotulo: "Alunos matriculados", noTexto: "alunos matriculados" },
+  { valor: "reais", rotulo: "Matriz projetada (R$)", noTexto: "reais (matriz projetada)" },
+  { valor: "alunos", rotulo: "Matrícula projetada (alunos)", noTexto: "alunos (matrícula projetada)" },
   { valor: "contados", rotulo: "Alunos que a MDO conta", noTexto: "alunos que a MDO conta" },
   { valor: "mateq", rotulo: "Matrícula equivalente", noTexto: "matrícula equivalente" },
 ] as const;

@@ -520,7 +520,7 @@ export function somarProjecao(ciclos: CicloProjetavel[], anoBase0: number, anos:
 
 /**
  * O que os cursos de cada câmpus rendem, ano a ano, sem nenhuma decisão nova: as turmas em andamento até terminarem, mais a
- * reposição das turmas (cursos que continuam recebendo entradas). É a mesma conta do "Cenários, anos à frente" sem cursos
+ * reposição das turmas (cursos que continuam recebendo entradas). É a mesma conta do "Cenários: matrícula e matriz projetadas" sem cursos
  * novos nem encerramentos, com o valor da matrícula de hoje.
  */
 export function valorPorCampusNosAnos(ciclos: CicloProjetavel[], anoBase0: number, anos: number, p: Premissas): Map<number, number[]> {

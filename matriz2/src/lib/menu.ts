@@ -2,8 +2,8 @@ import type { Papel } from "@prisma/client";
 
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
- * divergir. Reorganizado em 2026-11-04 por três perguntas e seis telas (revisão do sistema: "tenho dificuldade de me achar"). O resto foi para
- * "Mais", e nenhuma tela saiu. "Como funciona" fica à parte porque é a ajuda.
+ * divergir. Reorganizado em 2026-11-04 por perguntas (revisão do sistema: "tenho dificuldade de me achar"). O resto foi para
+ * "Mais", e nenhuma tela saiu. Em 2026-11-06, "E se...?" virou "Simulações" e passou a juntar tudo o que se pode alterar para ver como ficaria. "Como funciona" fica à parte porque é a ajuda.
  */
 
 export interface ItemMenu {
@@ -65,9 +65,9 @@ const GRUPOS: GrupoMenu[] = [
     ],
   },
   {
-    id: "e-se",
-    rotulo: "E se...?",
-    pergunta: "O que acontece no orçamento se abrirmos ou mudarmos um curso.",
+    id: "simulacoes",
+    rotulo: "Simulações",
+    pergunta: "Tudo o que se pode alterar para ver como ficaria: cursos novos, cursos que param, a matrícula e a matriz projetadas, a evasão, os indicadores e a distribuição entre câmpus.",
     itens: [
       {
         href: "/consulta/curso",
@@ -77,8 +77,19 @@ const GRUPOS: GrupoMenu[] = [
       },
       {
         href: "/simulador/projecao",
-        rotulo: "Cenários, anos à frente",
-        descricao: "Quanto as turmas rendem nos próximos anos, com cursos novos e cursos que deixam de ser ofertados.",
+        rotulo: "Cenários: matrícula e matriz projetadas",
+        descricao: "Quantos alunos teremos e quanto a matriz repassa nos próximos anos, com as turmas de hoje, os cursos novos e os que deixam de ser ofertados.",
+      },
+      {
+        href: "/simulador/alternativas",
+        rotulo: "Onde o câmpus pode ganhar",
+        descricao: "Três abas: comparar alternativas (curso novo, FIC, RAP, evasão, vagas), ideias de cursos e horas não pagas, e indicadores e evasão.",
+        abas: ["/simulador/oportunidades", "/simulador"],
+      },
+      {
+        href: "/simulador/distribuicao",
+        rotulo: "Distribuição entre câmpus",
+        descricao: "As propostas dos câmpus Sapucaia do Sul e Venâncio Aires, câmpus a câmpus, com a conta de cada ano e a comparação entre elas.",
       },
     ],
   },
@@ -92,17 +103,6 @@ const GRUPOS: GrupoMenu[] = [
         href: "/consulta/comparar",
         rotulo: "Comparar cursos entre câmpus",
         descricao: "O mesmo curso em câmpus diferentes, lado a lado.",
-      },
-      {
-        href: "/simulador/distribuicao",
-        rotulo: "Distribuição entre câmpus",
-        descricao: "As propostas dos câmpus Sapucaia do Sul e Venâncio Aires, câmpus a câmpus, com a conta de cada ano e a comparação entre elas.",
-      },
-      {
-        href: "/simulador/alternativas",
-        rotulo: "Onde o câmpus pode ganhar",
-        descricao: "Três abas: comparar alternativas (curso novo, FIC, RAP, evasão, vagas), ideias de cursos e horas não pagas, e indicadores e evasão.",
-        abas: ["/simulador/oportunidades", "/simulador"],
       },
       {
         href: "/consulta/valor-do-aluno",

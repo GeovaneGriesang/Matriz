@@ -7,7 +7,7 @@ import type { Papel } from "@prisma/client";
 import { ITEM_INICIO, gruposVisiveis, itemAtivo, type AjusteDeTela } from "@/lib/menu";
 
 /**
- * O menu em grupos por pergunta (Quanto recebemos?, Posso confiar?, E se...?), mais "Início", "Mais" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
+ * O menu em grupos por pergunta (Quanto recebemos?, Posso confiar?, Simulações), mais "Início", "Mais" e "Como funciona". Cada grupo abre uma lista em que cada tela traz uma frase dizendo o que se faz nela. O texto
  * vem de `lib/menu.ts`, o mesmo da página inicial, e o que cada perfil vê sai de `gruposVisiveis`.
  *
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do

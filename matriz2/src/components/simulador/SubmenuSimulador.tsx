@@ -33,7 +33,8 @@ export const ABAS_UM_CURSO: Aba[] = [
 const GRUPOS: { rotulo: string; abas: Aba[] }[] = [
   { rotulo: "Onde o câmpus pode ganhar", abas: ABAS_ONDE_GANHAR },
   { rotulo: "Quanto vale um curso", abas: ABAS_UM_CURSO },
-  { rotulo: "Cenários, anos à frente", abas: [{ href: "/simulador/projecao", rotulo: "Cenários, anos à frente", descricao: "" }] },
+  { rotulo: "Cenários: matrícula e matriz projetadas", abas: [{ href: "/simulador/projecao", rotulo: "Cenários: matrícula e matriz projetadas", descricao: "" }] },
+  { rotulo: "Distribuição entre câmpus", abas: [{ href: "/simulador/distribuicao", rotulo: "Distribuição entre câmpus", descricao: "" }] },
 ];
 
 const classe = (ativa: boolean) =>
@@ -41,7 +42,7 @@ const classe = (ativa: boolean) =>
     ativa ? "bg-if-green text-white" : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
   }`;
 
-/** Abas das simulações, repetidas no topo de cada uma para não ser preciso voltar ao menu. */
+/** As telas do grupo Simulações do menu, repetidas no topo de cada uma para não ser preciso voltar ao menu. */
 export function SubmenuSimulador() {
   const pathname = usePathname();
   const busca = useSearchParams();

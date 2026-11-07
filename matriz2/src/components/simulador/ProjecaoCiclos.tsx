@@ -623,7 +623,7 @@ export function ProjecaoCiclos({
         </div>
         {medida === "alunos" && (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            <strong>Alunos matriculados:</strong> cada matrícula vale 1, como a PNP conta (matrícula ativa em pelo menos um dia do ano). O primeiro ano é o número publicado; os seguintes são estimativa, com a evasão e a retenção da projeção. Quem faz dois cursos conta duas vezes.
+            <strong>Matrícula projetada:</strong> o número de alunos matriculados em cada ano. Cada matrícula vale 1, como a PNP conta (matrícula ativa em pelo menos um dia do ano). O primeiro ano é o número publicado; os seguintes são estimativa, com a evasão e a retenção da projeção. Quem faz dois cursos conta duas vezes.
           </p>
         )}
         {medida === "contados" && (
