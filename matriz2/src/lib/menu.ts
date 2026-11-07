@@ -3,7 +3,7 @@ import type { Papel } from "@prisma/client";
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
  * divergir. Reorganizado em 2026-11-04 por perguntas (revisão do sistema: "tenho dificuldade de me achar"). O resto foi para
- * "Mais", e nenhuma tela saiu. Em 2026-11-06, "E se...?" virou "Simulações" e passou a juntar tudo o que se pode alterar para ver como ficaria. Em 2026-11-07, "Posso confiar?" entrou em "Como funciona". "Como funciona" fica à parte porque é a ajuda.
+ * "Mais", e nenhuma tela saiu. Em 2026-11-06, "E se...?" virou "Simulações" e passou a juntar tudo o que se pode alterar para ver como ficaria. Em 2026-11-07, "Posso confiar?" entrou em "Como funciona". Ainda em 2026-11-07, o menu passou a três tipos de tela: Consultas (os números como estão), Simulações (o que se pode alterar) e Informações (como funciona, conferências e dados de origem); "Quanto recebemos?", "Mais" e "Como funciona" deixaram de existir como grupos.
  */
 
 export interface ItemMenu {
@@ -31,9 +31,9 @@ export interface GrupoMenu {
 
 const GRUPOS: GrupoMenu[] = [
   {
-    id: "recebemos",
-    rotulo: "Quanto recebemos?",
-    pergunta: "Quanto o instituto, cada câmpus e cada curso recebem, e o que mudou de um ano para o outro.",
+    id: "consultas",
+    rotulo: "Consultas",
+    pergunta: "Os números como estão: quanto cada instituição, câmpus e curso recebe, o que mudou de um ano para o outro e os dados de origem.",
     itens: [
       {
         href: "/consulta",
@@ -44,6 +44,40 @@ const GRUPOS: GrupoMenu[] = [
         href: "/comparativo",
         rotulo: "Comparativo entre anos",
         descricao: "O que mudou de 2026 para 2027, bloco a bloco, com a explicação do que ocorreu.",
+      },
+      {
+        href: "/consulta/comparar",
+        rotulo: "Comparar cursos entre câmpus",
+        descricao: "O mesmo curso em câmpus diferentes, lado a lado.",
+      },
+      {
+        href: "/consulta/valor-do-aluno",
+        rotulo: "Quanto vale um aluno",
+        descricao: "Para cada curso de um câmpus: o valor de um aluno e a conta turma a turma.",
+      },
+      {
+        href: "/evasao",
+        rotulo: "Perda por evasão",
+        descricao: "Quanto cada instituição, câmpus e curso deixa de receber por causa da evasão.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/pnp",
+        rotulo: "PNP: ensino e pessoal",
+        descricao: "Matrículas, eficiência, evasão, docentes e técnicos da Plataforma Nilo Peçanha.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/pnp/orcamento",
+        rotulo: "PNP: orçamento",
+        descricao: "Dotação, execução e descentralização como a PNP registra.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/orcamento-da-uniao",
+        rotulo: "Orçamento da União (LOA)",
+        descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas e a execução por câmpus.",
+        somenteAdmin: true,
       },
     ],
   },
@@ -77,69 +111,9 @@ const GRUPOS: GrupoMenu[] = [
     ],
   },
   {
-    id: "mais",
-    rotulo: "Mais",
-    pergunta: "As demais telas, para aprofundar ou auditar.",
-    foraDoInicio: true,
-    itens: [
-      {
-        href: "/consulta/comparar",
-        rotulo: "Comparar cursos entre câmpus",
-        descricao: "O mesmo curso em câmpus diferentes, lado a lado.",
-      },
-      {
-        href: "/consulta/valor-do-aluno",
-        rotulo: "Quanto vale um aluno",
-        descricao: "Para cada curso de um câmpus: o valor de um aluno e a conta turma a turma.",
-      },
-      {
-        href: "/conferencia",
-        rotulo: "Conferência de cálculo",
-        descricao: "IEA, RAP, IAPL e o Funcionamento dos câmpus de cada instituição, refeitos e comparados com o que a MDO publicou.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/evasao",
-        rotulo: "Perda por evasão",
-        descricao: "Quanto cada instituição, câmpus e curso deixa de receber por causa da evasão.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/dados-importados",
-        rotulo: "Dados importados",
-        descricao: "Cada arquivo carregado, de que fonte, de que data e quantas linhas.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/pnp",
-        rotulo: "PNP: ensino e pessoal",
-        descricao: "Matrículas, eficiência, evasão, docentes e técnicos da Plataforma Nilo Peçanha.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/pnp/orcamento",
-        rotulo: "PNP: orçamento",
-        descricao: "Dotação, execução e descentralização como a PNP registra.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/orcamento-da-uniao",
-        rotulo: "Orçamento da União (LOA)",
-        descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas e a execução por câmpus.",
-        somenteAdmin: true,
-      },
-      {
-        href: "/peso-efetivo",
-        rotulo: "Peso por curso",
-        descricao: "O peso que a MDO aplicou a cada curso, com a fonte de cada linha.",
-        somenteAdmin: true,
-      },
-    ],
-  },
-  {
-    id: "como-funciona",
-    rotulo: "Como funciona",
-    pergunta: "Como a matriz é calculada, para que serve cada tela e se os números conferem com a planilha oficial.",
+    id: "informacoes",
+    rotulo: "Informações",
+    pergunta: "Como a matriz é calculada, para que serve cada tela, se os números conferem com a fonte oficial e de onde vêm os dados.",
     itens: [
       {
         href: "/conferencia/quarta-fase",
@@ -160,6 +134,24 @@ const GRUPOS: GrupoMenu[] = [
         href: "/como-funciona/telas",
         rotulo: "Guia das telas",
         descricao: "O que cada tela do sistema responde, como usar e que cuidado ter ao ler os números.",
+      },
+      {
+        href: "/conferencia",
+        rotulo: "Conferência de cálculo",
+        descricao: "IEA, RAP, IAPL e o Funcionamento dos câmpus de cada instituição, refeitos e comparados com o que a MDO publicou.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/dados-importados",
+        rotulo: "Dados importados",
+        descricao: "Cada arquivo carregado, de que fonte, de que data e quantas linhas.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/peso-efetivo",
+        rotulo: "Peso por curso",
+        descricao: "O peso que a MDO aplicou a cada curso, com a fonte de cada linha.",
+        somenteAdmin: true,
       },
     ],
   },

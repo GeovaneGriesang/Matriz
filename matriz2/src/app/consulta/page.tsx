@@ -377,7 +377,7 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           <Link href={`/consulta/valor-do-aluno?ano=${ano}`} className={PROSE_LINK}>
             Quanto vale um aluno
           </Link>
-          . Os dois estão no menu Mais.
+          . Os dois estão no menu Consultas.
         </p>
       </ComoLerEstaTela>
 

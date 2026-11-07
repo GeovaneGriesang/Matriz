@@ -31,9 +31,9 @@ describe("telas por perfil", () => {
   });
 
   it("grupo sem nenhuma tela some do menu", () => {
-    const recebemos = GRUPOS_MENU.find((g) => g.id === "recebemos")!;
-    const ajustes = recebemos.itens.map((i) => ({ papel: "PADRAO" as const, href: i.href, visivel: false }));
-    expect(gruposVisiveis("PADRAO", ajustes).some((g) => g.id === "recebemos")).toBe(false);
+    const consultas = GRUPOS_MENU.find((g) => g.id === "consultas")!;
+    const ajustes = consultas.itens.map((i) => ({ papel: "PADRAO" as const, href: i.href, visivel: false }));
+    expect(gruposVisiveis("PADRAO", ajustes).some((g) => g.id === "consultas")).toBe(false);
   });
 
   it("a pré-configuração marcada não grava nada, e só a diferença é gravada", () => {
