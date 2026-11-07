@@ -28,7 +28,7 @@ const AVISOS = [
 
 /** Da menor para a maior permissão. Cada perfil lê só a própria linha e as de baixo: o que ele não acessa não entra no guia. */
 const PERFIS: { papel: Papel; nome: string; acesso: string }[] = [
-  { papel: "PADRAO", nome: "Padrão", acesso: "As telas definidas para o perfil, normalmente Início, Quanto recebemos?, Posso confiar?, Simulações, parte de Mais e Como funciona, além da própria conta." },
+  { papel: "PADRAO", nome: "Padrão", acesso: "As telas definidas para o perfil, normalmente Início, Quanto recebemos?, Simulações, parte de Mais e Como funciona, além da própria conta." },
   { papel: "ADMIN", nome: "Administrador", acesso: "As telas definidas para o perfil, normalmente também as telas técnicas de Mais. Vê Valores recebidos e Correção manual sem alterar, e cadastra usuários de perfil padrão." },
   { papel: "SUPER_ADMIN", nome: "Super-admin", acesso: "Vê todas as telas, altera Valores recebidos e Correção manual, muda perfis, vê a Auditoria e escolhe as telas de cada perfil." },
 ];

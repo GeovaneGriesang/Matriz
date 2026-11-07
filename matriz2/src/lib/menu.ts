@@ -3,7 +3,7 @@ import type { Papel } from "@prisma/client";
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
  * divergir. Reorganizado em 2026-11-04 por perguntas (revisão do sistema: "tenho dificuldade de me achar"). O resto foi para
- * "Mais", e nenhuma tela saiu. Em 2026-11-06, "E se...?" virou "Simulações" e passou a juntar tudo o que se pode alterar para ver como ficaria. "Como funciona" fica à parte porque é a ajuda.
+ * "Mais", e nenhuma tela saiu. Em 2026-11-06, "E se...?" virou "Simulações" e passou a juntar tudo o que se pode alterar para ver como ficaria. Em 2026-11-07, "Posso confiar?" entrou em "Como funciona". "Como funciona" fica à parte porque é a ajuda.
  */
 
 export interface ItemMenu {
@@ -44,23 +44,6 @@ const GRUPOS: GrupoMenu[] = [
         href: "/comparativo",
         rotulo: "Comparativo entre anos",
         descricao: "O que mudou de 2026 para 2027, bloco a bloco, com a explicação do que ocorreu.",
-      },
-    ],
-  },
-  {
-    id: "confiar",
-    rotulo: "Posso confiar?",
-    pergunta: "Se os números conferem com a planilha oficial e o que ainda é estimativa.",
-    itens: [
-      {
-        href: "/conferencia/quarta-fase",
-        rotulo: "Matrícula Total, como na planilha da 4ª fase",
-        descricao: "A planilha da 4ª fase da MDO refeita coluna a coluna, turma a turma, e comparada com o arquivo.",
-      },
-      {
-        href: "/situacao-dos-dados",
-        rotulo: "Situação dos dados",
-        descricao: "O que está conferido, o que precisa de revisão e o que é estimativa.",
       },
     ],
   },
@@ -156,8 +139,18 @@ const GRUPOS: GrupoMenu[] = [
   {
     id: "como-funciona",
     rotulo: "Como funciona",
-    pergunta: "Como a matriz é calculada e para que serve cada tela.",
+    pergunta: "Como a matriz é calculada, para que serve cada tela e se os números conferem com a planilha oficial.",
     itens: [
+      {
+        href: "/conferencia/quarta-fase",
+        rotulo: "Matrícula Total, como na planilha da 4ª fase",
+        descricao: "A planilha da 4ª fase da MDO refeita coluna a coluna, turma a turma, e comparada com o arquivo.",
+      },
+      {
+        href: "/situacao-dos-dados",
+        rotulo: "Situação dos dados",
+        descricao: "O que está conferido, o que precisa de revisão e o que é estimativa.",
+      },
       {
         href: "/como-funciona",
         rotulo: "Como a matriz é calculada",
