@@ -111,5 +111,5 @@ Telas e o que respondem:
 - Telas técnicas, normalmente só para administradores: em Consultas, PNP, Orçamento da União e Perda por evasão; em Informações, Peso por curso, Dados importados e Conferência de cálculo. Informações > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 
-Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.
+Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027 (no Painel de Unidades da PNP eles já são câmpus autorizados do Novo PAC, pela Portaria MEC 591 de 06/07/2026, mas a lista do piso da MDO não os traz; pelo art. 8º da Portaria 243/2026, provavelmente entram só em 2028), o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.
 `;
