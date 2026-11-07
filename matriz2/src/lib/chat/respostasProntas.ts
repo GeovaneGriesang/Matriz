@@ -190,7 +190,7 @@ const PRONTAS: Pronta[] = [
     id: "imprimir-exportar",
     casa: (t) => tem(t, /(imprim|pdf|csv|excel|planilha|exportar|baixar)/) && tem(t, /(como|onde|posso|consigo|tem|dá|da )/) && !tem(t, ESPECIFICA),
     resposta: () =>
-      "Toda tela tem, no alto, a barra Esta página: Imprimir / PDF imprime a tela inteira e CSV das tabelas baixa todas as tabelas em um arquivo. Cada quadro tem um botão Imprimir / PDF na borda de cima, e cada tabela tem os botões CSV e Imprimir / PDF logo acima. Para o PDF, escolha Salvar como PDF na janela de impressão. O CSV abre direto no Excel, com os valores em reais como número puro.",
+      "Toda tela tem, no alto, a barra Esta página: Imprimir / PDF imprime a tela inteira e CSV das tabelas baixa todas as tabelas em um arquivo. Cada tabela tem os botões CSV e Imprimir / PDF logo acima, e o quadro com duas tabelas ou mais tem um Imprimir / PDF na borda de cima. Para o PDF, escolha Salvar como PDF na janela de impressão. O CSV abre direto no Excel, com os valores em reais como número puro.",
   },
   {
     id: "quem-calcula",

@@ -36,7 +36,7 @@ Orçamento da União: a LOA é o orçamento aprovado pelo Congresso e o PLOA a p
 
 Salvar simulações: nas telas de simulação e de consulta há, no alto, a lista de simulações (ou consultas) salvas com Carregar, Salvar, Salvar como, Renomear, Compartilhar e Excluir. O que se salva é só do usuário; ele pode compartilhar com outras pessoas (com Marcar todos, Desmarcar todos e Inverter seleção), que só carregam e podem salvar uma cópia. Duas pessoas não salvam a mesma ao mesmo tempo: o sistema recusa o salvamento de quem carregou uma versão antiga. O super-administrador vê as de todos, com o dono.
 
-Imprimir e exportar: toda tela tem, no alto, os botões Imprimir / PDF e CSV das tabelas; cada quadro tem Imprimir / PDF e cada tabela tem CSV e Imprimir / PDF. O PDF sai da janela de impressão do navegador (Salvar como PDF); o CSV abre no Excel, com valores em reais como número puro.
+Imprimir e exportar: toda tela tem, no alto, os botões Imprimir / PDF e CSV das tabelas; cada tabela tem CSV e Imprimir / PDF, e o quadro com duas tabelas ou mais tem Imprimir / PDF. O PDF sai da janela de impressão do navegador (Salvar como PDF); o CSV abre no Excel, com valores em reais como número puro.
 
 Marcas de confiança nas telas: Conferido (bate com o oficial), Atenção (há inconsistência na fonte) e Estimado (hipótese nossa, com premissas explicadas).
 `.trim();
@@ -96,19 +96,19 @@ Perfis de usuário:
 - Padrão: vê os dados e faz as simulações; não vê Correção manual nem Valores recebidos; usa o chat com o modelo do próprio servidor.
 - Todos alteram os dados da própria conta (senha) em Minha conta.
 
-O menu tem Quanto recebemos?, Simulações (tudo o que se pode alterar para ver como ficaria), o grupo Mais, com as demais telas, e Como funciona, que também tem a conferência da 4ª fase e a Situação dos dados. Parte de Mais costuma ser só para administradores, e cada perfil vê no menu as telas definidas para ele.
+O menu tem três tipos de tela: Consultas (os números como estão), Simulações (tudo o que se pode alterar para ver como ficaria) e Informações (como a matriz é calculada, o guia das telas, a conferência da 4ª fase, a Situação dos dados e os dados de origem). Parte de Mais costuma ser só para administradores, e cada perfil vê no menu as telas definidas para ele.
 
 Telas e o que respondem:
-- Quanto recebemos? > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
-- Mais > Quanto vale um aluno: para cada curso de um câmpus, quanto um aluno rende, com a conta turma a turma (carga horária ÷ 800, dias no ano-base ÷ dias da turma, ICQA, Matrícula Total, valor da turma, valor por aluno). Dá para escolher o ciclo 2027 (PNP 2025) ou 2026 (PNP 2024).
-- Mais > Comparar cursos entre câmpus: cursos lado a lado; o "?" de cada item explica o que é e mostra a conta com os números do curso principal.
-- Quanto recebemos? > Comparativo entre anos: 2026 contra 2027, por bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência Estudantil). Por câmpus só existem Funcionamento e Assistência; a Reitoria e a Qualidade e Eficiência ficam com a instituição.
+- Consultas > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
+- Consultas > Quanto vale um aluno: para cada curso de um câmpus, quanto um aluno rende, com a conta turma a turma (carga horária ÷ 800, dias no ano-base ÷ dias da turma, ICQA, Matrícula Total, valor da turma, valor por aluno). Dá para escolher o ciclo 2027 (PNP 2025) ou 2026 (PNP 2024).
+- Consultas > Comparar cursos entre câmpus: cursos lado a lado; o "?" de cada item explica o que é e mostra a conta com os números do curso principal.
+- Consultas > Comparativo entre anos: 2026 contra 2027, por bloco (Total, Funcionamento, Qualidade e Eficiência, Assistência Estudantil). Por câmpus só existem Funcionamento e Assistência; a Reitoria e a Qualidade e Eficiência ficam com a instituição.
 - Simulações > Quanto vale um curso: uma tela com três abas, Quanto vale um curso (peso, carga horária mínima e quanto a MDO paga por um aluno que faz o curso inteiro), Curso novo ano a ano, e Integrado: 3 ou 4 anos.
 - Aba Integrado: 3 ou 4 anos: vale só para o integrado. Com a mesma carga horária total, 3 e 4 anos rendem o mesmo repasse por ingressante e, com todas as turmas em andamento, ocupam as mesmas salas e professores; o curso de 3 anos tem mais horas por dia (pode exigir contraturno) e chega antes ao total. A tela calcula a rotina com os minutos por período, os períodos por turno, os dias letivos, o intervalo (Venâncio Aires conta 15 minutos de intervalo como carga horária: 5 períodos de 45 minutos mais 15 dá 4 horas por turno) e a parte EAD.
 - Simulações > Onde o câmpus pode ganhar: uma tela com três abas, Comparar alternativas (curso novo, turma FIC, RAP, evasão, vagas, lado a lado), Ideias de cursos e horas não pagas, e Indicadores e evasão.
 - Simulações > Cenários: matrícula e matriz projetadas: quantos alunos e quanto os ciclos rendem nos próximos anos (matrícula projetada, em alunos; matriz projetada, em reais), com cursos novos e cursos que deixam de ser ofertados. Tem filtros (modalidade, tipo de curso, oferta, financiamento, situação da turma) e mostra a tabela em reais, alunos matriculados, alunos que a MDO conta ou matrícula equivalente (Portaria Setec 146/2021: matrícula x fech x fec). Nas simulações, o padrão é 32 estudantes por ano.
 - Simulações > Distribuição entre câmpus: simula as propostas dos câmpus Sapucaia do Sul e Venâncio Aires e compara as duas; nenhuma é a regra do IFSul, e os valores não são o que os câmpus vão receber.
-- Mais (normalmente só para administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão e Conferência de cálculo. Como funciona > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
+- Telas técnicas, normalmente só para administradores: em Consultas, PNP, Orçamento da União e Perda por evasão; em Informações, Peso por curso, Dados importados e Conferência de cálculo. Informações > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 
 Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.

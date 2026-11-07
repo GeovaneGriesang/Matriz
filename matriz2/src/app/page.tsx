@@ -97,7 +97,6 @@ export default async function Home() {
 
   const semNenhumDado = resumoAnos.length === 0;
   const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas());
-  const exemploEmMais = grupos.find((g) => g.id === "mais")?.itens[0];
   const enderecosVisiveis = new Set(grupos.flatMap((g) => g.itens.flatMap((i) => [i.href, ...(i.abas ?? [])])));
   const atalhos = ATALHOS.filter((a) => enderecosVisiveis.has(a.href));
 
@@ -137,11 +136,6 @@ export default async function Home() {
             </section>
           ))}
         </div>
-        {exemploEmMais && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            As demais telas, como {exemploEmMais.rotulo}, estão no menu <strong>Mais</strong>.
-          </p>
-        )}
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">

@@ -378,12 +378,12 @@ export default async function ComoFuncionaPage() {
         id="imprimir-e-exportar"
         titulo="Imprimir, salvar em PDF e baixar CSV"
         fatia="Em todas as telas, para levar os números para uma reunião ou para o Excel"
-        resumo="Botões na página, em cada quadro e em cada tabela."
+        resumo="Botões na página e em cada tabela."
       >
         <p>
           No alto de cada tela há a barra <strong>Esta página</strong>: <strong>Imprimir / PDF</strong> imprime a tela inteira, e <strong>CSV das tabelas</strong> baixa todas as
-          tabelas da página em um só arquivo, cada uma com o seu título. Cada <strong>quadro</strong> (as caixas das telas) tem um botão Imprimir / PDF na borda de cima, e cada{" "}
-          <strong>tabela</strong> tem os botões CSV e Imprimir / PDF logo acima dela. Assim dá para levar só o que interessa.
+          tabelas da página em um só arquivo, cada uma com o seu título. Cada{" "}
+          <strong>tabela</strong> tem os botões CSV e Imprimir / PDF logo acima dela, e o quadro que junta duas tabelas ou mais tem um Imprimir / PDF na borda de cima, para levar o conjunto. Assim dá para levar só o que interessa.
         </p>
         <p>
           O sistema não gera o PDF sozinho: ele abre a janela de impressão do navegador, e na lista de impressoras você escolhe <strong>Salvar como PDF</strong>. A impressão sai

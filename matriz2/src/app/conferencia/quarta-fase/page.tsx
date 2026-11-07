@@ -72,7 +72,9 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
   const dados = await conferenciaQuartaFase(escolhido);
   const { totais, temResultados } = dados;
 
-  const unidadesDoArquivo = dados.unidades.map((u) => u.unidade);
+  // Venâncio Aires (o câmpus em destaque) primeiro, como nas outras telas; as demais seguem a ordem da planilha.
+  const unidadesEmOrdem = [...dados.unidades].sort((a, b) => Number(ehCampusDestaque(b.unidade)) - Number(ehCampusDestaque(a.unidade)));
+  const unidadesDoArquivo = unidadesEmOrdem.map((u) => u.unidade);
   const unidade = unidadesDoArquivo.find((u) => u === params.unidade) ?? null;
   const busca = (params.q ?? "").trim().toUpperCase();
   const soDiferentes = params.so === "diferentes";
@@ -332,7 +334,7 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {dados.unidades.map((u, i) => {
+              {unidadesEmOrdem.map((u, i) => {
                 const aberta = u.unidade === unidade;
                 const alunos = (s: string) => (u.planilha ? u.planilha.alunos[s] ?? 0 : u.alunos[s] ?? 0);
                 const mt = (s: string) => (u.planilha ? u.planilha.mt[s] ?? 0 : u.mt[s] ?? 0);

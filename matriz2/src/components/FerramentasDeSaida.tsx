@@ -11,7 +11,9 @@ import { PainelSalvos } from "@/components/configuracoes/PainelSalvos";
  * Três níveis, todos pelo mesmo componente (montado uma vez no layout):
  *  1. a página inteira: uma barra no topo (Imprimir / PDF e CSV de todas as tabelas);
  *  2. cada tabela: botões CSV e Imprimir / PDF logo acima dela;
- *  3. cada quadro (as caixas das telas): um botão Imprimir / PDF na borda superior.
+ *  3. o quadro (as caixas das telas) com duas tabelas ou mais: um botão Imprimir / PDF na borda superior, para levar o conjunto.
+ *     Quadro de seletores, filtros, cartões ou com uma tabela só não tem o botão: imprimiria só os controles, ou repetiria o da tabela
+ *     (decisão de 2026-11-07, quando um PDF saiu só com os seletores de instituição e câmpus).
  *
  * Os botões de tabela e de quadro são colocados no DOM depois que a página aparece: um observador procura as tabelas (a classe
  * `tabela-rolavel` ou qualquer `<table>`) e os quadros (`<section>` dentro de `<main>`) e refaz a busca quando a tela muda, então
@@ -212,7 +214,10 @@ function varrer(): number {
   }
 
   const quadros = Array.from(principal.querySelectorAll<HTMLElement>("section")).filter(
-    (q) => !q.parentElement?.closest("section") && !q.closest("[data-sem-ferramentas]") && q.offsetHeight > 80,
+    (q) =>
+      !q.parentElement?.closest("section") &&
+      !q.closest("[data-sem-ferramentas]") &&
+      Array.from(q.querySelectorAll("table")).filter((t) => !t.closest(".nao-imprimir")).length >= 2,
   );
   for (const q of quadros) {
     if (q.hasAttribute("data-com-barra")) continue;
