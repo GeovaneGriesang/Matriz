@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { AvisoPedidoDaDdi } from "@/components/PedidoDaDdi";
 import Link from "next/link";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { SinalMaisMenos } from "@/components/SinalMaisMenos";
@@ -46,6 +47,7 @@ export default async function QuartaFasePage({ searchParams }: { searchParams: P
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Conferência da 4ª fase: a Matrícula Total, coluna a coluna</h1>
+      <AvisoPedidoDaDdi>A planilha da 4ª fase, a mesma que sai do Forplan, refeita pelo sistema turma a turma, para conferir que o sistema usa os dados certos.</AvisoPedidoDaDdi>
       <p className="text-neutral-600 dark:text-neutral-400">A planilha da 4ª fase refeita pelo sistema e comparada com o que o Excel gravou, para conferir sem abrir o Excel.</p>
       <ComoLerEstaTela>
         <p>

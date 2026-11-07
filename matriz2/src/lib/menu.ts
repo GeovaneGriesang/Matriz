@@ -17,6 +17,8 @@ export interface ItemMenu {
   somenteAdmin?: boolean;
   /** Outros endereços que pertencem a este item (abas da mesma tela): o menu marca o item como ativo neles. */
   abas?: string[];
+  /** Tela que a DDI pediu: aparece com fundo amarelo e o selo "Pedido da DDI" no menu e na página inicial. */
+  pedidoDaDdi?: boolean;
 }
 
 export interface GrupoMenu {
@@ -96,6 +98,7 @@ const GRUPOS: GrupoMenu[] = [
         href: "/simulador/projecao",
         rotulo: "Cenários: matrícula e matriz projetadas",
         descricao: "Quantos alunos teremos e quanto a matriz repassa nos próximos anos, com as turmas de hoje, os cursos novos e os que deixam de ser ofertados.",
+        pedidoDaDdi: true,
       },
       {
         href: "/simulador/alternativas",
@@ -106,7 +109,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "As propostas dos câmpus Sapucaia do Sul e Venâncio Aires, câmpus a câmpus, com a conta de cada ano e a comparação entre elas.",
+        descricao: "As propostas de Sapucaia do Sul, de Venâncio Aires e a versão 01, câmpus a câmpus, com a conta de cada ano e a comparação entre elas.",
       },
     ],
   },
@@ -119,6 +122,7 @@ const GRUPOS: GrupoMenu[] = [
         href: "/conferencia/quarta-fase",
         rotulo: "Matrícula Total, como na planilha da 4ª fase",
         descricao: "A planilha da 4ª fase da MDO refeita coluna a coluna, turma a turma, e comparada com o arquivo.",
+        pedidoDaDdi: true,
       },
       {
         href: "/situacao-dos-dados",
