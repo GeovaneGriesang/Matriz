@@ -43,10 +43,11 @@ describe("menu", () => {
     const { gruposVisiveis } = await import("@/lib/menu");
     const ids = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).map((g) => g.id);
     const itens = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN") => gruposVisiveis(papel).flatMap((g) => g.itens.map((i) => i.href));
-    const principais = ["recebemos", "confiar", "simulacoes", "mais", "como-funciona"];
+    const principais = ["recebemos", "simulacoes", "mais", "como-funciona"];
     expect(ids("PADRAO")).toEqual(principais);
     expect(ids("ADMIN")).toEqual(principais);
-    for (const id of ["recebemos", "confiar"]) expect(GRUPOS_MENU.find((g) => g.id === id)!.itens).toHaveLength(2);
+    expect(GRUPOS_MENU.find((g) => g.id === "recebemos")!.itens).toHaveLength(2);
+    expect(GRUPOS_MENU.find((g) => g.id === "como-funciona")!.itens.map((i) => i.href).sort()).toEqual(["/como-funciona", "/como-funciona/telas", "/conferencia/quarta-fase", "/situacao-dos-dados"]);
     expect(GRUPOS_MENU.find((g) => g.id === "simulacoes")!.itens.map((i) => i.href).sort()).toEqual(["/consulta/curso", "/simulador/alternativas", "/simulador/distribuicao", "/simulador/projecao"]);
     expect(itens("PADRAO")).not.toContain("/evasao");
     expect(itens("ADMIN")).toContain("/evasao");

@@ -114,7 +114,7 @@ export default async function Home() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {grupos.filter((g) => !g.foraDoInicio).map((g) => (
             <section
               key={g.id}

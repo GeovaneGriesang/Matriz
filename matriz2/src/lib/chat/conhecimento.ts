@@ -96,7 +96,7 @@ Perfis de usuário:
 - Padrão: vê os dados e faz as simulações; não vê Correção manual nem Valores recebidos; usa o chat com o modelo do próprio servidor.
 - Todos alteram os dados da própria conta (senha) em Minha conta.
 
-O menu tem Quanto recebemos?, Posso confiar?, Simulações (tudo o que se pode alterar para ver como ficaria), o grupo Mais, com as demais telas, e Como funciona. Parte de Mais costuma ser só para administradores, e cada perfil vê no menu as telas definidas para ele.
+O menu tem Quanto recebemos?, Simulações (tudo o que se pode alterar para ver como ficaria), o grupo Mais, com as demais telas, e Como funciona, que também tem a conferência da 4ª fase e a Situação dos dados. Parte de Mais costuma ser só para administradores, e cada perfil vê no menu as telas definidas para ele.
 
 Telas e o que respondem:
 - Quanto recebemos? > Valor por instituição, câmpus e curso: o Funcionamento gerado pela matriz (5ª fase, já com o Piso Mínimo), a matrícula e a perda por evasão. Cada tabela tem "Como ler esta tabela" com a conta de cada coluna.
@@ -108,7 +108,7 @@ Telas e o que respondem:
 - Simulações > Onde o câmpus pode ganhar: uma tela com três abas, Comparar alternativas (curso novo, turma FIC, RAP, evasão, vagas, lado a lado), Ideias de cursos e horas não pagas, e Indicadores e evasão.
 - Simulações > Cenários: matrícula e matriz projetadas: quantos alunos e quanto os ciclos rendem nos próximos anos (matrícula projetada, em alunos; matriz projetada, em reais), com cursos novos e cursos que deixam de ser ofertados. Tem filtros (modalidade, tipo de curso, oferta, financiamento, situação da turma) e mostra a tabela em reais, alunos matriculados, alunos que a MDO conta ou matrícula equivalente (Portaria Setec 146/2021: matrícula x fech x fec). Nas simulações, o padrão é 32 estudantes por ano.
 - Simulações > Distribuição entre câmpus: simula as propostas dos câmpus Sapucaia do Sul e Venâncio Aires e compara as duas; nenhuma é a regra do IFSul, e os valores não são o que os câmpus vão receber.
-- Mais (normalmente só para administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão e Conferência de cálculo. Posso confiar? > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
+- Mais (normalmente só para administradores): PNP, Orçamento da União, Peso por curso, Perda por evasão e Conferência de cálculo. Como funciona > Situação dos dados, que mostra o grau de confiança de cada número (Conferido, Atenção, Estimado).
 - Toda tela tem Imprimir / PDF e CSV das tabelas.
 
 Pontos ainda em aberto com o IFTM (não afirme como definitivos): o valor do EAD MOOC (R$ 99,18 na 5ª fase contra R$ 991,77 na 6ª fase online), se Triunfo e Rosário do Sul entram no piso de 2027, o Câmpus Complexo do Alemão (IFRJ) repetido no resumo da 5ª fase, e a exportação da 6ª fase da rede inteira, que não gera o arquivo.
