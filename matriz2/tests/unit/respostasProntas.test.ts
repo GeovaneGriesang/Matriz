@@ -51,7 +51,7 @@ describe("respostasProntas: perguntas que devem casar", () => {
   });
 
   it("'o que esta tela mostra' usa a descrição da tela aberta", () => {
-    expect(r("O que esta tela mostra?", "/simulador/projecao")).toContain("Cenários, anos à frente");
+    expect(r("O que esta tela mostra?", "/simulador/projecao")).toContain("Cenários: matrícula e matriz projetadas");
   });
 });
 

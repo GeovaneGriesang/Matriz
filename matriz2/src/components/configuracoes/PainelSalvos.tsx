@@ -33,7 +33,10 @@ const SEM_FILTROS = [
 ];
 
 const BOTAO =
-  "rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800";
+  "rounded border border-neutral-300 bg-white px-2.5 py-1 text-sm font-medium text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800";
+/** Salvar é a ação principal do quadro: botão cheio, na cor do IFSul (pedido do usuário em 2026-11-07, o quadro tinha pouco destaque). */
+const BOTAO_PRINCIPAL =
+  "rounded border border-if-green bg-if-green px-2.5 py-1 text-sm font-medium text-white hover:bg-if-green/90 disabled:cursor-not-allowed disabled:opacity-50";
 const CAMPO = "rounded border border-neutral-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900";
 
 type Janela = null | "salvarComo" | "renomear" | "compartilhar" | "excluir" | "conflito";
@@ -161,11 +164,11 @@ export function PainelSalvos() {
   const minha = item?.origem === "propria";
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-400">
-      <label htmlFor="salvos" className="font-medium">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-if-green/40 bg-if-green/10 px-3 py-2 text-sm text-neutral-700 dark:border-if-green/50 dark:bg-if-green/15 dark:text-neutral-300">
+      <label htmlFor="salvos" className="font-semibold text-if-green dark:text-green-400">
         {registro ? "Simulações salvas:" : "Consultas salvas:"}
       </label>
-      <select id="salvos" value={escolhido} onChange={(e) => setEscolhido(e.target.value)} className={`${CAMPO} max-w-[16rem] text-xs`} aria-label={`Escolher ${registro ? "uma simulação salva" : "uma consulta salva"}`}>
+      <select id="salvos" value={escolhido} onChange={(e) => setEscolhido(e.target.value)} className={`${CAMPO} max-w-[18rem]`} aria-label={`Escolher ${registro ? "uma simulação salva" : "uma consulta salva"}`}>
         <option value="">{itens.length === 0 ? "(nenhuma salva ainda)" : "(escolha uma para carregar)"}</option>
         {(["propria", "compartilhada", "de-outro-usuario"] as const).map((origem) => {
           const grupo = itens.filter((i) => i.origem === origem);
@@ -187,7 +190,7 @@ export function PainelSalvos() {
       </button>
       <button
         type="button"
-        className={BOTAO}
+        className={BOTAO_PRINCIPAL}
         disabled={ocupado}
         onClick={() => void salvar()}
         title={carregada?.origem === "propria" ? `Salva ${rotulo} por cima de "${carregada.nome}"` : `Salva ${rotulo} com um nome`}
