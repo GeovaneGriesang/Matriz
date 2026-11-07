@@ -1,4 +1,5 @@
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
+import { AvisoPedidoDaDdi } from "@/components/PedidoDaDdi";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -43,6 +44,9 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Cenários: matrícula e matriz projetadas</h1>
+      <AvisoPedidoDaDdi>
+        A matrícula projetada de cada câmpus e do IFSul, anos à frente, e o efeito de um curso novo. Para olhar só os cursos de elevação de escolaridade, use o botão &quot;Só presenciais e regulares&quot;; para ver alunos em vez de reais, use &quot;Ver em&quot;, no título da tabela.
+      </AvisoPedidoDaDdi>
       <p className="text-neutral-600 dark:text-neutral-400">Quantos alunos o câmpus terá e quanto a matriz repassa nos próximos anos, com os cursos de hoje, os que param e os que abrem. Para testar uma mudança, abra os quadros abaixo da tabela.</p>
       <ComoLerEstaTela>
         <p>

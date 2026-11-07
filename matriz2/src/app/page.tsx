@@ -1,4 +1,5 @@
 import { temAcessoPleno } from "@/lib/permissoes";
+import { FUNDO_DDI, SeloDdi } from "@/components/PedidoDaDdi";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -113,6 +114,11 @@ export default async function Home() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
+        {grupos.some((g) => g.itens.some((i) => i.pedidoDaDdi)) && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Em amarelo, com o selo <SeloDdi />, as telas que a DDI pediu.
+          </p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {grupos.filter((g) => !g.foraDoInicio).map((g) => (
             <section
@@ -125,10 +131,11 @@ export default async function Home() {
               </div>
               <ul className="flex flex-col gap-2">
                 {g.itens.map((i) => (
-                  <li key={i.href}>
+                  <li key={i.href} className={i.pedidoDaDdi ? `-mx-2 rounded-md px-2 py-1 ${FUNDO_DDI}` : undefined}>
                     <Link href={i.href} className={`text-sm font-medium ${PROSE_LINK}`}>
                       {i.rotulo}
                     </Link>
+                    {i.pedidoDaDdi && <SeloDdi />}
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">{i.descricao}</p>
                   </li>
                 ))}

@@ -166,7 +166,7 @@ export const CONFIANCA = {
     nivel: "ESTIMADO",
     titulo: "Propostas de transição dos câmpus",
     porque:
-      "As regras são as dos documentos dos câmpus Sapucaia do Sul e Venâncio Aires, e nenhuma é a regra do IFSul. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase de 03/10/2026, nas duas propostas. Por isso os valores diferem dos exemplos dos documentos, que usam matrizes anteriores ou de origem não identificada. A matriz de 2028 em diante é estimativa: nenhuma foi publicada.",
+      "As regras são as dos documentos dos câmpus Sapucaia do Sul e Venâncio Aires e da proposta versão 01, e nenhuma é a regra do IFSul. A versão 01 usa a Matriz 1 do próprio documento, e o sistema refaz as contas dele ao centavo. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase de 03/10/2026, nas duas propostas. Por isso os valores diferem dos exemplos dos documentos, que usam matrizes anteriores ou de origem não identificada. A matriz de 2028 em diante é estimativa: nenhuma foi publicada.",
     paraResolver: "Refazer a conta quando a matriz de cada ano for publicada.",
   },
   "distribuicao-indices": {

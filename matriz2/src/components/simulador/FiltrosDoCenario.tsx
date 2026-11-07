@@ -1,5 +1,6 @@
 "use client";
 
+import { FUNDO_DDI, SeloDdi } from "@/components/PedidoDaDdi";
 import {
   FILTROS_PRESENCIAIS_REGULARES,
   FILTROS_TODOS,
@@ -36,8 +37,9 @@ export function FiltrosDoCenario({ filtros, onChange, resumo }: { filtros: Filtr
     <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Quais turmas entram na conta</h2>
-        <button type="button" className={botao} onClick={() => onChange({ ...FILTROS_PRESENCIAIS_REGULARES })}>
+        <button type="button" className={`${botao} ${FUNDO_DDI}`} onClick={() => onChange({ ...FILTROS_PRESENCIAIS_REGULARES })}>
           Só presenciais e regulares
+          <SeloDdi />
         </button>
         <button type="button" className={botao} disabled={!ativo} onClick={() => onChange({ ...FILTROS_TODOS })}>
           Todas as turmas
