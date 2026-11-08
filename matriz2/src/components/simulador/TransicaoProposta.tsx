@@ -262,7 +262,7 @@ function Comparacao({ campi, cenario }: { campi: CampusDaTransicao[]; cenario: C
   return (
     <>
       <p className="max-w-4xl text-sm text-neutral-700 dark:text-neutral-300">
-        As duas propostas de transição partem do mesmo valor de 2026 e da mesma matriz. A do {sapucaia.campus} termina em 2029, e em 2030 fica na matriz do ano; a do {venancio.campus} vai até 2030, sem chegar à matriz. A proposta versão 01 vale só para 2027 e usa a Matriz 1 do documento, com o EaD reclassificado: aparece só na coluna de 2027.
+        As duas propostas de transição partem do mesmo valor de 2026 e da mesma matriz. A do {sapucaia.campus} termina em 2029, e em 2030 fica na matriz do ano; a do {venancio.campus} vai até 2030, sem chegar à matriz. A proposta oficial da Reitoria (versão 01) vale só para 2027 e usa a Matriz 1 do documento, com o EaD reclassificado: aparece só na coluna de 2027.
       </p>
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="min-w-full text-xs">

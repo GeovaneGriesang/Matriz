@@ -48,7 +48,7 @@ export function PropostaComplementacao({ campi }: { campi: CampusDaComplementaca
     <>
       <div className="flex flex-col gap-1 text-sm text-neutral-700 dark:text-neutral-300">
         <p>
-          <strong>Documento:</strong> &quot;{PROPOSTA_V01.documento}&quot;, em PDF. Vale só para 2027, e as regras de complementação seriam analisadas de novo para 2028.
+          <strong>Documento:</strong> &quot;{PROPOSTA_V01.documento}&quot;, em PDF, apresentado no CODIR de 03 e 04/11/2026. É a proposta oficial da Reitoria, e o Total 2027 de cada câmpus, como está no documento, é o valor informado de 2027 (Valores recebidos). Vale só para 2027, e as regras de complementação serão analisadas de novo para 2028.
         </p>
         <p>
           Matriz 2 reparte o total recebido pelos câmpus em 2026 na proporção da Matriz 1. Matriz 3 é 85% da Matriz 2. Quem fica acima de 2026 recebe a Matriz 3, sem complemento. Quem cai até
@@ -152,7 +152,7 @@ export function PropostaComplementacao({ campi }: { campi: CampusDaComplementaca
 function ContaDoCampus({ l, somaBase, somaMatriz1 }: { l: LinhaDaComplementacao; somaBase: number; somaMatriz1: number }) {
   return (
     <div className="sticky left-0 flex w-[min(88vw,60rem)] flex-col gap-2 whitespace-normal rounded-md border-l-4 border-if-green bg-white p-4 text-left text-sm dark:bg-neutral-950">
-      <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">A conta de {l.nome}, na proposta versão 01</h3>
+      <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">A conta de {l.nome}, na proposta da Reitoria</h3>
       <ul className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
         <li>
           <strong>Matriz 2:</strong> {reais.format(l.matriz1)} × {reais.format(somaBase)} ÷ {reais.format(somaMatriz1)} = <strong>{reais.format(l.matriz2)}</strong>

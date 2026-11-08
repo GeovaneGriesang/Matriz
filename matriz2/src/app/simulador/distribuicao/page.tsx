@@ -106,14 +106,14 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         role="status"
         className="flex flex-col gap-1 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200"
       >
-        <span className="text-sm font-bold uppercase tracking-wide">Propostas: nenhuma é a regra do IFSul</span>
+        <span className="text-sm font-bold uppercase tracking-wide">Duas propostas de câmpus e a proposta oficial da Reitoria</span>
         <span className="text-sm">
-          Esta tela simula as propostas de distribuição apresentadas pelos câmpus Sapucaia do Sul e Venâncio Aires e a proposta versão 01, em PDF. Os valores abaixo são simulação de cada proposta, não o que cada câmpus vai receber.
+          As propostas dos câmpus Sapucaia do Sul e Venâncio Aires são simulação: não são o que cada câmpus vai receber. A proposta da Reitoria (versão 01) é a oficial para 2027, e o total de cada câmpus nela está gravado como valor informado de 2027.
         </span>
       </div>
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: as propostas</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        Como cada proposta sai do que cada câmpus recebeu em 2026. As de Sapucaia do Sul e Venâncio Aires andam em direção à matriz, ano a ano; a versão 01 reparte 2027 com uma Matriz 1 própria e regras de complementação. Escolha a proposta, ou compare todas.
+        Como cada proposta sai do que cada câmpus recebeu em 2026. As de Sapucaia do Sul e Venâncio Aires andam em direção à matriz, ano a ano; a da Reitoria reparte 2027 com uma Matriz 1 própria e regras de complementação. Escolha a proposta, ou compare todas.
       </p>
     </div>
   );

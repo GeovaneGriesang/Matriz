@@ -1,5 +1,7 @@
 /**
- * A "Proposta de distribuição orçamentária, versão 01" (PDF de 2027, recebido em 2026-11-07). Diferente das propostas de
+ * A "Proposta de distribuição orçamentária, versão 01" (PDF de 2027, recebido em 2026-11-07), a proposta OFICIAL da Reitoria
+ * (confirmado em 2026-11-08): os totais dela estão gravados como valores informados de 2027
+ * (scripts/carregarDistribuicao2027Ifsul.ts). Diferente das propostas de
  * transição (Sapucaia do Sul e Venâncio Aires), vale só para 2027 e tem quatro passos:
  *
  *   Matriz 1: a matriz dos câmpus com o EaD reclassificado pela Proen (as cerca de 8.000 matrículas MOOC de cada câmpus
@@ -14,7 +16,7 @@
 
 export const PROPOSTA_V01 = {
   id: "versao-01",
-  rotulo: "Proposta versão 01",
+  rotulo: "Proposta oficial da Reitoria (versão 01)",
   documento: "Proposta de distribuição orçamentária, Câmpus, 2027 (versão 01)",
   fatorMatriz3: 0.85,
   limiteIntegral: 1_000_000,

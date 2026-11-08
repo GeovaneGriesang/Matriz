@@ -72,7 +72,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   },
   "/simulador/distribuicao": {
     responde: "Como cada câmpus ficaria nas propostas apresentadas?",
-    mostra: "A transição de cada câmpus, do valor de 2026 em direção à matriz de 2027 da 5ª fase, conforme duas propostas de câmpus: Câmpus Sapucaia do Sul (33%, 66% e 100%, de 2027 a 2029) e Câmpus Venâncio Aires (0%, 5%, 10% e 20%, de 2027 a 2030). Também a proposta versão 01, só para 2027: Matriz 1 com o EaD reclassificado pela Proen, 85% dela e complementação até o valor de 2026 ou 94% dele, com piso de R$ 950 mil.",
+    mostra: "A transição de cada câmpus, do valor de 2026 em direção à matriz de 2027 da 5ª fase, conforme duas propostas de câmpus: Câmpus Sapucaia do Sul (33%, 66% e 100%, de 2027 a 2029) e Câmpus Venâncio Aires (0%, 5%, 10% e 20%, de 2027 a 2030). Também a proposta oficial da Reitoria (versão 01), só para 2027, cujos totais são os valores informados de 2027: Matriz 1 com o EaD reclassificado pela Proen, 85% dela e complementação até o valor de 2026 ou 94% dele, com piso de R$ 950 mil.",
     usar: 'Selecione uma proposta ou "Comparar". Depois escolha se a matriz fica constante ou segue a projeção dos cursos de cada câmpus. A tela traz a conta de cada ano, câmpus a câmpus, e um ensaio com outras regras (parte mantida e índice de qualidade).',
     atencao: "As duas são propostas de câmpus, e nenhuma é regra do IFSul. As matrizes depois de 2027 ainda não existem: os valores desses anos são ilustrativos.",
   },
