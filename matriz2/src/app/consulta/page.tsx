@@ -180,6 +180,12 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     select: { unidadeId: true, valorRecebido: true, observacao: true },
   });
   const recebidoPorId = new Map(recebidos.map((r) => [r.unidadeId, Number(r.valorRecebido)]));
+  // A Reitoria não tem valor na distribuição por câmpus: aparece em quadro próprio, fora da comparação com o gerado pela matriz.
+  const recebidoReitoria = await prisma.valorRecebidoCampus.findFirst({
+    where: { ano, unidade: { instituicaoId: instituicao.id, tipo: "REITORIA" } },
+    select: { valorRecebido: true },
+  });
+  const valorReitoria = recebidoReitoria ? Number(recebidoReitoria.valorRecebido) : null;
 
   const vlMatrFinalPorId = new Map(
     distribuicaoCampus.map((d) => [d.unidadeId, d.vlMatrFinal !== null ? Number(d.vlMatrFinal) : null]),
@@ -269,6 +275,10 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
           destaque="text-if-red dark:text-red-400"
         />
       </div>
+
+      {ehIfsul && valorReitoria !== null && total.campusComRecebido > 0 && (
+        <QuadroDoTotalRecebido sigla={instituicao.sigla} ano={ano} campus={total.recebidoReal} reitoria={valorReitoria} />
+      )}
 
       <p className="text-sm text-neutral-600 dark:text-neutral-400">Clique no <strong>+</strong> de um câmpus para abrir os cursos dele logo abaixo da linha, e no <strong>−</strong> para fechar.</p>
 
@@ -410,6 +420,37 @@ function Cartao({ rotulo, valor, destaque }: { rotulo: string; valor: string; de
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${destaque ?? "text-neutral-900 dark:text-neutral-100"}`}>
         {valor}
       </div>
+    </div>
+  );
+}
+
+/** Tudo o que a instituição recebe no ano: câmpus e Reitoria, com a parte de cada um e o motivo de ficarem separados. */
+function QuadroDoTotalRecebido({ sigla, ano, campus, reitoria }: { sigla: string; ano: number; campus: number; reitoria: number }) {
+  const totalRecebido = campus + reitoria;
+  const parte = (v: number) => `${decimal.format((v / totalRecebido) * 100)}%`;
+  const itens = [
+    { rotulo: "Câmpus", valor: reais.format(campus), detalhe: `${parte(campus)} do total` },
+    { rotulo: "Reitoria", valor: reais.format(reitoria), detalhe: `${parte(reitoria)} do total` },
+    { rotulo: `Total recebido pelo ${sigla}`, valor: reais.format(totalRecebido), detalhe: "câmpus + Reitoria" },
+  ];
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
+      <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Tudo o que o {sigla} recebe em {ano}</h3>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        {itens.map((i) => (
+          <div key={i.rotulo} className="flex flex-col">
+            <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">{i.rotulo}</dt>
+            <dd className="text-lg font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{i.valor}</dd>
+            <dd className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">{i.detalhe}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-neutral-600 dark:text-neutral-400">
+        O cartão &quot;Recebido (real)&quot; e a tabela abaixo mostram só os câmpus, porque ficam ao lado do &quot;Gerado pela matriz&quot;, que é o Funcionamento distribuído por câmpus. A Reitoria não tem valor nessa distribuição: se entrasse na soma, pareceria que o {sigla} recebeu {reais.format(reitoria)} acima da matriz. Por isso ela aparece só aqui. Inclui o custeio da Reitoria, o fomento a pesquisa, extensão, ensino e internacionalização, mostra, jogos, câmpus em implantação, auxílio aos câmpus e capacitação dos servidores.
+      </p>
+      <p className="text-neutral-600 dark:text-neutral-400">
+        Exemplo: a parte da Reitoria é {reais.format(reitoria)} ÷ {reais.format(totalRecebido)} = {parte(reitoria)}. Os valores são os informados em Valores recebidos.
+      </p>
     </div>
   );
 }
