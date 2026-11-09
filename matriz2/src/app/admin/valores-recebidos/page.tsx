@@ -38,7 +38,7 @@ export default async function ValoresRecebidosPage({ searchParams }: { searchPar
         id: true,
         sigla: true,
         nome: true,
-        unidades: { orderBy: { nome: "asc" }, select: { id: true, nome: true } },
+        unidades: { orderBy: { nome: "asc" }, select: { id: true, nome: true, tipo: true } },
       },
     }),
     prisma.valorRecebidoCampus.findMany({

@@ -3,7 +3,7 @@
  * da Reitoria: "Proposta de distribuição orçamentária, versão 01" (PDF apresentado no CODIR de 03 e 04/11/2026, em São
  * Leopoldo), pág. 6, coluna "Total proposto 2027 (R$)". Confirmado em 2026-11-08 que é a proposta oficial.
  *
- * São Leopoldo fica fora do rateio no documento e recebe à parte os R$ 700.000,00 do piso da MDO. A Reitoria recebe a linha
+ * São Leopoldo fica fora do rateio no documento e recebe à parte R$ 700.000,00 (o mesmo valor da matriz de 2027 da 5ª fase; o documento não diz de onde vem). A Reitoria recebe a linha
  * "Custeio Reitoria, fomento para ações de pesquisa, extensão, ensino, internacionalização, mostra, jogos, câmpus em
  * implantação, auxílio aos câmpus, capacitação dos servidores", R$ 9.940.689,89 (pedido em 2026-11-08).
  * Total do documento: 40.408.356,11 + 700.000,00 + 9.940.689,89 = 51.049.046,00.

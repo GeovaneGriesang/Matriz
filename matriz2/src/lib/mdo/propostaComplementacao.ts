@@ -24,7 +24,7 @@ export const PROPOSTA_V01 = {
   piso: 950_000,
 } as const;
 
-/** A Matriz 1 do documento (pág. 5), pelo nome do câmpus no cadastro. São Leopoldo fica fora: recebe o piso da MDO à parte. */
+/** A Matriz 1 do documento (pág. 5), pelo nome do câmpus no cadastro. São Leopoldo fica fora: recebe à parte R$ 700 mil, o mesmo valor da matriz de 2027 da 5ª fase. */
 export const MATRIZ1_DO_DOCUMENTO: Readonly<Record<string, number>> = {
   "CAMPUS BAGÉ": 1_826_354.36,
   "CAMPUS CAMAQUÃ": 1_765_019.06,
@@ -41,6 +41,12 @@ export const MATRIZ1_DO_DOCUMENTO: Readonly<Record<string, number>> = {
   "CAMPUS SAPUCAIA DO SUL": 3_517_956.22,
   "CAMPUS VENÂNCIO AIRES": 1_434_987.44,
 };
+
+/**
+ * Câmpus que a proposta oficial deixa fora do rateio de 2026 e 2027: São Leopoldo, em implantação, recebeu R$ 100 mil em
+ * 2026 e recebe à parte R$ 700 mil em 2027. O valor informado dele não serve de base para as propostas de transição.
+ */
+export const CAMPUS_FORA_DO_RATEIO: ReadonlySet<string> = new Set(["CAMPUS SÃO LEOPOLDO"]);
 
 export type RegraAplicada = "acima-de-2026" | "integral" | "ate-94" | "piso";
 

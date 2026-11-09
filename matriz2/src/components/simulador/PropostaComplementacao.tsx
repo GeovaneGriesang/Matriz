@@ -141,8 +141,8 @@ export function PropostaComplementacao({ campi }: { campi: CampusDaComplementaca
         A Matriz 3 deixa {reais.format(r.reserva)} (15%) para a complementação, e os complementos somam {reais.format(r.somaComplemento)}:{" "}
         {Math.abs(excesso) < 0.5 ? "a conta fecha." : excesso > 0 ? `passam da reserva em ${reais.format(excesso)}, e a soma dos câmpus fica acima do total de 2026.` : `sobram ${reais.format(-excesso)} da reserva.`}{" "}
         Quem fica acima de 2026 recebe 85% da própria Matriz 2: na prática, ajuda a pagar a garantia de quem caiu. Só entra o Funcionamento dos câmpus.{" "}
-        {foraDaConta.length > 0 && `${foraDaConta.map((c) => c.nome).join(", ")} fica fora da conta, porque não recebeu em 2026; no documento, São Leopoldo recebe à parte os R$ 700 mil do piso da MDO. `}
-        O documento também mostra a linha da Reitoria (custeio, fomento e ações institucionais): R$ 9.940.083,30 em 2026 e R$ 9.940.689,89 em 2027.
+        {foraDaConta.length > 0 && `${foraDaConta.map((c) => c.nome).join(", ")} fica fora da conta, porque não recebeu em 2026; no documento, São Leopoldo recebe à parte R$ 100 mil em 2026 e R$ 700 mil em 2027, o mesmo valor da matriz de 2027 da 5ª fase. `}
+        O documento também mostra a linha da Reitoria (custeio, fomento e ações institucionais): R$ 9.940.083,30 em 2026, 19,70% do total de R$ 50.445.000,00, e R$ 9.940.689,89 em 2027, 19,47% do total de R$ 51.049.046,00.
         {exemplo && ` Clique no + de um câmpus para ver a conta dele logo abaixo da linha, e no − para fechar. Exemplo: o + de ${exemplo.nome} mostra como ${reais.format(exemplo.matriz1)} da Matriz 1 chegam a ${reais.format(exemplo.total)}.`}
       </p>
     </>

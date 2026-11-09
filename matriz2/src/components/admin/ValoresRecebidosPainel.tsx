@@ -14,7 +14,7 @@ interface Instituicao {
   id: number;
   sigla: string;
   nome: string;
-  unidades: { id: number; nome: string }[];
+  unidades: { id: number; nome: string; tipo: string }[];
 }
 
 interface RegistroLinha {
@@ -30,6 +30,7 @@ interface RegistroLinha {
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const reaisSemSimbolo = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
 /**
@@ -93,6 +94,11 @@ export function ValoresRecebidosPainel({
     for (const r of registros) mapa.set(r.unidadeId, r);
     return mapa;
   }, [registros]);
+  // O total recebido pela instituição no ano: câmpus, câmpus fora do rateio e Reitoria, como gravados (não o que está sendo digitado).
+  const totalInformado = registros.reduce((s, r) => s + r.valorRecebido, 0);
+  const reitoria = instituicaoEscolhida?.unidades.find((u) => u.tipo === "REITORIA");
+  const valorReitoria = reitoria ? registroPorUnidade.get(reitoria.id)?.valorRecebido : undefined;
+  const somaDosCampus = totalInformado - (valorReitoria ?? 0);
 
   async function handleSubmitLote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,6 +250,7 @@ export function ValoresRecebidosPainel({
                     <tr key={u.id} className="border-t border-neutral-200 dark:border-neutral-800">
                       <td className="px-4 py-2 font-medium text-neutral-900 dark:text-neutral-100">{u.nome}</td>
                       <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
                         <div className="flex w-40 items-center gap-1 rounded-md border border-neutral-300 px-2 py-1.5 focus-within:ring-1 focus-within:ring-if-green dark:border-neutral-700 dark:bg-neutral-900">
                           <span className="text-sm text-neutral-500 dark:text-neutral-400">R$</span>
                           <input
@@ -260,6 +267,12 @@ export function ValoresRecebidosPainel({
                             placeholder="não informado"
                             className="w-full border-0 bg-transparent p-0 text-sm tabular-nums text-neutral-900 focus:outline-none focus:ring-0 dark:text-neutral-100"
                           />
+                        </div>
+                        {u.tipo === "REITORIA" && original && totalInformado > 0 && (
+                          <span className="whitespace-nowrap text-xs font-medium tabular-nums text-neutral-600 dark:text-neutral-400" title={`${reais.format(original.valorRecebido)} de ${reais.format(totalInformado)} recebidos pelo ${instituicaoEscolhida.sigla} em ${ano}`}>
+                            {pct.format(original.valorRecebido / totalInformado)} do total
+                          </span>
+                        )}
                         </div>
                       </td>
                       <td className="px-4 py-2">
@@ -278,6 +291,26 @@ export function ValoresRecebidosPainel({
                   );
                 })}
               </tbody>
+              {totalInformado > 0 && (
+                <tfoot className="border-t border-neutral-200 bg-neutral-50 font-medium dark:border-neutral-800 dark:bg-neutral-900">
+                  {valorReitoria !== undefined && (
+                    <tr>
+                      <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">Câmpus</td>
+                      <td className="px-4 py-2 tabular-nums">
+                        {reais.format(somaDosCampus)} <span className="ml-1 text-xs text-neutral-500">{pct.format(somaDosCampus / totalInformado)} do total</span>
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="px-4 py-2 text-neutral-900 dark:text-neutral-100">Total recebido pelo {instituicaoEscolhida.sigla} em {ano}</td>
+                    <td className="px-4 py-2 tabular-nums">{reais.format(totalInformado)}</td>
+                    <td colSpan={2} className="px-4 py-2 text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                      Soma dos valores gravados.{valorReitoria !== undefined && ` O percentual da Reitoria é a parte dela neste total: ${reais.format(valorReitoria)} ÷ ${reais.format(totalInformado)} = ${pct.format(valorReitoria / totalInformado)}.`}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
 

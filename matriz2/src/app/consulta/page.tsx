@@ -106,6 +106,8 @@ export default async function ConsultaPage({ searchParams }: { searchParams: Pro
     acumulado.set(instId, a);
   }
   for (const r of recebidosRede) {
+    // Só câmpus com matriz: a Reitoria também tem valor informado, mas não entra no Funcionamento dos câmpus com que o Recebido se compara.
+    if (!idsCampusRede.has(r.unidadeId)) continue;
     const instId = instituicaoPorUnidade.get(r.unidadeId);
     if (instId === undefined) continue;
     const a = acumulado.get(instId);

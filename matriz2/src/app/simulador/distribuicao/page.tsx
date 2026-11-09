@@ -10,6 +10,7 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { indicesDoCampus } from "@/lib/mdo/indicesCampus";
 import { TransicaoProposta, type CampusDaTransicao } from "@/components/simulador/TransicaoProposta";
 import { matrizesProjetadas } from "@/lib/mdo/transicaoCumulativa";
+import { CAMPUS_FORA_DO_RATEIO } from "@/lib/mdo/propostaComplementacao";
 import { retencaoObservada, valorPorCampusNosAnos, type CicloProjetavel } from "@/lib/mdo/projecaoCiclos";
 import { taxasDeEvasaoDaInstituicao } from "@/server/queries/taxaEvasaoInstituicao";
 
@@ -79,7 +80,7 @@ async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransica
     .map((m) => ({
       id: m.unidadeId,
       nome: m.unidade.nome,
-      base: basePorId.get(m.unidadeId) ?? null,
+      base: CAMPUS_FORA_DO_RATEIO.has(m.unidade.nome) ? null : (basePorId.get(m.unidadeId) ?? null),
       matriz2027: n(m.vlMatrFinal),
       matrizesPelaProjecao: matrizesProjetadas(n(m.vlMatrFinal), projecao.get(m.unidadeId), ANOS_DE_MATRIZ),
       temCiclos: projecao.has(m.unidadeId),
