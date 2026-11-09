@@ -1,9 +1,9 @@
 /**
- * Grava o orçamento de 2026 de cada câmpus do IFSul como valor informado (`ValorRecebidoCampus`), a base das
- * propostas de transição dos câmpus.
+ * Grava o orçamento de 2026 de cada câmpus do IFSul como valor informado (`ValorRecebidoCampus`), a base da
+ * proposta oficial da Reitoria para 2027.
  *
  * Fonte: "Reuniões da comissão/Proposta de distribuição/Proposta V. Aires.xlsx", aba "Planilha da 5ª fase", coluna F
- * ("Orçamento (R$)"), total R$ 40.404.916,70. O valor do Sapucaia (R$ 3.460.022,11) é o mesmo da proposta daquele câmpus.
+ * ("Orçamento (R$)"), total R$ 40.404.916,70.
  * A outra cópia desta tabela ("2026/Reprodução da planilha.xlsx") repete em Camaquã o valor de Bagé (R$ 2.180.644,29) e
  * por isso soma R$ 40.638.279,14; não é a usada aqui.
  *

@@ -8,7 +8,7 @@ const completo: DadosDosExemplos = {
   matriz: 1875091.31,
   matrizAnterior: 1568448.19,
   recebidoAnterior: 1946728.63,
-  fracaoSapucaia: 0.33,
+  recebidoAtual: 1946728.63,
   turmas: { quantidade: 64, somaValor: 1875091.31, somaPerda: 23914.28, retidas: 10, valorRetidas: 47828.56 },
   turma: { curso: "INFORMATICA", alunos: 32, valor: 223148.59, peso: 1.5, chMatriz: 3000, valorMatricula: 1239.71 },
   outroCampus: { curso: "TECNICO EM INFORMATICA", valorAqui: 155427.9, campus: "PELOTAS", valor: 100 },
@@ -35,8 +35,7 @@ describe("exemplos do Guia das telas", () => {
     // O formato de moeda usa espaço não separável depois de "R$".
     const e = Object.fromEntries(Object.entries(montarExemplos(completo)).map(([k, v]) => [k, v.replace(/ /g, " ")]));
     expect(e["/consulta/valor-do-aluno"]).toContain("R$ 6.973,39");
-    // 1.946.728,63 + 33% × (1.875.091,31 − 1.946.728,63)
-    expect(e["/simulador/distribuicao"]).toContain("R$ 1.923.088,31");
+    expect(e["/simulador/distribuicao"]).toContain("recebe R$ 1.946.728,63 em 2027: +R$ 0,00");
     expect(e["/consulta/curso"]).toContain("5,63 matrículas");
   });
 

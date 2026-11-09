@@ -1,8 +1,7 @@
 /**
  * A "Proposta de distribuição orçamentária, versão 01" (PDF de 2027, recebido em 2026-11-07), a proposta OFICIAL da Reitoria
  * (confirmado em 2026-11-08): os totais dela estão gravados como valores informados de 2027
- * (scripts/carregarDistribuicao2027Ifsul.ts). Diferente das propostas de
- * transição (Sapucaia do Sul e Venâncio Aires), vale só para 2027 e tem quatro passos:
+ * (scripts/carregarDistribuicao2027Ifsul.ts). Vale só para 2027 e tem quatro passos:
  *
  *   Matriz 1: a matriz dos câmpus com o EaD reclassificado pela Proen (as cerca de 8.000 matrículas MOOC de cada câmpus
  *             contam como MOOC, e não como EaD de fomento próprio, como na 5ª fase da MDO).
@@ -44,7 +43,7 @@ export const MATRIZ1_DO_DOCUMENTO: Readonly<Record<string, number>> = {
 
 /**
  * Câmpus que a proposta oficial deixa fora do rateio de 2026 e 2027: São Leopoldo, em implantação, recebeu R$ 100 mil em
- * 2026 e recebe à parte R$ 700 mil em 2027. O valor informado dele não serve de base para as propostas de transição.
+ * 2026 e recebe à parte R$ 700 mil em 2027. O valor informado dele não serve de base para a proposta.
  */
 export const CAMPUS_FORA_DO_RATEIO: ReadonlySet<string> = new Set(["CAMPUS SÃO LEOPOLDO"]);
 

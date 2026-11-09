@@ -164,10 +164,10 @@ export const CONFIANCA = {
   },
   "transicao-proposta": {
     nivel: "ESTIMADO",
-    titulo: "Propostas de transição dos câmpus",
+    titulo: "Proposta oficial da Reitoria para 2027",
     porque:
-      "As regras são as dos documentos dos câmpus Sapucaia do Sul e Venâncio Aires e da proposta da Reitoria (versão 01). As dos câmpus não são a regra do IFSul; a da Reitoria é a oficial para 2027, e seus totais estão gravados como valores informados de 2027. Ela usa a Matriz 1 do próprio documento, e o sistema refaz as contas dele ao centavo. A base de 2026 vem da planilha da comissão, e a matriz de 2027, da 5ª fase de 03/10/2026, nas duas propostas. Por isso os valores diferem dos exemplos dos documentos, que usam matrizes anteriores ou de origem não identificada. A matriz de 2028 em diante é estimativa: nenhuma foi publicada.",
-    paraResolver: "Refazer a conta quando a matriz de cada ano for publicada.",
+      "A regra é a do documento da Reitoria (versão 01), a oficial para 2027, e seus totais estão gravados como valores informados de 2027. O sistema usa a Matriz 1 do próprio documento e refaz as contas dele ao centavo. A base de 2026 vem da planilha da comissão e é a mesma do documento. A Matriz 1 do documento conta o EaD de outro jeito que a 5ª fase da MDO; a opção \"A da 5ª fase da MDO\" mostra o efeito dessa diferença. Os totais dos câmpus no documento somam um centavo a mais que o total impresso (arredondamento).",
+    paraResolver: "Refazer a conta se a Reitoria publicar uma nova versão, e para 2028, quando as regras de complementação forem revistas.",
   },
   "distribuicao-indices": {
     nivel: "ESTIMADO",

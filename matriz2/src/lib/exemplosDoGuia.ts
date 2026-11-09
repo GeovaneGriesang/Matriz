@@ -11,10 +11,10 @@ export interface DadosDosExemplos {
   /** Funcionamento de Venâncio Aires pela matriz, no ciclo e no anterior. */
   matriz: number | null;
   matrizAnterior: number | null;
-  /** O que o câmpus recebeu no ciclo anterior, informado em Valores recebidos: a base das propostas de distribuição. */
+  /** O que o câmpus recebeu no ciclo anterior, informado em Valores recebidos: a base da proposta da Reitoria. */
   recebidoAnterior: number | null;
-  /** A primeira etapa da proposta do Câmpus Sapucaia do Sul. */
-  fracaoSapucaia: number | null;
+  /** O que o câmpus recebe no ciclo, informado em Valores recebidos (em 2027, o total da proposta da Reitoria). */
+  recebidoAtual: number | null;
   turmas: { quantidade: number; somaValor: number; somaPerda: number; retidas: number; valorRetidas: number } | null;
   /** A turma de maior valor do câmpus, entre as que pegam o ano-base. */
   turma: { curso: string; alunos: number; valor: number; peso: number; chMatriz: number; valorMatricula: number } | null;
@@ -43,7 +43,7 @@ const sinal = (n: number) => `${n >= 0 ? "+" : "-"}${reais(Math.abs(n))}`;
 const VA = "Venâncio Aires";
 
 export function montarExemplos(d: DadosDosExemplos): Record<string, string> {
-  const { ano, matriz, matrizAnterior, recebidoAnterior, fracaoSapucaia, turmas, turma, outroCampus, ultimaTurma, ifsul, loa, pnp, pnpOrcamento, rede } = d;
+  const { ano, matriz, matrizAnterior, recebidoAnterior, recebidoAtual, turmas, turma, outroCampus, ultimaTurma, ifsul, loa, pnp, pnpOrcamento, rede } = d;
   const anoBase = ano - 2;
   const e: Record<string, string> = {};
 
@@ -71,9 +71,8 @@ export function montarExemplos(d: DadosDosExemplos): Record<string, string> {
   if (ultimaTurma) {
     e["/simulador/projecao"] = `Em ${VA}, uma turma de ${ultimaTurma.curso} termina em ${dia(ultimaTurma.termino)}. Até lá, ela segue contando na matriz de cada ano, conforme os alunos que permanecem.`;
   }
-  if (recebidoAnterior !== null && matriz !== null && fracaoSapucaia !== null) {
-    const diferenca = matriz - recebidoAnterior;
-    e["/simulador/distribuicao"] = `${VA} parte de ${reais(recebidoAnterior)} e a matriz indica ${reais(matriz)}: diferença de ${sinal(diferenca)}. Na proposta do Câmpus Sapucaia do Sul, ${pct(fracaoSapucaia, 0)} dessa diferença entra em ${ano}, e o câmpus fica com ${reais(recebidoAnterior + fracaoSapucaia * diferenca)}.`;
+  if (recebidoAnterior !== null && recebidoAtual !== null) {
+    e["/simulador/distribuicao"] = `${VA} recebeu ${reais(recebidoAnterior)} em ${ano - 1}. Na proposta oficial da Reitoria, recebe ${reais(recebidoAtual)} em ${ano}: ${sinal(recebidoAtual - recebidoAnterior)}.`;
   }
   if (turmas) {
     e["/simulador/alternativas"] = `${VA} perde ${reais(turmas.somaPerda)} com a evasão em ${ano}. Reduzir essa perda pela metade recuperaria cerca de ${reais(turmas.somaPerda / 2)} por ano.`;

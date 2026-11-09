@@ -109,7 +109,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "As propostas de Sapucaia do Sul e de Venâncio Aires e a oficial da Reitoria, câmpus a câmpus, com a conta de cada ano e a comparação entre elas.",
+        descricao: "A proposta oficial da Reitoria para 2027, câmpus a câmpus, da Matriz 1 ao total com a complementação.",
       },
     ],
   },

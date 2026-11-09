@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { DadosDosExemplos } from "@/lib/exemplosDoGuia";
 import { CONFIANCA } from "@/lib/confianca";
-import { PROPOSTAS_DE_TRANSICAO } from "@/lib/mdo/transicaoCumulativa";
 import { turmaEncerradaAntesDoAnoBase } from "@/lib/turmasRetidas";
 import { prisma } from "@/server/db/prisma";
 import { CICLO_QUE_CONTRIBUI } from "@/server/queries/cursosCampus";
@@ -26,10 +25,11 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
   const unidadeId = campus?.id ?? -1;
   const instituicaoId = instituicao?.id ?? -1;
 
-  const [distAtual, distAnterior, recebido, ciclos, ciclosQuarta, indicadores, arquivos, loa, usuarios, auditoria] = await Promise.all([
+  const [distAtual, distAnterior, recebido, recebidoNoAno, ciclos, ciclosQuarta, indicadores, arquivos, loa, usuarios, auditoria] = await Promise.all([
     prisma.distribuicaoCampus.findUnique({ where: { ano_unidadeId: { ano, unidadeId } }, select: { vlMatrFinal: true } }),
     prisma.distribuicaoCampus.findUnique({ where: { ano_unidadeId: { ano: ano - 1, unidadeId } }, select: { vlMatrFinal: true } }),
     prisma.valorRecebidoCampus.findFirst({ where: { ano: ano - 1, unidadeId }, select: { valorRecebido: true } }),
+    prisma.valorRecebidoCampus.findFirst({ where: { ano, unidadeId }, select: { valorRecebido: true } }),
     prisma.distribuicaoCiclo.findMany({
       where: { ano, unidadeId, ...CICLO_QUE_CONTRIBUI },
       orderBy: { valorReais: "desc" },
@@ -82,7 +82,7 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
     matriz: distAtual?.vlMatrFinal ? n(distAtual.vlMatrFinal) : null,
     matrizAnterior: distAnterior?.vlMatrFinal ? n(distAnterior.vlMatrFinal) : null,
     recebidoAnterior: recebido ? n(recebido.valorRecebido) : null,
-    fracaoSapucaia: PROPOSTAS_DE_TRANSICAO.find((p) => p.id === "sapucaia")?.etapas[0]?.fracao ?? null,
+    recebidoAtual: recebidoNoAno ? n(recebidoNoAno.valorRecebido) : null,
     turmas:
       ciclos.length > 0
         ? {

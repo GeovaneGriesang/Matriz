@@ -8,11 +8,8 @@ import { SubmenuSimulador } from "@/components/simulador/SubmenuSimulador";
 import { SimuladorDistribuicao, type CampusEntrada } from "@/components/simulador/SimuladorDistribuicao";
 import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { indicesDoCampus } from "@/lib/mdo/indicesCampus";
-import { TransicaoProposta, type CampusDaTransicao } from "@/components/simulador/TransicaoProposta";
-import { matrizesProjetadas } from "@/lib/mdo/transicaoCumulativa";
 import { CAMPUS_FORA_DO_RATEIO } from "@/lib/mdo/propostaComplementacao";
-import { retencaoObservada, valorPorCampusNosAnos, type CicloProjetavel } from "@/lib/mdo/projecaoCiclos";
-import { taxasDeEvasaoDaInstituicao } from "@/server/queries/taxaEvasaoInstituicao";
+import { PropostaComplementacao, type CampusDaComplementacao } from "@/components/simulador/PropostaComplementacao";
 
 export const dynamic = "force-dynamic";
 
@@ -23,57 +20,15 @@ interface Busca {
 
 const n = (v: unknown) => Number(v ?? 0);
 
-/** De 2027 a 2030, o último ano das propostas. */
-const ANOS_DE_MATRIZ = 4;
-
-/** As propostas de câmpus valem para o IFSul e partem de 2026: base informada de 2026, matriz da 5ª fase de 2027, projeção a partir do ano-base 2025. */
-async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransicao[]> {
-  const [matrizes, bases, linhas, taxas] = await Promise.all([
+/** A proposta da Reitoria vale para o IFSul: base informada de 2026 e matriz da 5ª fase de 2027 (para a opção "A da 5ª fase da MDO"). */
+async function dadosDaProposta(instituicaoId: number): Promise<CampusDaComplementacao[]> {
+  const [matrizes, bases] = await Promise.all([
     prisma.distribuicaoCampus.findMany({
       where: { ano: 2027, unidade: { instituicaoId, tipo: "CAMPUS" } },
       select: { unidadeId: true, vlMatrFinal: true, unidade: { select: { nome: true } } },
     }),
     prisma.valorRecebidoCampus.findMany({ where: { ano: 2026, unidade: { instituicaoId } }, select: { unidadeId: true, valorRecebido: true } }),
-    prisma.distribuicaoCiclo.findMany({
-      where: {
-        ano: 2027,
-        unidade: { instituicaoId },
-        qtdAlunosMatriz: { gt: 0 },
-        inicio: { not: null },
-        termino: { not: null },
-        jubilamento: { not: null },
-        pesoCursoMatriz: { not: null },
-        chMatriz: { not: null },
-      },
-    }),
-    taxasDeEvasaoDaInstituicao(instituicaoId),
   ]);
-  const ciclos: CicloProjetavel[] = linhas.map((l) => {
-    const mt = n(l.matriculaTotal);
-    return {
-      id: l.id,
-      unidadeId: l.unidadeId,
-      curso: l.curso,
-      tipoCurso: l.tipoCurso ?? "",
-      tipoOferta: l.tipoOferta ?? "",
-      repasse: l.repasse,
-      inicio: l.inicio!,
-      termino: l.termino!,
-      jubilamento: l.jubilamento!,
-      chCiclo: l.cargaHoraria ?? l.chMatriz!,
-      chMec: l.chMinimaMec ?? l.chMatriz!,
-      chMatriz: l.chMatriz!,
-      peso: n(l.pesoCursoMatriz),
-      agropecuaria: l.agropecuaria === true,
-      alunos: n(l.qtdAlunosMatriz),
-      valorPorMT: mt > 0 ? n(l.valorReais) / mt : n(l.valorAluno),
-    };
-  });
-  const retencao = retencaoObservada(ciclos, 2025);
-  const projecao = valorPorCampusNosAnos(ciclos, 2025, ANOS_DE_MATRIZ, {
-    evasao: { presencial: taxas?.presencial ?? 0.15, ead: taxas?.ead ?? 0.1 },
-    retencao: retencao.retencao,
-  });
   const basePorId = new Map(bases.map((b) => [b.unidadeId, n(b.valorRecebido)]));
   return matrizes
     .filter((m) => n(m.vlMatrFinal) > 0 || (basePorId.get(m.unidadeId) ?? 0) > 0)
@@ -82,10 +37,7 @@ async function dadosDaTransicao(instituicaoId: number): Promise<CampusDaTransica
       nome: m.unidade.nome,
       base: CAMPUS_FORA_DO_RATEIO.has(m.unidade.nome) ? null : (basePorId.get(m.unidadeId) ?? null),
       matriz2027: n(m.vlMatrFinal),
-      matrizesPelaProjecao: matrizesProjetadas(n(m.vlMatrFinal), projecao.get(m.unidadeId), ANOS_DE_MATRIZ),
-      temCiclos: projecao.has(m.unidadeId),
-    }))
-    .sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) || a.nome.localeCompare(b.nome, "pt-BR"));
+    }));
 }
 
 export default async function DistribuicaoPage({ searchParams }: { searchParams: Promise<Busca> }) {
@@ -107,14 +59,14 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         role="status"
         className="flex flex-col gap-1 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200"
       >
-        <span className="text-sm font-bold uppercase tracking-wide">Duas propostas de câmpus e a proposta oficial da Reitoria</span>
+        <span className="text-sm font-bold uppercase tracking-wide">A proposta oficial da Reitoria para 2027</span>
         <span className="text-sm">
-          As propostas dos câmpus Sapucaia do Sul e Venâncio Aires são simulação: não são o que cada câmpus vai receber. A proposta da Reitoria (versão 01) é a oficial para 2027, e o total de cada câmpus nela está gravado como valor informado de 2027.
+          A proposta da Reitoria (versão 01) é a oficial para 2027, e o total de cada câmpus nela está gravado como valor informado de 2027, em Valores recebidos.
         </span>
       </div>
-      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: as propostas</h1>
+      <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: a proposta da Reitoria</h1>
       <p className="text-neutral-600 dark:text-neutral-400">
-        Como cada proposta sai do que cada câmpus recebeu em 2026. As de Sapucaia do Sul e Venâncio Aires andam em direção à matriz, ano a ano; a da Reitoria reparte 2027 com uma Matriz 1 própria e regras de complementação. Escolha a proposta, ou compare todas.
+        Como a proposta da Reitoria sai do que cada câmpus recebeu em 2026 e chega ao valor de 2027, com uma Matriz 1 própria e regras de complementação, câmpus a câmpus.
       </p>
     </div>
   );
@@ -193,8 +145,8 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
     .sort((a, b) => Number(ehCampusDestaque(b.nome)) - Number(ehCampusDestaque(a.nome)) || b.matriz - a.matriz);
 
   const temIndices = campi.every((c) => c.indices !== null);
-  const transicao = ehInstituicaoDestaque(instituicao.sigla) ? await dadosDaTransicao(instituicao.id) : [];
-  const temBase2026 = transicao.some((c) => c.base !== null);
+  const proposta = ehInstituicaoDestaque(instituicao.sigla) ? await dadosDaProposta(instituicao.id) : [];
+  const temBase2026 = proposta.some((c) => c.base !== null);
   const totalPadrao = campi.reduce((s, c) => s + c.matriz, 0);
 
   return (
@@ -205,10 +157,12 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
 
       {ehInstituicaoDestaque(instituicao.sigla) &&
         (temBase2026 ? (
-          <TransicaoProposta campi={transicao} />
+          <div className="flex flex-col gap-4">
+            <PropostaComplementacao campi={proposta} />
+          </div>
         ) : (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            Falta o valor de 2026 de cada câmpus, a base da transição. Cadastre em Administração, Valores recebidos, ou rode <code>npx tsx scripts/carregarBase2026Ifsul.ts</code>.
+            Falta o valor de 2026 de cada câmpus, a base da proposta. Cadastre em Administração, Valores recebidos, ou rode <code>npx tsx scripts/carregarBase2026Ifsul.ts</code>.
           </p>
         ))}
 

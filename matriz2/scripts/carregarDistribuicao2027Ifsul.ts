@@ -10,14 +10,15 @@
  *
  * Uso: npx tsx scripts/carregarDistribuicao2027Ifsul.ts
  *
- * Nunca sobrescreve: o câmpus que já tem valor informado em 2027 fica como está e aparece na saída.
+ * Nunca sobrescreve o valor: o câmpus que já tem valor informado em 2027 fica como está e aparece na saída. Só a observação é
+ * atualizada, quando o valor gravado é o do documento e a observação mudou aqui.
  */
 import { prisma } from "../src/server/db/prisma";
 
 const ANO = 2027;
 const OBSERVACAO = "Proposta oficial da Reitoria para 2027 (Proposta de distribuição orçamentária, versão 01, CODIR de 03 e 04/11/2026), pág. 6, Total proposto 2027.";
 const OBSERVACAO_REITORIA = "Proposta oficial da Reitoria para 2027 (versão 01, CODIR de 03 e 04/11/2026), pág. 6: custeio da Reitoria, fomento a pesquisa, extensão, ensino e internacionalização, mostra, jogos, câmpus em implantação, auxílio aos câmpus e capacitação dos servidores.";
-const OBSERVACAO_SAO_LEOPOLDO = "Proposta oficial da Reitoria para 2027 (versão 01, CODIR de 03 e 04/11/2026): fora do rateio, recebe à parte o piso da MDO.";
+const OBSERVACAO_SAO_LEOPOLDO = "Proposta oficial da Reitoria para 2027 (versão 01, CODIR de 03 e 04/11/2026), pág. 6: fora do rateio; valor igual ao da matriz de 2027 da MDO.";
 
 const VALORES: Record<string, number> = {
   "CAMPUS BAGÉ": 2180644.29,
@@ -57,11 +58,16 @@ async function main() {
   for (const [nome, valorRecebido] of Object.entries(VALORES)) {
     const unidadeId = porNome.get(nome)!;
     const existente = await prisma.valorRecebidoCampus.findUnique({ where: { ano_unidadeId: { ano: ANO, unidadeId } } });
+    const observacao = nome === "CAMPUS SÃO LEOPOLDO" ? OBSERVACAO_SAO_LEOPOLDO : nome === "REITORIA" ? OBSERVACAO_REITORIA : OBSERVACAO;
     if (existente) {
+      if (Math.abs(Number(existente.valorRecebido) - valorRecebido) < 0.005 && existente.observacao !== observacao) {
+        await prisma.valorRecebidoCampus.update({ where: { id: existente.id }, data: { observacao } });
+        console.log(`observação atualizada: ${nome}`);
+        continue;
+      }
       console.log(`mantido: ${nome} já tem ${Number(existente.valorRecebido)} (o documento diz ${valorRecebido})`);
       continue;
     }
-    const observacao = nome === "CAMPUS SÃO LEOPOLDO" ? OBSERVACAO_SAO_LEOPOLDO : nome === "REITORIA" ? OBSERVACAO_REITORIA : OBSERVACAO;
     await prisma.valorRecebidoCampus.create({ data: { ano: ANO, unidadeId, valorRecebido, observacao, registradoPorId: admin.id } });
     gravados++;
   }
