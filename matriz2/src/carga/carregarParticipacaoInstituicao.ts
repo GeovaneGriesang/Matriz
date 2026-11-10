@@ -21,8 +21,8 @@ import {
  * 2026-09-29: uma planilha com FÓRMULAS, sem os valores calculados gravados (abrir
  * no Excel calcula; ler por programa devolve as fórmulas em branco). Traz três abas
  * de resultado (CICLOS, CURSOS, CLASSIFICAÇÕES), que são agrupamentos da mesma tabela,
- * e a aba "Parâmetros", que é o que torna o arquivo diferente do da rede inteira: ela
- * carrega o orçamento e as matrículas totais da rede usados no cálculo.
+ * e a aba "Parâmetros", com o orçamento e as matrículas totais da rede usados no cálculo.
+ * A rede inteira também passou a sair nesse formato, com uma coluna a mais: ver `carregarParticipacao`.
  *
  * Lê da aba CICLOS só as colunas de ENTRADA (A a Y, valores digitados/importados) e
  * refaz o resto com `lib/mdo/matriculaTotal`, motor conferido linha a linha contra o
@@ -86,6 +86,11 @@ export interface ResultadoCargaInstituicao {
   fonteDadosId: number;
 }
 
+/** O que a leitura dos parâmetros precisa de uma aba: serve a planilha carregada inteira e a lida em fluxo. */
+export interface AbaDeParametros {
+  getCell(ref: string): { value: unknown };
+}
+
 const COLUNA_RESUMO = { repasse: 10, matriculaTotal: 13 } as const;
 
 /**
@@ -124,8 +129,8 @@ async function matriculasTotaisDoResumo(ano: number): Promise<{ totais: Record<C
  * devolvidos como notas (que vão para a ressalva da fonte): matrículas totais da rede em texto (derivadas do resumo da rede), período da PNP no
  * ano errado (o ano-base do ciclo é o ano menos 2) e peso do MOOC a 0,08 (a regra é 0,8 até 2026).
  */
-async function lerParametros(
-  ws: ExcelJS.Worksheet,
+export async function lerParametros(
+  ws: AbaDeParametros,
   ano: number,
 ): Promise<{ periodo: PeriodoPnp; parametros: ParametrosValorMatricula; notas: string[] }> {
   const notas: string[] = [];

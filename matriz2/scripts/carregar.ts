@@ -6,6 +6,7 @@
  *   npm run carregar -- 2027 2026       carrega os dois ciclos
  *   npm run carregar -- 2027 --so=proposta   recarrega só a 5ª fase (Completo proposta) do ciclo
  *   npm run carregar -- 2026 --so=ifsul      carrega só a 6ª fase do IFSul (planilha com fórmulas) do ciclo
+ *   npm run carregar -- 2027 --so=rede       recarrega só a 6ª fase da rede inteira e, por cima dela, a do IFSul
  *
  * Este script é a única porta de entrada de dado no sistema, e roda a partir do
  * repositório, versionado. Não existe importador na tela por enquanto: os arquivos
@@ -43,7 +44,30 @@ async function etapaSextaFaseIfsul(ano: number) {
   }
 }
 
-async function carregarCiclo(ano: number, soProposta: boolean, soIfsul: boolean) {
+/** A 6ª fase da rede inteira. Apaga o ciclo todo ao recarregar, então a do IFSul sempre roda depois. */
+async function etapaSextaFaseRede(ano: number) {
+  console.log(`  6ª fase (Participação Orçamentária), lendo em fluxo...`);
+  const r = await carregarParticipacao(ano);
+  console.log(`     ${inteiro.format(r.ciclos)} ciclos de curso gravados`);
+  console.log(`     ${r.instituicoes} instituições, ${r.campus} câmpus`);
+  console.log(`     soma de Valor (R$) ....... ${reais.format(r.somaValor)}`);
+  console.log(`     soma de Perda Evasão ..... ${reais.format(r.somaPerdaEvasao)}`);
+  if (r.ignoradas > 0) console.log(`     ${r.ignoradas} linha(s) ignorada(s)`);
+  for (const a of r.avisos) console.log(`     AVISO: ${a}`);
+  for (const p of r.arquivosPulados) {
+    console.log(`     AVISO: ${p} é mais novo, mas tem outro layout (não é por ciclo de curso) e foi pulado.`);
+  }
+}
+
+async function carregarCiclo(ano: number, soProposta: boolean, soIfsul: boolean, soRede: boolean) {
+  // `--so=rede`: só a 6ª fase da rede e a do IFSul por cima. Serve quando só esse arquivo chegou; a 5ª e a 2ª fases não são tocadas.
+  if (soRede) {
+    console.log(`\n${"=".repeat(72)}\nCICLO ${ano} (só a 6ª fase da rede e a do IFSul)\n${"=".repeat(72)}`);
+    await etapaSextaFaseRede(ano);
+    await etapaSextaFaseIfsul(ano);
+    return;
+  }
+
   // `--so=ifsul`: só a 6ª fase do IFSul (planilha com fórmulas). Serve quando só esse arquivo chegou.
   if (soIfsul) {
     console.log(`\n${"=".repeat(72)}\nCICLO ${ano} (só a 6ª fase do IFSul)\n${"=".repeat(72)}`);
@@ -112,16 +136,7 @@ async function carregarCiclo(ano: number, soProposta: boolean, soIfsul: boolean)
     console.log(`  6ª fase (Participação Orçamentária): arquivo não existe para ${ano}, pulando.`);
     console.log(`     Só o ciclo 2027 tem essa exportação até agora; sem ela não há dado por curso.`);
   } else {
-    console.log(`  6ª fase (Participação Orçamentária), lendo em fluxo...`);
-    const r = await carregarParticipacao(ano);
-    console.log(`     ${inteiro.format(r.ciclos)} ciclos de curso gravados`);
-    console.log(`     ${r.instituicoes} instituições, ${r.campus} câmpus`);
-    console.log(`     soma de Valor (R$) ....... ${reais.format(r.somaValor)}`);
-    console.log(`     soma de Perda Evasão ..... ${reais.format(r.somaPerdaEvasao)}`);
-    if (r.ignoradas > 0) console.log(`     ${r.ignoradas} linha(s) ignorada(s)`);
-    for (const p of r.arquivosPulados) {
-      console.log(`     AVISO: ${p} é mais novo, mas tem outro layout (não é por ciclo de curso) e foi pulado.`);
-    }
+    await etapaSextaFaseRede(ano);
   }
 
   // 6ª fase de UMA instituição (formato com fórmulas, exportado a partir de 2026-09-29).
@@ -154,10 +169,11 @@ async function main() {
   }
   const soProposta = process.argv.includes("--so=proposta");
   const soIfsul = process.argv.includes("--so=ifsul");
+  const soRede = process.argv.includes("--so=rede");
   for (const ano of anos) {
-    await carregarCiclo(ano, soProposta, soIfsul);
+    await carregarCiclo(ano, soProposta, soIfsul, soRede);
   }
-  if (soProposta || soIfsul) {
+  if (soProposta || soIfsul || soRede) {
     await prisma.$disconnect();
     console.log("\nCarga concluída.\n");
     return;
