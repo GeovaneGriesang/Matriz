@@ -2,7 +2,7 @@
 
 import { ehInstituicaoDestaque } from "@/lib/destaque";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
-import { ComparativoTabelaCampus, type LinhaComparativoCampus } from "./ComparativoTabelaCampus";
+import { ComparativoTabelaCampus, type LinhaComparativoCampus, type ReitoriaDoComparativo } from "./ComparativoTabelaCampus";
 
 export interface LinhaComparativo {
   sigla: string;
@@ -34,6 +34,7 @@ export function ComparativoTabela({
   totalA,
   totalB,
   camposPorSigla,
+  reitoriaPorSigla = {},
   comInformadoIfsul,
 }: {
   linhas: LinhaComparativo[];
@@ -46,6 +47,8 @@ export function ComparativoTabela({
   totalB: number;
   /** Câmpus de cada instituição, para o "+/-" em frente à sigla (nível 1). */
   camposPorSigla: Record<string, LinhaComparativoCampus[]>;
+  /** A Reitoria de cada instituição, que entra como mais uma linha na lista de câmpus. */
+  reitoriaPorSigla?: Record<string, ReitoriaDoComparativo>;
   /** Mostrar, para o IFSul, o valor informado e as variações que dependem dele (opção da tela). */
   comInformadoIfsul: boolean;
 }) {
@@ -65,6 +68,7 @@ export function ComparativoTabela({
             anoB={anoB}
             bloco={bloco}
             instituicao={{ sigla: l.sigla, a: l.a, b: l.b }}
+            reitoria={reitoriaPorSigla[l.sigla]}
             comInformado={comInformadoIfsul && ehInstituicaoDestaque(l.sigla)}
           />
         );

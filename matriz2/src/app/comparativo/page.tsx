@@ -6,7 +6,7 @@ import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { PainelProcedencia } from "@/components/Procedencia";
 import { ComparativoTabela } from "./ComparativoTabela";
 import { OpcaoInformados } from "./OpcaoInformados";
-import type { LinhaComparativoCampus } from "./ComparativoTabelaCampus";
+import type { LinhaComparativoCampus, ReitoriaDoComparativo } from "./ComparativoTabelaCampus";
 import { ExplicacaoBlocos, type ExemploBlocos } from "./ExplicacaoBlocos";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { ehCampusDestaque } from "@/lib/destaque";
@@ -165,6 +165,18 @@ export default async function ComparativoPage({
     campi.sort((x, y) => y.b - x.b);
   }
 
+  // A Reitoria entra como mais uma linha na lista de câmpus: o calculado é o que a instituição tem no bloco e não vai a nenhum câmpus, e o
+  // informado (só no Funcionamento do IFSul) é o que ela de fato recebeu, cadastrado em Valores recebidos.
+  const reitorias = await prisma.unidade.findMany({ where: { tipo: "REITORIA" }, select: { id: true, instituicao: { select: { sigla: true } } } });
+  const reitoriaPorSigla: Record<string, ReitoriaDoComparativo> = {};
+  for (const r of reitorias) {
+    reitoriaPorSigla[r.instituicao.sigla] = {
+      unidadeId: r.id,
+      informadoA: informadoNoBloco ? (informadoPorAnoEId.get(`${anoA}::${r.id}`) ?? null) : null,
+      informadoB: informadoNoBloco ? (informadoPorAnoEId.get(`${anoB}::${r.id}`) ?? null) : null,
+    };
+  }
+
   // O exemplo do quadro explicativo, com os números do IFSul no ciclo mais recente.
   const regIfsul = porSigla.get(DESTAQUE)?.[anoB];
   const campiIfsul = unidadesComCampus.filter((u) => u.instituicao.sigla === DESTAQUE).map((u) => ({ nome: u.nome, v: brutoB.get(u.id) }));
@@ -200,7 +212,7 @@ export default async function ComparativoPage({
           Comparativo {anoA} e {anoB}
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          O que cada instituição recebeu em cada ano e o que mudou. Clique no <strong>+</strong> de uma instituição para ver os câmpus, e no + de um câmpus para ver as turmas.
+          O que cada instituição recebeu em cada ano e o que mudou. Clique no <strong>+</strong> de uma instituição para ver os câmpus e a Reitoria, e no + de um câmpus para ver as turmas.
         </p>
       </div>
 
@@ -270,6 +282,7 @@ export default async function ComparativoPage({
           totalA={totalA}
           totalB={totalB}
           camposPorSigla={camposPorSigla}
+          reitoriaPorSigla={reitoriaPorSigla}
           comInformadoIfsul={informadoNoBloco}
         />
       </div>

@@ -23,6 +23,7 @@ import { fatorMatriculaEquivalente } from "@/lib/mdo/matriculaEquivalente";
 import { FiltrosDoCenario } from "@/components/simulador/FiltrosDoCenario";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { SinalMaisMenos } from "@/components/SinalMaisMenos";
+import { ajusteParaManterMooc, repartirMooc, type MoocDoAno } from "@/lib/mdo/manterMooc";
 
 /** Um ciclo como vem do servidor: datas em texto, porque Date não atravessa para o componente de cliente. */
 export interface CicloSerial {
@@ -113,6 +114,22 @@ interface CenarioSalvo {
   /** Cenários salvos antes de 2026-11-05 não têm os dois campos: valem todas as turmas, em reais. */
   filtros?: FiltrosCenario;
   medida?: Medida;
+  /** Manter os alunos MOOC num número fixo por câmpus (chave: id do câmpus). Cenários salvos antes de 2026-11-23 não têm o campo. */
+  mooc?: MoocFixo;
+}
+
+interface MoocFixo {
+  manter: boolean;
+  /** Alunos MOOC por ano em cada câmpus; o câmpus sem número fica com os alunos MOOC de hoje. */
+  alunos: Record<string, number>;
+}
+const MOOC_LIVRE: MoocFixo = { manter: false, alunos: {} };
+
+function normalizarMooc(bruto: unknown): MoocFixo {
+  const b = (bruto && typeof bruto === "object" ? bruto : {}) as Partial<MoocFixo>;
+  const alunos: Record<string, number> = {};
+  if (b.alunos && typeof b.alunos === "object") for (const [k, v] of Object.entries(b.alunos)) if (typeof v === "number" && Number.isFinite(v) && v >= 0) alunos[k] = v;
+  return { manter: b.manter === true, alunos };
 }
 
 const MAX_ANOS = 20;
@@ -164,8 +181,10 @@ interface LinhaAno {
   reposTudo: number;
   novos: number;
   alunos: number;
+  /** A parte da reposição que vem de manter o MOOC no número escolhido (já somada em `repos`). */
+  ajusteMooc: number;
 }
-const linhasVazias = (n: number): LinhaAno[] => Array.from({ length: n }, () => ({ matric: 0, repos: 0, reposTudo: 0, novos: 0, alunos: 0 }));
+const linhasVazias = (n: number): LinhaAno[] => Array.from({ length: n }, () => ({ matric: 0, repos: 0, reposTudo: 0, novos: 0, alunos: 0, ajusteMooc: 0 }));
 
 export function ProjecaoCiclos({
   seletorInstituicao,
@@ -206,6 +225,10 @@ export function ProjecaoCiclos({
   const [restaurado, setRestaurado] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosCenario>(FILTROS_TODOS);
   const [medida, setMedida] = useState<Medida>("reais");
+  const [mooc, setMooc] = useState<MoocFixo>(MOOC_LIVRE);
+  // O ano aberto pelo + da tabela do cenário (posição na tabela), para ver de onde vêm os alunos daquele ano.
+  const [anoAberto, setAnoAberto] = useState<number | null>(null);
+  const [detalheCompleto, setDetalheCompleto] = useState(false);
 
   const chaveSalva = `matriz.cenario.${instituicao}.${anoCiclo}`;
 
@@ -222,6 +245,7 @@ export function ProjecaoCiclos({
     if (c.campusId !== undefined) setCampusId(c.campusId !== null && campi.some((x) => x.id === c.campusId) ? c.campusId : null);
     setFiltros(normalizarFiltros(c.filtros));
     setMedida(ehMedida(c.medida) ? c.medida : "reais");
+    setMooc(normalizarMooc(c.mooc));
   }
 
   // O cenário fica guardado neste navegador, para a pessoa voltar e continuar de onde parou.
@@ -239,18 +263,18 @@ export function ProjecaoCiclos({
   useEffect(() => {
     if (!restaurado) return;
     try {
-      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida };
+      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc };
       window.localStorage.setItem(chaveSalva, JSON.stringify(s));
     } catch {
       /* idem */
     }
-  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId, catalogo, filtros, medida]);
+  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId, catalogo, filtros, medida, mooc]);
 
   // As simulações salvas no servidor (com nome, para compartilhar) usam o mesmo estado.
   useConfiguracaoSalvavel({
     chave: `simulador/projecao:${instituicao}:${anoCiclo}`,
     rotulo: "esta simulação",
-    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida }) satisfies CenarioSalvo,
+    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc }) satisfies CenarioSalvo,
     aplicar: aplicarCenario,
   });
 
@@ -312,25 +336,61 @@ export function ProjecaoCiclos({
       }
       return l;
     };
+    // O MOOC de cada câmpus, separado, para a opção de manter o número de alunos MOOC fixo.
+    const moocPorCampus = new Map<number, { anos: MoocDoAno[]; hoje: { alunos: number; medida: number; contados: number } }>();
     todos.forEach((c, i) => {
       if (!turmaPassa[i]) return;
       const l = linhasDe(c.unidadeId);
+      let m: { anos: MoocDoAno[]; hoje: { alunos: number; medida: number; contados: number } } | undefined;
+      if (mooc.manter && c.repasse === "EAD_MOOC") {
+        m = moocPorCampus.get(c.unidadeId);
+        if (!m) {
+          m = { anos: Array.from({ length: anos }, () => ({ matric: 0, repos: 0, reposTudo: 0, contados: 0 })), hoje: { alunos: 0, medida: 0, contados: 0 } };
+          moocPorCampus.set(c.unidadeId, m);
+        }
+      }
       matriculadosPorCiclo[i]!.forEach((p, k) => {
-        l[k]!.matric += valorNaMedida(qual, p, c.fatorMateq);
+        const v = valorNaMedida(qual, p, c.fatorMateq);
+        l[k]!.matric += v;
         l[k]!.alunos += p.alunosContados;
+        if (m) {
+          m.anos[k]!.matric += v;
+          m.anos[k]!.contados += p.alunosContados;
+          if (k === 0) {
+            m.hoje.alunos += p.alunos;
+            m.hoje.medida += v;
+            m.hoje.contados += p.alunosContados;
+          }
+        }
       });
       const parar = encerramentos[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
       for (const t of turmasPorCiclo[i]!) {
         const conta = reporExistentes && (parar === undefined || t.anoEntrada <= parar - 1);
         t.pontos.forEach((p, k) => {
-          l[k]!.reposTudo += valorNaMedida(qual, p, c.fatorMateq);
+          const v = valorNaMedida(qual, p, c.fatorMateq);
+          l[k]!.reposTudo += v;
+          if (m) m.anos[k]!.reposTudo += v;
           if (conta) {
-            l[k]!.repos += valorNaMedida(qual, p, c.fatorMateq);
+            l[k]!.repos += v;
             l[k]!.alunos += p.alunosContados;
+            if (m) {
+              m.anos[k]!.repos += v;
+              m.anos[k]!.contados += p.alunosContados;
+            }
           }
         });
       }
     });
+    for (const [unidadeId, m] of moocPorCampus) {
+      const alvo = mooc.alunos[String(unidadeId)] ?? m.hoje.alunos;
+      const l = linhasDe(unidadeId);
+      ajusteParaManterMooc(m.anos, m.hoje, alvo).forEach((a, k) => {
+        l[k]!.repos += a.repos;
+        l[k]!.reposTudo += a.reposTudo;
+        l[k]!.alunos += a.contados;
+        l[k]!.ajusteMooc += a.repos;
+      });
+    }
     novosEspec.forEach((e, j) => {
       if (!e.spec || !passaNoFiltro(e.filtravel!, filtros)) return;
       const l = linhasDe(e.ui.unidadeId);
@@ -344,7 +404,7 @@ export function ProjecaoCiclos({
     return m;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const porCampusEmReais = useMemo(() => somarPorCampus("reais"), [todos, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, encerramentos, reporExistentes, anos, turmaPassa, filtros]);
+  const porCampusEmReais = useMemo(() => somarPorCampus("reais"), [todos, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, encerramentos, reporExistentes, anos, turmaPassa, filtros, mooc]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const porCampus = useMemo(() => (medida === "reais" ? porCampusEmReais : somarPorCampus(medida)), [medida, porCampusEmReais]);
 
@@ -358,6 +418,7 @@ export function ProjecaoCiclos({
         soma[k]!.reposTudo += x.reposTudo;
         soma[k]!.novos += x.novos;
         soma[k]!.alunos += x.alunos;
+        soma[k]!.ajusteMooc += x.ajusteMooc;
       });
     }
     return soma;
@@ -373,6 +434,84 @@ export function ProjecaoCiclos({
   const nomeDoRecorte = campusId === null ? instituicao : (campi.find((c) => c.id === campusId)?.nome ?? "");
   const ciclosSemFiltro = useMemo(() => todos.filter((c) => campusId === null || c.unidadeId === campusId), [todos, campusId]);
   const ciclosDoRecorte = useMemo(() => todos.filter((c, i) => turmaPassa[i] && (campusId === null || c.unidadeId === campusId)), [todos, turmaPassa, campusId]);
+
+  // Os alunos MOOC de hoje em cada câmpus (só as turmas que passam no filtro): o número de partida da opção de manter o MOOC fixo.
+  const moocHojePorCampus = useMemo(() => {
+    const m = new Map<number, number>();
+    todos.forEach((c, i) => {
+      if (!turmaPassa[i] || c.repasse !== "EAD_MOOC") return;
+      m.set(c.unidadeId, (m.get(c.unidadeId) ?? 0) + (matriculadosPorCiclo[i]![0]?.alunos ?? 0));
+    });
+    return m;
+  }, [todos, turmaPassa, matriculadosPorCiclo]);
+  const moocHojeNoRecorte = campusId === null ? [...moocHojePorCampus.values()].reduce((s, v) => s + v, 0) : (moocHojePorCampus.get(campusId) ?? 0);
+  const alvoMoocDoCampus = (id: number) => mooc.alunos[String(id)] ?? moocHojePorCampus.get(id) ?? 0;
+  const alvoMoocNoRecorte = campusId === null ? [...moocHojePorCampus.keys()].reduce((s, id) => s + alvoMoocDoCampus(id), 0) : alvoMoocDoCampus(campusId);
+  function definirAlvoMooc(valor: number | null) {
+    setMooc((atual) => {
+      if (campusId !== null) {
+        const alunos = { ...atual.alunos };
+        if (valor === null) delete alunos[String(campusId)];
+        else alunos[String(campusId)] = Math.max(0, valor);
+        return { ...atual, alunos };
+      }
+      // Para a instituição inteira, o número é repartido entre os câmpus na proporção dos alunos MOOC de hoje.
+      return { ...atual, alunos: valor === null ? {} : repartirMooc(valor, moocHojePorCampus) };
+    });
+  }
+
+  // O + de um ano da tabela do cenário: de que curso vem cada parcela daquele ano, na medida escolhida.
+  const detalheDoAno = useMemo(() => {
+    if (anoAberto === null || anoAberto >= anos) return null;
+    const k = anoAberto;
+    type Linha = { chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number };
+    const m = new Map<string, Linha>();
+    const linhaDe = (unidadeId: number, curso: string, oferta: string, repasse: Repasse, novo: boolean) => {
+      const chave = `${novo ? "novo|" : ""}${chaveDoCurso(unidadeId, curso, oferta)}|${repasse}`;
+      let l = m.get(chave);
+      if (!l) {
+        l = { chave, unidadeId, curso, oferta, repasse, matric: 0, repos: 0, novos: 0, contados: 0 };
+        m.set(chave, l);
+      }
+      return l;
+    };
+    todos.forEach((c, i) => {
+      if (!turmaPassa[i] || (campusId !== null && c.unidadeId !== campusId)) return;
+      const p = matriculadosPorCiclo[i]![k]!;
+      const parar = encerramentos[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
+      const matric = valorNaMedida(medida, p, c.fatorMateq);
+      let contados = p.alunosContados;
+      let repos = 0;
+      for (const t of turmasPorCiclo[i]!) {
+        if (!(reporExistentes && (parar === undefined || t.anoEntrada <= parar - 1))) continue;
+        const q = t.pontos[k]!;
+        repos += valorNaMedida(medida, q, c.fatorMateq);
+        contados += q.alunosContados;
+      }
+      if (Math.abs(matric) < 1e-9 && Math.abs(repos) < 1e-9) return;
+      const l = linhaDe(c.unidadeId, c.curso, c.tipoOferta, c.repasse, false);
+      l.matric += matric;
+      l.repos += repos;
+      l.contados += contados;
+    });
+    novosEspec.forEach((e, j) => {
+      if (!e.spec || !e.item || !passaNoFiltro(e.filtravel!, filtros) || (campusId !== null && e.ui.unidadeId !== campusId)) return;
+      let novos = 0;
+      let contados = 0;
+      for (const t of turmasDosNovos[j]!) {
+        novos += valorNaMedida(medida, t.pontos[k]!, e.fatorMateq);
+        contados += t.pontos[k]!.alunosContados;
+      }
+      if (Math.abs(novos) < 1e-9) return;
+      const l = linhaDe(e.ui.unidadeId, e.item.curso === "*" ? "Qualquer FIC fora do catálogo" : e.item.curso, e.item.tipoOferta, e.ui.repasse, true);
+      l.novos += novos;
+      l.contados += contados;
+    });
+    const linhasDoAno = [...m.values()].sort((a, b) => b.matric + b.repos + b.novos - (a.matric + a.repos + a.novos));
+    const porModalidade = new Map<Repasse, number>();
+    for (const l of linhasDoAno) porModalidade.set(l.repasse, (porModalidade.get(l.repasse) ?? 0) + l.matric + l.repos + l.novos);
+    return { k, linhas: linhasDoAno, porModalidade };
+  }, [anoAberto, anos, todos, turmaPassa, campusId, matriculadosPorCiclo, encerramentos, turmasPorCiclo, reporExistentes, medida, novosEspec, turmasDosNovos, filtros]);
 
   // Por curso e câmpus: o que cada curso ainda rende só com os alunos de hoje, e a decisão de parar de ofertar.
   const cursos = useMemo(() => {
@@ -593,11 +732,27 @@ export function ProjecaoCiclos({
               {linhas.map((l, k) => {
                 const totalAno = l.matric + l.repos + l.novos;
                 const dif = totalAno - (l.matric + l.reposTudo);
+                const aberto = anoAberto === k;
                 return (
-                  <tr key={k} className={k === 0 ? "bg-neutral-50 dark:bg-neutral-900" : ""}>
+                  <Fragment key={k}>
+                  <tr className={k === 0 ? "bg-neutral-50 dark:bg-neutral-900" : ""}>
                     <td className="px-3 py-2 font-medium">
-                      {anoCiclo + k}
-                      {k === 0 && <span className="ml-2 text-xs font-normal text-neutral-500">hoje</span>}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnoAberto(aberto ? null : k);
+                          setDetalheCompleto(false);
+                        }}
+                        aria-expanded={aberto}
+                        title="Abre, abaixo desta linha, de que curso vêm os alunos deste ano"
+                        className="flex items-center gap-2 text-left hover:text-if-green"
+                      >
+                        <SinalMaisMenos aberto={aberto} />
+                        <span>
+                          {anoCiclo + k}
+                          {k === 0 && <span className="ml-2 text-xs font-normal text-neutral-500">hoje</span>}
+                        </span>
+                      </button>
                     </td>
                     <td className="px-3 py-2 tabular-nums">{anoBase0 + k}</td>
                     {medida === "reais" && <td className="px-3 py-2 text-right tabular-nums">{inteiro.format(Math.round(l.alunos))}</td>}
@@ -616,6 +771,27 @@ export function ProjecaoCiclos({
                       </div>
                     </td>
                   </tr>
+                  {aberto && detalheDoAno && detalheDoAno.k === k && (
+                    <tr data-detalhe="1">
+                      <td colSpan={99} className="bg-neutral-50 px-3 py-3 dark:bg-neutral-900">
+                        <DetalheDoAno
+                          anoMatriz={anoCiclo + k}
+                          anoPnp={anoBase0 + k}
+                          detalhe={detalheDoAno}
+                          ajusteMooc={l.ajusteMooc}
+                          alvoMooc={mooc.manter ? alvoMoocNoRecorte : null}
+                          comCampus={campusId === null}
+                          nomeDoCampus={nomeDoCampus}
+                          medida={medida}
+                          nomeDaMedida={nomeDaMedida}
+                          formatar={formatar}
+                          completo={detalheCompleto}
+                          onCompleto={setDetalheCompleto}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -643,6 +819,8 @@ export function ProjecaoCiclos({
           </div>
         )}
         <p className="text-xs text-neutral-500">
+          O + de um ano abre, logo abaixo dele, de que curso vem cada parcela daquele ano (já matriculados, reposição e cursos novos), com a soma por modalidade.{" "}
+          {mooc.manter ? <>O MOOC está fixo em {inteiro.format(Math.round(alvoMoocNoRecorte))} alunos por ano a partir de {anoCiclo + 1}; a diferença para a projeção está na Reposição. </> : null}
           {medida === "reais" ? <>Valores em reais de hoje, com o valor da matrícula de cada turma como está na matriz de {anoCiclo}. </> : null}
           Os anos que você digita nos cursos novos e nas paradas são anos reais do curso (quando a turma entra); a matriz de cada ano usa os dados de dois anos antes, por isso a
           primeira coluna é o ano da matriz (o ano real mais dois).
@@ -692,8 +870,8 @@ export function ProjecaoCiclos({
         </section>
       )}
 
-      <details className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">O horizonte e o que a projeção supõe</summary>
+      <details open={mooc.manter} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">O horizonte e o que a projeção supõe{mooc.manter ? " (MOOC fixo)" : ""}</summary>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-1 text-sm">
           <label htmlFor="anos" className="font-medium text-neutral-700 dark:text-neutral-300">
@@ -748,6 +926,44 @@ export function ProjecaoCiclos({
               : "Sem alunos suficientes para medir: valor de partida."}
           </span>
         </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-200 pt-4 text-sm dark:border-neutral-800">
+          <label className="flex items-center gap-2 font-medium text-neutral-700 dark:text-neutral-300">
+            <input type="checkbox" checked={mooc.manter} onChange={(e) => setMooc((a) => ({ ...a, manter: e.target.checked }))} disabled={moocHojeNoRecorte <= 0 && !mooc.manter} />
+            Manter a matrícula MOOC num número fixo de alunos por ano
+          </label>
+          {moocHojeNoRecorte <= 0 ? (
+            <span className="text-xs text-neutral-500">{nomeDoRecorte} não tem alunos MOOC nas turmas de hoje{comFiltro ? " (com o filtro ligado)" : ""}: não há o que manter.</span>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
+                  Alunos MOOC por ano em {nomeDoRecorte}
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    disabled={!mooc.manter}
+                    value={Math.round(alvoMoocNoRecorte)}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isFinite(v)) definirAlvoMooc(Math.max(0, Math.round(v)));
+                    }}
+                    className={`${campo} w-40 tabular-nums`}
+                  />
+                </label>
+                {Math.round(alvoMoocNoRecorte) !== Math.round(moocHojeNoRecorte) && (
+                  <button type="button" onClick={() => definirAlvoMooc(null)} className="text-xs font-medium text-if-green underline">
+                    voltar aos {inteiro.format(Math.round(moocHojeNoRecorte))} de hoje
+                  </button>
+                )}
+              </div>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                Os cursos MOOC duram semanas e abrem turmas o ano todo, então repetir as turmas de hoje, como a projeção faz com os outros cursos, dá uma curva que depende de quando cada turma caiu no ano-base. Com esta opção, todo ano depois de {anoCiclo} passa a ter esse número de alunos MOOC, e cada um vale o mesmo que um aluno MOOC vale hoje no câmpus. Hoje são {inteiro.format(Math.round(moocHojeNoRecorte))} em {nomeDoRecorte}.
+                {campusId === null ? " Para o instituto inteiro, o número é repartido entre os câmpus na proporção dos alunos MOOC de hoje; escolha um câmpus para dar um número só a ele." : ""} A diferença para a projeção entra na Reposição, e também em &quot;manter tudo&quot;, porque é uma premissa, não uma mudança do cenário. Cursos MOOC novos, acrescentados abaixo, somam por fora.
+              </span>
+            </>
+          )}
         </div>
       </details>
 
@@ -1016,6 +1232,12 @@ export function ProjecaoCiclos({
             <strong>Filtros e medidas.</strong> Os filtros escolhem quais turmas entram na conta, e a reposição de cada curso continua sendo estimada com todas as turmas dele. Os cartões ficam sempre em reais; a escolha "Ver em" muda a tabela ano a ano, a tabela por câmpus e as colunas de anos dos cursos. Tudo isso fica guardado na simulação salva.
           </p>
           <p>
+            <strong>De onde vêm os alunos de um ano.</strong> O + em frente a cada ano da tabela do cenário abre, logo abaixo dele, a lista de cursos que formam aquele ano, com as três parcelas de cada um e a soma por modalidade. Por exemplo, se 2029 cair em relação a 2027, a lista mostra quais cursos perderam alunos e se a queda vem dos que se formam ou de uma reposição menor.
+          </p>
+          <p>
+            <strong>MOOC fixo.</strong> Em &quot;O horizonte e o que a projeção supõe&quot;, você pode manter os alunos MOOC num número por ano (de partida, o de hoje). Cada aluno MOOC vale o que vale hoje no câmpus, e a diferença para a projeção entra na Reposição.
+          </p>
+          <p>
             <strong>O que não está aqui.</strong> O valor da matrícula fica fixo no de hoje: a simulação não sabe quanto será o orçamento da Rede nem as matrículas dos outros institutos, que
             movem o valor de cada matrícula. Custo de professor, sala e laboratório também não entram: mede só o que a matriz repassa. Serve para ver a ordem de grandeza e a forma da curva,
             não para prometer um valor.
@@ -1090,6 +1312,128 @@ function Percentual({ rotulo, valor, onChange, padrao, ajuda }: { rotulo: string
   );
 }
 
+
+interface DetalheDoAnoDados {
+  k: number;
+  linhas: Array<{ chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number }>;
+  porModalidade: Map<Repasse, number>;
+}
+
+const MODALIDADE_CURTA: Record<Repasse, string> = { PRESENCIAL: "Presencial", EAD_FP: "A distância, financ. próprio", EAD: "A distância, financ. externo", EAD_MOOC: "MOOC" };
+
+/** O que abre abaixo de um ano da tabela do cenário: de que curso vem cada parcela, com a soma por modalidade. */
+function DetalheDoAno({
+  anoMatriz,
+  anoPnp,
+  detalhe,
+  ajusteMooc,
+  alvoMooc,
+  comCampus,
+  nomeDoCampus,
+  medida,
+  nomeDaMedida,
+  formatar,
+  completo,
+  onCompleto,
+}: {
+  anoMatriz: number;
+  anoPnp: number;
+  detalhe: DetalheDoAnoDados;
+  ajusteMooc: number;
+  alvoMooc: number | null;
+  comCampus: boolean;
+  nomeDoCampus: (id: number) => string;
+  medida: Medida;
+  nomeDaMedida: string;
+  formatar: (v: number) => string;
+  completo: boolean;
+  onCompleto: (v: boolean) => void;
+}) {
+  const LIMITE = 30;
+  const visiveis = completo ? detalhe.linhas : detalhe.linhas.slice(0, LIMITE);
+  const total = detalhe.linhas.reduce((s, l) => s + l.matric + l.repos + l.novos, 0) + ajusteMooc;
+  const celula = "px-2 py-1 text-right tabular-nums";
+  return (
+    <div className="flex flex-col gap-2 text-xs text-neutral-700 dark:text-neutral-300">
+      <p className="text-sm">
+        <strong>De onde vêm os números da matriz de {anoMatriz}</strong> (alunos de {anoPnp}), em {nomeDaMedida}: {detalhe.linhas.length} curso(s), do maior para o menor.
+      </p>
+      <p className="flex flex-wrap gap-x-4 gap-y-1">
+        {(["PRESENCIAL", "EAD_FP", "EAD", "EAD_MOOC"] as Repasse[])
+          .filter((r) => detalhe.porModalidade.has(r) || (r === "EAD_MOOC" && Math.abs(ajusteMooc) > 1e-6))
+          .map((r) => (
+            <span key={r}>
+              {MODALIDADE_CURTA[r]}: <strong className="tabular-nums">{formatar((detalhe.porModalidade.get(r) ?? 0) + (r === "EAD_MOOC" ? ajusteMooc : 0))}</strong>
+            </span>
+          ))}
+      </p>
+      <div className="tabela-rolavel">
+        <table className="w-full">
+          <thead className="text-left uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th className="px-2 py-1">Curso</th>
+              {comCampus && <th className="px-2 py-1">Câmpus</th>}
+              <th className="px-2 py-1">Modalidade</th>
+              {medida === "reais" && <th className="px-2 py-1 text-right">Alunos que a MDO conta</th>}
+              <th className="px-2 py-1 text-right">Já matriculados</th>
+              <th className="px-2 py-1 text-right">Reposição</th>
+              <th className="px-2 py-1 text-right">Cursos novos</th>
+              <th className="px-2 py-1 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {visiveis.map((l) => (
+              <tr key={l.chave}>
+                <td className="px-2 py-1">
+                  {l.curso}
+                  {l.oferta && l.oferta !== "NÃO SE APLICA" && l.oferta !== "*" ? <span className="text-neutral-500"> ({l.oferta.toLowerCase()})</span> : null}
+                  {l.novos !== 0 ? <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">novo</span> : null}
+                </td>
+                {comCampus && <td className="px-2 py-1 text-neutral-600 dark:text-neutral-400">{nomeDoCampus(l.unidadeId)}</td>}
+                <td className="px-2 py-1 text-neutral-600 dark:text-neutral-400">{MODALIDADE_CURTA[l.repasse]}</td>
+                {medida === "reais" && <td className={celula}>{inteiro.format(Math.round(l.contados))}</td>}
+                <td className={celula}>{l.matric ? formatar(l.matric) : "-"}</td>
+                <td className={celula}>{l.repos ? formatar(l.repos) : "-"}</td>
+                <td className={celula}>{l.novos ? formatar(l.novos) : "-"}</td>
+                <td className={`${celula} font-medium`}>{formatar(l.matric + l.repos + l.novos)}</td>
+              </tr>
+            ))}
+            {alvoMooc !== null && Math.abs(ajusteMooc) > 1e-6 && (
+              <tr className="bg-sky-50 dark:bg-sky-950/30">
+                <td className="px-2 py-1" colSpan={comCampus ? 3 : 2}>
+                  Ajuste para manter o MOOC em {inteiro.format(Math.round(alvoMooc))} alunos
+                </td>
+                {medida === "reais" && <td className={celula} />}
+                <td className={celula}>-</td>
+                <td className={celula}>{formatar(ajusteMooc)}</td>
+                <td className={celula}>-</td>
+                <td className={`${celula} font-medium`}>{formatar(ajusteMooc)}</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-neutral-300 font-semibold dark:border-neutral-700">
+              <td className="px-2 py-1" colSpan={comCampus ? 3 : 2}>
+                Total de {anoMatriz}
+              </td>
+              {medida === "reais" && <td className={celula} />}
+              <td className={celula} colSpan={3} />
+              <td className={celula}>{formatar(total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {detalhe.linhas.length > LIMITE && (
+        <button type="button" onClick={() => onCompleto(!completo)} className="self-start font-medium text-if-green underline">
+          {completo ? `Mostrar só os ${LIMITE} maiores` : `Mostrar os ${detalhe.linhas.length} cursos`}
+        </button>
+      )}
+      <p className="text-neutral-500">
+        Cada linha junta as turmas de um curso no câmpus. &quot;Já matriculados&quot; são os alunos de hoje que ainda estão no curso nesse ano; &quot;Reposição&quot;, as turmas novas que o curso recebe por continuar sendo ofertado; &quot;Cursos novos&quot;, os que você acrescentou no cenário. O total é o mesmo da linha do ano na tabela acima.
+      </p>
+    </div>
+  );
+}
 
 function Cartao({ titulo, valor, nota }: { titulo: string; valor: string; nota: string }) {
   return (

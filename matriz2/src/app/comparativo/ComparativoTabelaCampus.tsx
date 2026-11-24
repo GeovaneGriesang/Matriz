@@ -21,6 +21,16 @@ export interface LinhaComparativoCampus {
   /** Quanto o campus recebeu de fato em cada ciclo, digitado em Valores recebidos. null se nao ha registro. */
   informadoA: number | null;
   informadoB: number | null;
+  /** A linha da Reitoria: o que a instituição tem no bloco e não vai a nenhum câmpus. */
+  reitoria?: boolean;
+}
+
+/** A Reitoria de uma instituição, para entrar como mais uma linha na lista de câmpus. */
+export interface ReitoriaDoComparativo {
+  unidadeId: number;
+  /** O que a Reitoria de fato recebeu, cadastrado em Valores recebidos (só no Funcionamento do IFSul). */
+  informadoA: number | null;
+  informadoB: number | null;
 }
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -61,6 +71,7 @@ export function ComparativoTabelaCampus({
   bloco = "matriculas",
   instituicao,
   comInformado = true,
+  reitoria,
 }: {
   linhas: LinhaComparativoCampus[];
   anoA: number;
@@ -71,6 +82,8 @@ export function ComparativoTabelaCampus({
   instituicao?: { sigla: string; a: number; b: number };
   /** O valor informado existe só para o IFSul; nas outras instituições as colunas e variações que dependem dele não aparecem. */
   comInformado?: boolean;
+  /** A Reitoria da instituição: entra como linha própria, com o que fica fora dos câmpus. */
+  reitoria?: ReitoriaDoComparativo;
 }) {
   if (bloco === "iqe") {
     return (
@@ -91,13 +104,35 @@ export function ComparativoTabelaCampus({
       : bloco === "totalSpo"
         ? "a Reitoria e o bloco Qualidade e Eficiência, que a MDO não distribui por câmpus"
         : "o que a MDO não atribui a nenhum câmpus";
+  // A Reitoria vira mais uma linha, com o que fica fora dos câmpus, para que a tabela some o valor da instituição e mostre, no IFSul,
+  // o que ela de fato recebeu. Sem valor calculado nem informado, ela não aparece (não há o que comparar).
+  const informadoReitoriaA = comInformado ? (reitoria?.informadoA ?? null) : null;
+  const informadoReitoriaB = comInformado ? (reitoria?.informadoB ?? null) : null;
+  const temReitoria = instituicao !== undefined && (Math.abs(foraA) >= 1 || Math.abs(foraB) >= 1 || informadoReitoriaA !== null || informadoReitoriaB !== null);
+  const linhaReitoria: LinhaComparativoCampus | null = temReitoria
+    ? {
+        unidadeId: reitoria?.unidadeId ?? -1,
+        nome: "REITORIA",
+        a: Math.max(0, foraA),
+        b: Math.max(0, foraB),
+        variacao: foraA > 0 ? (foraB / foraA - 1) * 100 : Number.NaN,
+        informadoA: informadoReitoriaA,
+        informadoB: informadoReitoriaB,
+        reitoria: true,
+      }
+    : null;
+  const linhasTabela = linhaReitoria ? [...linhas, linhaReitoria] : linhas;
+  const quantasNaTabela = linhaReitoria ? `${linhas.length} câmpus e a Reitoria` : `${linhas.length} câmpus`;
+
   const valores = (l: LinhaComparativoCampus): ValoresDoCampus => ({ calculadoA: l.a, informadoA: l.informadoA, calculadoB: l.b, informadoB: l.informadoB });
   const variacoesUsadas = comInformado ? VARIACOES : VARIACOES.filter((v) => v.chave === "calcA_calcB");
-  const totais = variacoesUsadas.map((def) => totalDaVariacao(def, linhas.map(valores)));
-  const somaInformadoA = linhas.reduce((s, l) => s + (l.informadoA ?? 0), 0);
-  const somaInformadoB = linhas.reduce((s, l) => s + (l.informadoB ?? 0), 0);
-  const comInformadoA = linhas.filter((l) => l.informadoA !== null).length;
-  const comInformadoB = linhas.filter((l) => l.informadoB !== null).length;
+  const totais = variacoesUsadas.map((def) => totalDaVariacao(def, linhasTabela.map(valores)));
+  const somaTabelaA = linhasTabela.reduce((s, l) => s + l.a, 0);
+  const somaTabelaB = linhasTabela.reduce((s, l) => s + l.b, 0);
+  const somaInformadoA = linhasTabela.reduce((s, l) => s + (l.informadoA ?? 0), 0);
+  const somaInformadoB = linhasTabela.reduce((s, l) => s + (l.informadoB ?? 0), 0);
+  const comInformadoA = linhasTabela.filter((l) => l.informadoA !== null).length;
+  const comInformadoB = linhasTabela.filter((l) => l.informadoB !== null).length;
 
   const celulaInformado = (v: number | null) =>
     v === null ? (
@@ -129,17 +164,47 @@ export function ComparativoTabelaCampus({
   return (
     <div className="flex flex-col gap-2">
       <TabelaOrdenavel
-        linhas={linhas}
-        chaveLinha={(l) => l.unidadeId}
+        linhas={linhasTabela}
+        chaveLinha={(l) => (l.reitoria ? "reitoria" : l.unidadeId)}
         linhaDestaque={(l) => ehCampusDestaque(l.nome)}
-        linhaExpandida={(l) => (
-          <div className="flex flex-col gap-4">
-            <ExplicacaoVariacao unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} nome={l.nome} />
-            <CursosDoCampus unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} />
-          </div>
-        )}
+        linhaClasse={(l) => (l.reitoria ? "bg-neutral-50 dark:bg-neutral-900" : "")}
+        linhaExpandida={(l) =>
+          l.reitoria ? (
+            <ExplicacaoReitoria
+              sigla={instituicao?.sigla ?? ""}
+              bloco={bloco}
+              anoA={anoA}
+              anoB={anoB}
+              instituicaoA={instituicao?.a ?? 0}
+              instituicaoB={instituicao?.b ?? 0}
+              somaCampusA={somaA}
+              somaCampusB={somaB}
+              quantosCampus={linhas.length}
+              informadoA={l.informadoA}
+              informadoB={l.informadoB}
+            />
+          ) : (
+            <div className="flex flex-col gap-4">
+              <ExplicacaoVariacao unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} nome={l.nome} />
+              <CursosDoCampus unidadeId={l.unidadeId} anoA={anoA} anoB={anoB} />
+            </div>
+          )
+        }
         colunas={[
-          { chave: "nome", rotulo: "Câmpus", valor: (l) => l.nome },
+          {
+            chave: "nome",
+            rotulo: "Câmpus",
+            valor: (l) => l.nome,
+            render: (l) =>
+              l.reitoria ? (
+                <span>
+                  <span className="font-medium">Reitoria</span>
+                  <span className="block text-xs font-normal text-neutral-500">o que fica com a instituição, fora dos câmpus</span>
+                </span>
+              ) : (
+                l.nome
+              ),
+          },
           {
             chave: "calculadoA",
             rotulo: `Calculado ${anoA}`,
@@ -160,22 +225,22 @@ export function ComparativoTabelaCampus({
           <tfoot>
             <tr className="border-t-2 border-neutral-300 bg-neutral-50 font-semibold dark:border-neutral-700 dark:bg-neutral-900">
               <td className="px-2 py-2.5" />
-              <td className="px-4 py-2.5">Soma dos {linhas.length} câmpus</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaA)}</td>
+              <td className="px-4 py-2.5">{linhaReitoria ? `Total: ${quantasNaTabela}` : `Soma dos ${quantasNaTabela}`}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaTabelaA)}</td>
               {comInformado && (
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {reais.format(somaInformadoA)}
                   <span className="block text-xs font-normal text-neutral-500">
-                    {comInformadoA} de {linhas.length} com registro
+                    {comInformadoA} de {linhasTabela.length} com registro
                   </span>
                 </td>
               )}
-              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaB)}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{reais.format(somaTabelaB)}</td>
               {comInformado && (
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {reais.format(somaInformadoB)}
                   <span className="block text-xs font-normal text-neutral-500">
-                    {comInformadoB} de {linhas.length} com registro
+                    {comInformadoB} de {linhasTabela.length} com registro
                   </span>
                 </td>
               )}
@@ -184,7 +249,7 @@ export function ComparativoTabelaCampus({
                   <CelulaVariacao v={t?.variacao ?? null} />
                   {t && t.comparados < t.total && (
                     <span className="block text-xs font-normal text-neutral-500">
-                      em {t.comparados} de {t.total} câmpus
+                      em {t.comparados} de {t.total} linhas
                     </span>
                   )}
                 </td>
@@ -208,7 +273,7 @@ export function ComparativoTabelaCampus({
                 <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(somaB)}</td>
               </tr>
               <tr className="font-medium">
-                <td className="py-1.5 pr-3">Fica com a instituição: {oQueFicaFora}</td>
+                <td className="py-1.5 pr-3">Fica com a instituição, na linha Reitoria da tabela: {oQueFicaFora}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(foraA)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{reais.format(foraB)}</td>
               </tr>
@@ -218,6 +283,7 @@ export function ComparativoTabelaCampus({
       )}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         <strong>Calculado</strong> é o que a matriz da MDO diz que o câmpus recebe{bloco === "ae" ? " de Assistência Estudantil (presencial, EAD e RIP)" : bloco === "totalSpo" ? ", somando Funcionamento e Assistência Estudantil" : " de Funcionamento (já com o Piso Mínimo)"}.
+        {linhaReitoria ? " Na linha Reitoria, é o valor da instituição no bloco menos a soma dos câmpus; o + dela mostra a conta." : ""}
         {comInformado
           ? " Informado é o que ele de fato recebeu, digitado em Valores recebidos. Cada variação vai do primeiro valor para o segundo (verde: o segundo é maior; vermelho: é menor). Na linha de soma, cada variação só soma os câmpus que têm os dois valores, para que a falta de registro do informado não pareça diferença."
           : " Aqui só há a variação entre os dois anos calculados. O valor informado (o que o câmpus de fato recebeu) existe só para o IFSul e aparece quando a opção \"Considerar dados informados para o IFSul\" está marcada."}
@@ -367,6 +433,58 @@ function Sinal({ v }: { v: number }) {
  * O botão "O que ocorreu?": explica por que a MATRIZ do câmpus mudou entre os dois ciclos
  * (só ela; o informado é digitado, não tem um porquê). Busca sob demanda, como os cursos.
  */
+/** O + da linha Reitoria: de onde sai o calculado (instituição menos câmpus) e por que o informado pode ser bem maior. */
+function ExplicacaoReitoria({
+  sigla,
+  bloco,
+  anoA,
+  anoB,
+  instituicaoA,
+  instituicaoB,
+  somaCampusA,
+  somaCampusB,
+  quantosCampus,
+  informadoA,
+  informadoB,
+}: {
+  sigla: string;
+  bloco: string;
+  anoA: number;
+  anoB: number;
+  instituicaoA: number;
+  instituicaoB: number;
+  somaCampusA: number;
+  somaCampusB: number;
+  quantosCampus: number;
+  informadoA: number | null;
+  informadoB: number | null;
+}) {
+  const nomeDoBloco = bloco === "ae" ? "Assistência Estudantil" : bloco === "totalSpo" ? "Total" : "Funcionamento";
+  const conta = (ano: number, inst: number, campus: number) =>
+    `${ano}: ${reais.format(inst)} (${sigla}) - ${reais.format(campus)} (soma dos ${quantosCampus} câmpus) = ${reais.format(Math.max(0, inst - campus))}`;
+  return (
+    <div className="flex flex-col gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+      <p>
+        <strong>Calculado</strong> é a parte do bloco {nomeDoBloco} que a matriz dá à instituição e não atribui a nenhum câmpus: o valor do {sigla} menos a soma dos câmpus.
+        {bloco === "matriculas" ? " No Funcionamento, é o bloco das reitorias, que a MDO soma ao valor da instituição." : ""}
+        {bloco === "totalSpo" ? " No Total, inclui também o bloco Qualidade e Eficiência, que a MDO não distribui por câmpus." : ""}
+      </p>
+      <ul className="flex flex-col gap-0.5 text-xs tabular-nums">
+        <li>{conta(anoA, instituicaoA, somaCampusA)}</li>
+        <li>{conta(anoB, instituicaoB, somaCampusB)}</li>
+      </ul>
+      {(informadoA !== null || informadoB !== null) && (
+        <p>
+          <strong>Informado</strong> é o que a Reitoria de fato recebeu, cadastrado em Valores recebidos
+          {informadoA !== null ? ` (${reais.format(informadoA)} em ${anoA}` : " ("}
+          {informadoA !== null && informadoB !== null ? " e " : ""}
+          {informadoB !== null ? `${reais.format(informadoB)} em ${anoB}` : ""}). Pode ficar bem acima do calculado, porque a instituição decide quanto do orçamento fica na Reitoria: além do custeio dela, entram o fomento a pesquisa, extensão, ensino e internacionalização, mostra, jogos, câmpus em implantação, auxílio aos câmpus e capacitação dos servidores.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ExplicacaoVariacao({ unidadeId, anoA, anoB, nome }: { unidadeId: number; anoA: number; anoB: number; nome: string }) {
   const [aberto, setAberto] = useState(false);
   const [estado, setEstado] = useState<{ status: "carregando" } | { status: "pronto"; r: ResultadoExplicacao } | null>(null);
