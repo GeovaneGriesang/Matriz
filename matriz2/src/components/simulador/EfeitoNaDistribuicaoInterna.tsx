@@ -76,7 +76,8 @@ export function EfeitoNaDistribuicaoInterna({ dados, campus, series }: { dados: 
         O ganho na matriz não chega inteiro a {curto(alvo.nome)}. O IFSul reparte o total entre os câmpus pela regra da Reitoria: a Matriz 3 é 90% da fatia de cada câmpus (de 2028 em
         diante), e quem cai em relação ao ano anterior é completado. Como o total repartido não muda, o que {curto(alvo.nome)} ganha a mais sai dos outros câmpus; e, se o câmpus está
         sendo completado ou está no piso, parte do ganho só reduz o complemento. A conta parte da distribuição {temOficial ? `oficial de ${dados.anoMatriz}` : `de ${dados.anoMatriz - 1}`}, com a matriz de{" "}
-        {dados.anoMatriz} dos outros câmpus parada e o total de cada ano igual ao do ano anterior.
+        {dados.anoMatriz} dos outros câmpus parada e o total de cada ano igual ao do ano anterior. A fórmula, passo a passo e com um exemplo resolvido, está em Simulações, Distribuição
+        entre câmpus, no quadro &quot;Como fazer a conta&quot;.
         {kExemplo >= 0 &&
           ` Exemplo: em ${anos[kExemplo]}, "${exemplo.rotulo}" soma ${reais.format(exemplo.ganhoPorAno[kExemplo]!)} à matriz, e ${curto(alvo.nome)} recebe ${reais.format(exemplo.noCampus[kExemplo]!.valor)} a mais (${centavos.format(exemplo.ganhoPorAno[kExemplo]! > 0 ? exemplo.noCampus[kExemplo]!.valor / exemplo.ganhoPorAno[kExemplo]! : 0)} por real de matriz).`}
       </p>

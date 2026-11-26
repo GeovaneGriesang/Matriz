@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { ehCampusDestaque } from "@/lib/destaque";
-import { ROTULO_DA_REGRA, fatorDaMatriz3, projetarDistribuicao, REGRA_INTERNA, type AnoInterno, type RegraDoCampus } from "@/lib/mdo/distribuicaoInterna";
+import { ROTULO_DA_REGRA, fatorDaMatriz3, projetarDistribuicao, REGRA_INTERNA, type AnoInterno, type LinhaInterna, type RegraDoCampus } from "@/lib/mdo/distribuicaoInterna";
 
 /** O que a pessoa muda na distribuição: total e fração de cada ano, mudança de alunos de cada câmpus e se o primeiro ano usa o valor oficial. */
 export interface ConfigDaDistribuicao {
@@ -110,6 +110,11 @@ export function DistribuicaoProjetada({
   const somaAnterior = campi.reduce((s, c) => s + c.anterior, 0);
   const destaque = ordem.find((c) => ehCampusDestaque(c.nome));
   const primeiroCalculado = resultado.find((a) => a.linhas.every((l) => l.regra !== "oficial"));
+  const exemploResolvido = (() => {
+    if (!primeiroCalculado) return null;
+    const l = primeiroCalculado.linhas.find((x) => destaque && x.id === destaque.id) ?? primeiroCalculado.linhas[0];
+    return l ? { l, a: primeiroCalculado } : null;
+  })();
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
@@ -127,6 +132,8 @@ export function DistribuicaoProjetada({
           ganham ou perdem. O + de um câmpus abre, logo abaixo da linha, a conta de cada ano.
         </p>
       </div>
+
+      <ComoFazerAConta exemplo={exemploResolvido} />
 
       {temOficial && (
         <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
@@ -364,30 +371,139 @@ export function DistribuicaoProjetada({
   );
 }
 
+const pct2 = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** A conta de um câmpus num ano, passo a passo e com os números: o mesmo caminho que o motor segue. */
+function PassosDaConta({ l, a }: { l: LinhaInterna; a: AnoInterno }) {
+  const somaMatriz1 = a.linhas.reduce((s, x) => s + Math.max(0, x.matriz1), 0);
+  const fatia = somaMatriz1 > 0 ? Math.max(0, l.matriz1) / somaMatriz1 : 0;
+  const fator = Math.round(a.fator * 100);
+  const diferenca = l.matriz3 - l.anterior;
+  const queda = -diferenca;
+  const noventaEQuatro = REGRA_INTERNA.fracaoMinimaDoAnterior * l.anterior;
+  // O valor antes do piso: o piso só entra no fim, se o valor ficar abaixo dele.
+  const antesDoPiso = diferenca >= 0 ? l.matriz3 : queda <= REGRA_INTERNA.limiteIntegral ? l.anterior : Math.max(l.matriz3, noventaEQuatro);
+  return (
+    <ol className="flex list-decimal flex-col gap-1 pl-5">
+      <li>
+        <strong>Fatia do câmpus</strong> = Matriz 1 do câmpus ÷ soma da Matriz 1 de todos: {reais.format(l.matriz1)} ÷ {reais.format(somaMatriz1)} = {pct2.format(fatia)}.
+      </li>
+      <li>
+        <strong>Matriz 2</strong> = fatia × total a distribuir: {pct2.format(fatia)} × {reais.format(a.totalDistribuido)} = <strong>{reais.format(l.matriz2)}</strong>.
+      </li>
+      <li>
+        <strong>Matriz 3</strong> = {fator}% da Matriz 2: {fator}% × {reais.format(l.matriz2)} = <strong>{reais.format(l.matriz3)}</strong>.
+      </li>
+      <li>
+        <strong>Diferença</strong> = Matriz 3 − recebido no ano anterior: {reais.format(l.matriz3)} − {reais.format(l.anterior)} = {reais.format(diferenca)}.
+      </li>
+      <li>
+        <strong>Complemento.</strong>{" "}
+        {diferenca >= 0 ? (
+          <>Não caiu: recebe a Matriz 3, sem complemento: {reais.format(l.matriz3)}.</>
+        ) : queda <= REGRA_INTERNA.limiteIntegral ? (
+          <>
+            Caiu {reais.format(queda)}, que é até {reais.format(REGRA_INTERNA.limiteIntegral)}: volta ao valor do ano anterior, {reais.format(l.anterior)}. Complemento = {reais.format(l.anterior)} −{" "}
+            {reais.format(l.matriz3)} = {reais.format(l.anterior - l.matriz3)}.
+          </>
+        ) : (
+          <>
+            Caiu {reais.format(queda)}, mais que {reais.format(REGRA_INTERNA.limiteIntegral)}: recebe o maior valor entre a Matriz 3 ({reais.format(l.matriz3)}) e 94% do ano anterior (94% ×{" "}
+            {reais.format(l.anterior)} = {reais.format(noventaEQuatro)}), ou seja, {reais.format(antesDoPiso)}.
+          </>
+        )}
+      </li>
+      <li>
+        <strong>Piso.</strong>{" "}
+        {antesDoPiso < REGRA_INTERNA.piso ? (
+          <>
+            {reais.format(antesDoPiso)} fica abaixo do piso de {reais.format(REGRA_INTERNA.piso)}, então sobe para {reais.format(REGRA_INTERNA.piso)}.
+          </>
+        ) : (
+          <>
+            {reais.format(antesDoPiso)} não fica abaixo do piso de {reais.format(REGRA_INTERNA.piso)}: nada muda.
+          </>
+        )}{" "}
+        <strong>Total do câmpus: {reais.format(l.total)}</strong> (complemento de {reais.format(l.complemento)} sobre a Matriz 3).
+      </li>
+    </ol>
+  );
+}
+
+/** A fórmula geral e um exemplo resolvido, para a pessoa refazer a conta sozinha. */
+function ComoFazerAConta({ exemplo }: { exemplo: { l: LinhaInterna; a: AnoInterno } | null }) {
+  return (
+    <details className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-700 dark:border-neutral-800 dark:text-neutral-300">
+      <summary className="font-semibold text-neutral-900 dark:text-neutral-100">Como fazer a conta, passo a passo</summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <p>Para cada câmpus, em cada ano, chamando de A o que o câmpus recebeu no ano anterior:</p>
+        <ol className="flex list-decimal flex-col gap-1 pl-5">
+          <li>
+            <strong>Fatia</strong> = Matriz 1 do câmpus ÷ soma da Matriz 1 de todos os câmpus. A Matriz 1 é a matriz do câmpus, calculada pela MDO.
+          </li>
+          <li>
+            <strong>Matriz 2</strong> = fatia × total a distribuir entre os câmpus no ano.
+          </li>
+          <li>
+            <strong>Matriz 3</strong> = 85% da Matriz 2 em 2027; 90% de 2028 em diante.
+          </li>
+          <li>
+            <strong>Diferença</strong> = Matriz 3 − A.
+          </li>
+          <li>
+            <strong>Valor do câmpus:</strong> se a diferença é zero ou positiva, recebe a Matriz 3. Se é negativa e a queda é de até R$ 1.000.000, recebe A (o mesmo do ano anterior). Se a
+            queda passa de R$ 1.000.000, recebe o maior valor entre a Matriz 3 e 94% de A.
+          </li>
+          <li>
+            <strong>Piso:</strong> se o valor ficou abaixo de R$ 950.000, sobe para R$ 950.000.
+          </li>
+          <li>
+            <strong>Complemento</strong> = valor do câmpus − Matriz 3. Os complementos saem da <strong>reserva</strong>: total a distribuir − soma da Matriz 3 de todos (os 10% que ficaram
+            de fora; em 2027, 15%).
+          </li>
+        </ol>
+        <p className="rounded-md bg-neutral-100 p-3 font-mono text-xs leading-6 dark:bg-neutral-900">
+          M2 = (M1 ÷ soma das M1) × Total
+          <br />
+          M3 = f × M2, com f = 0,85 em 2027 e 0,90 depois
+          <br />
+          D = M3 − A
+          <br />
+          Valor = M3, se D ≥ 0; = A, se a queda (−D) ≤ 1.000.000; = maior entre M3 e 0,94 × A, se a queda &gt; 1.000.000
+          <br />
+          Valor final = maior entre Valor e 950.000
+        </p>
+        {exemplo && (
+          <div className="flex flex-col gap-1">
+            <p>
+              <strong>
+                Exemplo resolvido: {curto(exemplo.l.nome)} em {exemplo.a.ano}
+              </strong>
+              , com os números da tabela abaixo:
+            </p>
+            <PassosDaConta l={exemplo.l} a={exemplo.a} />
+          </div>
+        )}
+        <p>Para refazer em outro câmpus ou ano, abra o + dele na tabela: a mesma conta aparece com os números dele, ano a ano.</p>
+      </div>
+    </details>
+  );
+}
+
 function ContaDoCampusNosAnos({ nome, resultado, id }: { nome: string; resultado: AnoInterno[]; id: number }) {
   return (
-    <div className="sticky left-0 flex w-[min(88vw,64rem)] flex-col gap-2 whitespace-normal rounded-md border-l-4 border-if-green bg-white p-4 text-left text-sm dark:bg-neutral-950">
+    <div className="sticky left-0 flex w-[min(88vw,64rem)] flex-col gap-3 whitespace-normal rounded-md border-l-4 border-if-green bg-white p-4 text-left text-sm dark:bg-neutral-950">
       <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">A conta de {nome}, ano a ano</h3>
-      <ul className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
-        {resultado.map((a) => {
-          const l = a.linhas.find((x) => x.id === id);
-          if (!l) return null;
-          if (l.regra === "oficial")
-            return (
-              <li key={a.ano}>
-                <strong>{a.ano}:</strong> valor oficial da proposta da Reitoria, {reais.format(l.total)}.
-              </li>
-            );
-          const somaMatriz1 = a.linhas.reduce((s, x) => s + Math.max(0, x.matriz1), 0);
-          return (
-            <li key={a.ano}>
-              <strong>{a.ano}:</strong> Matriz 2 = {reais.format(l.matriz1)} × {reais.format(a.totalDistribuido)} ÷ {reais.format(somaMatriz1)} = {reais.format(l.matriz2)}; Matriz 3 ={" "}
-              {Math.round(a.fator * 100)}% = {reais.format(l.matriz3)}; contra {reais.format(l.anterior)} do ano anterior, {ROTULO_DA_REGRA[l.regra]}; complemento de {reais.format(l.complemento)},
-              total de <strong>{reais.format(l.total)}</strong>.
-            </li>
-          );
-        })}
-      </ul>
+      {resultado.map((a) => {
+        const l = a.linhas.find((x) => x.id === id);
+        if (!l) return null;
+        return (
+          <div key={a.ano} className="flex flex-col gap-1 text-neutral-700 dark:text-neutral-300">
+            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100">{a.ano}</h4>
+            {l.regra === "oficial" ? <p>Valor oficial da proposta da Reitoria: {reais.format(l.total)}. Não há conta a refazer.</p> : <PassosDaConta l={l} a={a} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
