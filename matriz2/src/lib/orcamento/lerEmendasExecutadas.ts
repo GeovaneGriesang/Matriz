@@ -72,7 +72,8 @@ export function lerEmendasExecutadas(texto: string, ugs: ReadonlySet<string>): E
         codigoEmenda: codigo!,
         anoEmenda: Number(codigo!.slice(0, 4)),
         numeroNoEspelho: codigo!.slice(4),
-        autor: (c[col.autor] ?? "").trim(),
+        // O Portal grava "NOME / EMENDA 5": o número já está no código, e o nome sozinho agrupa as emendas do mesmo autor.
+        autor: (c[col.autor] ?? "").replace(/\s*\/\s*EMENDA\s*\d+\s*$/i, "").trim(),
         ugCodigo: c[col.ug]!,
         ugNome: c[col.ugNome] ?? "",
         uoCodigo: c[col.uo] ?? "",
