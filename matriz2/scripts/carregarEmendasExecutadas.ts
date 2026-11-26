@@ -8,6 +8,7 @@
  */
 import { prisma } from "../src/server/db/prisma";
 import { carregarEmendasExecutadas } from "../src/carga/carregarEmendasExecutadas";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -22,7 +23,7 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
+executarCargaComAviso(`Carga das emendas executadas no IFSul ${process.argv.slice(2).join(" ")}`, "/emendas/prestacao-de-contas", main).catch(async (e) => {
   console.error(e instanceof Error ? e.message : e);
   await prisma.$disconnect();
   process.exit(1);

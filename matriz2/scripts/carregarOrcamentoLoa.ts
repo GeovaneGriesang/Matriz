@@ -7,6 +7,7 @@
  */
 import { prisma } from "../src/server/db/prisma";
 import { carregarEmendas, carregarOrcamentoLoa } from "../src/carga/carregarOrcamentoLoa";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 async function main() {
   const r = await carregarOrcamentoLoa("IFSUL", "26436");
@@ -17,7 +18,7 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
+executarCargaComAviso(`Carga da LOA e do PLOA ${process.argv.slice(2).join(" ")}`, "/orcamento-da-uniao", main).catch(async (e) => {
   console.error(e instanceof Error ? e.message : e);
   await prisma.$disconnect();
   process.exit(1);

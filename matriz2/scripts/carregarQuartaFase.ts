@@ -10,6 +10,7 @@
 import { prisma } from "../src/server/db/prisma";
 import { planilhasQuartaFase } from "../src/carga/caminhos";
 import { carregarQuartaFase } from "../src/carga/carregarQuartaFase";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 const inteiro = new Intl.NumberFormat("pt-BR");
 
@@ -29,7 +30,7 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
+executarCargaComAviso(`Carga da 4ª fase ${process.argv.slice(2).join(" ")}`, "/conferencia/quarta-fase", main).catch(async (e) => {
   console.error(e);
   await prisma.$disconnect();
   process.exit(1);

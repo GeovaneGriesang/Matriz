@@ -7,6 +7,8 @@ import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { getAdminSession } from "@/server/auth/session";
 import { logoutAction } from "@/server/actions/adminAuth";
 import { carregarAjustesDeTelas } from "@/server/queries/ajustesDeTelas";
+import { quantosAvisosNovos } from "@/server/avisos/avisos";
+import { RoboAzul } from "@/components/icons/RoboAzul";
 
 const LINK_CLASS = "text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
 
@@ -22,6 +24,7 @@ export async function SiteHeader() {
   const acessoPleno = usuario && temAcessoPleno(usuario.papel);
   // O super-admin vê todas as telas, então não precisa ler os ajustes.
   const ajustes = acessoPleno && usuario.papel !== "SUPER_ADMIN" ? await carregarAjustesDeTelas() : [];
+  const avisosNovos = acessoPleno ? await quantosAvisosNovos(usuario) : 0;
 
   return (
     <header className="sticky top-0 z-30 print:static border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 dark:border-neutral-800 dark:bg-neutral-950">
@@ -53,6 +56,18 @@ export async function SiteHeader() {
         )}
         {usuario && (
           <div className="ml-auto flex items-center gap-3 text-sm print:hidden">
+            {acessoPleno && (
+              <Link
+                href="/avisos"
+                className="relative inline-flex items-center rounded-md p-1 hover:bg-blue-50 dark:hover:bg-blue-950"
+                title={avisosNovos > 0 ? `Avisos do sistema: ${avisosNovos} novo(s)` : "Avisos do sistema: o que foi atualizado"}
+              >
+                <RoboAzul titulo="Avisos do sistema" />
+                {avisosNovos > 0 && (
+                  <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-blue-600 px-1 text-center text-[10px] font-bold leading-4 text-white">{avisosNovos > 99 ? "99+" : avisosNovos}</span>
+                )}
+              </Link>
+            )}
             <Link
               href="/admin/conta"
               className="text-neutral-500 underline decoration-dotted hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"

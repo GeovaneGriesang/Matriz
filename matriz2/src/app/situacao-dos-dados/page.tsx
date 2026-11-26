@@ -5,6 +5,7 @@ import { SeloConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
 import { temAcessoPleno } from "@/lib/permissoes";
 import { FontesMonitoradas, type FonteNaTela } from "./FontesMonitoradas";
+import { FONTES } from "@/server/fontes/verificarFontes";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const ORDEM: NivelConfianca[] = ["CONFERIDO", "ATENCAO", "ESTIMADO"];
 export default async function SituacaoDosDadosPage() {
   const usuario = await requireAcessoPlenoOrRedirect("/situacao-dos-dados");
   const fontes: FonteNaTela[] = (
-    await prisma.fonteMonitorada.findMany({ orderBy: { id: "asc" }, include: { verificacoes: { orderBy: { em: "desc" }, take: 6 } } })
+    await prisma.fonteMonitorada.findMany({ where: { chave: { in: FONTES.map((f) => f.chave) } }, orderBy: { id: "asc" }, include: { verificacoes: { orderBy: { em: "desc" }, take: 6 } } })
   ).map((f) => ({
     id: f.id,
     nome: f.nome,

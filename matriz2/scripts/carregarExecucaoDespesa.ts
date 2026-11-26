@@ -7,6 +7,7 @@
  */
 import { prisma } from "../src/server/db/prisma";
 import { carregarExecucaoDespesa } from "../src/carga/carregarExecucaoDespesa";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 async function main() {
   const ano = Number(process.argv[2] ?? 2026);
@@ -16,7 +17,7 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
+executarCargaComAviso(`Carga da execução da despesa ${process.argv.slice(2).join(" ")}`, "/orcamento-da-uniao", main).catch(async (e) => {
   console.error(e instanceof Error ? e.message : e);
   await prisma.$disconnect();
   process.exit(1);

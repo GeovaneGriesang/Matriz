@@ -18,6 +18,7 @@ import { carregarPnpOrcamento } from "../src/carga/carregarPnpOrcamento";
 import { carregarPnpExtrator } from "../src/carga/carregarPnpExtrator";
 import { carregarPnpMicrodados } from "../src/carga/carregarPnpMicrodados";
 import { recalcularOpcoesPnp } from "../src/server/queries/opcoesPnp";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 const inteiro = new Intl.NumberFormat("pt-BR");
 const PARTES = ["ensino", "pessoal", "orcamento", "extrator", "microdados"] as const;
@@ -94,7 +95,7 @@ async function main() {
   console.log("\nCarga concluída.\n");
 }
 
-main().catch(async (erro) => {
+executarCargaComAviso(`Carga da PNP ${process.argv.slice(2).join(" ")}`, "/pnp", main).catch(async (erro) => {
   console.error("\nFalhou:", erro instanceof Error ? erro.message : erro);
   await prisma.$disconnect();
   process.exit(1);

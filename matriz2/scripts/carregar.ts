@@ -23,6 +23,7 @@ import { carregarConferenciaCiclos } from "../src/carga/carregarConferenciaCiclo
 import { carregarParticipacaoInstituicao } from "../src/carga/carregarParticipacaoInstituicao";
 import { existe, planilhaParticipacao, planilhaProposta, relatorioIndicadores } from "../src/carga/caminhos";
 import { ANO_MINIMO_SISTEMA, anoDentroDoEscopo } from "../src/lib/escopoTemporal";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const inteiro = new Intl.NumberFormat("pt-BR");
@@ -202,7 +203,7 @@ ${"=".repeat(72)}`);
   console.log("\nCarga concluída.\n");
 }
 
-main().catch(async (erro) => {
+executarCargaComAviso(`Carga da MDO, ciclo ${process.argv.slice(2).join(" ")}`, "/consulta", main).catch(async (erro) => {
   console.error("\nFalhou:", erro instanceof Error ? erro.message : erro);
   await prisma.$disconnect();
   process.exit(1);

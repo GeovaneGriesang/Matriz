@@ -68,6 +68,8 @@ model Usuario {
   precisaTrocarSenha Boolean   @default(false)
   criadoEm           DateTime  @default(now())
   ultimoLoginEm      DateTime?
+  /// Até quando a pessoa já viu os avisos do sistema (o robô azul do topo conta os mais novos que isso).
+  avisosVistosEm     DateTime?
 
   sessoes                  Sessao[]
   auditorias               RegistroAuditoria[]
@@ -1558,4 +1560,21 @@ model EmendaExecutada {
 
   @@index([instituicaoId, ano])
   @@index([codigoEmenda])
+}
+
+/// Um aviso do sistema (o robô azul): fonte oficial que mudou, dados carregados ou versão nova publicada. Vai por e-mail aos super-admins e aparece em /avisos.
+model AvisoDoSistema {
+  id             Int       @id @default(autoincrement())
+  criadoEm       DateTime  @default(now())
+  /// fonte, carga ou versao.
+  tipo           String    @db.VarChar(20)
+  titulo         String    @db.VarChar(200)
+  texto          String    @db.Text
+  link           String?   @db.VarChar(300)
+  /// Para a versão: o commit publicado, de onde o próximo aviso continua.
+  referencia     String?   @db.VarChar(80)
+  emailEnviadoEm DateTime?
+  emailErro      String?   @db.VarChar(500)
+
+  @@index([criadoEm])
 }

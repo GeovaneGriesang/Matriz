@@ -7,6 +7,7 @@
  */
 import { prisma } from "../src/server/db/prisma";
 import { carregarPesoEfetivo } from "../src/carga/carregarPesoEfetivo";
+import { executarCargaComAviso } from "../src/server/avisos/cargaComAviso";
 
 const inteiro = new Intl.NumberFormat("pt-BR");
 
@@ -26,7 +27,7 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
+executarCargaComAviso(`Carga do peso efetivo por curso ${process.argv.slice(2).join(" ")}`, "/peso-efetivo", main).catch(async (e) => {
   console.error(e);
   await prisma.$disconnect();
   process.exit(1);

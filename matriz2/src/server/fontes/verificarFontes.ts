@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/server/db/prisma";
 import { arquivosDaPagina, diferencas } from "@/lib/fontes/leituraDeFontes";
+import { registrarAviso } from "@/server/avisos/avisos";
 
 export { arquivosDaPagina, diferencas };
 
@@ -81,13 +82,6 @@ export const FONTES: readonly FonteDoCatalogo[] = [
     url: "https://pmva.com.br/?pag=18",
     tipo: "pagina",
     assunto: "LOA, LDO e PPA do município.",
-  },
-  {
-    chave: "camara-va",
-    nome: "Câmara de Vereadores de Venâncio Aires",
-    url: "https://www.venancioaires.rs.leg.br/",
-    tipo: "pagina",
-    assunto: "Projeto de lei orçamentária do município e emendas impositivas.",
   },
 ];
 
@@ -200,5 +194,18 @@ export async function verificarFontes(so?: string): Promise<ResultadoDaVerificac
       resultados.push({ chave: f.chave, nome: f.nome, mudou: false, primeira: false, erro });
     }
   }
+  const mudaram = resultados.filter((r) => r.mudou);
+  if (mudaram.length > 0)
+    await registrarAviso({
+      tipo: "fonte",
+      titulo: mudaram.length === 1 ? `Mudou: ${mudaram[0]!.nome}` : `${mudaram.length} fontes oficiais mudaram`,
+      texto: mudaram
+        .map((r) => {
+          const l = (r.novidades ?? "").split("\n");
+          return `${r.nome}\n${l.slice(0, 12).join("\n")}${l.length > 12 ? "\n... (a lista completa está em Situação dos dados)" : ""}`;
+        })
+        .join("\n\n"),
+      link: "/situacao-dos-dados",
+    });
   return resultados;
 }

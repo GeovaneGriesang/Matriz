@@ -85,7 +85,7 @@ tanto Gmail pessoal quanto Google Workspace (caso de `va-matriz@ifsul.edu.br`).
 ### Conferência semanal das fontes oficiais
 
 `npm run verificar:fontes` visita as páginas oficiais que alimentam o sistema (PNP, Congresso,
-Planejamento, Portal da Transparência, Câmara, Senado, Estado do RS e Venâncio Aires) e grava o
+Planejamento, Portal da Transparência, Câmara, Senado, Estado do RS e Prefeitura de Venâncio Aires) e grava o
 que mudou nas tabelas `FonteMonitorada` e `VerificacaoFonte`; a tela Situação dos dados mostra.
 Na VM roda toda segunda-feira de manhã (11h no fuso da VM, Europe/Berlin), pelo cron do root:
 
@@ -94,6 +94,13 @@ Na VM roda toda segunda-feira de manhã (11h no fuso da VM, Europe/Berlin), pelo
 ```
 
 Para acrescentar uma fonte, inclua-a em `FONTES` (src/server/fontes/verificarFontes.ts).
+
+### Avisos do sistema (robô azul)
+
+Fonte oficial que mudou, carga de dados concluída e versão nova publicada viram um aviso em `/avisos`
+(o robô azul no topo mostra quantos são novos) e um e-mail aos super-admins, enviado só quando
+`APP_URL` começa com https (produção). Depois de cada deploy, rode `npm run avisar:versao`. Para rodar
+uma carga sem avisar, use `SEM_AVISO=1`.
 
 ## Login obrigatório, e por quê
 
