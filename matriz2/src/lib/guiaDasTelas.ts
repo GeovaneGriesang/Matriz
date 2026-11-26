@@ -132,7 +132,7 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
   },
   "/situacao-dos-dados": {
     responde: "Quanto posso confiar em cada número?",
-    mostra: "Num lugar só, o que está conferido, o que precisa de revisão e o que é estimativa ou definição própria, com o motivo de cada um.",
+    mostra: "Num lugar só, o que está conferido, o que precisa de revisão e o que é estimativa ou definição própria, com o motivo de cada um. E as fontes oficiais, conferidas toda segunda-feira na internet, com o que mudou desde a última vez.",
     usar: "Consulte antes de levar um número a uma decisão. As mesmas marcas aparecem no topo das telas que dependem desses dados.",
   },
 };

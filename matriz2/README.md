@@ -82,6 +82,19 @@ funcionando, mas o e-mail de primeiro acesso não sai, e a tela devolve o códig
 repassar à mão. `SMTP_HOST`/`SMTP_PORT` têm padrão `smtp.gmail.com`/`587`, cobrindo
 tanto Gmail pessoal quanto Google Workspace (caso de `va-matriz@ifsul.edu.br`).
 
+### Conferência semanal das fontes oficiais
+
+`npm run verificar:fontes` visita as páginas oficiais que alimentam o sistema (PNP, Congresso,
+Planejamento, Portal da Transparência, Câmara, Senado, Estado do RS e Venâncio Aires) e grava o
+que mudou nas tabelas `FonteMonitorada` e `VerificacaoFonte`; a tela Situação dos dados mostra.
+Na VM roda toda segunda-feira às 7h, pelo cron do root:
+
+```
+0 7 * * 1 cd /opt/matriz/matriz2 && npm run -s verificar:fontes >> /var/log/verificar_fontes.log 2>&1
+```
+
+Para acrescentar uma fonte, inclua-a em `FONTES` (src/server/fontes/verificarFontes.ts).
+
 ## Login obrigatório, e por quê
 
 **Consulta, Comparativo, Evasão, Simulador, Dados importados e a Correção manual

@@ -1495,3 +1495,35 @@ model VisibilidadeDaTela {
 
   @@id([papel, href])
 }
+
+/// Uma fonte oficial que alimenta o sistema e é conferida toda semana na internet (scripts/verificarFontes.ts).
+model FonteMonitorada {
+  id           Int                @id @default(autoincrement())
+  chave        String             @unique @db.VarChar(80)
+  nome         String             @db.VarChar(200)
+  url          String             @db.VarChar(500)
+  /// pagina (lista de arquivos publicados), portal (mês novo no Portal da Transparência) ou parlamentares (partido e UF).
+  tipo         String             @db.VarChar(20)
+  assunto      String             @db.VarChar(300)
+  /// Resumo do que se viu na última conferência, para comparar com a próxima.
+  assinatura   String?            @db.VarChar(64)
+  /// O que se viu (lista de arquivos, meses, parlamentares), em JSON.
+  conteudo     String?            @db.LongText
+  verificadoEm DateTime?
+  mudouEm      DateTime?
+  erro         String?            @db.VarChar(500)
+  verificacoes VerificacaoFonte[]
+}
+
+model VerificacaoFonte {
+  id        Int             @id @default(autoincrement())
+  fonteId   Int
+  fonte     FonteMonitorada @relation(fields: [fonteId], references: [id], onDelete: Cascade)
+  em        DateTime        @default(now())
+  mudou     Boolean
+  /// O que apareceu ou sumiu desde a conferência anterior, em texto.
+  novidades String?         @db.Text
+  erro      String?         @db.VarChar(500)
+
+  @@index([fonteId, em])
+}

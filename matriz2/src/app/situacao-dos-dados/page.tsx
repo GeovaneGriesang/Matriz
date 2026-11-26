@@ -2,13 +2,28 @@ import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
 import { CONFIANCA, NIVEIS, type NivelConfianca } from "@/lib/confianca";
 import { SeloConfianca } from "@/components/Confianca";
+import { prisma } from "@/server/db/prisma";
+import { temAcessoPleno } from "@/lib/permissoes";
+import { FontesMonitoradas, type FonteNaTela } from "./FontesMonitoradas";
 
 export const dynamic = "force-dynamic";
 
 const ORDEM: NivelConfianca[] = ["CONFERIDO", "ATENCAO", "ESTIMADO"];
 
 export default async function SituacaoDosDadosPage() {
-  await requireAcessoPlenoOrRedirect("/situacao-dos-dados");
+  const usuario = await requireAcessoPlenoOrRedirect("/situacao-dos-dados");
+  const fontes: FonteNaTela[] = (
+    await prisma.fonteMonitorada.findMany({ orderBy: { id: "asc" }, include: { verificacoes: { orderBy: { em: "desc" }, take: 6 } } })
+  ).map((f) => ({
+    id: f.id,
+    nome: f.nome,
+    url: f.url,
+    assunto: f.assunto,
+    verificadoEm: f.verificadoEm?.toISOString() ?? null,
+    mudouEm: f.mudouEm?.toISOString() ?? null,
+    erro: f.erro,
+    historico: f.verificacoes.map((v) => ({ em: v.em.toISOString(), mudou: v.mudou, novidades: v.novidades, erro: v.erro })),
+  }));
   const itens = Object.entries(CONFIANCA) as [keyof typeof CONFIANCA, (typeof CONFIANCA)[keyof typeof CONFIANCA]][];
 
   return (
@@ -36,6 +51,21 @@ export default async function SituacaoDosDadosPage() {
           );
         })}
       </div>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">As fontes oficiais, conferidas toda semana</h2>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Toda segunda-feira, às 7h, o sistema visita na internet as fontes oficiais que o alimentam e anota o que mudou, sem baixar nada. Numa página, conta como mudança
+          um arquivo novo publicado (ou um que saiu); no Portal da Transparência, um mês publicado que ainda não foi carregado; nas listas da Câmara e do Senado, um parlamentar
+          que trocou de partido, entrou ou saiu. Em amarelo, o que mudou na última semana. O + abre o endereço da fonte e as últimas conferências, com o que apareceu de novo.
+          Quando algo muda, é a hora de carregar a versão nova.
+        </p>
+        {fontes.length === 0 ? (
+          <p className="text-sm text-neutral-500">Ainda não houve conferência.</p>
+        ) : (
+          <FontesMonitoradas fontes={fontes} podeVerificar={temAcessoPleno(usuario.papel)} />
+        )}
+      </section>
 
       {ORDEM.map((n) => (
         <section key={n} className="flex flex-col gap-2">

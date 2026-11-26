@@ -18,6 +18,7 @@
     "carregar:quarta-fase": "tsx scripts/carregarQuartaFase.ts",
     "carregar:orcamento-loa": "tsx scripts/carregarOrcamentoLoa.ts",
     "carregar:emendas": "tsx scripts/carregarEmendasApresentadas.ts",
+    "verificar:fontes": "tsx scripts/verificarFontes.ts",
     "carregar:execucao-despesa": "tsx scripts/carregarExecucaoDespesa.ts",
     "carregar:pnp-opcoes": "tsx scripts/preencherOpcoesPnp.ts",
     "seed:superadmin": "tsx scripts/seedSuperAdmin.ts"
