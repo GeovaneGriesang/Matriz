@@ -219,7 +219,6 @@ export function ProjecaoCiclos({
   const [reporExistentes, setReporExistentes] = useState(true);
   const [encerramentos, setEncerramentos] = useState<Record<string, number>>({});
   const [novos, setNovos] = useState<NovoCursoUI[]>([]);
-  const [anoEmLote, setAnoEmLote] = useState(anoBase0 + 3);
   const [filtroCurso, setFiltroCurso] = useState("");
   const [verTodosOsCursos, setVerTodosOsCursos] = useState(false);
   const [restaurado, setRestaurado] = useState(false);
@@ -983,23 +982,6 @@ export function ProjecaoCiclos({
             Procurar curso
             <input value={filtroCurso} onChange={(e) => setFiltroCurso(e.target.value)} placeholder="nome do curso" className={campo} />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-            Parar tudo o que está listado a partir de
-            <input type="number" min={anoBase0 + 1} max={anoBase0 + MAX_ANOS} value={anoEmLote} onChange={(e) => setAnoEmLote(Number(e.target.value))} className={campo} />
-          </label>
-          <button
-            type="button"
-            className="rounded bg-if-green px-3 py-1.5 text-sm font-medium text-white"
-            onClick={() => {
-              setEncerramentos((atual) => {
-                const novo = { ...atual };
-                for (const c of cursosFiltrados) novo[c.chave] = anoEmLote;
-                return novo;
-              });
-            }}
-          >
-            Aplicar aos {cursosFiltrados.length} curso(s) listados
-          </button>
           <button type="button" className="rounded border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700" onClick={() => setEncerramentos({})}>
             Remover todas as paradas
           </button>
