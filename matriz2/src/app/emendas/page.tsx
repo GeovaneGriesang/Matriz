@@ -35,6 +35,8 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
     modalidade: e.modalidade,
     tipoAutor: e.tipoAutor,
     autor: e.autor,
+    partidoAutor: e.partidoAutor,
+    ufAutor: e.ufAutor,
     ementa: e.ementa,
     uoCodigo: e.uoCodigo,
     uoNome: e.uoNome,
@@ -113,13 +115,22 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
           Elas aparecem com a marca &quot;valor simbólico&quot; e somam o que valem, quase nada.
         </p>
         <p>
-          <strong>Como usar.</strong> Os filtros valem para tudo ao mesmo tempo: cartões, gráficos, lista e resumo. Clique numa barra dos gráficos para filtrar por
-          ela. Na lista, o + de cada emenda abre logo abaixo a justificativa, a funcional programática e o subtítulo; no resumo, o + de uma instituição abre as
-          emendas dela.
+          <strong>Como usar.</strong> Os filtros valem para tudo ao mesmo tempo: cartões, gráficos e tabelas. Em &quot;Quem destinou&quot;, escolha deputados, senadores,
+          bancadas ou comissões (um ou vários), o partido, a UF do parlamentar ou o próprio parlamentar; em &quot;Para onde vai&quot;, a instituição, a região, a UF ou a ação.
+          Clique numa barra dos gráficos para filtrar por ela. Cada filtro ligado aparece como uma etiqueta, com um × para tirar. Nas tabelas, o + abre logo abaixo as
+          emendas, e na lista de todas as emendas abre tudo o que o espelho oficial traz, com a justificativa.
         </p>
       </ComoLerEstaTela>
 
       <EmendasPainel emendas={emendas} exercicio={exercicio} />
+
+      <p className="text-xs text-neutral-500">
+        Veja também o{" "}
+        <a href="https://sites.google.com/view/painel-emendas-2027-rfepct/full-page-embed" target="_blank" rel="noopener noreferrer" className={PROSE_LINK}>
+          Painel de Emendas 2027 dos Institutos Federais
+        </a>
+        , da Pró-Reitoria de Planejamento do IFRN (link incluído em 26/11/2026).
+      </p>
 
       <p className="text-xs text-neutral-500">
         Fonte: {fonte} Conferido: a soma dos acréscimos de cada emenda fecha com o total impresso nela. Veja também o{" "}

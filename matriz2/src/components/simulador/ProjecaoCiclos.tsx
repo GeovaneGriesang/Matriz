@@ -24,6 +24,8 @@ import { FiltrosDoCenario } from "@/components/simulador/FiltrosDoCenario";
 import { rotuloDoCiclo } from "@/lib/identificacaoCiclo";
 import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { ajusteParaManterMooc, repartirMooc, type MoocDoAno } from "@/lib/mdo/manterMooc";
+import { decomporVariacoes, type TurmaNoTempo } from "@/lib/mdo/porQueMuda";
+import { PorQueMuda } from "@/components/simulador/PorQueMuda";
 
 /** Um ciclo como vem do servidor: datas em texto, porque Date não atravessa para o componente de cliente. */
 export interface CicloSerial {
@@ -99,6 +101,10 @@ interface NovoCursoUI {
   ingressantes: number;
   duracao: number;
   repasse: Repasse;
+  /** Reformulação de um curso que o câmpus já oferta (currículo novo): as turmas contam como continuidade, na Reposição, e não como curso novo. */
+  reformulado?: boolean;
+  /** O curso de hoje que a reformulação substitui (chave câmpus|curso|oferta): ele deixa de receber turma a partir da primeira turma do currículo novo. */
+  substitui?: string;
 }
 
 interface CenarioSalvo {
@@ -227,6 +233,8 @@ export function ProjecaoCiclos({
   const [mooc, setMooc] = useState<MoocFixo>(MOOC_LIVRE);
   // O ano aberto pelo + da tabela do cenário (posição na tabela), para ver de onde vêm os alunos daquele ano.
   const [anoAberto, setAnoAberto] = useState<number | null>(null);
+  // O curso novo cuja escolha de curso está aberta na grade (para trocar um curso já escolhido).
+  const [editandoCurso, setEditandoCurso] = useState<number | null>(null);
   const [detalheCompleto, setDetalheCompleto] = useState(false);
 
   const chaveSalva = `matriz.cenario.${instituicao}.${anoCiclo}`;
@@ -323,6 +331,21 @@ export function ProjecaoCiclos({
     [novosEspec, anoBase0, anos, premissas],
   );
 
+  // As paradas que valem na conta: as digitadas e, para cada curso reformulado, o curso antigo que ele substitui, a partir da primeira turma do currículo novo.
+  const paradasEfetivas = useMemo(() => {
+    const p: Record<string, number> = { ...encerramentos };
+    for (const n of novos) {
+      if (!n.reformulado || !n.substitui) continue;
+      p[n.substitui] = Math.min(p[n.substitui] ?? Infinity, n.anoInicio);
+    }
+    return p;
+  }, [encerramentos, novos]);
+  const substituidoPor = useMemo(() => {
+    const m = new Map<string, NovoCursoUI>();
+    for (const n of novos) if (n.reformulado && n.substitui) m.set(n.substitui, n);
+    return m;
+  }, [novos]);
+
   // Soma por câmpus, ano a ano: quem já está matriculado, a reposição dos cursos que continuam, os cursos novos.
   // Os cartões ficam sempre em reais; a tabela segue a medida escolhida. Uma turma fora do filtro não entra em nenhuma parcela, nem em "manter tudo".
   const somarPorCampus = (qual: Medida) => {
@@ -362,7 +385,7 @@ export function ProjecaoCiclos({
           }
         }
       });
-      const parar = encerramentos[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
+      const parar = paradasEfetivas[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
       for (const t of turmasPorCiclo[i]!) {
         const conta = reporExistentes && (parar === undefined || t.anoEntrada <= parar - 1);
         t.pontos.forEach((p, k) => {
@@ -395,7 +418,9 @@ export function ProjecaoCiclos({
       const l = linhasDe(e.ui.unidadeId);
       for (const t of turmasDosNovos[j]!) {
         t.pontos.forEach((p, k) => {
-          l[k]!.novos += valorNaMedida(qual, p, e.fatorMateq);
+          // O curso reformulado é a continuação de um curso de hoje: entra na Reposição, não em Cursos novos.
+          if (e.ui.reformulado) l[k]!.repos += valorNaMedida(qual, p, e.fatorMateq);
+          else l[k]!.novos += valorNaMedida(qual, p, e.fatorMateq);
           l[k]!.alunos += p.alunosContados;
         });
       }
@@ -403,7 +428,7 @@ export function ProjecaoCiclos({
     return m;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const porCampusEmReais = useMemo(() => somarPorCampus("reais"), [todos, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, encerramentos, reporExistentes, anos, turmaPassa, filtros, mooc]);
+  const porCampusEmReais = useMemo(() => somarPorCampus("reais"), [todos, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, paradasEfetivas, reporExistentes, anos, turmaPassa, filtros, mooc]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const porCampus = useMemo(() => (medida === "reais" ? porCampusEmReais : somarPorCampus(medida)), [medida, porCampusEmReais]);
 
@@ -463,13 +488,13 @@ export function ProjecaoCiclos({
   const detalheDoAno = useMemo(() => {
     if (anoAberto === null || anoAberto >= anos) return null;
     const k = anoAberto;
-    type Linha = { chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number };
+    type Linha = { chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number; reformulado: boolean };
     const m = new Map<string, Linha>();
     const linhaDe = (unidadeId: number, curso: string, oferta: string, repasse: Repasse, novo: boolean) => {
       const chave = `${novo ? "novo|" : ""}${chaveDoCurso(unidadeId, curso, oferta)}|${repasse}`;
       let l = m.get(chave);
       if (!l) {
-        l = { chave, unidadeId, curso, oferta, repasse, matric: 0, repos: 0, novos: 0, contados: 0 };
+        l = { chave, unidadeId, curso, oferta, repasse, matric: 0, repos: 0, novos: 0, contados: 0, reformulado: false };
         m.set(chave, l);
       }
       return l;
@@ -477,7 +502,7 @@ export function ProjecaoCiclos({
     todos.forEach((c, i) => {
       if (!turmaPassa[i] || (campusId !== null && c.unidadeId !== campusId)) return;
       const p = matriculadosPorCiclo[i]![k]!;
-      const parar = encerramentos[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
+      const parar = paradasEfetivas[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
       const matric = valorNaMedida(medida, p, c.fatorMateq);
       let contados = p.alunosContados;
       let repos = 0;
@@ -503,14 +528,17 @@ export function ProjecaoCiclos({
       }
       if (Math.abs(novos) < 1e-9) return;
       const l = linhaDe(e.ui.unidadeId, e.item.curso === "*" ? "Qualquer FIC fora do catálogo" : e.item.curso, e.item.tipoOferta, e.ui.repasse, true);
-      l.novos += novos;
+      if (e.ui.reformulado) {
+        l.repos += novos;
+        l.reformulado = true;
+      } else l.novos += novos;
       l.contados += contados;
     });
     const linhasDoAno = [...m.values()].sort((a, b) => b.matric + b.repos + b.novos - (a.matric + a.repos + a.novos));
     const porModalidade = new Map<Repasse, number>();
     for (const l of linhasDoAno) porModalidade.set(l.repasse, (porModalidade.get(l.repasse) ?? 0) + l.matric + l.repos + l.novos);
     return { k, linhas: linhasDoAno, porModalidade };
-  }, [anoAberto, anos, todos, turmaPassa, campusId, matriculadosPorCiclo, encerramentos, turmasPorCiclo, reporExistentes, medida, novosEspec, turmasDosNovos, filtros]);
+  }, [anoAberto, anos, todos, turmaPassa, campusId, matriculadosPorCiclo, paradasEfetivas, turmasPorCiclo, reporExistentes, medida, novosEspec, turmasDosNovos, filtros]);
 
   // Por curso e câmpus: o que cada curso ainda rende só com os alunos de hoje, e a decisão de parar de ofertar.
   const cursos = useMemo(() => {
@@ -562,6 +590,31 @@ export function ProjecaoCiclos({
     }
     return new Map([...m].map(([k, v]) => [k, Math.round(mediana(v) * 2) / 2]));
   }, [todos]);
+
+  // Por que o valor muda de um ano para o outro: cada turma do recorte, ano a ano, na medida da tabela, e a causa de cada variação.
+  const variacoes = useMemo(() => {
+    const lista: TurmaNoTempo[] = [];
+    const nome = (curso: string, oferta: string, unidadeId: number) =>
+      `${curso}${oferta && oferta !== "NÃO SE APLICA" && oferta !== "*" ? ` (${oferta.toLowerCase()})` : ""}${campusId === null ? ` · ${nomeDoCampus(unidadeId)}` : ""}`;
+    todos.forEach((c, i) => {
+      if (!turmaPassa[i] || (campusId !== null && c.unidadeId !== campusId)) return;
+      const n = nome(c.curso, c.tipoOferta, c.unidadeId);
+      lista.push({ curso: n, origem: "hoje", anoTermino: c.termino.getUTCFullYear(), valores: matriculadosPorCiclo[i]!.map((p) => valorNaMedida(medida, p, c.fatorMateq)) });
+      const parar = paradasEfetivas[chaveDoCurso(c.unidadeId, c.curso, c.tipoOferta)];
+      for (const t of turmasPorCiclo[i]!) {
+        if (!(reporExistentes && (parar === undefined || t.anoEntrada <= parar - 1))) continue;
+        lista.push({ curso: n, origem: "reposicao", anoTermino: t.anoTermino, valores: t.pontos.map((p) => valorNaMedida(medida, p, c.fatorMateq)) });
+      }
+    });
+    novosEspec.forEach((e, j) => {
+      if (!e.spec || !e.item || !passaNoFiltro(e.filtravel!, filtros) || (campusId !== null && e.ui.unidadeId !== campusId)) return;
+      const n = `${nome(e.item.curso === "*" ? "Qualquer FIC fora do catálogo" : e.item.curso, e.item.tipoOferta, e.ui.unidadeId)}${e.ui.reformulado ? ", currículo novo" : ", curso novo"}`;
+      for (const t of turmasDosNovos[j]!)
+        lista.push({ curso: n, origem: e.ui.reformulado ? "reformulado" : "novo", anoTermino: t.anoTermino, valores: t.pontos.map((p) => valorNaMedida(medida, p, e.fatorMateq)) });
+    });
+    return decomporVariacoes(lista, anos, anoBase0, linhas.map((l) => l.ajusteMooc));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todos, turmaPassa, campusId, matriculadosPorCiclo, medida, paradasEfetivas, turmasPorCiclo, reporExistentes, novosEspec, filtros, turmasDosNovos, anos, anoBase0, linhas]);
 
   function adicionarCurso() {
     setNovos((atual) => [
@@ -826,6 +879,16 @@ export function ProjecaoCiclos({
         </p>
       </section>
 
+      <PorQueMuda
+        variacoes={variacoes}
+        manterTudo={linhas.map((l) => l.matric + l.reposTudo)}
+        anoCiclo={anoCiclo}
+        formatar={formatar}
+        formatarComSinal={formatarComSinal}
+        nomeDaMedida={nomeDaMedida}
+        nomeDoRecorte={nomeDoRecorte}
+      />
+
       {campusId === null && (
         <section className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Total do cenário por câmpus, em {nomeDaMedida}</h2>
@@ -1006,7 +1069,7 @@ export function ProjecaoCiclos({
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {cursosVisiveis.map((c) => (
                 <Fragment key={c.chave}>
-                <tr className={encerramentos[c.chave] !== undefined ? "bg-amber-50 dark:bg-amber-950/30" : ""}>
+                <tr className={paradasEfetivas[c.chave] !== undefined ? "bg-amber-50 dark:bg-amber-950/30" : ""}>
                   <td className="px-3 py-2">
                     <button type="button" onClick={() => alternarCurso(c.chave)} aria-expanded={cursosAbertos.has(c.chave)} className="flex items-start gap-2 text-left hover:text-if-green">
                       <SinalMaisMenos aberto={cursosAbertos.has(c.chave)} />
@@ -1031,6 +1094,11 @@ export function ProjecaoCiclos({
                       className="w-28 rounded border border-neutral-300 bg-white px-2 py-1 text-right text-sm tabular-nums dark:border-neutral-700 dark:bg-neutral-900"
                       aria-label={`Parar de ofertar ${c.curso}`}
                     />
+                    {substituidoPor.get(c.chave) && (
+                      <span className="mt-1 block text-xs text-violet-700 dark:text-violet-300">
+                        currículo novo a partir de {substituidoPor.get(c.chave)!.anoInicio}
+                      </span>
+                    )}
                   </td>
                   {c.valores.slice(0, Math.min(anos, 6)).map((v, k) => (
                     <td key={k} className="px-3 py-2 text-right tabular-nums">
@@ -1069,111 +1137,251 @@ export function ProjecaoCiclos({
       </details>
 
       <details open={novos.length > 0} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cursos novos ({novos.length})</summary>
+        <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cursos novos e reformulados ({novos.length})</summary>
         <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Acrescente os cursos que um câmpus pretende abrir. Escolha o curso na tabela de pesos (o peso e a carga horária vêm dela), o ano e o mês da primeira turma, quantos
-          ingressantes entram em cada turma e, se a oferta se repete, até que ano ela entra. Curso semestral: escolha duas entradas por ano. A duração vem dos cursos parecidos que o instituto já oferta; ajuste se precisar.
+          Uma linha por curso: o câmpus, o curso (da tabela de pesos, que dá o peso e a carga horária), a primeira turma, quantos entram e por quanto tempo. Marque <strong>Reformulado</strong> quando
+          for o currículo novo de um curso que o câmpus já oferta: ele conta como continuidade (na Reposição), não como curso novo, e o curso antigo escolhido deixa de receber turma a partir da primeira
+          turma do novo.
         </p>
-        {novosEspec.map(({ ui, item, spec }) => {
-          const resultados = ui.busca.trim()
-            ? catalogo
-                .map((it, idx) => ({ it, idx }))
-                .filter(({ it }) => it.curso.toLowerCase().includes(ui.busca.trim().toLowerCase()))
-                .slice(0, 40)
-            : [];
-          const valorAluno = spec ? (spec.peso * (spec.chMatriz / 800) * spec.valorPorMT) : 0;
-          return (
-            <div key={ui.id} className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-                  Câmpus
-                  <select value={ui.unidadeId} onChange={(e) => mudarCurso(ui.id, { unidadeId: Number(e.target.value) })} className={campo}>
-                    {campi.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400 lg:col-span-2">
-                  Curso (digite parte do nome e escolha)
-                  <input value={ui.busca} onChange={(e) => mudarCurso(ui.id, { busca: e.target.value })} placeholder={item ? `${item.curso}` : "ex.: informática"} className={campo} />
-                  {resultados.length > 0 && (
-                    <select
-                      size={Math.min(6, resultados.length)}
-                      className={campo}
-                      onChange={(e) => {
-                        escolherDoCatalogo(ui.id, Number(e.target.value));
-                        mudarCurso(ui.id, { busca: "" });
-                      }}
-                      aria-label="Resultados da busca de curso"
+        <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+              <tr>
+                <th className="px-2 py-2">Câmpus</th>
+                <th className="min-w-64 px-2 py-2">Curso</th>
+                <th className="px-2 py-2">Modalidade</th>
+                <th className="min-w-48 px-2 py-2">Novo ou reformulado</th>
+                <th className="px-2 py-2">1ª turma</th>
+                <th className="px-2 py-2">Mês</th>
+                <th className="px-2 py-2">Entradas</th>
+                <th className="px-2 py-2 text-right">Ingressantes</th>
+                <th className="px-2 py-2 text-right">Duração (anos)</th>
+                <th className="px-2 py-2">Oferta</th>
+                <th className="px-2 py-2 text-right">Um aluno rende</th>
+                <th className="px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              {novosEspec.length === 0 && (
+                <tr>
+                  <td colSpan={99} className="px-3 py-4 text-center text-sm text-neutral-500">
+                    Nenhum curso novo ou reformulado. Use &quot;Adicionar curso&quot; abaixo.
+                  </td>
+                </tr>
+              )}
+              {novosEspec.map(({ ui, item, spec }) => {
+                const resultados = ui.busca.trim()
+                  ? catalogo
+                      .map((it, idx) => ({ it, idx }))
+                      .filter(({ it }) => it.curso.toLowerCase().includes(ui.busca.trim().toLowerCase()))
+                      .slice(0, 40)
+                  : [];
+                const valorAluno = spec ? spec.peso * (spec.chMatriz / 800) * spec.valorPorMT : 0;
+                const editando = !item || editandoCurso === ui.id;
+                const cursosDoCampus = cursos.filter((c) => c.unidadeId === ui.unidadeId);
+                const celula = "px-2 py-1.5 align-top";
+                const pequeno = `${campo} min-w-0`;
+                return (
+                  <tr key={ui.id} className={ui.reformulado ? "bg-violet-50/60 dark:bg-violet-950/20" : ""}>
+                    <td className={celula}>
+                      <select value={ui.unidadeId} onChange={(e) => mudarCurso(ui.id, { unidadeId: Number(e.target.value), substitui: undefined })} className={`${pequeno} w-40`} aria-label="Câmpus">
+                        {campi.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className={`${celula} relative`}>
+                      {editando ? (
+                        <>
+                          <input
+                            autoFocus={editandoCurso === ui.id}
+                            value={ui.busca}
+                            onChange={(e) => mudarCurso(ui.id, { busca: e.target.value })}
+                            placeholder="digite parte do nome"
+                            className={pequeno}
+                            aria-label="Procurar curso"
+                          />
+                          {resultados.length > 0 && (
+                            <ul className="absolute left-2 right-2 z-20 mt-1 max-h-64 overflow-auto rounded border border-neutral-300 bg-white text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                              {resultados.map(({ it, idx }) => (
+                                <li key={idx}>
+                                  <button
+                                    type="button"
+                                    className="w-full px-2 py-1.5 text-left hover:bg-if-green/10"
+                                    onClick={() => {
+                                      escolherDoCatalogo(ui.id, idx);
+                                      mudarCurso(ui.id, { busca: "" });
+                                      setEditandoCurso(null);
+                                    }}
+                                  >
+                                    <span className="font-medium">{it.curso === "*" ? "Qualquer FIC fora do catálogo" : it.curso}</span>
+                                    <span className="block text-neutral-500">
+                                      {it.tipoCurso.toLowerCase()}
+                                      {it.tipoOferta !== "*" && it.tipoOferta !== "NÃO SE APLICA" ? `, ${it.tipoOferta.toLowerCase()}` : ""}, mínima {inteiro.format(it.chMinimaMec)} h, peso {decimal.format(it.pesoEfetivo)}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {!item && !ui.busca.trim() && <span className="mt-1 block text-xs text-if-red">Escolha o curso: sem isso, ele não entra na conta.</span>}
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setEditandoCurso(ui.id)} className="text-left hover:text-if-green" title="Trocar o curso">
+                          <span className="font-medium">{item.curso === "*" ? "Qualquer FIC fora do catálogo" : item.curso}</span>
+                          <span className="block text-xs text-neutral-500">
+                            {item.tipoCurso.toLowerCase()}
+                            {item.tipoOferta !== "*" && item.tipoOferta !== "NÃO SE APLICA" ? `, ${item.tipoOferta.toLowerCase()}` : ""} · trocar
+                          </span>
+                        </button>
+                      )}
+                    </td>
+                    <td className={celula}>
+                      <select value={ui.repasse} onChange={(e) => mudarCurso(ui.id, { repasse: e.target.value as Repasse })} className={`${pequeno} w-36`} aria-label="Modalidade">
+                        {(Object.keys(ROTULO_REPASSE) as Repasse[]).map((r) => (
+                          <option key={r} value={r}>
+                            {MODALIDADE_CURTA[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className={celula}>
+                      <label className="flex items-center gap-1.5 text-xs">
+                        <input type="checkbox" checked={ui.reformulado === true} onChange={(e) => mudarCurso(ui.id, { reformulado: e.target.checked, substitui: e.target.checked ? ui.substitui : undefined })} />
+                        Reformulado
+                      </label>
+                      {ui.reformulado && (
+                        <select
+                          value={ui.substitui ?? ""}
+                          onChange={(e) => mudarCurso(ui.id, { substitui: e.target.value || undefined })}
+                          className={`${pequeno} mt-1 text-xs`}
+                          aria-label="Curso de hoje que ele substitui"
+                        >
+                          <option value="">no lugar de... (opcional)</option>
+                          {cursosDoCampus.map((c) => (
+                            <option key={c.chave} value={c.chave}>
+                              {c.curso}
+                              {c.oferta && c.oferta !== "NÃO SE APLICA" ? ` (${c.oferta.toLowerCase()})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                    <td className={celula}>
+                      <input
+                        type="number"
+                        min={anoBase0 + 1}
+                        max={anoBase0 + MAX_ANOS}
+                        value={ui.anoInicio}
+                        onChange={(e) => {
+                          const v = Math.min(anoBase0 + MAX_ANOS, Math.max(anoBase0 + 1, Math.round(Number(e.target.value) || ui.anoInicio)));
+                          mudarCurso(ui.id, { anoInicio: v, anoFim: Math.max(ui.anoFim, v) });
+                        }}
+                        className={`${pequeno} w-20 tabular-nums`}
+                        aria-label="Ano da primeira turma"
+                      />
+                    </td>
+                    <td className={celula}>
+                      <select value={ui.mes} onChange={(e) => mudarCurso(ui.id, { mes: Number(e.target.value) })} className={`${pequeno} w-20`} aria-label="Mês de início">
+                        {["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"].map((m, i) => (
+                          <option key={m} value={i + 1}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className={celula}>
+                      <select
+                        value={ui.entradas === 2 ? 2 : 1}
+                        onChange={(e) => mudarCurso(ui.id, { entradas: Number(e.target.value) === 2 ? 2 : 1 })}
+                        className={`${pequeno} w-28`}
+                        aria-label="Entradas por ano"
+                        title="Curso anual: uma turma por ano. Curso semestral: duas, a segunda seis meses depois da primeira."
+                      >
+                        <option value={1}>1 por ano</option>
+                        <option value={2}>2 por ano</option>
+                      </select>
+                    </td>
+                    <td className={celula}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={2000}
+                        value={ui.ingressantes}
+                        onChange={(e) => mudarCurso(ui.id, { ingressantes: Math.min(2000, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+                        className={`${pequeno} w-20 text-right tabular-nums`}
+                        aria-label="Ingressantes por turma"
+                      />
+                    </td>
+                    <td className={celula}>
+                      <input
+                        type="number"
+                        min={0.1}
+                        max={10}
+                        step={0.5}
+                        value={ui.duracao}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) mudarCurso(ui.id, { duracao: Math.min(10, Math.max(0.1, v)) });
+                        }}
+                        className={`${pequeno} w-20 text-right tabular-nums`}
+                        aria-label="Duração em anos"
+                        title="0,5 é um semestre"
+                      />
+                    </td>
+                    <td className={celula}>
+                      <select
+                        value={ui.continua === true ? "continua" : "ate"}
+                        onChange={(e) => mudarCurso(ui.id, { continua: e.target.value === "continua" })}
+                        className={`${pequeno} w-32`}
+                        aria-label="Oferta"
+                      >
+                        <option value="continua">todo ano</option>
+                        <option value="ate">até um ano</option>
+                      </select>
+                      {ui.continua !== true && (
+                        <input
+                          type="number"
+                          min={ui.anoInicio}
+                          max={anoBase0 + MAX_ANOS}
+                          value={ui.anoFim}
+                          onChange={(e) => mudarCurso(ui.id, { anoFim: Math.max(ui.anoInicio, Math.round(Number(e.target.value) || ui.anoInicio)) })}
+                          className={`${pequeno} mt-1 w-20 tabular-nums`}
+                          aria-label="Ano da última turma"
+                          title="Igual ao ano da primeira: uma turma só"
+                        />
+                      )}
+                    </td>
+                    <td
+                      className={`${celula} text-right tabular-nums`}
+                      title={item && spec ? `Peso ${decimal.format(item.pesoEfetivo)}, mínima do MEC ${inteiro.format(item.chMinimaMec)} h, carga horária que vale ${inteiro.format(spec.chMatriz)} h, no curso inteiro.` : undefined}
                     >
-                      {resultados.map(({ it, idx }) => (
-                        <option key={idx} value={idx}>
-                          {it.curso === "*" ? "Qualquer FIC fora do catálogo" : it.curso} ({it.tipoCurso.toLowerCase()}
-                          {it.tipoOferta !== "*" && it.tipoOferta !== "NÃO SE APLICA" ? `, ${it.tipoOferta.toLowerCase()}` : ""}, mínima {inteiro.format(it.chMinimaMec)} h, peso {decimal.format(it.pesoEfetivo)})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </label>
-                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-                  Modalidade
-                  <select value={ui.repasse} onChange={(e) => mudarCurso(ui.id, { repasse: e.target.value as Repasse })} className={campo}>
-                    {(Object.keys(ROTULO_REPASSE) as Repasse[]).map((r) => (
-                      <option key={r} value={r}>
-                        {ROTULO_REPASSE[r]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-7">
-                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400" title="Curso anual: uma turma por ano. Curso semestral: duas, a segunda seis meses depois da primeira.">
-                  Entradas por ano
-                  <select value={ui.entradas === 2 ? 2 : 1} onChange={(e) => mudarCurso(ui.id, { entradas: Number(e.target.value) === 2 ? 2 : 1 })} className={campo}>
-                    <option value={1}>1, curso anual</option>
-                    <option value={2}>2, curso semestral</option>
-                  </select>
-                </label>
-                <Numero rotulo="Primeira turma (ano)" valor={ui.anoInicio} min={anoBase0 + 1} max={anoBase0 + MAX_ANOS} onChange={(v) => mudarCurso(ui.id, { anoInicio: v, anoFim: Math.max(ui.anoFim, v) })} />
-                <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-                  Mês de início
-                  <select value={ui.mes} onChange={(e) => mudarCurso(ui.id, { mes: Number(e.target.value) })} className={campo}>
-                    {["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"].map((m, i) => (
-                      <option key={m} value={i + 1}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 sm:col-span-2">
-                  <input type="checkbox" checked={ui.continua === true} onChange={(e) => mudarCurso(ui.id, { continua: e.target.checked })} />
-                  Continua sendo ofertado: entra uma turma nova a cada ano (a cada semestre, se semestral) até o fim do horizonte
-                </label>
-                {ui.continua !== true && (
-                  <Numero rotulo="Última turma (ano)" valor={ui.anoFim} min={ui.anoInicio} max={anoBase0 + MAX_ANOS} onChange={(v) => mudarCurso(ui.id, { anoFim: Math.max(v, ui.anoInicio) })} ajuda="Igual ao ano da primeira: uma turma só" />
-                )}
-                <Numero rotulo="Ingressantes por turma" valor={ui.ingressantes} min={1} max={2000} onChange={(v) => mudarCurso(ui.id, { ingressantes: v })} />
-                <Numero rotulo="Duração (anos; 0,5 = um semestre)" valor={ui.duracao} min={0.1} max={10} passo={0.5} onChange={(v) => mudarCurso(ui.id, { duracao: v })} />
-                <div className="flex items-end">
-                  <button type="button" className="w-full rounded border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700" onClick={() => setNovos((a) => a.filter((n) => n.id !== ui.id))}>
-                    Remover este curso
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                {item && spec
-                  ? `${item.curso === "*" ? "Qualquer FIC fora do catálogo" : item.curso}: peso ${decimal.format(item.pesoEfetivo)}, mínima do MEC ${inteiro.format(item.chMinimaMec)} h, carga horária que vale ${inteiro.format(spec.chMatriz)} h. Um aluno que faz o curso inteiro rende cerca de ${reais.format(valorAluno)}. Entram ${spec.ingressantes} alunos por turma, ${ui.entradas === 2 ? "duas vezes por ano (semestral)" : "uma vez por ano"}, de ${ui.anoInicio} a ${spec.ultimoAnoEntrada}.`
-                  : "Escolha o curso na busca acima: sem isso, ele não entra na conta."}
-              </p>
-            </div>
-          );
-        })}
+                      {spec ? reais.format(valorAluno) : "-"}
+                      {spec ? <span className="block text-xs text-neutral-500">curso inteiro</span> : null}
+                    </td>
+                    <td className={celula}>
+                      <button
+                        type="button"
+                        className="rounded border border-neutral-300 px-2 py-1 text-xs text-if-red hover:bg-if-red/10 dark:border-neutral-700"
+                        onClick={() => setNovos((a) => a.filter((n) => n.id !== ui.id))}
+                        aria-label="Excluir este curso"
+                        title="Excluir este curso"
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={adicionarCurso} className="rounded bg-if-green px-3 py-1.5 text-sm font-medium text-white">
-            Adicionar um curso novo
+            Adicionar curso
           </button>
           <button type="button" onClick={limparCenario} className="rounded border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
             Limpar o cenário (cursos novos e paradas)
@@ -1217,6 +1425,16 @@ export function ProjecaoCiclos({
             <strong>De onde vêm os alunos de um ano.</strong> O + em frente a cada ano da tabela do cenário abre, logo abaixo dele, a lista de cursos que formam aquele ano, com as três parcelas de cada um e a soma por modalidade. Por exemplo, se 2029 cair em relação a 2027, a lista mostra quais cursos perderam alunos e se a queda vem dos que se formam ou de uma reposição menor.
           </p>
           <p>
+            <strong>Por que o valor sobe ou desce.</strong> O quadro logo abaixo da tabela do cenário compara cada turma num ano e no anterior e diz a causa de cada diferença: turmas que se formaram,
+            retidos que saem, evasão nas turmas em andamento, turmas recentes que passam a contar o ano inteiro, e as turmas que entram (reposição, cursos novos e reformulados). A soma das causas é
+            exatamente a variação do total. Uma queda forte costuma ser a formatura de turmas grandes sem uma turma do mesmo tamanho entrando no lugar.
+          </p>
+          <p>
+            <strong>Curso reformulado.</strong> Quando um curso de hoje ganha currículo novo (outra carga horária, por exemplo), cadastre o currículo novo na grade de cursos e marque
+            &quot;Reformulado&quot;. As turmas dele entram na Reposição, como continuidade, e não em Cursos novos. Escolhendo em &quot;no lugar de&quot; o curso de hoje, ele deixa de receber turma a partir da
+            primeira turma do currículo novo, sem precisar cadastrar uma parada.
+          </p>
+          <p>
             <strong>MOOC fixo.</strong> Em &quot;O horizonte e o que a projeção supõe&quot;, você pode manter os alunos MOOC num número por ano (de partida, o de hoje). Cada aluno MOOC vale o que vale hoje no câmpus, e a diferença para a projeção entra na Reposição.
           </p>
           <p>
@@ -1227,42 +1445,6 @@ export function ProjecaoCiclos({
         </div>
       </details>
     </div>
-  );
-}
-
-function Numero({
-  rotulo,
-  valor,
-  min,
-  max,
-  passo,
-  onChange,
-  ajuda,
-}: {
-  rotulo: string;
-  valor: number;
-  min: number;
-  max: number;
-  passo?: number;
-  onChange: (v: number) => void;
-  ajuda?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400" title={ajuda}>
-      {rotulo}
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={passo ?? 1}
-        value={Number.isFinite(valor) ? valor : ""}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
-        }}
-        className={campo}
-      />
-    </label>
   );
 }
 
@@ -1297,7 +1479,7 @@ function Percentual({ rotulo, valor, onChange, padrao, ajuda }: { rotulo: string
 
 interface DetalheDoAnoDados {
   k: number;
-  linhas: Array<{ chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number }>;
+  linhas: Array<{ chave: string; unidadeId: number; curso: string; oferta: string; repasse: Repasse; matric: number; repos: number; novos: number; contados: number; reformulado: boolean }>;
   porModalidade: Map<Repasse, number>;
 }
 
@@ -1370,6 +1552,7 @@ function DetalheDoAno({
                   {l.curso}
                   {l.oferta && l.oferta !== "NÃO SE APLICA" && l.oferta !== "*" ? <span className="text-neutral-500"> ({l.oferta.toLowerCase()})</span> : null}
                   {l.novos !== 0 ? <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">novo</span> : null}
+                  {l.reformulado ? <span className="ml-1 rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">reformulado</span> : null}
                 </td>
                 {comCampus && <td className="px-2 py-1 text-neutral-600 dark:text-neutral-400">{nomeDoCampus(l.unidadeId)}</td>}
                 <td className="px-2 py-1 text-neutral-600 dark:text-neutral-400">{MODALIDADE_CURTA[l.repasse]}</td>

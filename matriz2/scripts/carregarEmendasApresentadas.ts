@@ -19,6 +19,7 @@ async function main() {
   const r = await carregarEmendasApresentadas(exercicio);
   console.log(`Exercício ${r.exercicio}: ${r.noEspelho} emendas no espelho, ${r.gravadas} da Rede Federal gravadas (${r.diretas} diretas, ${r.viaMec} pelo MEC), ${reais.format(r.total)}.`);
   for (const s of r.semInstituicao) console.log(`  AVISO: unidade sem instituição no cadastro: ${s}`);
+  for (const s of r.autoresSemPartido) console.log(`  AVISO: autor sem partido nas listas oficiais: ${s}`);
   await prisma.$disconnect();
 }
 

@@ -1328,6 +1328,9 @@ model EmendaApresentada {
   tipoAutor       String       @db.VarChar(60)
   autorCodigo     String       @db.VarChar(10)
   autor           String       @db.VarChar(160)
+  /// Partido e UF do autor, das listas oficiais da Câmara e do Senado (deputado e senador); a bancada estadual tem só a UF; comissão, nenhum.
+  partidoAutor    String?      @db.VarChar(20)
+  ufAutor         String?      @db.VarChar(2)
   ementa          String       @db.Text
   uoCodigo        String       @db.VarChar(10)
   uoNome          String       @db.VarChar(255)

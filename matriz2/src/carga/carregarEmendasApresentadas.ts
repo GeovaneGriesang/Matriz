@@ -46,6 +46,32 @@ function ufDa(e: EmendaDoEspelho, ufDaInstituicao: string | undefined): string |
   return UF_POR_ESTADO[noSubtitulo] ?? ufDaInstituicao ?? null;
 }
 
+interface Parlamentar {
+  nome: string;
+  partido: string;
+  uf: string;
+}
+
+/** As listas oficiais de deputados (Câmara, legislatura atual) e senadores (Senado, em exercício), guardadas em Emendas/<exercício>/_autores. */
+function listaDeParlamentares(pasta: string, arquivo: string): Map<string, Parlamentar> {
+  const caminho = path.join(pasta, arquivo);
+  const m = new Map<string, Parlamentar>();
+  if (!fs.existsSync(caminho)) return m;
+  for (const p of JSON.parse(fs.readFileSync(caminho, "utf8")) as Parlamentar[]) m.set(normalizar(p.nome), p);
+  return m;
+}
+
+/** Partido e UF de quem apresentou a emenda: deputado e senador pelas listas oficiais; bancada estadual pela UF do nome; comissão fica sem. */
+function partidoEUfDoAutor(e: EmendaDoEspelho, deputados: Map<string, Parlamentar>, senadores: Map<string, Parlamentar>): { partido: string | null; uf: string | null } {
+  if (e.tipoAutor === "Bancada Estadual") {
+    const estado = normalizar(e.autor.replace(/^Bancada (do|da|de|dos|das)? ?/i, "")).replace(/^ESTADO /, "");
+    return { partido: null, uf: UF_POR_ESTADO[estado] ?? null };
+  }
+  const lista = e.tipoAutor === "Senador" ? senadores : e.tipoAutor === "Deputado Federal" ? deputados : null;
+  const p = lista?.get(normalizar(e.autor));
+  return p ? { partido: p.partido, uf: p.uf } : { partido: null, uf: null };
+}
+
 export interface ResultadoEmendasApresentadas {
   exercicio: number;
   noEspelho: number;
@@ -54,6 +80,7 @@ export interface ResultadoEmendasApresentadas {
   viaMec: number;
   total: number;
   semInstituicao: string[];
+  autoresSemPartido: string[];
 }
 
 export async function carregarEmendasApresentadas(exercicio: number): Promise<ResultadoEmendasApresentadas> {
@@ -63,6 +90,10 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
   if (!fs.existsSync(arqEspelho)) throw new Error(`Espelho das emendas não encontrado: ${arqEspelho}`);
   const todas = lerEspelhoEmendas(fs.readFileSync(arqEspelho, "utf8"));
   const recibos = fs.existsSync(arqRecibos) ? lerRecibos(fs.readFileSync(arqRecibos, "utf8")) : null;
+  const pastaAutores = path.join(RAIZ_DADOS, "Emendas", String(exercicio), "_autores");
+  const deputados = listaDeParlamentares(pastaAutores, "deputados.json");
+  const senadores = listaDeParlamentares(pastaAutores, "senadores.json");
+  const autoresSemPartido = new Set<string>();
 
   // As instituições em uso (as que têm comparativo): o cadastro tem linhas repetidas de cargas antigas.
   const instituicoes = await prisma.instituicao.findMany({ where: { comparativos: { some: {} } }, select: { id: true, nome: true, uf: true } });
@@ -71,7 +102,8 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
 
   const fonte =
     `Congresso Nacional, Comissão Mista de Planos, Orçamentos Públicos e Fiscalização: PLN 24/2026 (PLOA ${exercicio}), ` +
-    `"Espelho - Emendas de Despesa" e recibo de entrega das emendas individuais (RECIBOS-Individuais), portal congressonacional.leg.br.`;
+    `"Espelho - Emendas de Despesa" e recibo de entrega das emendas individuais (RECIBOS-Individuais), portal congressonacional.leg.br. ` +
+    `Partido e UF dos parlamentares: dados abertos da Câmara dos Deputados (legislatura atual) e do Senado Federal (em exercício).`;
 
   const dados: Prisma.EmendaApresentadaCreateManyInput[] = [];
   for (const e of todas) {
@@ -85,6 +117,8 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
       inst = porNome.find((i) => i.chave === chave) ?? porNome.find((i) => i.chave.startsWith(chave));
       if (!inst) semInstituicao.add(`${e.uoCodigo} - ${e.uoNome}`);
     }
+    const autorInfo = partidoEUfDoAutor(e, deputados, senadores);
+    if (!autorInfo.uf && e.tipoAutor !== "Comissão" && !e.tipoAutor.startsWith("Comissão")) autoresSemPartido.add(`${e.tipoAutor}: ${e.autor}`);
     const soma = (g: (n: number) => boolean) => e.acrescimos.filter((a) => g(a.gnd)).reduce((s, a) => s + a.valor, 0);
     dados.push({
       exercicio,
@@ -93,6 +127,8 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
       tipoAutor: e.tipoAutor,
       autorCodigo: e.autorCodigo,
       autor: e.autor.slice(0, 160),
+      partidoAutor: autorInfo.partido,
+      ufAutor: autorInfo.uf,
       ementa: e.ementa,
       uoCodigo: e.uoCodigo,
       uoNome: e.uoNome.slice(0, 255),
@@ -126,5 +162,6 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
     viaMec: dados.filter((d) => d.uoCodigo === "26101").length,
     total: dados.reduce((s, d) => s + Number(d.valorTotal), 0),
     semInstituicao: [...semInstituicao],
+    autoresSemPartido: [...autoresSemPartido],
   };
 }

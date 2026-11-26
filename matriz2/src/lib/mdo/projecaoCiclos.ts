@@ -144,6 +144,8 @@ export function projetarMatriculados(c: CicloProjetavel, anoBase0: number, anos:
 export interface TurmaProjetada {
   /** Ano civil em que a turma começa. */
   anoEntrada: number;
+  /** Ano civil em que a turma termina (depois dele, só os retidos seguem contando). */
+  anoTermino: number;
   pontos: PontoProjecao[];
 }
 
@@ -252,7 +254,7 @@ export function turmasDeReposicao(c: CicloProjetavel, anoBase0: number, anos: nu
     const termino = inicio + (duracao - 1) * MS_DIA;
     const turma: CicloProjetavel = { ...c, inicio: new Date(inicio), termino: new Date(termino), jubilamento: new Date(termino + prazo * MS_DIA) };
     const anoDeEntrada = new Date(inicio).getUTCFullYear();
-    turmas.push({ anoEntrada: anoDeEntrada, pontos: pontosDaTurma(turma, entrada, anoDeEntrada, e, p.retencao, anoBase0, anos) });
+    turmas.push({ anoEntrada: anoDeEntrada, anoTermino: new Date(termino).getUTCFullYear(), pontos: pontosDaTurma(turma, entrada, anoDeEntrada, e, p.retencao, anoBase0, anos) });
     anosDepois += passo;
     inicio = inicioDaTurma(c, anosDepois);
   }
@@ -328,7 +330,7 @@ function turmasDeOfertaAnual(modelo: CicloProjetavel, anoBase0: number, anos: nu
     const inicio = inicioDaTurma(modelo, ano - anoDoModelo);
     const termino = inicio + (duracao - 1) * MS_DIA;
     const turma: CicloProjetavel = { ...modelo, inicio: new Date(inicio), termino: new Date(termino), jubilamento: new Date(termino + prazo * MS_DIA) };
-    turmas.push({ anoEntrada: ano, pontos: pontosDaTurma(turma, entrada, ano, e, p.retencao, anoBase0, anos) });
+    turmas.push({ anoEntrada: ano, anoTermino: new Date(termino).getUTCFullYear(), pontos: pontosDaTurma(turma, entrada, ano, e, p.retencao, anoBase0, anos) });
   }
   return turmas;
 }
@@ -412,7 +414,7 @@ export function turmasDeCursoNovo(curso: CursoNovo, anoBase0: number, anos: numb
       alunos: curso.ingressantes,
       valorPorMT: curso.valorPorMT,
     };
-    turmas.push({ anoEntrada: ano, pontos: pontosDaTurma(turma, curso.ingressantes, ano, e, p.retencao, anoBase0, anos) });
+    turmas.push({ anoEntrada: ano, anoTermino: new Date(termino).getUTCFullYear(), pontos: pontosDaTurma(turma, curso.ingressantes, ano, e, p.retencao, anoBase0, anos) });
   }
   return turmas;
 }
