@@ -29,7 +29,8 @@ export async function carregarExecucaoDespesa(sigla: string, orgaoSubordinado: s
 
   for (let mes = 1; mes <= 12; mes++) {
     const nome = `${ano}${String(mes).padStart(2, "0")}_Despesas.csv`;
-    const caminho = arquivoDoPortal(nome);
+    // O arquivo completo do mês ou a versão com só as linhas do IFSul (a que o download mensal guarda).
+    const caminho = arquivoDoPortal(nome) ?? arquivoDoPortal(nome.replace(".csv", "_IFSul.csv"));
     if (!caminho) continue;
     meses.push(mes);
     // O Portal grava em Latin-1.
