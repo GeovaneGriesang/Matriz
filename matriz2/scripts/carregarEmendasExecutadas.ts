@@ -1,7 +1,7 @@
 /**
  * Carrega a execução das emendas do IFSul por câmpus, dos arquivos mensais de despesas do Portal da Transparência.
  *
- * Uso: npm run carregar:emendas-executadas -- 2014 2026   (do primeiro ao último ano)
+ * Uso: npm run carregar:emendas-executadas -- 2017 2026   (do primeiro ao último ano)
  *
  * Os arquivos ficam em Portal da Transparência/<ano>/AAAAMM_Despesas_IFSul.csv (só as linhas do IFSul) ou AAAAMM_Despesas.csv.
  * Pode ser repetido: apaga e regrava cada ano.

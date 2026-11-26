@@ -73,7 +73,7 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Emendas ao orçamento de {exercicio} na Rede Federal</h1>
         <p className="text-sm">
           <Link href="/emendas/prestacao-de-contas" className={PROSE_LINK}>
-            Emendas no IFSul: para onde foi cada uma, por câmpus, desde 2014
+            Emendas no IFSul: para onde foi cada uma, por câmpus, desde 2017
           </Link>
         </p>
         <p className="text-neutral-600 dark:text-neutral-400">

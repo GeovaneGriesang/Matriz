@@ -108,10 +108,10 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
     atencao: "São propostas, antes do parecer do Congresso: o valor que fica só aparece na LOA. As emendas pelo MEC ainda não têm instituição e não entram no total de nenhuma.",
   },
   "/emendas/prestacao-de-contas": {
-    responde: "Quais emendas o IFSul recebeu desde 2014, quem destinou e em qual câmpus o dinheiro foi gasto?",
+    responde: "Quais emendas o IFSul recebeu desde 2017, quem destinou e em qual câmpus o dinheiro foi gasto?",
     mostra: "A execução de cada emenda no IFSul, do Portal da Transparência: câmpus, ação, grupo de despesa, empenhado, pago no ano e restos a pagar pagos depois, por ano, por câmpus, por autor e emenda a emenda.",
     usar: "Escolha câmpus, autor e período; troque a aba para ver por ano, câmpus, autor ou cada emenda. O + abre as emendas da linha logo abaixo.",
-    atencao: "Antes de 2014 o Portal não tem o arquivo por unidade gestora, então não há câmpus. Valores nominais, sem correção pela inflação.",
+    atencao: "Antes de 2017 o Portal não informa o autor da emenda nas despesas (\"informação do autor não disponível\"), então não há como saber o câmpus. Valores nominais, sem correção pela inflação.",
   },
   "/evasao": {
     responde: "Quanto se deixa de receber por causa da evasão?",

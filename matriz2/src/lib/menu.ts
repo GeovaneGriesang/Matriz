@@ -84,7 +84,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/emendas",
         rotulo: "Emendas na Rede Federal",
-        descricao: "As emendas apresentadas ao orçamento para os Institutos Federais, CEFETs e Colégio Pedro II, e a prestação de contas das emendas do IFSul por câmpus, desde 2014.",
+        descricao: "As emendas apresentadas ao orçamento para os Institutos Federais, CEFETs e Colégio Pedro II, e a prestação de contas das emendas do IFSul por câmpus, desde 2017.",
         somenteAdmin: true,
         abas: ["/emendas", "/emendas/prestacao-de-contas"],
       },

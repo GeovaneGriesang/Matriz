@@ -64,8 +64,8 @@ export default async function PrestacaoDeContasPage() {
       <ComoLerEstaTela>
         <p>
           <strong>De onde vem.</strong> Do arquivo mensal de despesas do Portal da Transparência (CGU). Cada linha diz a unidade gestora que gastou, que no IFSul é o câmpus ou a
-          Reitoria, a ação, o grupo de despesa e, quando o dinheiro veio de emenda, o código e o autor dela. O arquivo existe desde 2014; antes disso, só se sabe a emenda da
-          instituição inteira, pela lei orçamentária, e não o câmpus.
+          Reitoria, a ação, o grupo de despesa e, quando o dinheiro veio de emenda, o código e o autor dela. O arquivo existe desde 2014, mas até 2016 ele traz &quot;informação do autor não
+          disponível&quot; em todas as linhas: o autor da emenda só aparece a partir de 2017. Antes disso, só se sabe a emenda da instituição inteira, pela lei orçamentária, e não o câmpus.
         </p>
         <p>
           <strong>O código da emenda</strong> tem 12 dígitos: o ano do orçamento, o número do autor e o número da emenda dele. Por exemplo, 202619860006 é a emenda 6 de 2026 do
@@ -83,7 +83,7 @@ export default async function PrestacaoDeContasPage() {
 
       {linhas.length === 0 ? (
         <p className="text-neutral-600 dark:text-neutral-400">
-          Ainda não carregado. Rode <code>npm run carregar:emendas-executadas -- 2014 2026</code>.
+          Ainda não carregado. Rode <code>npm run carregar:emendas-executadas -- 2017 2026</code>.
         </p>
       ) : (
         <PrestacaoDeContas linhas={linhas} />
