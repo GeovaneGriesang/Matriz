@@ -8,7 +8,7 @@ const todas = GRUPOS_MENU.flatMap((g) => g.itens);
 describe("telas por perfil", () => {
   it("sem ajuste, cada perfil vê o mesmo que via antes da configuração", () => {
     const tecnicas = todas.filter((i) => i.somenteAdmin).map((i) => i.href);
-    expect(tecnicas).toHaveLength(7);
+    expect(tecnicas).toHaveLength(8);
     expect(telasDe(gruposVisiveis("ADMIN"))).toEqual(todas.map((i) => i.href));
     expect(telasDe(gruposVisiveis("SUPER_ADMIN"))).toEqual(todas.map((i) => i.href));
     expect(telasDe(gruposVisiveis("PADRAO"))).toEqual(todas.map((i) => i.href).filter((h) => !tecnicas.includes(h)));

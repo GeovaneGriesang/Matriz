@@ -81,6 +81,12 @@ const GRUPOS: GrupoMenu[] = [
         descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas e a execução por câmpus.",
         somenteAdmin: true,
       },
+      {
+        href: "/emendas",
+        rotulo: "Emendas na Rede Federal",
+        descricao: "As emendas apresentadas ao orçamento para os Institutos Federais, CEFETs e Colégio Pedro II, com filtros, gráficos e o IFSul em destaque.",
+        somenteAdmin: true,
+      },
     ],
   },
   {

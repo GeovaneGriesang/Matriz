@@ -586,8 +586,12 @@ export default async function OrcamentoDaUniaoPage() {
           </table>
         </div>
         <p className="text-xs text-neutral-500">
-          O valor da matriz de 2027 é {reais.format(matriz[1]!.valor)}; as emendas de 2027 só existirão depois da LOA 2027 e ainda não estão nos documentos. A
-          emenda da ação 20RG não faz parte do funcionamento da matriz; está na tabela para mostrar o que o IFSul recebe além dela.
+          O valor da matriz de 2027 é {reais.format(matriz[1]!.valor)}; o valor aprovado das emendas de 2027 só existirá depois da LOA 2027. As emendas já
+          apresentadas ao PLOA 2027, para o IFSul e para toda a rede, estão em{" "}
+          <Link href="/emendas" className={PROSE_LINK}>
+            Emendas na Rede Federal
+          </Link>
+          . A emenda da ação 20RG não faz parte do funcionamento da matriz; está na tabela para mostrar o que o IFSul recebe além dela.
         </p>
       </section>
 

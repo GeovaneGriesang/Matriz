@@ -49,7 +49,7 @@ describe("menu", () => {
     const doGrupo = (id: string, papel: "PADRAO" | "ADMIN") => gruposVisiveis(papel).find((g) => g.id === id)!.itens.map((i) => i.href).sort();
     expect(doGrupo("consultas", "PADRAO")).toEqual(["/comparativo", "/consulta", "/consulta/comparar", "/consulta/valor-do-aluno"]);
     expect(doGrupo("informacoes", "PADRAO")).toEqual(["/como-funciona", "/como-funciona/telas", "/conferencia/quarta-fase", "/situacao-dos-dados"]);
-    expect(doGrupo("consultas", "ADMIN")).toHaveLength(8);
+    expect(doGrupo("consultas", "ADMIN")).toHaveLength(9);
     expect(doGrupo("informacoes", "ADMIN")).toHaveLength(7);
     expect(GRUPOS_MENU.find((g) => g.id === "simulacoes")!.itens.map((i) => i.href).sort()).toEqual(["/consulta/curso", "/simulador/alternativas", "/simulador/distribuicao", "/simulador/projecao"]);
     expect(itens("PADRAO")).not.toContain("/evasao");

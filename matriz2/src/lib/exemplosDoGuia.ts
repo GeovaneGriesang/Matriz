@@ -26,6 +26,7 @@ export interface DadosDosExemplos {
   ifsul: { eficiencia: number | null; rap: number | null } | null;
   arquivosImportados: number | null;
   loa: { exercicio: number; valor: number } | null;
+  emendas?: { exercicio: number; quantidade: number; valorIfsul: number } | null;
   pnp: { anoBase: number; matriculas: number } | null;
   pnpOrcamento: { anoBase: number; empenhado: number; acao: string } | null;
   confianca: { conferidos: number; atencao: number; estimados: number };
@@ -82,6 +83,8 @@ export function montarExemplos(d: DadosDosExemplos): Record<string, string> {
     e["/conferencia"] = `Para o IFSul em ${ano}, a MDO publicou eficiência acadêmica de ${pct(ifsul.eficiencia)} e RAP presencial de ${dec(ifsul.rap)}. A tela compara os blocos calculados a partir desses componentes.`;
   }
   if (d.arquivosImportados !== null) e["/dados-importados"] = `Hoje há ${int(d.arquivosImportados)} arquivos importados registrados no sistema, cada um com fonte e data.`;
+  if (d.emendas)
+    e["/emendas"] = `Ao PLOA de ${d.emendas.exercicio} foram apresentadas ${d.emendas.quantidade} emendas para o IFSul, somando ${reais(d.emendas.valorIfsul)}; o resumo mostra a posição dele entre as instituições da rede.`;
   if (loa) e["/orcamento-da-uniao"] = `A LOA de ${loa.exercicio} traz ${reais(loa.valor)} para o IFSul, somando todas as ações e fontes de recurso.`;
   if (turma) e["/peso-efetivo"] = `${turma.curso}, em ${VA}: a MDO aplicou peso ${dec(turma.peso)}. Cada aluno conta ${dec(turma.peso)} vez o aluno de peso 1,00.`;
   if (pnp) e["/pnp"] = `No ano-base ${pnp.anoBase}, a PNP registra ${int(pnp.matriculas)} matrículas no IFSul, somando os eixos tecnológicos.`;

@@ -101,6 +101,12 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
     mostra: "PLOA e LOA do IFSul, ação por ação, as emendas parlamentares e a execução da despesa por ação e por câmpus, com a fonte de cada número.",
     atencao: "LOA e PLOA vão só até a instituição. Esses documentos não trazem valor por câmpus, portanto não confirmam, por exemplo, o pagamento do piso a um câmpus novo.",
   },
+  "/emendas": {
+    responde: "Quanto os parlamentares propuseram para cada instituição da rede, e para o IFSul?",
+    mostra: "As emendas de despesa apresentadas ao projeto de lei orçamentária, diretas a cada instituição ou pelo MEC, com autor, ação, grupo de despesa, valor e justificativa, em cartões, gráficos, lista e resumo por instituição.",
+    usar: "Escolha o grupo de emendas (diretas, pelo MEC ou todas) e combine os filtros; clique numa barra para filtrar por ela. Na lista, o + abre a justificativa logo abaixo; no resumo, o + de uma instituição abre as emendas dela.",
+    atencao: "São propostas, antes do parecer do Congresso: o valor que fica só aparece na LOA. As emendas pelo MEC ainda não têm instituição e não entram no total de nenhuma.",
+  },
   "/evasao": {
     responde: "Quanto se deixa de receber por causa da evasão?",
     mostra: "A perda de cada instituição, em reais e em proporção do que recebe, com abertura por câmpus e por curso. O valor vem pronto da 6ª fase da MDO.",

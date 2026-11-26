@@ -257,6 +257,7 @@ model Instituicao {
   orcamentoLoaLinhas       OrcamentoLoaLinha[]
   orcamentoLoaTotais       OrcamentoLoaTotal[]
   emendasParlamentares     EmendaParlamentar[]
+  emendasApresentadas      EmendaApresentada[]
   execucoesDespesaUg       ExecucaoDespesaUg[]
   orcamentosDespesaAcao    OrcamentoDespesaAcao[]
 
@@ -1311,6 +1312,45 @@ model EmendaParlamentar {
   criadoEm        DateTime    @default(now())
 
   @@index([instituicaoId, exercicio])
+}
+
+/// Uma emenda de despesa apresentada ao projeto de lei orçamentária (PLOA), lida do espelho oficial da Comissão Mista de Orçamento
+/// ("Avulso de Emendas"). Guarda só as emendas da Rede Federal: as que vão direto à unidade orçamentária de uma instituição (IF, CEFET,
+/// Colégio Pedro II) e as que vão ao MEC (26101) nas ações da rede (219U e 15R4), sem instituição definida (`instituicaoId` nulo).
+/// É a proposta do parlamentar, antes do parecer: o valor aprovado só se conhece na LOA. `comRecibo` diz se a emenda individual
+/// consta no recibo de entrega; fica nulo nas de bancada e de comissão, que têm recibo próprio.
+model EmendaApresentada {
+  id              Int          @id @default(autoincrement())
+  exercicio       Int
+  numero          String       @db.VarChar(12)
+  /// Individual, Bancada Estadual ou Comissão.
+  modalidade      String       @db.VarChar(40)
+  tipoAutor       String       @db.VarChar(60)
+  autorCodigo     String       @db.VarChar(10)
+  autor           String       @db.VarChar(160)
+  ementa          String       @db.Text
+  uoCodigo        String       @db.VarChar(10)
+  uoNome          String       @db.VarChar(255)
+  instituicaoId   Int?
+  instituicao     Instituicao? @relation(fields: [instituicaoId], references: [id])
+  uf              String?      @db.VarChar(2)
+  funcional       String       @db.VarChar(40)
+  acao            String       @db.VarChar(10)
+  acaoDescricao   String       @db.VarChar(255)
+  subtitulo       String       @db.VarChar(255)
+  localidade      String       @db.VarChar(120)
+  /// Acréscimo em Outras Despesas Correntes (GND 3), em Investimentos (GND 4) e em outros grupos.
+  valorGnd3       Decimal      @db.Decimal(18, 2)
+  valorGnd4       Decimal      @db.Decimal(18, 2)
+  valorOutros     Decimal      @db.Decimal(18, 2)
+  valorTotal      Decimal      @db.Decimal(18, 2)
+  comRecibo       Boolean?
+  justificativa   String       @db.Text
+  fonte           String       @db.Text
+  criadoEm        DateTime     @default(now())
+
+  @@unique([exercicio, numero])
+  @@index([exercicio, instituicaoId])
 }
 
 // ---------- Execução da despesa (Portal da Transparência) ----------

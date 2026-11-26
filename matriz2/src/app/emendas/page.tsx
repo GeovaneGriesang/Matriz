@@ -1,0 +1,133 @@
+import Link from "next/link";
+import { prisma } from "@/server/db/prisma";
+import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
+import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
+import { ContextoDaTela } from "@/components/chat/ChatDaTela";
+import { ehInstituicaoDestaque } from "@/lib/destaque";
+import { EmendasPainel, type EmendaDoPainel } from "./EmendasPainel";
+
+export const dynamic = "force-dynamic";
+
+const reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+export default async function EmendasPage({ searchParams }: { searchParams: Promise<{ exercicio?: string }> }) {
+  await requireAcessoPlenoOrRedirect("/emendas");
+  const sp = await searchParams;
+
+  const exercicios = (await prisma.emendaApresentada.findMany({ distinct: ["exercicio"], select: { exercicio: true }, orderBy: { exercicio: "desc" } })).map((e) => e.exercicio);
+  const exercicio = exercicios.includes(Number(sp.exercicio)) ? Number(sp.exercicio) : exercicios[0];
+
+  if (exercicio === undefined) {
+    return (
+      <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-4 px-6 py-12 lg:px-12`}>
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Emendas ao orçamento da Rede Federal</h1>
+        <p className="text-neutral-600 dark:text-neutral-400">
+          Ainda não foram carregadas. Rode <code>npm run carregar:emendas -- 2027</code>.
+        </p>
+      </main>
+    );
+  }
+
+  const linhas = await prisma.emendaApresentada.findMany({ where: { exercicio }, include: { instituicao: true }, orderBy: { valorTotal: "desc" } });
+  const emendas: EmendaDoPainel[] = linhas.map((e) => ({
+    numero: e.numero,
+    modalidade: e.modalidade,
+    tipoAutor: e.tipoAutor,
+    autor: e.autor,
+    ementa: e.ementa,
+    uoCodigo: e.uoCodigo,
+    uoNome: e.uoNome,
+    sigla: e.instituicao?.sigla ?? null,
+    instituicao: e.instituicao?.nome ?? null,
+    uf: e.uf,
+    funcional: e.funcional,
+    acao: e.acao,
+    acaoDescricao: e.acaoDescricao,
+    subtitulo: e.subtitulo,
+    gnd3: Number(e.valorGnd3),
+    gnd4: Number(e.valorGnd4),
+    outros: Number(e.valorOutros),
+    total: Number(e.valorTotal),
+    comRecibo: e.comRecibo,
+    justificativa: e.justificativa,
+  }));
+  const fonte = linhas[0]?.fonte ?? "";
+
+  const doIfsul = emendas.filter((e) => e.sigla && ehInstituicaoDestaque(e.sigla));
+  const textoParaOChat = [
+    `Emendas de despesa apresentadas ao PLOA ${exercicio} para a Rede Federal (proposta dos parlamentares, antes do parecer).`,
+    `Diretas às instituições: ${emendas.filter((e) => e.uoCodigo !== "26101").length} emendas, ${reais.format(emendas.filter((e) => e.uoCodigo !== "26101").reduce((s, e) => s + e.total, 0))}.`,
+    `Pelo MEC, sem instituição definida: ${emendas.filter((e) => e.uoCodigo === "26101").length} emendas, ${reais.format(emendas.filter((e) => e.uoCodigo === "26101").reduce((s, e) => s + e.total, 0))}.`,
+    `IFSul: ${doIfsul.length} emendas, ${reais.format(doIfsul.reduce((s, e) => s + e.total, 0))}: ` +
+      doIfsul.map((e) => `${e.autor} ${reais.format(e.total)} na ${e.acao}`).join("; ") +
+      ".",
+  ].join("\n");
+
+  return (
+    <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
+      <ContextoDaTela texto={textoParaOChat} />
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Emendas ao orçamento de {exercicio} na Rede Federal</h1>
+        <p className="text-neutral-600 dark:text-neutral-400">
+          As emendas que deputados, senadores, bancadas e comissões apresentaram ao projeto de lei orçamentária de {exercicio} para os Institutos Federais, os
+          CEFETs e o Colégio Pedro II, com o IFSul em destaque. São propostas: o valor que fica só se conhece na lei aprovada (LOA).
+        </p>
+        {exercicios.length > 1 && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Exercício:{" "}
+            {exercicios.map((a, i) => (
+              <span key={a}>
+                {i > 0 ? " · " : ""}
+                {a === exercicio ? (
+                  <strong>{a}</strong>
+                ) : (
+                  <Link href={`/emendas?exercicio=${a}`} className={PROSE_LINK}>
+                    {a}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+
+      <ComoLerEstaTela>
+        <p>
+          <strong>O que é uma emenda.</strong> Depois que o governo manda o projeto de lei orçamentária (PLOA) ao Congresso, em agosto, cada parlamentar, cada
+          bancada estadual e cada comissão pode propor acréscimos a ações do orçamento, tirando o dinheiro de uma reserva. Cada emenda diz a unidade que recebe (o
+          Instituto Federal, pela sua unidade orçamentária), a ação (20RL funcionamento, 20RG reestruturação e modernização, 21B3 e outras), o grupo de despesa
+          (GND 3, custeio; GND 4, investimento) e o valor.
+        </p>
+        <p>
+          <strong>Diretas e pelo MEC.</strong> &quot;Diretas&quot; são as emendas que já nomeiam a instituição. &quot;Pelo MEC&quot; são as que vão ao Ministério da
+          Educação (unidade 26101) nas ações da rede, 219U (funcionamento e modernização) e 15R4 (expansão e reestruturação), sem dizer ainda qual instituição
+          recebe: o MEC reparte depois. Por isso elas não entram no total de nenhuma instituição.
+        </p>
+        <p>
+          <strong>Recibo.</strong> A emenda individual só vale se o parlamentar entregou o recibo. &quot;Com recibo&quot; quer dizer que o número dela consta no recibo
+          de entrega das emendas individuais. As de bancada e de comissão têm outro rito e ficam sem essa marca.
+        </p>
+        <p>
+          <strong>Valores de R$ 1 ou R$ 10.</strong> Alguns parlamentares registram emendas com valor simbólico, para reservar o número e acertar o valor depois.
+          Elas aparecem com a marca &quot;valor simbólico&quot; e somam o que valem, quase nada.
+        </p>
+        <p>
+          <strong>Como usar.</strong> Os filtros valem para tudo ao mesmo tempo: cartões, gráficos, lista e resumo. Clique numa barra dos gráficos para filtrar por
+          ela. Na lista, o + de cada emenda abre logo abaixo a justificativa, a funcional programática e o subtítulo; no resumo, o + de uma instituição abre as
+          emendas dela.
+        </p>
+      </ComoLerEstaTela>
+
+      <EmendasPainel emendas={emendas} exercicio={exercicio} />
+
+      <p className="text-xs text-neutral-500">
+        Fonte: {fonte} Conferido: a soma dos acréscimos de cada emenda fecha com o total impresso nela. Veja também o{" "}
+        <Link href="/orcamento-da-uniao" className={PROSE_LINK}>
+          Orçamento da União do IFSul
+        </Link>
+        , com a LOA, o PLOA e a execução.
+      </p>
+    </main>
+  );
+}

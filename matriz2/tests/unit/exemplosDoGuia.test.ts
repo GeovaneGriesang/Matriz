@@ -17,6 +17,7 @@ const completo: DadosDosExemplos = {
   ifsul: { eficiencia: 0.4071, rap: 18.54 },
   arquivosImportados: 10,
   loa: { exercicio: 2026, valor: 100 },
+  emendas: { exercicio: 2027, quantidade: 4, valorIfsul: 4045449 },
   pnp: { anoBase: 2025, matriculas: 1000 },
   pnpOrcamento: { anoBase: 2025, empenhado: 100, acao: "20RL" },
   confianca: { conferidos: 3, atencao: 2, estimados: 1 },
