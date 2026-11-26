@@ -71,6 +71,11 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
       <ContextoDaTela texto={textoParaOChat} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Emendas ao orçamento de {exercicio} na Rede Federal</h1>
+        <p className="text-sm">
+          <Link href="/emendas/prestacao-de-contas" className={PROSE_LINK}>
+            Emendas no IFSul: para onde foi cada uma, por câmpus, desde 2014
+          </Link>
+        </p>
         <p className="text-neutral-600 dark:text-neutral-400">
           As emendas que deputados, senadores, bancadas e comissões apresentaram ao projeto de lei orçamentária de {exercicio} para os Institutos Federais, os
           CEFETs e o Colégio Pedro II, com o IFSul em destaque. São propostas: o valor que fica só se conhece na lei aprovada (LOA).

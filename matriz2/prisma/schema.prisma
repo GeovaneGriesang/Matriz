@@ -260,6 +260,7 @@ model Instituicao {
   emendasApresentadas      EmendaApresentada[]
   execucoesDespesaUg       ExecucaoDespesaUg[]
   orcamentosDespesaAcao    OrcamentoDespesaAcao[]
+  emendasExecutadas        EmendaExecutada[]
 
   @@index([uf])
 }
@@ -289,6 +290,7 @@ model Unidade {
   pnpEstruturas             PnpEstrutura[]
   valoresRecebidos          ValorRecebidoCampus[]
   execucoesDespesaUg        ExecucaoDespesaUg[]
+  emendasExecutadas         EmendaExecutada[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -1320,37 +1322,37 @@ model EmendaParlamentar {
 /// É a proposta do parlamentar, antes do parecer: o valor aprovado só se conhece na LOA. `comRecibo` diz se a emenda individual
 /// consta no recibo de entrega; fica nulo nas de bancada e de comissão, que têm recibo próprio.
 model EmendaApresentada {
-  id              Int          @id @default(autoincrement())
-  exercicio       Int
-  numero          String       @db.VarChar(12)
+  id            Int          @id @default(autoincrement())
+  exercicio     Int
+  numero        String       @db.VarChar(12)
   /// Individual, Bancada Estadual ou Comissão.
-  modalidade      String       @db.VarChar(40)
-  tipoAutor       String       @db.VarChar(60)
-  autorCodigo     String       @db.VarChar(10)
-  autor           String       @db.VarChar(160)
+  modalidade    String       @db.VarChar(40)
+  tipoAutor     String       @db.VarChar(60)
+  autorCodigo   String       @db.VarChar(10)
+  autor         String       @db.VarChar(160)
   /// Partido e UF do autor, das listas oficiais da Câmara e do Senado (deputado e senador); a bancada estadual tem só a UF; comissão, nenhum.
-  partidoAutor    String?      @db.VarChar(20)
-  ufAutor         String?      @db.VarChar(2)
-  ementa          String       @db.Text
-  uoCodigo        String       @db.VarChar(10)
-  uoNome          String       @db.VarChar(255)
-  instituicaoId   Int?
-  instituicao     Instituicao? @relation(fields: [instituicaoId], references: [id])
-  uf              String?      @db.VarChar(2)
-  funcional       String       @db.VarChar(40)
-  acao            String       @db.VarChar(10)
-  acaoDescricao   String       @db.VarChar(255)
-  subtitulo       String       @db.VarChar(255)
-  localidade      String       @db.VarChar(120)
+  partidoAutor  String?      @db.VarChar(20)
+  ufAutor       String?      @db.VarChar(2)
+  ementa        String       @db.Text
+  uoCodigo      String       @db.VarChar(10)
+  uoNome        String       @db.VarChar(255)
+  instituicaoId Int?
+  instituicao   Instituicao? @relation(fields: [instituicaoId], references: [id])
+  uf            String?      @db.VarChar(2)
+  funcional     String       @db.VarChar(40)
+  acao          String       @db.VarChar(10)
+  acaoDescricao String       @db.VarChar(255)
+  subtitulo     String       @db.VarChar(255)
+  localidade    String       @db.VarChar(120)
   /// Acréscimo em Outras Despesas Correntes (GND 3), em Investimentos (GND 4) e em outros grupos.
-  valorGnd3       Decimal      @db.Decimal(18, 2)
-  valorGnd4       Decimal      @db.Decimal(18, 2)
-  valorOutros     Decimal      @db.Decimal(18, 2)
-  valorTotal      Decimal      @db.Decimal(18, 2)
-  comRecibo       Boolean?
-  justificativa   String       @db.Text
-  fonte           String       @db.Text
-  criadoEm        DateTime     @default(now())
+  valorGnd3     Decimal      @db.Decimal(18, 2)
+  valorGnd4     Decimal      @db.Decimal(18, 2)
+  valorOutros   Decimal      @db.Decimal(18, 2)
+  valorTotal    Decimal      @db.Decimal(18, 2)
+  comRecibo     Boolean?
+  justificativa String       @db.Text
+  fonte         String       @db.Text
+  criadoEm      DateTime     @default(now())
 
   @@unique([exercicio, numero])
   @@index([exercicio, instituicaoId])
@@ -1526,4 +1528,34 @@ model VerificacaoFonte {
   erro      String?         @db.VarChar(500)
 
   @@index([fonteId, em])
+}
+
+/// A execução das emendas parlamentares por câmpus (unidade gestora), ação e grupo de despesa, somada por ano de lançamento,
+/// a partir do arquivo mensal de despesas do Portal da Transparência (carga: npm run carregar:emendas-executadas).
+model EmendaExecutada {
+  id              Int         @id @default(autoincrement())
+  instituicaoId   Int
+  instituicao     Instituicao @relation(fields: [instituicaoId], references: [id])
+  unidadeId       Int?
+  unidade         Unidade?    @relation(fields: [unidadeId], references: [id])
+  ano             Int
+  codigoEmenda    String      @db.VarChar(12)
+  anoEmenda       Int
+  /// Autor + número, como no espelho de emendas do Congresso.
+  numeroNoEspelho String      @db.VarChar(8)
+  autor           String      @db.VarChar(200)
+  ugCodigo        String      @db.VarChar(10)
+  ugNome          String      @db.VarChar(200)
+  uoCodigo        String      @db.VarChar(10)
+  acao            String      @db.VarChar(10)
+  acaoNome        String      @db.VarChar(300)
+  gnd             String      @db.VarChar(4)
+  empenhado       Decimal     @db.Decimal(18, 2)
+  liquidado       Decimal     @db.Decimal(18, 2)
+  pago            Decimal     @db.Decimal(18, 2)
+  rapPago         Decimal     @db.Decimal(18, 2)
+  fonte           String      @db.VarChar(300)
+
+  @@index([instituicaoId, ano])
+  @@index([codigoEmenda])
 }

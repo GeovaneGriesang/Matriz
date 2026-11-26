@@ -87,10 +87,10 @@ tanto Gmail pessoal quanto Google Workspace (caso de `va-matriz@ifsul.edu.br`).
 `npm run verificar:fontes` visita as páginas oficiais que alimentam o sistema (PNP, Congresso,
 Planejamento, Portal da Transparência, Câmara, Senado, Estado do RS e Venâncio Aires) e grava o
 que mudou nas tabelas `FonteMonitorada` e `VerificacaoFonte`; a tela Situação dos dados mostra.
-Na VM roda toda segunda-feira às 7h, pelo cron do root:
+Na VM roda toda segunda-feira de manhã (11h no fuso da VM, Europe/Berlin), pelo cron do root:
 
 ```
-0 7 * * 1 cd /opt/matriz/matriz2 && npm run -s verificar:fontes >> /var/log/verificar_fontes.log 2>&1
+0 11 * * 1 cd /opt/matriz/matriz2 && npm run -s verificar:fontes >> /var/log/verificar_fontes.log 2>&1
 ```
 
 Para acrescentar uma fonte, inclua-a em `FONTES` (src/server/fontes/verificarFontes.ts).

@@ -27,6 +27,13 @@ export const FONTES: readonly FonteDoCatalogo[] = [
     assunto: "Matrículas, cursos, evasão, pessoal e microdados da Rede Federal (telas PNP, Cenários, Evasão).",
   },
   {
+    chave: "mdo-online",
+    nome: "MDO online (IFTM): Matriz de Distribuição Orçamentária",
+    url: "https://mdo.iftm.edu.br/",
+    tipo: "pagina",
+    assunto: "As fases da matriz, parâmetros e exportações (Matriz, Comparativo, Distribuição, Cenários).",
+  },
+  {
     chave: "congresso-loa",
     nome: "Congresso Nacional: Lei Orçamentária de 2027",
     url: "https://www.congressonacional.leg.br/web/orcamento/acompanhe/orcamento-anual/-/loa/2027",

@@ -44,6 +44,7 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
     prisma.registroAuditoria.count(),
   ]);
 
+  const executadas = await prisma.emendaExecutada.findMany({ where: { instituicaoId }, select: { ano: true, codigoEmenda: true, pago: true, rapPago: true } });
   // As emendas do IFSul no exercício mais recente carregado.
   const ultimoExercicio = (await prisma.emendaApresentada.aggregate({ _max: { exercicio: true } }))._max.exercicio ?? -1;
   const emendas = await prisma.emendaApresentada.aggregate({ where: { exercicio: ultimoExercicio, instituicaoId }, _count: { _all: true }, _sum: { valorTotal: true }, _max: { exercicio: true } });
@@ -106,6 +107,7 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
     ifsul: indicadores ? { eficiencia: indicadores.ieaEficiencia === null ? null : n(indicadores.ieaEficiencia), rap: indicadores.rapPresencial === null ? null : n(indicadores.rapPresencial) } : null,
     arquivosImportados: arquivos > 0 ? arquivos : null,
     loa: loa ? { exercicio: loa.exercicio, valor: n(loa.valor) } : null,
+    emendasExecutadas: executadas.length > 0 ? { de: Math.min(...executadas.map((x) => x.ano)), ate: Math.max(...executadas.map((x) => x.ano)), emendas: new Set(executadas.map((x) => x.codigoEmenda)).size, pago: executadas.reduce((s, x) => s + n(x.pago) + n(x.rapPago), 0) } : null,
     emendas: emendas._count._all > 0 ? { exercicio: emendas._max.exercicio!, quantidade: emendas._count._all, valorIfsul: n(emendas._sum.valorTotal) } : null,
     pnp: matriculasPnp > 0 ? { anoBase, matriculas: matriculasPnp } : null,
     pnpOrcamento: empenhado > 0 ? { anoBase, empenhado, acao: "20RL" } : null,

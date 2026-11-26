@@ -107,6 +107,12 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
     usar: "Escolha o grupo de emendas (diretas, pelo MEC ou todas) e combine os filtros; clique numa barra para filtrar por ela. Na lista, o + abre a justificativa logo abaixo; no resumo, o + de uma instituição abre as emendas dela.",
     atencao: "São propostas, antes do parecer do Congresso: o valor que fica só aparece na LOA. As emendas pelo MEC ainda não têm instituição e não entram no total de nenhuma.",
   },
+  "/emendas/prestacao-de-contas": {
+    responde: "Quais emendas o IFSul recebeu desde 2014, quem destinou e em qual câmpus o dinheiro foi gasto?",
+    mostra: "A execução de cada emenda no IFSul, do Portal da Transparência: câmpus, ação, grupo de despesa, empenhado, pago no ano e restos a pagar pagos depois, por ano, por câmpus, por autor e emenda a emenda.",
+    usar: "Escolha câmpus, autor e período; troque a aba para ver por ano, câmpus, autor ou cada emenda. O + abre as emendas da linha logo abaixo.",
+    atencao: "Antes de 2014 o Portal não tem o arquivo por unidade gestora, então não há câmpus. Valores nominais, sem correção pela inflação.",
+  },
   "/evasao": {
     responde: "Quanto se deixa de receber por causa da evasão?",
     mostra: "A perda de cada instituição, em reais e em proporção do que recebe, com abertura por câmpus e por curso. O valor vem pronto da 6ª fase da MDO.",

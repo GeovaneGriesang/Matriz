@@ -55,7 +55,7 @@ export default async function SituacaoDosDadosPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">As fontes oficiais, conferidas toda semana</h2>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Toda segunda-feira, às 7h, o sistema visita na internet as fontes oficiais que o alimentam e anota o que mudou, sem baixar nada. Numa página, conta como mudança
+          Toda segunda-feira de manhã, o sistema visita na internet as fontes oficiais que o alimentam e anota o que mudou, sem baixar nada. Numa página, conta como mudança
           um arquivo novo publicado (ou um que saiu); no Portal da Transparência, um mês publicado que ainda não foi carregado; nas listas da Câmara e do Senado, um parlamentar
           que trocou de partido, entrou ou saiu. Em amarelo, o que mudou na última semana. O + abre o endereço da fonte e as últimas conferências, com o que apareceu de novo.
           Quando algo muda, é a hora de carregar a versão nova.
