@@ -1,5 +1,6 @@
 "use client";
 
+import { EfeitoNaDistribuicaoInterna, type BaseDaDistribuicaoInterna } from "@/components/simulador/EfeitoNaDistribuicaoInterna";
 import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anoDaVirada, exemploDoPrimeiroAno, exemploEmRegime, simularOpcaoCurso, valorMatriculaNoAno, type OpcaoCurso, type ParametrosSimulacaoCurso, type ResultadoOpcaoCurso } from "@/lib/mdo/simulacaoCurso";
@@ -42,6 +43,7 @@ export function SimuladorCursoAnos({
   base,
   campusNoPiso,
   matriculasRede,
+  distribuicaoInterna,
 }: {
   campus: string;
   ano: number;
@@ -49,6 +51,7 @@ export function SimuladorCursoAnos({
   campusNoPiso: boolean;
   /** Matrícula total equivalente da rede, base da diluição do valor da matrícula. */
   matriculasRede: number;
+  distribuicaoInterna?: BaseDaDistribuicaoInterna | null;
 }) {
   const [peso, setPeso] = useState(base.peso);
   const [agro, setAgro] = useState(base.agropecuaria);
@@ -239,6 +242,9 @@ export function SimuladorCursoAnos({
           {reais.format(base.valorHoje)} hoje.
         </p>
       </section>
+      {distribuicaoInterna && (
+        <EfeitoNaDistribuicaoInterna dados={distribuicaoInterna} campus={campus} series={[{ rotulo: a.rotulo, ganhos: ra.linhas }, { rotulo: b.rotulo, ganhos: rb.linhas }]} />
+      )}
     </div>
   );
 }

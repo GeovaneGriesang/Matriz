@@ -1,3 +1,4 @@
+import { dadosDaDistribuicaoInterna } from "@/server/queries/distribuicaoInterna";
 import type React from "react";
 import { destaqueNaFrente, ehCampusDestaque } from "@/lib/destaque";
 import Link from "next/link";
@@ -201,6 +202,8 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
     return `/simulador/curso?${q.toString()}`;
   };
 
+  const distribuicaoInterna = await dadosDaDistribuicaoInterna(instituicao.id, instituicao.sigla, ano);
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
@@ -242,7 +245,7 @@ export default async function SimuladorCursoPage({ searchParams }: { searchParam
         </p>
       )}
 
-      <SimuladorCursoAnos
+      <SimuladorCursoAnos distribuicaoInterna={distribuicaoInterna}
         key={`${campus.id}-${escolhido.chave}-${ano}`}
         campus={campus.nome}
         ano={ano}

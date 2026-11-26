@@ -10,6 +10,7 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { ComoLerEstaTela } from "@/components/ComoLerEstaTela";
 import { taxasDeEvasaoDaInstituicao } from "@/server/queries/taxaEvasaoInstituicao";
 import { retencaoObservada } from "@/lib/mdo/projecaoCiclos";
+import { dadosDaDistribuicaoInterna } from "@/server/queries/distribuicaoInterna";
 import { chaveDoFatorEsforco, fatorEsforcoPadrao, fatorMatriculaEquivalente } from "@/lib/mdo/matriculaEquivalente";
 
 export const dynamic = "force-dynamic";
@@ -208,6 +209,8 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
     const v = Math.round(Number(l.valorAluno ?? 0) * 100) / 100;
     if (v > 0) contagemDeValores.set(v, (contagemDeValores.get(v) ?? 0) + 1);
   }
+  const distribuicaoInterna = await dadosDaDistribuicaoInterna(instituicao.id, instituicao.sigla, ano);
+
   const valorMatriculaPresencial = [...contagemDeValores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
 
   return (
@@ -228,6 +231,7 @@ export default async function ProjecaoPage({ searchParams }: { searchParams: Pro
         taxasPadrao={taxasPadrao}
         retencao={retencao}
         campusInicialId={campusInicial}
+        distribuicaoInterna={distribuicaoInterna ? { campi: distribuicaoInterna.campi, anterior: distribuicaoInterna.anterior, oficial: distribuicaoInterna.oficial } : null}
       />
     </main>
   );

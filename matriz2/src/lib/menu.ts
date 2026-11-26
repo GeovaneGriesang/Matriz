@@ -115,7 +115,7 @@ const GRUPOS: GrupoMenu[] = [
       {
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
-        descricao: "A proposta oficial da Reitoria para 2027, câmpus a câmpus, da Matriz 1 ao total com a complementação.",
+        descricao: "A proposta oficial da Reitoria para 2027, câmpus a câmpus, e os anos seguintes com 90%: mude o total, a regra e o número de alunos.",
       },
     ],
   },

@@ -1,5 +1,6 @@
 "use client";
 
+import { EfeitoNaDistribuicaoInterna, type BaseDaDistribuicaoInterna } from "@/components/simulador/EfeitoNaDistribuicaoInterna";
 import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import {
@@ -92,7 +93,9 @@ export function ComparadorAlternativas({
   base,
   catalogo,
   campusNoPiso,
+  distribuicaoInterna,
 }: {
+  distribuicaoInterna?: BaseDaDistribuicaoInterna | null;
   campus: string;
   instituicao: string;
   base: ContextoBase;
@@ -323,6 +326,13 @@ export function ComparadorAlternativas({
           jeito (outra modalidade ou outro peso), o número muda: confirme antes de decidir.
         </p>
       </section>
+      {distribuicaoInterna && (
+        <EfeitoNaDistribuicaoInterna
+          dados={distribuicaoInterna}
+          campus={campus}
+          series={resultados.map((r) => ({ rotulo: r.rotulo, ganhos: anos.map((ano, i) => ({ ano, valor: r.ganhoPorAno[i] ?? 0 })) }))}
+        />
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { dadosDaDistribuicaoInterna } from "@/server/queries/distribuicaoInterna";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -94,6 +95,8 @@ export default async function AlternativasPage({ searchParams }: { searchParams:
     indicadores,
   };
 
+  const distribuicaoInterna = await dadosDaDistribuicaoInterna(instituicao.id, instituicao.sigla, ano);
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
@@ -105,7 +108,7 @@ export default async function AlternativasPage({ searchParams }: { searchParams:
         campus={{ escolhido: campus.id, opcoes: unidades.map((u) => ({ id: u.id, nome: u.nome, href: `/simulador/alternativas?ano=${ano}&instituicao=${instituicao.sigla}&campus=${u.id}` })) }}
       />
 
-      <ComparadorAlternativas key={`${campus.id}-${ano}`} campus={campus.nome} instituicao={instituicao.sigla} base={base} catalogo={catalogo} campusNoPiso={contexto.noPiso} />
+      <ComparadorAlternativas distribuicaoInterna={distribuicaoInterna} key={`${campus.id}-${ano}`} campus={campus.nome} instituicao={instituicao.sigla} base={base} catalogo={catalogo} campusNoPiso={contexto.noPiso} />
     </main>
   );
 }

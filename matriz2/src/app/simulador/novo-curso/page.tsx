@@ -1,3 +1,4 @@
+import { dadosDaDistribuicaoInterna } from "@/server/queries/distribuicaoInterna";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
@@ -174,6 +175,8 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
     return `/simulador/novo-curso?${p.toString()}`;
   };
 
+  const distribuicaoInterna = await dadosDaDistribuicaoInterna(instituicao.id, instituicao.sigla, ano);
+
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
       <SubmenuSimulador />
@@ -226,7 +229,7 @@ export default async function NovoCursoPage({ searchParams }: { searchParams: Pr
         </div>
       </SeletorDeContexto>
 
-      <SimuladorNovoCurso key={`${campus.id}-${chaveEscolhida}-${ano}`} campus={campus.nome} base={base} campusNoPiso={contexto.noPiso} />
+      <SimuladorNovoCurso distribuicaoInterna={distribuicaoInterna} key={`${campus.id}-${chaveEscolhida}-${ano}`} campus={campus.nome} base={base} campusNoPiso={contexto.noPiso} />
     </main>
   );
 }

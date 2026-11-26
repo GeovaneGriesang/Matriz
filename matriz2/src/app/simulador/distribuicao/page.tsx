@@ -10,6 +10,8 @@ import { SeletorInstituicao } from "@/components/SeletorInstituicao";
 import { indicesDoCampus } from "@/lib/mdo/indicesCampus";
 import { CAMPUS_FORA_DO_RATEIO } from "@/lib/mdo/propostaComplementacao";
 import { PropostaComplementacao, type CampusDaComplementacao } from "@/components/simulador/PropostaComplementacao";
+import { DistribuicaoProjetada } from "@/components/simulador/DistribuicaoProjetada";
+import { dadosDaDistribuicaoInterna } from "@/server/queries/distribuicaoInterna";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +149,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
   const temIndices = campi.every((c) => c.indices !== null);
   const proposta = ehInstituicaoDestaque(instituicao.sigla) ? await dadosDaProposta(instituicao.id) : [];
   const temBase2026 = proposta.some((c) => c.base !== null);
+  const interna = ehInstituicaoDestaque(instituicao.sigla) ? await dadosDaDistribuicaoInterna(instituicao.id, instituicao.sigla, 2027) : null;
   const totalPadrao = campi.reduce((s, c) => s + c.matriz, 0);
 
   return (
@@ -159,6 +162,18 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         (temBase2026 ? (
           <div className="flex flex-col gap-4">
             <PropostaComplementacao campi={proposta} />
+            {interna && (
+              <DistribuicaoProjetada
+                titulo={`Os próximos anos: ${interna.anoMatriz} oficial e, de ${interna.anoMatriz + 1} em diante, 90%`}
+                anos={Array.from({ length: 5 }, (_, k) => interna.anoMatriz + k)}
+                campi={interna.campi
+                  .map((c) => ({ id: c.id, nome: c.nome, anterior: interna.anterior[String(c.id)] ?? 0 }))
+                  .filter((c) => c.anterior > 0 || (interna.matriz[String(c.id)] ?? 0) > 0)}
+                matriz={Object.fromEntries(Object.entries(interna.matriz).map(([id, v]) => [id, Array.from({ length: 5 }, () => v)]))}
+                oficial={interna.oficial}
+                origemDaMatriz={`Aqui a Matriz 1 é a matriz de ${interna.anoMatriz} da MDO, repetida em todos os anos: serve para ver o efeito da regra, do total e do número de alunos. Para projetar a matriz com os cursos que terminam, abrem e param, use Cenários, que tem esta mesma tabela no fim.`}
+              />
+            )}
           </div>
         ) : (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">

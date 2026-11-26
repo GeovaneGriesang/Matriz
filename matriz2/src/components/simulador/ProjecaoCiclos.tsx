@@ -26,6 +26,7 @@ import { SinalMaisMenos } from "@/components/SinalMaisMenos";
 import { ajusteParaManterMooc, repartirMooc, type MoocDoAno } from "@/lib/mdo/manterMooc";
 import { decomporVariacoes, type TurmaNoTempo } from "@/lib/mdo/porQueMuda";
 import { PorQueMuda } from "@/components/simulador/PorQueMuda";
+import { CONFIG_DISTRIBUICAO_PADRAO, DistribuicaoProjetada, normalizarConfigDaDistribuicao, type ConfigDaDistribuicao } from "@/components/simulador/DistribuicaoProjetada";
 
 /** Um ciclo como vem do servidor: datas em texto, porque Date não atravessa para o componente de cliente. */
 export interface CicloSerial {
@@ -122,6 +123,15 @@ interface CenarioSalvo {
   medida?: Medida;
   /** Manter os alunos MOOC num número fixo por câmpus (chave: id do câmpus). Cenários salvos antes de 2026-11-23 não têm o campo. */
   mooc?: MoocFixo;
+  /** O que a pessoa mudou na distribuição entre os câmpus (total, parte da Matriz 3, alunos). Cenários salvos antes de 2026-11-26 não têm o campo. */
+  distribuicao?: ConfigDaDistribuicao;
+}
+
+/** A distribuição interna do IFSul: o que cada câmpus recebeu no ano anterior à matriz e o valor oficial do ano da matriz, pelo id do câmpus. */
+export interface DadosDaDistribuicaoInterna {
+  campi: Array<{ id: number; nome: string }>;
+  anterior: Record<string, number>;
+  oficial: Record<string, number> | null;
 }
 
 interface MoocFixo {
@@ -204,6 +214,7 @@ export function ProjecaoCiclos({
   taxasPadrao,
   retencao,
   campusInicialId,
+  distribuicaoInterna,
 }: {
   instituicao: string;
   anoCiclo: number;
@@ -217,6 +228,8 @@ export function ProjecaoCiclos({
   taxasPadrao: TaxasPadrao;
   retencao: RetencaoPadrao;
   campusInicialId: number | null;
+  /** Só para o IFSul: a base da distribuição entre os câmpus. */
+  distribuicaoInterna?: DadosDaDistribuicaoInterna | null;
 }) {
   const [campusId, setCampusId] = useState<number | null>(campusInicialId);
   const [anos, setAnos] = useState(5);
@@ -231,6 +244,7 @@ export function ProjecaoCiclos({
   const [filtros, setFiltros] = useState<FiltrosCenario>(FILTROS_TODOS);
   const [medida, setMedida] = useState<Medida>("reais");
   const [mooc, setMooc] = useState<MoocFixo>(MOOC_LIVRE);
+  const [distribuicao, setDistribuicao] = useState<ConfigDaDistribuicao>(CONFIG_DISTRIBUICAO_PADRAO);
   // O ano aberto pelo + da tabela do cenário (posição na tabela), para ver de onde vêm os alunos daquele ano.
   const [anoAberto, setAnoAberto] = useState<number | null>(null);
   // O curso novo cuja escolha de curso está aberta na grade (para trocar um curso já escolhido).
@@ -253,6 +267,7 @@ export function ProjecaoCiclos({
     setFiltros(normalizarFiltros(c.filtros));
     setMedida(ehMedida(c.medida) ? c.medida : "reais");
     setMooc(normalizarMooc(c.mooc));
+    setDistribuicao(normalizarConfigDaDistribuicao(c.distribuicao));
   }
 
   // O cenário fica guardado neste navegador, para a pessoa voltar e continuar de onde parou.
@@ -270,18 +285,18 @@ export function ProjecaoCiclos({
   useEffect(() => {
     if (!restaurado) return;
     try {
-      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc };
+      const s: CenarioSalvo = { v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc, distribuicao };
       window.localStorage.setItem(chaveSalva, JSON.stringify(s));
     } catch {
       /* idem */
     }
-  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId, catalogo, filtros, medida, mooc]);
+  }, [restaurado, chaveSalva, anos, evPresencial, evEad, reporExistentes, encerramentos, novos, campusId, catalogo, filtros, medida, mooc, distribuicao]);
 
   // As simulações salvas no servidor (com nome, para compartilhar) usam o mesmo estado.
   useConfiguracaoSalvavel({
     chave: `simulador/projecao:${instituicao}:${anoCiclo}`,
     rotulo: "esta simulação",
-    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc }) satisfies CenarioSalvo,
+    capturar: () => ({ v: 1, anos, evPresencial, evEad, reporExistentes, encerramentos, novos: comCursoDoCatalogo(novos, catalogo), campusId, filtros, medida, mooc, distribuicao }) satisfies CenarioSalvo,
     aplicar: aplicarCenario,
   });
 
@@ -348,7 +363,7 @@ export function ProjecaoCiclos({
 
   // Soma por câmpus, ano a ano: quem já está matriculado, a reposição dos cursos que continuam, os cursos novos.
   // Os cartões ficam sempre em reais; a tabela segue a medida escolhida. Uma turma fora do filtro não entra em nenhuma parcela, nem em "manter tudo".
-  const somarPorCampus = (qual: Medida) => {
+  const somarPorCampus = (qual: Medida, passa: readonly boolean[] = turmaPassa, filtrosDaSoma: FiltrosCenario = filtros) => {
     const m = new Map<number, LinhaAno[]>();
     const linhasDe = (u: number) => {
       let l = m.get(u);
@@ -361,7 +376,7 @@ export function ProjecaoCiclos({
     // O MOOC de cada câmpus, separado, para a opção de manter o número de alunos MOOC fixo.
     const moocPorCampus = new Map<number, { anos: MoocDoAno[]; hoje: { alunos: number; medida: number; contados: number } }>();
     todos.forEach((c, i) => {
-      if (!turmaPassa[i]) return;
+      if (!passa[i]) return;
       const l = linhasDe(c.unidadeId);
       let m: { anos: MoocDoAno[]; hoje: { alunos: number; medida: number; contados: number } } | undefined;
       if (mooc.manter && c.repasse === "EAD_MOOC") {
@@ -414,7 +429,7 @@ export function ProjecaoCiclos({
       });
     }
     novosEspec.forEach((e, j) => {
-      if (!e.spec || !passaNoFiltro(e.filtravel!, filtros)) return;
+      if (!e.spec || !passaNoFiltro(e.filtravel!, filtrosDaSoma)) return;
       const l = linhasDe(e.ui.unidadeId);
       for (const t of turmasDosNovos[j]!) {
         t.pontos.forEach((p, k) => {
@@ -430,6 +445,22 @@ export function ProjecaoCiclos({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const porCampusEmReais = useMemo(() => somarPorCampus("reais"), [todos, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, paradasEfetivas, reporExistentes, anos, turmaPassa, filtros, mooc]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // A distribuição entre os câmpus usa sempre todas as turmas, em reais: o filtro da tabela não muda o que cada câmpus recebe.
+  const todasPassam = useMemo(() => todos.map(() => true), [todos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const porCampusCompleto = useMemo(() => somarPorCampus("reais", todasPassam, FILTROS_TODOS), [todos, todasPassam, matriculadosPorCiclo, turmasPorCiclo, novosEspec, turmasDosNovos, paradasEfetivas, reporExistentes, anos, mooc]);
+  const anosDaDistribuicao = useMemo(() => Array.from({ length: anos }, (_, k) => anoCiclo + k), [anos, anoCiclo]);
+  const matrizParaDistribuicao = useMemo(() => {
+    const r: Record<string, number[]> = {};
+    for (const [id, l] of porCampusCompleto) r[String(id)] = l.map((x) => x.matric + x.repos + x.novos);
+    return r;
+  }, [porCampusCompleto]);
+  const campiDaDistribuicao = useMemo(() => {
+    if (!distribuicaoInterna) return [];
+    return distribuicaoInterna.campi
+      .map((c) => ({ id: c.id, nome: c.nome, anterior: distribuicaoInterna.anterior[String(c.id)] ?? 0 }))
+      .filter((c) => c.anterior > 0 || (matrizParaDistribuicao[String(c.id)] ?? []).some((v) => v > 0));
+  }, [distribuicaoInterna, matrizParaDistribuicao]);
   const porCampus = useMemo(() => (medida === "reais" ? porCampusEmReais : somarPorCampus(medida)), [medida, porCampusEmReais]);
 
   const somarRecorte = (mapa: Map<number, LinhaAno[]>) => {
@@ -930,6 +961,18 @@ export function ProjecaoCiclos({
             </table>
           </div>
         </section>
+      )}
+
+      {distribuicaoInterna && campiDaDistribuicao.length > 0 && (
+        <DistribuicaoProjetada
+          anos={anosDaDistribuicao}
+          campi={campiDaDistribuicao}
+          matriz={matrizParaDistribuicao}
+          oficial={distribuicaoInterna.oficial}
+          origemDaMatriz={`A Matriz 1 de cada ano é a matriz projetada nesta tela para cada câmpus, com todas as turmas (o filtro da tabela acima não vale aqui) e com o cenário montado: cursos novos, paradas, evasão e MOOC. O ponto de partida é o que cada câmpus recebeu em ${anoCiclo - 1}.`}
+          config={distribuicao}
+          onConfig={setDistribuicao}
+        />
       )}
 
       <details open={mooc.manter} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">

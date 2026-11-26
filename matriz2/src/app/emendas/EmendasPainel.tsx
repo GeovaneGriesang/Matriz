@@ -283,6 +283,12 @@ function DetalheDaEmenda({ e }: { e: EmendaDoPainel }) {
       <dd>
         {reais.format(e.total)}: {reais.format(e.gnd4)} em investimento e {reais.format(e.gnd3)} em custeio{e.outros > 0 ? `, mais ${reais.format(e.outros)} em outros grupos` : ""}.
       </dd>
+      {pedidaPor(e.justificativa) && (
+        <>
+          <dt className="font-medium text-neutral-500">Pedida por</dt>
+          <dd>{pedidaPor(e.justificativa)} (as emendas de comissão e de bancada atendem sugestões de parlamentares, que a justificativa lista)</dd>
+        </>
+      )}
       <dt className="font-medium text-neutral-500">Justificativa</dt>
       <dd className="whitespace-pre-line">{e.justificativa || "sem justificativa no espelho"}</dd>
     </dl>
@@ -922,4 +928,10 @@ function ListaCurta({ emendas }: { emendas: EmendaDoPainel[] }) {
         ))}
     </ul>
   );
+}
+
+/** Os parlamentares que pediram uma emenda de comissão ou de bancada, como a justificativa lista ("Solicitantes: ..."). */
+function pedidaPor(justificativa: string | null): string | null {
+  const m = /Solicitantes?:\s*([\s\S]*?)\.?\s*$/i.exec(justificativa ?? "");
+  return m ? m[1]!.replace(/\s+/g, " ").trim() : null;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { EfeitoNaDistribuicaoInterna, type BaseDaDistribuicaoInterna } from "@/components/simulador/EfeitoNaDistribuicaoInterna";
 import { useMemo, useState } from "react";
 import { aplicarCampos, comoBooleano, comoNumero, comoObjeto, comoTexto, useConfiguracaoSalvavel } from "@/components/configuracoes/ConfiguracoesSalvas";
 import { anosOcupados, simularOpcaoCurso, type OpcaoCurso } from "@/lib/mdo/simulacaoCurso";
@@ -33,7 +34,17 @@ const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const percentual = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: string; base: CursoNovoBase; campusNoPiso: boolean }) {
+export function SimuladorNovoCurso({
+  campus,
+  base,
+  campusNoPiso,
+  distribuicaoInterna,
+}: {
+  campus: string;
+  base: CursoNovoBase;
+  campusNoPiso: boolean;
+  distribuicaoInterna?: BaseDaDistribuicaoInterna | null;
+}) {
   const [nome, setNome] = useState(base.rotulo);
   const [primeiroAno, setPrimeiroAno] = useState(base.anoDoValor + 1);
   const [duracao, setDuracao] = useState(base.padroes.anosDuracao);
@@ -237,6 +248,7 @@ export function SimuladorNovoCurso({ campus, base, campusNoPiso }: { campus: str
           professor, laboratório, sala e permanência não entra.
         </p>
       </section>
+      {distribuicaoInterna && <EfeitoNaDistribuicaoInterna dados={distribuicaoInterna} campus={campus} series={[{ rotulo: nome, ganhos: r.linhas }]} />}
     </div>
   );
 }
