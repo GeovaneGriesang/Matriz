@@ -85,7 +85,7 @@ tanto Gmail pessoal quanto Google Workspace (caso de `va-matriz@ifsul.edu.br`).
 ### Conferência semanal das fontes oficiais
 
 `npm run verificar:fontes` visita as páginas oficiais que alimentam o sistema (PNP, Congresso,
-Planejamento, Portal da Transparência, Câmara, Senado, Estado do RS e Prefeitura de Venâncio Aires) e grava o
+Planejamento, Portal da Transparência, Câmara, Senado e Estado do RS) e grava o
 que mudou nas tabelas `FonteMonitorada` e `VerificacaoFonte`; a tela Situação dos dados mostra.
 Na VM roda toda segunda-feira de manhã (11h no fuso da VM, Europe/Berlin), pelo cron do root:
 

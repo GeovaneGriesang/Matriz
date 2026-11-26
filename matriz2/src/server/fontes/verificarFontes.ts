@@ -10,6 +10,9 @@ export { arquivosDaPagina, diferencas };
  * Uma página muda quando aparece ou some um arquivo publicado nela (PDF, planilha, CSV, ZIP); o Portal da Transparência,
  * quando sai um mês que ainda não foi carregado; as listas da Câmara e do Senado, quando um parlamentar troca de partido
  * ou entra e sai do mandato. O que mudou fica registrado, e a tela Situação dos dados mostra.
+ *
+ * Ficam de fora: o site da Prefeitura de Venâncio Aires (recusa conexões do servidor, que fica fora do Brasil) e o da Câmara de
+ * Venâncio Aires (monta a página no navegador, sem lista de arquivos).
  */
 export interface FonteDoCatalogo {
   chave: string;
@@ -76,13 +79,6 @@ export const FONTES: readonly FonteDoCatalogo[] = [
     tipo: "pagina",
     assunto: "Projeto e lei orçamentária do Estado do Rio Grande do Sul.",
   },
-  {
-    chave: "pmva-orcamento",
-    nome: "Prefeitura de Venâncio Aires: leis orçamentárias",
-    url: "https://pmva.com.br/?pag=18",
-    tipo: "pagina",
-    assunto: "LOA, LDO e PPA do município.",
-  },
 ];
 
 const AGENTE = "Mozilla/5.0 (compatible; verificador-de-fontes)";
@@ -135,7 +131,8 @@ async function lerPortal(): Promise<Leitura> {
   }
   const ultimoTexto = ultimo ? `${ultimo.ano}${String(ultimo.mes).padStart(2, "0")}` : "nenhum";
   const conteudo = [`último mês carregado: ${ultimoTexto}`, ...disponiveis];
-  return { assinatura: hash(conteudo.join("\n")), conteudo };
+  // Só os meses publicados e não carregados contam como mudança: carregar um mês não é novidade da fonte.
+  return { assinatura: hash(disponiveis.join("\n")), conteudo };
 }
 
 async function lerParlamentares(f: FonteDoCatalogo): Promise<Leitura> {
