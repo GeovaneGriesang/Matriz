@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { prisma } from "@/server/db/prisma";
 import { arquivosDaPagina, diferencas } from "@/lib/fontes/leituraDeFontes";
 import { registrarAviso } from "@/server/avisos/avisos";
+import { ultimoBimestrePublicado } from "@/carga/carregarSiconfi";
+import { ENTES, type Ente } from "@/lib/orcamento/siconfi";
 
 export { arquivosDaPagina, diferencas };
 
@@ -12,13 +14,13 @@ export { arquivosDaPagina, diferencas };
  * ou entra e sai do mandato. O que mudou fica registrado, e a tela Situação dos dados mostra.
  *
  * Ficam de fora: o site da Prefeitura de Venâncio Aires (recusa conexões do servidor, que fica fora do Brasil) e o da Câmara de
- * Venâncio Aires (monta a página no navegador, sem lista de arquivos).
+ * Venâncio Aires (responde ao servidor com uma verificação de robô; as emendas impositivas são carregadas de uma máquina no Brasil).
  */
 export interface FonteDoCatalogo {
   chave: string;
   nome: string;
   url: string;
-  tipo: "pagina" | "portal" | "parlamentares";
+  tipo: "pagina" | "portal" | "parlamentares" | "siconfi";
   assunto: string;
 }
 
@@ -77,7 +79,14 @@ export const FONTES: readonly FonteDoCatalogo[] = [
     nome: "Governo do RS: orçamento do Estado",
     url: "https://planejamento.rs.gov.br/orcamento-estado",
     tipo: "pagina",
-    assunto: "Projeto e lei orçamentária do Estado do Rio Grande do Sul.",
+    assunto: "Projeto e lei orçamentária do Estado do Rio Grande do Sul (tela Orçamento do Estado do RS).",
+  },
+  {
+    chave: "siconfi-rreo",
+    nome: "Tesouro Nacional (Siconfi): relatórios bimestrais do Estado do RS e de Venâncio Aires",
+    url: "https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rreo",
+    tipo: "siconfi",
+    assunto: "Execução do orçamento do Estado e do município, a cada dois meses (telas Orçamento do Estado do RS e Orçamento de Venâncio Aires). Carga: npm run carregar:siconfi.",
   },
 ];
 
@@ -135,6 +144,21 @@ async function lerPortal(): Promise<Leitura> {
   return { assinatura: hash(disponiveis.join("\n")), conteudo };
 }
 
+/** O bimestre mais novo que o Tesouro já publicou, para cada ente, e se ele já está carregado. */
+async function lerSiconfi(): Promise<Leitura> {
+  const ano = new Date().getFullYear();
+  const conteudo: string[] = [];
+  const pendentes: string[] = [];
+  for (const ente of Object.keys(ENTES) as Ente[]) {
+    const publicado = await ultimoBimestrePublicado(ente, ano);
+    const carregado = await prisma.contaSiconfi.findFirst({ where: { ente, exercicio: ano }, select: { periodo: true } });
+    conteudo.push(`${ENTES[ente].curto}: ${publicado ? `${publicado}º bimestre de ${ano} publicado` : `nada de ${ano} publicado`}, ${carregado ? `${carregado.periodo}º carregado` : "nada carregado"}`);
+    if (publicado && (!carregado || carregado.periodo < publicado)) pendentes.push(`${ENTES[ente].curto}: ${publicado}º bimestre de ${ano} publicado, ainda não carregado`);
+  }
+  // Como no Portal, só conta como mudança o que foi publicado e ainda não carregado.
+  return { assinatura: hash(pendentes.join("\n")), conteudo: [...conteudo, ...pendentes] };
+}
+
 async function lerParlamentares(f: FonteDoCatalogo): Promise<Leitura> {
   let lista: string[];
   if (f.chave === "camara-deputados") {
@@ -173,7 +197,7 @@ export async function verificarFontes(so?: string): Promise<ResultadoDaVerificac
     });
     const agora = new Date();
     try {
-      const l = f.tipo === "portal" ? await lerPortal() : f.tipo === "parlamentares" ? await lerParlamentares(f) : await lerPagina(f);
+      const l = f.tipo === "portal" ? await lerPortal() : f.tipo === "siconfi" ? await lerSiconfi() : f.tipo === "parlamentares" ? await lerParlamentares(f) : await lerPagina(f);
       const primeira = !fonte.assinatura;
       const mudou = !primeira && fonte.assinatura !== l.assinatura;
       const antes: string[] = fonte.conteudo ? (JSON.parse(fonte.conteudo) as string[]) : [];

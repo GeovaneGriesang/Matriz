@@ -21,7 +21,13 @@ async function baixar(url: string): Promise<string> {
   for (let tentativa = 1; tentativa <= 4; tentativa++) {
     try {
       const r = await fetch(url, { headers: CABECALHOS, signal: AbortSignal.timeout(60_000) });
-      if (r.ok) return await r.text();
+      if (r.ok) {
+        const html = await r.text();
+        // Para alguns endereços (como o servidor de produção, fora do Brasil) a Câmara responde com uma verificação de robô.
+        if (/Bot Verification|grecaptcha/i.test(html) && html.length < 5000)
+          throw new Error("A Câmara respondeu com uma verificação de robô (reCAPTCHA). Rode esta carga de uma máquina no Brasil e copie a tabela EmendaMunicipal para o servidor.");
+        return html;
+      }
       ultimo = new Error(`HTTP ${r.status} em ${url}`);
     } catch (e) {
       ultimo = e;
