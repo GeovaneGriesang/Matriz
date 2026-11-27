@@ -1,5 +1,5 @@
 import { temAcessoPleno } from "@/lib/permissoes";
-import { FUNDO_DDI, SeloDdi } from "@/components/PedidoDaDdi";
+import { MARCAS, ORDEM_DAS_MARCAS, Selo } from "@/components/Marcacoes";
 import Link from "next/link";
 import { prisma } from "@/server/db/prisma";
 import { FORM_MAX_WIDTH, TABLE_MAX_WIDTH, PROSE_LINK } from "@/lib/layoutWidths";
@@ -100,6 +100,7 @@ export default async function Home() {
   const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas(), usuario.campus);
   const enderecosVisiveis = new Set(grupos.flatMap((g) => g.itens.flatMap((i) => [i.href, ...(i.abas ?? [])])));
   const atalhos = ATALHOS.filter((a) => enderecosVisiveis.has(a.href));
+  const marcasPresentes = ORDEM_DAS_MARCAS.filter((m) => grupos.some((g) => g.itens.some((i) => i.marca === m)));
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-8 px-6 py-16 lg:px-12`}>
@@ -114,9 +115,15 @@ export default async function Home() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">O que você quer fazer?</h2>
-        {grupos.some((g) => g.itens.some((i) => i.pedidoDaDdi)) && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Em amarelo, com o selo <SeloDdi />, as telas que a DDI pediu.
+        {marcasPresentes.length > 0 && (
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <span>As cores marcam:</span>
+            {marcasPresentes.map((m) => (
+              <span key={m}>
+                <Selo marca={m} className="mr-1" />
+                {MARCAS[m].significado}
+              </span>
+            ))}
           </p>
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,11 +138,11 @@ export default async function Home() {
               </div>
               <ul className="flex flex-col gap-2">
                 {g.itens.map((i) => (
-                  <li key={i.href} className={i.pedidoDaDdi ? `-mx-2 rounded-md px-2 py-1 ${FUNDO_DDI}` : undefined}>
+                  <li key={i.href} className={i.marca ? `-mx-2 rounded-md px-2 py-1 ${MARCAS[i.marca].fundo}` : undefined}>
                     <Link href={i.href} className={`text-sm font-medium ${PROSE_LINK}`}>
                       {i.rotulo}
                     </Link>
-                    {i.pedidoDaDdi && <SeloDdi />}
+                    {i.marca && <Selo marca={i.marca} />}
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">{i.descricao}</p>
                   </li>
                 ))}

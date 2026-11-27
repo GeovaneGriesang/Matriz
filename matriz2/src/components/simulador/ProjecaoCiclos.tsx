@@ -247,8 +247,8 @@ export function ProjecaoCiclos({
   const [distribuicao, setDistribuicao] = useState<ConfigDaDistribuicao>(CONFIG_DISTRIBUICAO_PADRAO);
   // O ano aberto pelo + da tabela do cenário (posição na tabela), para ver de onde vêm os alunos daquele ano.
   const [anoAberto, setAnoAberto] = useState<number | null>(null);
-  // O curso novo cuja escolha de curso está aberta na grade (para trocar um curso já escolhido).
-  const [editandoCurso, setEditandoCurso] = useState<number | null>(null);
+  // O formulário de curso novo aberto: id null para um curso que ainda não está na tabela. As mudanças só valem ao salvar.
+  const [formulario, setFormulario] = useState<{ id: number | null; dados: NovoCursoUI } | null>(null);
   const [detalheCompleto, setDetalheCompleto] = useState(false);
 
   const chaveSalva = `matriz.cenario.${instituicao}.${anoCiclo}`;
@@ -648,10 +648,10 @@ export function ProjecaoCiclos({
   }, [todos, turmaPassa, campusId, matriculadosPorCiclo, medida, paradasEfetivas, turmasPorCiclo, reporExistentes, novosEspec, filtros, turmasDosNovos, anos, anoBase0, linhas]);
 
   function adicionarCurso() {
-    setNovos((atual) => [
-      ...atual,
-      {
-        id: Date.now() + atual.length,
+    setFormulario({
+      id: null,
+      dados: {
+        id: Date.now(),
         unidadeId: campusId ?? campi[0]?.id ?? 0,
         catalogoIdx: -1,
         busca: "",
@@ -664,16 +664,30 @@ export function ProjecaoCiclos({
         duracao: 3,
         repasse: "PRESENCIAL",
       },
-    ]);
+    });
   }
-  function mudarCurso(id: number, mudanca: Partial<NovoCursoUI>) {
-    setNovos((atual) => atual.map((n) => (n.id === id ? { ...n, ...mudanca } : n)));
+  function alterarCurso(ui: NovoCursoUI) {
+    setFormulario({ id: ui.id, dados: { ...ui, busca: "" } });
   }
-  function escolherDoCatalogo(id: number, idx: number) {
+  function mudarRascunho(mudanca: Partial<NovoCursoUI>) {
+    setFormulario((f) => (f ? { ...f, dados: { ...f.dados, ...mudanca } } : f));
+  }
+  function escolherDoCatalogo(idx: number) {
     const item = catalogo[idx];
     if (!item) return;
     const sugerida = duracaoObservada.get(`${item.curso}|${item.tipoOferta}`) || duracaoPadrao(item.tipoCurso, item.tipoOferta);
-    mudarCurso(id, { catalogoIdx: idx, duracao: sugerida });
+    mudarRascunho({ catalogoIdx: idx, duracao: sugerida, busca: "" });
+  }
+  function salvarFormulario() {
+    if (!formulario || formulario.dados.catalogoIdx < 0) return;
+    const dados = { ...formulario.dados, busca: "" };
+    setNovos((atual) => (formulario.id === null ? [...atual, dados] : atual.map((n) => (n.id === formulario.id ? dados : n))));
+    setFormulario(null);
+  }
+  function excluirCurso(ui: NovoCursoUI, nome: string) {
+    if (!window.confirm(`Excluir "${nome}" do cenário?`)) return;
+    setNovos((a) => a.filter((n) => n.id !== ui.id));
+    if (formulario?.id === ui.id) setFormulario(null);
   }
   function definirParada(chave: string, ano: number | null) {
     setEncerramentos((atual) => {
@@ -686,6 +700,7 @@ export function ProjecaoCiclos({
   function limparCenario() {
     setEncerramentos({});
     setNovos([]);
+    setFormulario(null);
     setReporExistentes(true);
   }
 
@@ -1183,247 +1198,137 @@ export function ProjecaoCiclos({
         <summary className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Cursos novos e reformulados ({novos.length})</summary>
         <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Uma linha por curso: o câmpus, o curso (da tabela de pesos, que dá o peso e a carga horária), a primeira turma, quantos entram e por quanto tempo. Marque <strong>Reformulado</strong> quando
-          for o currículo novo de um curso que o câmpus já oferta: ele conta como continuidade (na Reposição), não como curso novo, e o curso antigo escolhido deixa de receber turma a partir da primeira
-          turma do novo.
+          Uma linha por curso: o câmpus, o curso (da tabela de pesos, que dá o peso e a carga horária), a primeira turma, quantos entram e por quanto tempo. A tabela só mostra; para mudar um
+          curso use <strong>Alterar</strong>, que abre o formulário logo abaixo da linha, e para tirar do cenário use <strong>Excluir</strong>. Marque <strong>Reformulado</strong> quando for o
+          currículo novo de um curso que o câmpus já oferta: ele conta como continuidade (na Reposição), não como curso novo, e o curso antigo escolhido deixa de receber turma a partir da
+          primeira turma do novo.
         </p>
         <div className="tabela-rolavel rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+            <thead className="text-left text-xs uppercase tracking-wide">
               <tr>
-                <th className="px-2 py-2">Câmpus</th>
-                <th className="min-w-64 px-2 py-2">Curso</th>
-                <th className="px-2 py-2">Modalidade</th>
-                <th className="min-w-48 px-2 py-2">Novo ou reformulado</th>
-                <th className="px-2 py-2">1ª turma</th>
-                <th className="px-2 py-2">Mês</th>
-                <th className="px-2 py-2">Entradas</th>
-                <th className="px-2 py-2 text-right">Ingressantes</th>
-                <th className="px-2 py-2 text-right">Duração (anos)</th>
-                <th className="px-2 py-2">Oferta</th>
-                <th className="px-2 py-2 text-right">Um aluno rende</th>
-                <th className="px-2 py-2"></th>
+                <th className="px-3 py-2">Câmpus</th>
+                <th className="min-w-56 px-3 py-2">Curso</th>
+                <th className="px-3 py-2">Modalidade</th>
+                <th className="px-3 py-2">Novo ou reformulado</th>
+                <th className="px-3 py-2">1ª turma</th>
+                <th className="px-3 py-2">Entradas</th>
+                <th className="px-3 py-2 text-right">Ingressantes</th>
+                <th className="px-3 py-2 text-right">Duração</th>
+                <th className="px-3 py-2">Oferta</th>
+                <th className="px-3 py-2 text-right">Um aluno rende</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-              {novosEspec.length === 0 && (
+              {novosEspec.length === 0 && formulario?.id !== null && (
                 <tr>
-                  <td colSpan={99} className="px-3 py-4 text-center text-sm text-neutral-500">
+                  <td colSpan={11} className="px-3 py-4 text-center text-sm text-neutral-500">
                     Nenhum curso novo ou reformulado. Use &quot;Adicionar curso&quot; abaixo.
                   </td>
                 </tr>
               )}
               {novosEspec.map(({ ui, item, spec }) => {
-                const resultados = ui.busca.trim()
-                  ? catalogo
-                      .map((it, idx) => ({ it, idx }))
-                      .filter(({ it }) => it.curso.toLowerCase().includes(ui.busca.trim().toLowerCase()))
-                      .slice(0, 40)
-                  : [];
                 const valorAluno = spec ? spec.peso * (spec.chMatriz / 800) * spec.valorPorMT : 0;
-                const editando = !item || editandoCurso === ui.id;
-                const cursosDoCampus = cursos.filter((c) => c.unidadeId === ui.unidadeId);
-                const celula = "px-2 py-1.5 align-top";
-                const pequeno = `${campo} min-w-0`;
+                const nomeDoCurso = item ? (item.curso === "*" ? "Qualquer FIC fora do catálogo" : item.curso) : ui.busca.trim() || "Curso não escolhido";
+                const substituido = ui.substitui ? cursos.find((c) => c.chave === ui.substitui) : undefined;
+                const aberto = formulario?.id === ui.id;
+                const celula = "px-3 py-2 align-top";
                 return (
-                  <tr key={ui.id} className={ui.reformulado ? "bg-violet-50/60 dark:bg-violet-950/20" : ""}>
-                    <td className={celula}>
-                      <select value={ui.unidadeId} onChange={(e) => mudarCurso(ui.id, { unidadeId: Number(e.target.value), substitui: undefined })} className={`${pequeno} w-40`} aria-label="Câmpus">
-                        {campi.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className={`${celula} relative`}>
-                      {editando ? (
-                        <>
-                          <input
-                            autoFocus={editandoCurso === ui.id}
-                            value={ui.busca}
-                            onChange={(e) => mudarCurso(ui.id, { busca: e.target.value })}
-                            placeholder="digite parte do nome"
-                            className={pequeno}
-                            aria-label="Procurar curso"
-                          />
-                          {resultados.length > 0 && (
-                            <ul className="absolute left-2 right-2 z-20 mt-1 max-h-64 overflow-auto rounded border border-neutral-300 bg-white text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                              {resultados.map(({ it, idx }) => (
-                                <li key={idx}>
-                                  <button
-                                    type="button"
-                                    className="w-full px-2 py-1.5 text-left hover:bg-if-green/10"
-                                    onClick={() => {
-                                      escolherDoCatalogo(ui.id, idx);
-                                      mudarCurso(ui.id, { busca: "" });
-                                      setEditandoCurso(null);
-                                    }}
-                                  >
-                                    <span className="font-medium">{it.curso === "*" ? "Qualquer FIC fora do catálogo" : it.curso}</span>
-                                    <span className="block text-neutral-500">
-                                      {it.tipoCurso.toLowerCase()}
-                                      {it.tipoOferta !== "*" && it.tipoOferta !== "NÃO SE APLICA" ? `, ${it.tipoOferta.toLowerCase()}` : ""}, mínima {inteiro.format(it.chMinimaMec)} h, peso {decimal.format(it.pesoEfetivo)}
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          {!item && !ui.busca.trim() && <span className="mt-1 block text-xs text-if-red">Escolha o curso: sem isso, ele não entra na conta.</span>}
-                        </>
-                      ) : (
-                        <button type="button" onClick={() => setEditandoCurso(ui.id)} className="text-left hover:text-if-green" title="Trocar o curso">
-                          <span className="font-medium">{item.curso === "*" ? "Qualquer FIC fora do catálogo" : item.curso}</span>
-                          <span className="block text-xs text-neutral-500">
-                            {item.tipoCurso.toLowerCase()}
-                            {item.tipoOferta !== "*" && item.tipoOferta !== "NÃO SE APLICA" ? `, ${item.tipoOferta.toLowerCase()}` : ""} · trocar
-                          </span>
-                        </button>
-                      )}
-                    </td>
-                    <td className={celula}>
-                      <select value={ui.repasse} onChange={(e) => mudarCurso(ui.id, { repasse: e.target.value as Repasse })} className={`${pequeno} w-36`} aria-label="Modalidade">
-                        {(Object.keys(ROTULO_REPASSE) as Repasse[]).map((r) => (
-                          <option key={r} value={r}>
-                            {MODALIDADE_CURTA[r]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className={celula}>
-                      <label className="flex items-center gap-1.5 text-xs">
-                        <input type="checkbox" checked={ui.reformulado === true} onChange={(e) => mudarCurso(ui.id, { reformulado: e.target.checked, substitui: e.target.checked ? ui.substitui : undefined })} />
-                        Reformulado
-                      </label>
-                      {ui.reformulado && (
-                        <select
-                          value={ui.substitui ?? ""}
-                          onChange={(e) => mudarCurso(ui.id, { substitui: e.target.value || undefined })}
-                          className={`${pequeno} mt-1 text-xs`}
-                          aria-label="Curso de hoje que ele substitui"
+                  <Fragment key={ui.id}>
+                    <tr className={aberto ? "bg-if-green/10" : ui.reformulado ? "bg-violet-50/60 dark:bg-violet-950/20" : ""}>
+                      <td className={celula}>{nomeDoCampus(ui.unidadeId)}</td>
+                      <td className={celula}>
+                        <span className={`font-medium ${item ? "" : "text-if-red"}`}>{nomeDoCurso}</span>
+                        <span className="block text-xs text-neutral-500">
+                          {item
+                            ? `${item.tipoCurso.toLowerCase()}${item.tipoOferta !== "*" && item.tipoOferta !== "NÃO SE APLICA" ? `, ${item.tipoOferta.toLowerCase()}` : ""}`
+                            : "fora da conta: use Alterar e escolha o curso na tabela de pesos"}
+                        </span>
+                      </td>
+                      <td className={celula}>{MODALIDADE_CURTA[ui.repasse]}</td>
+                      <td className={celula}>
+                        {ui.reformulado ? "Reformulado" : "Novo"}
+                        {substituido && <span className="block text-xs text-neutral-500">no lugar de {substituido.curso}</span>}
+                      </td>
+                      <td className={`${celula} tabular-nums`}>
+                        {MESES[ui.mes - 1]}/{ui.anoInicio}
+                      </td>
+                      <td className={celula}>{ui.entradas === 2 ? "2 por ano" : "1 por ano"}</td>
+                      <td className={`${celula} text-right tabular-nums`}>{inteiro.format(ui.ingressantes)}</td>
+                      <td className={`${celula} text-right tabular-nums`}>
+                        {decimal.format(ui.duracao)} {ui.duracao === 1 ? "ano" : "anos"}
+                      </td>
+                      <td className={celula}>{ui.continua === true ? "todo ano" : ui.anoFim === ui.anoInicio ? "uma turma só" : `até ${ui.anoFim}`}</td>
+                      <td
+                        className={`${celula} text-right tabular-nums`}
+                        title={item && spec ? `Peso ${decimal.format(item.pesoEfetivo)}, mínima do MEC ${inteiro.format(item.chMinimaMec)} h, carga horária que vale ${inteiro.format(spec.chMatriz)} h, no curso inteiro.` : undefined}
+                      >
+                        {spec ? reais.format(valorAluno) : "-"}
+                        {spec ? <span className="block text-xs text-neutral-500">curso inteiro</span> : null}
+                      </td>
+                      <td className={`${celula} whitespace-nowrap text-right`}>
+                        <button
+                          type="button"
+                          className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                          onClick={() => (aberto ? setFormulario(null) : alterarCurso(ui))}
+                          aria-expanded={aberto}
                         >
-                          <option value="">no lugar de... (opcional)</option>
-                          {cursosDoCampus.map((c) => (
-                            <option key={c.chave} value={c.chave}>
-                              {c.curso}
-                              {c.oferta && c.oferta !== "NÃO SE APLICA" ? ` (${c.oferta.toLowerCase()})` : ""}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td className={celula}>
-                      <input
-                        type="number"
-                        min={anoBase0 + 1}
-                        max={anoBase0 + MAX_ANOS}
-                        value={ui.anoInicio}
-                        onChange={(e) => {
-                          const v = Math.min(anoBase0 + MAX_ANOS, Math.max(anoBase0 + 1, Math.round(Number(e.target.value) || ui.anoInicio)));
-                          mudarCurso(ui.id, { anoInicio: v, anoFim: Math.max(ui.anoFim, v) });
-                        }}
-                        className={`${pequeno} w-20 tabular-nums`}
-                        aria-label="Ano da primeira turma"
-                      />
-                    </td>
-                    <td className={celula}>
-                      <select value={ui.mes} onChange={(e) => mudarCurso(ui.id, { mes: Number(e.target.value) })} className={`${pequeno} w-20`} aria-label="Mês de início">
-                        {["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"].map((m, i) => (
-                          <option key={m} value={i + 1}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className={celula}>
-                      <select
-                        value={ui.entradas === 2 ? 2 : 1}
-                        onChange={(e) => mudarCurso(ui.id, { entradas: Number(e.target.value) === 2 ? 2 : 1 })}
-                        className={`${pequeno} w-28`}
-                        aria-label="Entradas por ano"
-                        title="Curso anual: uma turma por ano. Curso semestral: duas, a segunda seis meses depois da primeira."
-                      >
-                        <option value={1}>1 por ano</option>
-                        <option value={2}>2 por ano</option>
-                      </select>
-                    </td>
-                    <td className={celula}>
-                      <input
-                        type="number"
-                        min={1}
-                        max={2000}
-                        value={ui.ingressantes}
-                        onChange={(e) => mudarCurso(ui.id, { ingressantes: Math.min(2000, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
-                        className={`${pequeno} w-20 text-right tabular-nums`}
-                        aria-label="Ingressantes por turma"
-                      />
-                    </td>
-                    <td className={celula}>
-                      <input
-                        type="number"
-                        min={0.1}
-                        max={10}
-                        step={0.5}
-                        value={ui.duracao}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          if (Number.isFinite(v)) mudarCurso(ui.id, { duracao: Math.min(10, Math.max(0.1, v)) });
-                        }}
-                        className={`${pequeno} w-20 text-right tabular-nums`}
-                        aria-label="Duração em anos"
-                        title="0,5 é um semestre"
-                      />
-                    </td>
-                    <td className={celula}>
-                      <select
-                        value={ui.continua === true ? "continua" : "ate"}
-                        onChange={(e) => mudarCurso(ui.id, { continua: e.target.value === "continua" })}
-                        className={`${pequeno} w-32`}
-                        aria-label="Oferta"
-                      >
-                        <option value="continua">todo ano</option>
-                        <option value="ate">até um ano</option>
-                      </select>
-                      {ui.continua !== true && (
-                        <input
-                          type="number"
-                          min={ui.anoInicio}
-                          max={anoBase0 + MAX_ANOS}
-                          value={ui.anoFim}
-                          onChange={(e) => mudarCurso(ui.id, { anoFim: Math.max(ui.anoInicio, Math.round(Number(e.target.value) || ui.anoInicio)) })}
-                          className={`${pequeno} mt-1 w-20 tabular-nums`}
-                          aria-label="Ano da última turma"
-                          title="Igual ao ano da primeira: uma turma só"
-                        />
-                      )}
-                    </td>
-                    <td
-                      className={`${celula} text-right tabular-nums`}
-                      title={item && spec ? `Peso ${decimal.format(item.pesoEfetivo)}, mínima do MEC ${inteiro.format(item.chMinimaMec)} h, carga horária que vale ${inteiro.format(spec.chMatriz)} h, no curso inteiro.` : undefined}
-                    >
-                      {spec ? reais.format(valorAluno) : "-"}
-                      {spec ? <span className="block text-xs text-neutral-500">curso inteiro</span> : null}
-                    </td>
-                    <td className={celula}>
-                      <button
-                        type="button"
-                        className="rounded border border-neutral-300 px-2 py-1 text-xs text-if-red hover:bg-if-red/10 dark:border-neutral-700"
-                        onClick={() => setNovos((a) => a.filter((n) => n.id !== ui.id))}
-                        aria-label="Excluir este curso"
-                        title="Excluir este curso"
-                      >
-                        Excluir
-                      </button>
-                    </td>
-                  </tr>
+                          {aberto ? "Fechar" : "Alterar"}
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="rounded border border-neutral-300 px-2 py-1 text-xs text-if-red hover:bg-if-red/10 dark:border-neutral-700"
+                          onClick={() => excluirCurso(ui, nomeDoCurso)}
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                    {aberto && formulario && (
+                      <tr>
+                        <td colSpan={11} className="bg-neutral-50 px-3 py-3 dark:bg-neutral-900/60">
+                          <FormularioCursoNovo
+                            dados={formulario.dados}
+                            novo={false}
+                            catalogo={catalogo}
+                            campi={campi}
+                            cursosDoCampus={cursos.filter((c) => c.unidadeId === formulario.dados.unidadeId)}
+                            anoBase0={anoBase0}
+                            mudar={mudarRascunho}
+                            escolher={escolherDoCatalogo}
+                            onSalvar={salvarFormulario}
+                            onCancelar={() => setFormulario(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
+              {formulario?.id === null && (
+                <tr>
+                  <td colSpan={11} className="bg-neutral-50 px-3 py-3 dark:bg-neutral-900/60">
+                    <FormularioCursoNovo
+                      dados={formulario.dados}
+                      novo
+                      catalogo={catalogo}
+                      campi={campi}
+                      cursosDoCampus={cursos.filter((c) => c.unidadeId === formulario.dados.unidadeId)}
+                      anoBase0={anoBase0}
+                      mudar={mudarRascunho}
+                      escolher={escolherDoCatalogo}
+                      onSalvar={salvarFormulario}
+                      onCancelar={() => setFormulario(null)}
+                    />
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={adicionarCurso} className="rounded bg-if-green px-3 py-1.5 text-sm font-medium text-white">
+          <button type="button" onClick={adicionarCurso} disabled={formulario?.id === null} className="rounded bg-if-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
             Adicionar curso
           </button>
           <button type="button" onClick={limparCenario} className="rounded border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
@@ -1473,7 +1378,7 @@ export function ProjecaoCiclos({
             exatamente a variação do total. Uma queda forte costuma ser a formatura de turmas grandes sem uma turma do mesmo tamanho entrando no lugar.
           </p>
           <p>
-            <strong>Curso reformulado.</strong> Quando um curso de hoje ganha currículo novo (outra carga horária, por exemplo), cadastre o currículo novo na grade de cursos e marque
+            <strong>Curso reformulado.</strong> Quando um curso de hoje ganha currículo novo (outra carga horária, por exemplo), cadastre o currículo novo em Cursos novos e reformulados (Adicionar curso) e marque
             &quot;Reformulado&quot;. As turmas dele entram na Reposição, como continuidade, e não em Cursos novos. Escolhendo em &quot;no lugar de&quot; o curso de hoje, ele deixa de receber turma a partir da
             primeira turma do currículo novo, sem precisar cadastrar uma parada.
           </p>
@@ -1488,6 +1393,214 @@ export function ProjecaoCiclos({
         </div>
       </details>
     </div>
+  );
+}
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** O formulário de um curso novo ou reformulado, aberto logo abaixo da linha (ou no fim da tabela, para um curso que ainda não está nela). Só vale ao salvar. */
+function FormularioCursoNovo({
+  dados,
+  novo,
+  catalogo,
+  campi,
+  cursosDoCampus,
+  anoBase0,
+  mudar,
+  escolher,
+  onSalvar,
+  onCancelar,
+}: {
+  dados: NovoCursoUI;
+  novo: boolean;
+  catalogo: ItemCatalogo[];
+  campi: Array<{ id: number; nome: string }>;
+  cursosDoCampus: Array<{ chave: string; curso: string; oferta: string }>;
+  anoBase0: number;
+  mudar: (m: Partial<NovoCursoUI>) => void;
+  escolher: (idx: number) => void;
+  onSalvar: () => void;
+  onCancelar: () => void;
+}) {
+  const item = dados.catalogoIdx >= 0 ? catalogo[dados.catalogoIdx] : undefined;
+  const busca = dados.busca.trim().toLowerCase();
+  const resultados = busca
+    ? catalogo
+        .map((it, idx) => ({ it, idx }))
+        .filter(({ it }) => it.curso.toLowerCase().includes(busca))
+        .slice(0, 40)
+    : [];
+  const rotulo = "flex flex-col gap-1 text-xs font-medium text-neutral-600 dark:text-neutral-400";
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSalvar();
+      }}
+    >
+      <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{novo ? "Novo curso no cenário" : "Alterar o curso"}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className={rotulo}>
+          Câmpus
+          <select value={dados.unidadeId} onChange={(e) => mudar({ unidadeId: Number(e.target.value), substitui: undefined })} className={campo}>
+            {campi.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome.replace(/^CAMPUS( AVANÇADO)? /, "")}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className={`${rotulo} relative sm:col-span-2`}>
+          <label htmlFor={`busca-${dados.id}`}>Curso (da tabela de pesos)</label>
+          {item && (
+            <p className="text-sm font-normal text-neutral-900 dark:text-neutral-100">
+              <strong>{item.curso === "*" ? "Qualquer FIC fora do catálogo" : item.curso}</strong>{" "}
+              <span className="text-xs text-neutral-500">
+                {item.tipoCurso.toLowerCase()}
+                {item.tipoOferta !== "*" && item.tipoOferta !== "NÃO SE APLICA" ? `, ${item.tipoOferta.toLowerCase()}` : ""}, mínima {inteiro.format(item.chMinimaMec)} h, peso {decimal.format(item.pesoEfetivo)}
+              </span>
+            </p>
+          )}
+          <input
+            id={`busca-${dados.id}`}
+            autoFocus
+            value={dados.busca}
+            onChange={(e) => mudar({ busca: e.target.value })}
+            placeholder={item ? "para trocar, digite parte de outro nome" : "digite parte do nome"}
+            className={campo}
+          />
+          {resultados.length > 0 && (
+            <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded border border-neutral-300 bg-white text-xs font-normal shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+              {resultados.map(({ it, idx }) => (
+                <li key={idx}>
+                  <button type="button" className="w-full px-2 py-1.5 text-left hover:bg-if-green/10" onClick={() => escolher(idx)}>
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100">{it.curso === "*" ? "Qualquer FIC fora do catálogo" : it.curso}</span>
+                    <span className="block text-neutral-500">
+                      {it.tipoCurso.toLowerCase()}
+                      {it.tipoOferta !== "*" && it.tipoOferta !== "NÃO SE APLICA" ? `, ${it.tipoOferta.toLowerCase()}` : ""}, mínima {inteiro.format(it.chMinimaMec)} h, peso {decimal.format(it.pesoEfetivo)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <label className={rotulo}>
+          Modalidade
+          <select value={dados.repasse} onChange={(e) => mudar({ repasse: e.target.value as Repasse })} className={campo}>
+            {(Object.keys(ROTULO_REPASSE) as Repasse[]).map((r) => (
+              <option key={r} value={r}>
+                {MODALIDADE_CURTA[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={rotulo}>
+          Ano da 1ª turma
+          <input
+            type="number"
+            min={anoBase0 + 1}
+            max={anoBase0 + MAX_ANOS}
+            value={dados.anoInicio}
+            onChange={(e) => {
+              const v = Math.min(anoBase0 + MAX_ANOS, Math.max(anoBase0 + 1, Math.round(Number(e.target.value) || dados.anoInicio)));
+              mudar({ anoInicio: v, anoFim: Math.max(dados.anoFim, v) });
+            }}
+            className={`${campo} tabular-nums`}
+          />
+        </label>
+        <label className={rotulo}>
+          Mês de início
+          <select value={dados.mes} onChange={(e) => mudar({ mes: Number(e.target.value) })} className={campo}>
+            {MESES.map((m, i) => (
+              <option key={m} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={rotulo} title="Curso anual: uma turma por ano. Curso semestral: duas, a segunda seis meses depois da primeira.">
+          Entradas por ano
+          <select value={dados.entradas === 2 ? 2 : 1} onChange={(e) => mudar({ entradas: Number(e.target.value) === 2 ? 2 : 1 })} className={campo}>
+            <option value={1}>1 por ano (curso anual)</option>
+            <option value={2}>2 por ano (curso semestral)</option>
+          </select>
+        </label>
+        <label className={rotulo}>
+          Ingressantes por turma
+          <input
+            type="number"
+            min={1}
+            max={2000}
+            value={dados.ingressantes}
+            onChange={(e) => mudar({ ingressantes: Math.min(2000, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+            className={`${campo} tabular-nums`}
+          />
+        </label>
+        <label className={rotulo}>
+          Duração em anos (0,5 é um semestre)
+          <input
+            type="number"
+            min={0.1}
+            max={10}
+            step={0.5}
+            value={dados.duracao}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (Number.isFinite(v)) mudar({ duracao: Math.min(10, Math.max(0.1, v)) });
+            }}
+            className={`${campo} tabular-nums`}
+          />
+        </label>
+        <label className={rotulo}>
+          Oferta
+          <select value={dados.continua === true ? "continua" : "ate"} onChange={(e) => mudar({ continua: e.target.value === "continua" })} className={campo}>
+            <option value="continua">todo ano</option>
+            <option value="ate">até um ano</option>
+          </select>
+        </label>
+        {dados.continua !== true && (
+          <label className={rotulo} title="Igual ao ano da primeira: uma turma só">
+            Ano da última turma
+            <input
+              type="number"
+              min={dados.anoInicio}
+              max={anoBase0 + MAX_ANOS}
+              value={dados.anoFim}
+              onChange={(e) => mudar({ anoFim: Math.max(dados.anoInicio, Math.round(Number(e.target.value) || dados.anoInicio)) })}
+              className={`${campo} tabular-nums`}
+            />
+          </label>
+        )}
+        <div className={`${rotulo} sm:col-span-2`}>
+          <label className="flex items-center gap-1.5 text-sm font-normal text-neutral-800 dark:text-neutral-200">
+            <input type="checkbox" checked={dados.reformulado === true} onChange={(e) => mudar({ reformulado: e.target.checked, substitui: e.target.checked ? dados.substitui : undefined })} />
+            Reformulado (currículo novo de um curso que o câmpus já oferta)
+          </label>
+          {dados.reformulado && (
+            <select value={dados.substitui ?? ""} onChange={(e) => mudar({ substitui: e.target.value || undefined })} className={campo} aria-label="Curso de hoje que ele substitui">
+              <option value="">no lugar de... (opcional)</option>
+              {cursosDoCampus.map((c) => (
+                <option key={c.chave} value={c.chave}>
+                  {c.curso}
+                  {c.oferta && c.oferta !== "NÃO SE APLICA" ? ` (${c.oferta.toLowerCase()})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+      {!item && <p className="text-xs text-if-red">Escolha o curso na lista: sem ele, o curso não entra na conta e não pode ser salvo.</p>}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={!item} className="rounded bg-if-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+          {novo ? "Incluir no cenário" : "Salvar alteração"}
+        </button>
+        <button type="button" onClick={onCancelar} className="rounded border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FUNDO_DDI, SeloDdi } from "@/components/PedidoDaDdi";
+import { MARCAS, Selo } from "@/components/Marcacoes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -75,12 +75,12 @@ export function SiteNav({ papel, ajustes, campus }: { papel: Papel; ajustes: Aju
                       href={item.href}
                       aria-current={esta ? "page" : undefined}
                       className={`flex flex-col gap-0.5 rounded-md px-3 py-2 ${
-                        esta ? "bg-if-green/10" : item.pedidoDaDdi ? `${FUNDO_DDI} hover:bg-yellow-100 dark:hover:bg-yellow-900/40` : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        esta ? "bg-if-green/10" : item.marca ? `${MARCAS[item.marca].fundo} ${MARCAS[item.marca].hover}` : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       }`}
                     >
                       <span className={`text-sm font-medium ${esta ? "text-if-green dark:text-green-400" : "text-neutral-900 dark:text-neutral-100"}`}>
                         {item.rotulo}
-                        {item.pedidoDaDdi && <SeloDdi />}
+                        {item.marca && <Selo marca={item.marca} />}
                       </span>
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.descricao}</span>
                     </Link>

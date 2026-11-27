@@ -1,4 +1,5 @@
 import { destaqueNaFrente, ehCampusDestaque, ehInstituicaoDestaque } from "@/lib/destaque";
+import { AvisoDaMarca } from "@/components/Marcacoes";
 import Link from "next/link";
 import { PainelConfianca } from "@/components/Confianca";
 import { prisma } from "@/server/db/prisma";
@@ -67,6 +68,7 @@ export default async function DistribuicaoPage({ searchParams }: { searchParams:
         </span>
       </div>
       <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Distribuição entre câmpus: a proposta da Reitoria</h1>
+      <AvisoDaMarca marca="interno">A distribuição interna do IFSul: como o valor que a matriz dá ao instituto é repartido entre os câmpus. Esta regra é do IFSul, não da Rede Federal.</AvisoDaMarca>
       <p className="text-neutral-600 dark:text-neutral-400">
         Como a proposta da Reitoria sai do que cada câmpus recebeu em 2026 e chega ao valor de 2027, com uma Matriz 1 própria e regras de complementação, câmpus a câmpus.
       </p>

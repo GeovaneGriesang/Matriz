@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvisoDaMarca } from "@/components/Marcacoes";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireTelaDoCampusOrRedirect } from "@/server/auth/session";
@@ -97,6 +98,7 @@ export default async function OrcamentoMunicipalPage() {
       <ContextoDaTela texto={textoParaOChat} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Orçamento do município de Venâncio Aires</h1>
+        <AvisoDaMarca marca="municipal">O orçamento da Prefeitura de Venâncio Aires, aberto só para quem é do câmpus Venâncio Aires.</AvisoDaMarca>
         <p className="text-neutral-600 dark:text-neutral-400">
           Quanto a Prefeitura arrecada e gasta, em que áreas, o projeto de 2027 que está na Câmara e as emendas impositivas dos vereadores, desde 2021. Serve para o
           câmpus conhecer o orçamento da cidade: onde há dinheiro para educação, que secretarias recebem emendas e onde uma parceria pode caber.

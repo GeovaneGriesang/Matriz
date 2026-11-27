@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvisoDaMarca } from "@/components/Marcacoes";
 import { prisma } from "@/server/db/prisma";
 import { PROSE_LINK, TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { requireAcessoPlenoOrRedirect } from "@/server/auth/session";
@@ -176,6 +177,7 @@ export default async function OrcamentoDoEstadoPage() {
       <ContextoDaTela texto={textoParaOChat} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Orçamento do Estado do Rio Grande do Sul</h1>
+        <AvisoDaMarca marca="estadual">O orçamento do Estado do RS, não o da Rede Federal: o IFSul não recebe dele.</AvisoDaMarca>
         <p className="text-neutral-600 dark:text-neutral-400">
           Quanto o Estado arrecada e gasta, em que áreas, e o que ele propõe para 2027. O IFSul é federal e não recebe deste orçamento: a tela serve para entender o
           ambiente em que os câmpus estão (a rede estadual de ensino técnico, a universidade estadual, os repasses aos municípios) e para comparar com o{" "}

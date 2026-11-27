@@ -1,5 +1,6 @@
 import type { Papel } from "@prisma/client";
 import { podeVerTelaDoCampus } from "@/lib/campusDoUsuario";
+import type { Marca } from "@/components/Marcacoes";
 
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
@@ -18,8 +19,8 @@ export interface ItemMenu {
   somenteAdmin?: boolean;
   /** Outros endereços que pertencem a este item (abas da mesma tela): o menu marca o item como ativo neles. */
   abas?: string[];
-  /** Tela que a DDI pediu: aparece com fundo amarelo e o selo "Pedido da DDI" no menu e na página inicial. */
-  pedidoDaDdi?: boolean;
+  /** Marcação da tela, com cor e selo próprios no menu e na página inicial: pedido da DDI, interno do IFSul, estadual ou municipal (ver Marcacoes). */
+  marca?: Marca;
   /** Tela de um câmpus (ex.: o orçamento do município de Venâncio Aires): só quem pertence a ele a vê e a abre, além do super-admin. */
   somenteDoCampus?: string;
 }
@@ -89,12 +90,14 @@ const GRUPOS: GrupoMenu[] = [
         rotulo: "Orçamento do Estado do RS",
         descricao: "Quanto o Estado arrecada e gasta, por área (educação, saúde, segurança), o projeto de 2027 e a série desde 2015.",
         somenteAdmin: true,
+        marca: "estadual",
       },
       {
         href: "/orcamento-municipal",
         rotulo: "Orçamento de Venâncio Aires",
         descricao: "O orçamento do município: o projeto de 2027, o que já foi gasto por área e as emendas impositivas dos vereadores.",
         somenteDoCampus: "CAMPUS VENÂNCIO AIRES",
+        marca: "municipal",
       },
       {
         href: "/emendas",
@@ -120,7 +123,7 @@ const GRUPOS: GrupoMenu[] = [
         href: "/simulador/projecao",
         rotulo: "Cenários: matrícula e matriz projetadas",
         descricao: "Quantos alunos teremos e quanto a matriz repassa nos próximos anos, com as turmas de hoje, os cursos novos e os que deixam de ser ofertados.",
-        pedidoDaDdi: true,
+        marca: "ddi",
       },
       {
         href: "/simulador/alternativas",
@@ -132,6 +135,7 @@ const GRUPOS: GrupoMenu[] = [
         href: "/simulador/distribuicao",
         rotulo: "Distribuição entre câmpus",
         descricao: "A proposta oficial da Reitoria para 2027, câmpus a câmpus, e os anos seguintes com 90%: mude o total, a regra e o número de alunos.",
+        marca: "interno",
       },
     ],
   },
@@ -144,7 +148,7 @@ const GRUPOS: GrupoMenu[] = [
         href: "/conferencia/quarta-fase",
         rotulo: "Matrícula Total, como na planilha da 4ª fase",
         descricao: "A planilha da 4ª fase da MDO refeita coluna a coluna, turma a turma, e comparada com o arquivo.",
-        pedidoDaDdi: true,
+        marca: "ddi",
       },
       {
         href: "/situacao-dos-dados",
