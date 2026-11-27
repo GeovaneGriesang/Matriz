@@ -68,7 +68,8 @@ function partidoEUfDoAutor(e: EmendaDoEspelho, deputados: Map<string, Parlamenta
     return { partido: null, uf: UF_POR_ESTADO[estado] ?? null };
   }
   const lista = e.tipoAutor === "Senador" ? senadores : e.tipoAutor === "Deputado Federal" ? deputados : null;
-  const p = lista?.get(normalizar(e.autor));
+  // Alguns autores vêm com o tratamento no nome ("Dep. Josivaldo JP").
+  const p = lista?.get(normalizar(e.autor.replace(/^(Dep|Sen)\. ?/i, "")));
   return p ? { partido: p.partido, uf: p.uf } : { partido: null, uf: null };
 }
 
@@ -88,7 +89,10 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
   const arqEspelho = path.join(pasta, "espelho_despesa.txt");
   const arqRecibos = path.join(pasta, "recibos_individuais.txt");
   if (!fs.existsSync(arqEspelho)) throw new Error(`Espelho das emendas não encontrado: ${arqEspelho}`);
-  const todas = lerEspelhoEmendas(fs.readFileSync(arqEspelho, "utf8"));
+  const textoDoEspelho = fs.readFileSync(arqEspelho, "utf8");
+  const todas = lerEspelhoEmendas(textoDoEspelho);
+  // O número do projeto de lei vem no cabeçalho de cada página do espelho ("PLN 29/2023 - Projeto de Lei Orçamentária Anual para 2024").
+  const pln = new RegExp(`PLN (\\d+/\\d{4}) - Projeto de Lei Or[çc]ament[áa]ria Anual para ${exercicio}`).exec(textoDoEspelho)?.[1];
   const recibos = fs.existsSync(arqRecibos) ? lerRecibos(fs.readFileSync(arqRecibos, "utf8")) : null;
   const pastaAutores = path.join(RAIZ_DADOS, "Emendas", String(exercicio), "_autores");
   const deputados = listaDeParlamentares(pastaAutores, "deputados.json");
@@ -101,9 +105,9 @@ export async function carregarEmendasApresentadas(exercicio: number): Promise<Re
   const semInstituicao = new Set<string>();
 
   const fonte =
-    `Congresso Nacional, Comissão Mista de Planos, Orçamentos Públicos e Fiscalização: PLN 24/2026 (PLOA ${exercicio}), ` +
+    `Congresso Nacional, Comissão Mista de Planos, Orçamentos Públicos e Fiscalização: ${pln ? `PLN ${pln} ` : ""}(PLOA ${exercicio}), ` +
     `"Espelho - Emendas de Despesa" e recibo de entrega das emendas individuais (RECIBOS-Individuais), portal congressonacional.leg.br. ` +
-    `Partido e UF dos parlamentares: dados abertos da Câmara dos Deputados (legislatura atual) e do Senado Federal (em exercício).`;
+    `Partido e UF dos parlamentares: dados abertos da Câmara dos Deputados e do Senado Federal, da legislatura em que a emenda foi apresentada.`;
 
   const dados: Prisma.EmendaApresentadaCreateManyInput[] = [];
   for (const e of todas) {

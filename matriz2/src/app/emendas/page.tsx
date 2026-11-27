@@ -130,13 +130,15 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
 
       <EmendasPainel emendas={emendas} exercicio={exercicio} />
 
-      <p className="text-xs text-neutral-500">
-        Veja também o{" "}
-        <a href="https://sites.google.com/view/painel-emendas-2027-rfepct/full-page-embed" target="_blank" rel="noopener noreferrer" className={PROSE_LINK}>
-          Painel de Emendas 2027 dos Institutos Federais
-        </a>
-        , da Pró-Reitoria de Planejamento do IFRN (link incluído em 26/11/2026).
-      </p>
+      {exercicio === 2027 && (
+        <p className="text-xs text-neutral-500">
+          Veja também o{" "}
+          <a href="https://sites.google.com/view/painel-emendas-2027-rfepct/full-page-embed" target="_blank" rel="noopener noreferrer" className={PROSE_LINK}>
+            Painel de Emendas 2027 dos Institutos Federais
+          </a>
+          , da Pró-Reitoria de Planejamento do IFRN (link incluído em 26/11/2026).
+        </p>
+      )}
 
       <p className="text-xs text-neutral-500">
         Fonte: {fonte} Conferido: a soma dos acréscimos de cada emenda fecha com o total impresso nela. Veja também o{" "}
