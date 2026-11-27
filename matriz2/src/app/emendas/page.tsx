@@ -80,23 +80,24 @@ export default async function EmendasPage({ searchParams }: { searchParams: Prom
           As emendas que deputados, senadores, bancadas e comissões apresentaram ao projeto de lei orçamentária de {exercicio} para os Institutos Federais, os
           CEFETs e o Colégio Pedro II, com o IFSul em destaque. São propostas: o valor que fica só se conhece na lei aprovada (LOA).
         </p>
-        {exercicios.length > 1 && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Exercício:{" "}
-            {exercicios.map((a, i) => (
-              <span key={a}>
-                {i > 0 ? " · " : ""}
-                {a === exercicio ? (
-                  <strong>{a}</strong>
-                ) : (
-                  <Link href={`/emendas?exercicio=${a}`} className={PROSE_LINK}>
-                    {a}
-                  </Link>
-                )}
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <span className="font-medium text-neutral-800 dark:text-neutral-200">Orçamento de:</span>
+          {exercicios.map((a) =>
+            a === exercicio ? (
+              <span key={a} className="rounded bg-if-green px-2 py-0.5 font-semibold text-white">
+                {a}
               </span>
-            ))}
-          </p>
-        )}
+            ) : (
+              <Link key={a} href={`/emendas?exercicio=${a}`} className="rounded border border-neutral-300 px-2 py-0.5 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                {a}
+              </Link>
+            ),
+          )}
+          <span className="text-xs text-neutral-500">
+            {exercicios.length === 1 ? `Só ${exercicio} carregado. ` : ""}As emendas de {exercicio} foram apresentadas em {exercicio - 1} ao projeto de lei (PLOA {exercicio}), conforme o espelho oficial da
+            Comissão Mista de Orçamento. As emendas dos anos anteriores, já pagas, estão na prestação de contas.
+          </span>
+        </div>
       </div>
 
       <ComoLerEstaTela>
