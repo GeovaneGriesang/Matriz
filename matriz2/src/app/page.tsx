@@ -48,6 +48,15 @@ export default async function Home() {
         >
           Entrar
         </Link>
+        {!usuario && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            É servidora ou servidor do IFSul e ainda não tem conta?{" "}
+            <Link href="/admin/pedir-acesso" className="font-medium text-if-green underline hover:text-if-green/80 dark:text-green-400">
+              Peça acesso
+            </Link>{" "}
+            com o seu e-mail institucional.
+          </p>
+        )}
       </main>
     );
   }

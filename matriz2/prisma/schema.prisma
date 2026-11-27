@@ -80,8 +80,38 @@ model Usuario {
   valoresRecebidos         ValorRecebidoCampus[]
   conversasChat            ConversaChat[]
   configuracoesSalvas      ConfiguracaoSalva[]         @relation("ConfiguracaoDono")
+  pedidosAcessoDecididos   PedidoAcesso[]              @relation("PedidoDecididoPor")
   configuracoesAtualizadas ConfiguracaoSalva[]         @relation("ConfiguracaoAtualizadaPor")
   configuracoesRecebidas   ConfiguracaoCompartilhada[]
+}
+
+/// Situação de um pedido de acesso feito pela própria pessoa em /admin/pedir-acesso.
+enum SituacaoPedidoAcesso {
+  PENDENTE
+  APROVADO
+  RECUSADO
+}
+
+/// Pedido de acesso feito pela própria pessoa, só com e-mail institucional (@ifsul.edu.br). Não é conta: a conta (`Usuario`)
+/// só nasce quando o super-admin ou um administrador aprova, com o perfil e o câmpus escolhidos na aprovação (padrão e o câmpus
+/// informado, salvo mudança). A aprovação manda o código de primeiro acesso ao e-mail, o que também confirma que o e-mail é da pessoa.
+model PedidoAcesso {
+  id             Int                  @id @default(autoincrement())
+  email          String
+  nome           String
+  /// A unidade (câmpus ou Reitoria) que a pessoa disse ser a sua.
+  unidadeId      Int?
+  unidade        Unidade?             @relation(fields: [unidadeId], references: [id])
+  /// Setor, cargo ou motivo, escrito pela pessoa.
+  motivo         String?              @db.VarChar(500)
+  situacao       SituacaoPedidoAcesso @default(PENDENTE)
+  criadoEm       DateTime             @default(now())
+  decididoEm     DateTime?
+  decididoPorId  Int?
+  decididoPor    Usuario?             @relation("PedidoDecididoPor", fields: [decididoPorId], references: [id])
+
+  @@index([email])
+  @@index([situacao])
 }
 
 /// Tipo de código enviado por e-mail.
@@ -297,6 +327,7 @@ model Unidade {
   execucoesDespesaUg        ExecucaoDespesaUg[]
   emendasExecutadas         EmendaExecutada[]
   usuarios                  Usuario[]
+  pedidosAcesso             PedidoAcesso[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])

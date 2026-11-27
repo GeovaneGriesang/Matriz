@@ -227,7 +227,7 @@ function varrer(): number {
 }
 
 /** A página Início e as telas de entrada e de conta: não há o que imprimir nem exportar nelas, e os botões só atrapalhariam. */
-const SEM_FERRAMENTAS = [/^\/$/, /^\/admin\/(login|definir-senha|recuperar-senha|conta|inicio)/];
+const SEM_FERRAMENTAS = [/^\/$/, /^\/admin\/(login|pedir-acesso|definir-senha|recuperar-senha|conta|inicio)/];
 
 export function FerramentasDeSaida() {
   const pathname = usePathname();

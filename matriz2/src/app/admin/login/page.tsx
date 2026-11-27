@@ -7,7 +7,7 @@ export default function AdminLoginPage() {
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Entrar</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Acesso restrito a quem tem conta cadastrada.
+          Acesso restrito a quem tem conta cadastrada. Servidoras e servidores do IFSul podem pedir acesso com o e-mail institucional.
         </p>
       </div>
       <Suspense>

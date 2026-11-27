@@ -32,18 +32,22 @@ function exigirRemetente(): string {
   return remetente;
 }
 
-export async function enviarEmailCadastro(destino: { email: string; nome: string }, codigo: string): Promise<void> {
+/** O e-mail de primeiro acesso, para a conta criada na tela Usuários ou para o pedido de acesso aprovado. */
+export async function enviarEmailCadastro(destino: { email: string; nome: string }, codigo: string, pedidoAprovado = false): Promise<void> {
   const link = `${APP_URL}/admin/definir-senha?email=${encodeURIComponent(destino.email)}`;
   await transporte().sendMail({
     from: exigirRemetente(),
     to: destino.email,
-    subject: "Você foi cadastrado no Matriz",
+    subject: pedidoAprovado ? "Seu pedido de acesso ao Matriz foi aprovado" : "Sua conta no Matriz foi criada",
     text:
       `Olá, ${destino.nome}.\n\n` +
-      `Uma conta foi criada para você no Matriz, o sistema de acompanhamento da matriz orçamentária.\n\n` +
+      (pedidoAprovado
+        ? `Seu pedido de acesso ao Matriz, o sistema de acompanhamento da matriz orçamentária, foi aprovado.\n\n`
+        : `Uma conta foi criada para você no Matriz, o sistema de acompanhamento da matriz orçamentária.\n\n`) +
       `Para o primeiro acesso, use o código abaixo em ${link}\n\n` +
       `Código: ${codigo}\n\n` +
-      `Ele vale por 30 minutos. Se você não esperava este e-mail, pode ignorá-lo.`,
+      `Ele vale por 30 minutos. Se vencer, peça outro em ${APP_URL}/admin/recuperar-senha com o mesmo e-mail. ` +
+      `Se você não esperava este e-mail, pode ignorá-lo.`,
   });
 }
 
@@ -59,6 +63,48 @@ export async function enviarEmailRecuperacao(destino: { email: string; nome: str
       `Para continuar, use o código abaixo em ${link}\n\n` +
       `Código: ${codigo}\n\n` +
       `Ele vale por 30 minutos. Se você não pediu essa troca, pode ignorar este e-mail; sua senha continua a mesma.`,
+  });
+}
+
+/** Aviso a quem aprova (super-admin e administradores) de que chegou um pedido de acesso. */
+export async function enviarEmailNovoPedidoDeAcesso(
+  destinos: ReadonlyArray<{ email: string }>,
+  pedido: { nome: string; email: string; campus: string; motivo: string | null },
+): Promise<void> {
+  if (destinos.length === 0) return;
+  await transporte().sendMail({
+    from: exigirRemetente(),
+    to: destinos.map((d) => d.email),
+    subject: `Matriz: pedido de acesso de ${pedido.nome}`,
+    text:
+      `Chegou um pedido de acesso ao Matriz.
+
+` +
+      `Nome: ${pedido.nome}
+E-mail: ${pedido.email}
+Câmpus: ${pedido.campus}
+` +
+      (pedido.motivo ? `Setor ou motivo: ${pedido.motivo}
+` : "") +
+      `
+Para aprovar ou recusar, abra ${APP_URL}/admin/usuarios`,
+  });
+}
+
+/** Resposta a quem pediu acesso, quando o pedido é recusado. */
+export async function enviarEmailPedidoRecusado(destino: { email: string; nome: string }): Promise<void> {
+  await transporte().sendMail({
+    from: exigirRemetente(),
+    to: destino.email,
+    subject: "Seu pedido de acesso ao Matriz",
+    text:
+      `Olá, ${destino.nome}.
+
+` +
+      `Seu pedido de acesso ao Matriz, o sistema de acompanhamento da matriz orçamentária, não foi aprovado.
+
+` +
+      `Se você acha que houve engano, responda a este e-mail.`,
   });
 }
 

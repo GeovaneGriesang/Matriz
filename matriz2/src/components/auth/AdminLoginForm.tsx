@@ -86,6 +86,13 @@ export function AdminLoginForm() {
         </Link>
         .
       </p>
+      <p className="text-sm text-neutral-700 dark:text-neutral-300">
+        Ainda não tem conta?{" "}
+        <Link href="/admin/pedir-acesso" className="font-medium text-if-green underline hover:text-if-green/80 dark:text-green-400">
+          Peça acesso
+        </Link>{" "}
+        com o seu e-mail institucional.
+      </p>
     </form>
   );
 }

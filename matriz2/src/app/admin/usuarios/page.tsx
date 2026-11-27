@@ -3,6 +3,7 @@ import { requireGestorDeUsuariosOrRedirect } from "@/server/auth/session";
 import { perfisQueMeuPapelCria } from "@/lib/permissoes";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UsuariosPainel } from "@/components/admin/UsuariosPainel";
+import { PedidosAcessoPainel } from "@/components/admin/PedidosAcessoPainel";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
 import { nomeCurtoDaUnidade } from "@/lib/campusDoUsuario";
 
@@ -12,7 +13,7 @@ export default async function AdminUsuariosPage() {
   const usuario = await requireGestorDeUsuariosOrRedirect("/admin/usuarios");
   const ehSuper = usuario.papel === "SUPER_ADMIN";
 
-  const [usuarios, unidades] = await Promise.all([
+  const [usuarios, unidades, pedidos, decididos] = await Promise.all([
     prisma.usuario.findMany({
       // O administrador não vê as contas de super-admin.
       where: ehSuper ? undefined : { papel: { not: "SUPER_ADMIN" } },
@@ -20,6 +21,17 @@ export default async function AdminUsuariosPage() {
       select: { id: true, nome: true, email: true, papel: true, ativo: true, criadoEm: true, ultimoLoginEm: true, unidadeId: true },
     }),
     prisma.unidade.findMany({ where: { instituicao: { sigla: "IFSUL" } }, select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+    prisma.pedidoAcesso.findMany({
+      where: { situacao: "PENDENTE" },
+      orderBy: { criadoEm: "asc" },
+      select: { id: true, nome: true, email: true, unidadeId: true, motivo: true, criadoEm: true },
+    }),
+    prisma.pedidoAcesso.findMany({
+      where: { situacao: { not: "PENDENTE" } },
+      orderBy: { decididoEm: "desc" },
+      take: 20,
+      select: { id: true, nome: true, email: true, situacao: true, decididoEm: true, decididoPor: { select: { nome: true } } },
+    }),
   ]);
   const campi = unidades.map((u) => ({ id: u.id, nome: nomeCurtoDaUnidade(u.nome) }));
 
@@ -42,6 +54,14 @@ export default async function AdminUsuariosPage() {
         </p>
       </div>
 
+      <PedidosAcessoPainel
+        pedidos={pedidos}
+        decididos={decididos.map((d) => ({ id: d.id, nome: d.nome, email: d.email, situacao: d.situacao as "APROVADO" | "RECUSADO", decididoEm: d.decididoEm, decididoPor: d.decididoPor?.nome ?? null }))}
+        campi={campi}
+        perfisQueCrio={perfisQueMeuPapelCria(usuario.papel)}
+      />
+
+      <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Contas</h2>
       <UsuariosPainel usuarios={usuarios} campi={campi} meuId={usuario.id} meuPapel={usuario.papel} perfisQueCrio={perfisQueMeuPapelCria(usuario.papel)} />
     </main>
   );

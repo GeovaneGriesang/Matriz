@@ -2,8 +2,9 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { randomBytes, randomInt, createHash } from "node:crypto";
-import type { Papel, TipoCodigoVerificacao } from "@prisma/client";
+import { randomBytes } from "node:crypto";
+import type { Papel } from "@prisma/client";
+import { criarCodigoVerificacao, hashCodigo } from "@/server/auth/codigos";
 import { prisma } from "@/server/db/prisma";
 import { getAdminSession, abrirSessaoParaUsuario } from "@/server/auth/session";
 import { registrarAuditoria } from "@/server/auth/auditoria";
@@ -12,7 +13,6 @@ import { perfisQueMeuPapelCria, podeAgirSobreConta, podeGerirUsuarios, podeMudar
 import { enviarEmailCadastro, enviarEmailRecuperacao } from "@/server/email/enviar";
 
 const CUSTO_BCRYPT = 12;
-const VALIDADE_CODIGO_MS = 30 * 60 * 1000;
 
 export interface ResultadoUsuario {
   ok: boolean;
@@ -29,27 +29,6 @@ function gerarSenhaTemporaria(): string {
   // 12 bytes aleatórios em base64url dão uma senha de 16 caracteres, sem
   // caracteres ambíguos de digitar (nada de "+/=" do base64 comum).
   return randomBytes(12).toString("base64url");
-}
-
-function gerarCodigo(): string {
-  return String(randomInt(0, 1_000_000)).padStart(6, "0");
-}
-
-function hashCodigo(codigo: string): string {
-  return createHash("sha256").update(codigo).digest("hex");
-}
-
-async function criarCodigoVerificacao(usuarioId: number, tipo: TipoCodigoVerificacao): Promise<string> {
-  const codigo = gerarCodigo();
-  await prisma.codigoVerificacao.create({
-    data: {
-      usuarioId,
-      tipo,
-      codigoHash: hashCodigo(codigo),
-      expiraEm: new Date(Date.now() + VALIDADE_CODIGO_MS),
-    },
-  });
-  return codigo;
 }
 
 /**
