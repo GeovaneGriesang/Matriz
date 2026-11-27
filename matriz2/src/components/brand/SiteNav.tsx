@@ -14,7 +14,7 @@ import { ITEM_INICIO, gruposVisiveis, itemAtivo, type AjusteDeTela } from "@/lib
  * "use client" por causa do `usePathname` (marcar a tela aberta) e do estado de qual grupo está aberto. O resto do
  * cabeçalho (sessão, nome, Sair) continua no Server Component.
  */
-export function SiteNav({ papel, ajustes }: { papel: Papel; ajustes: AjusteDeTela[] }) {
+export function SiteNav({ papel, ajustes, campus }: { papel: Papel; ajustes: AjusteDeTela[]; campus: string | null }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState<string | null>(null);
   const raiz = useRef<HTMLElement>(null);
@@ -48,7 +48,7 @@ export function SiteNav({ papel, ajustes }: { papel: Papel; ajustes: AjusteDeTel
         {ITEM_INICIO.rotulo}
       </Link>
 
-      {gruposVisiveis(papel, ajustes).map((g, i, todos) => {
+      {gruposVisiveis(papel, ajustes, campus).map((g, i, todos) => {
         const grupoAtivo = g.itens.some((i) => i.href === ativo?.href);
         const estaAberto = aberto === g.id;
         return (

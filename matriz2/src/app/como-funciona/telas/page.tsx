@@ -104,7 +104,7 @@ function Grupo({ titulo, pergunta, children }: { titulo: string; pergunta?: stri
 /** O guia explica só o que o perfil de quem está lendo vê no menu: as telas dos outros perfis não entram (pedido em 2026-11-04). */
 export default async function GuiaDasTelasPage() {
   const usuario = await requireAcessoPlenoOrRedirect("/como-funciona/telas");
-  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas());
+  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas(), usuario.campus);
   const visiveis = new Set(grupos.flatMap((g) => g.itens.map((i) => i.href)));
   const perguntas = PERGUNTAS_DO_GUIA.filter((p) => visiveis.has(p.href));
   const perfis = PERFIS.slice(0, PERFIS.findIndex((p) => p.papel === usuario.papel) + 1);

@@ -49,6 +49,17 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
   const ultimoExercicio = (await prisma.emendaApresentada.aggregate({ _max: { exercicio: true } }))._max.exercicio ?? -1;
   const emendas = await prisma.emendaApresentada.aggregate({ where: { exercicio: ultimoExercicio, instituicaoId }, _count: { _all: true }, _sum: { valorTotal: true }, _max: { exercicio: true } });
 
+  const ultimoPloaRs = (await prisma.orcamentoEstadualDespesa.aggregate({ _max: { exercicio: true } }))._max.exercicio;
+  const [ploaRs, ploaRsEducacao] = ultimoPloaRs
+    ? await Promise.all([
+        prisma.orcamentoEstadualDespesa.aggregate({ where: { exercicio: ultimoPloaRs }, _sum: { valor: true } }),
+        prisma.orcamentoEstadualDespesa.aggregate({ where: { exercicio: ultimoPloaRs, funcaoCodigo: 12 }, _sum: { valor: true } }),
+      ])
+    : [null, null];
+  // O ano das emendas municipais com mais emendas é o último orçamento já votado (o seguinte ainda recebe emendas).
+  const porAnoMunicipal = await prisma.emendaMunicipal.groupBy({ by: ["exercicio"], _count: { _all: true }, _sum: { valor: true }, orderBy: { exercicio: "desc" } });
+  const anoMunicipal = porAnoMunicipal.find((a) => a._count._all >= 50) ?? porAnoMunicipal[0];
+
   const retidas = ciclos.filter((c) => turmaEncerradaAntesDoAnoBase(c.termino, ano));
   const regular = ciclos.find((c) => !turmaEncerradaAntesDoAnoBase(c.termino, ano) && c.repasse === "PRESENCIAL" && n(c.qtdAlunosMatriz) > 0 && c.chMatriz && c.pesoCursoMatriz && c.valorAluno);
   const ultima = ciclos.filter((c) => c.termino).sort((a, b) => b.termino!.getTime() - a.termino!.getTime())[0];
@@ -108,6 +119,8 @@ export async function carregarDadosDosExemplos(): Promise<DadosDosExemplos> {
     arquivosImportados: arquivos > 0 ? arquivos : null,
     loa: loa ? { exercicio: loa.exercicio, valor: n(loa.valor) } : null,
     emendasExecutadas: executadas.length > 0 ? { de: Math.min(...executadas.map((x) => x.ano)), ate: Math.max(...executadas.map((x) => x.ano)), emendas: new Set(executadas.map((x) => x.codigoEmenda)).size, pago: executadas.reduce((s, x) => s + n(x.pago) + n(x.rapPago), 0) } : null,
+    orcamentoEstado: ultimoPloaRs && ploaRs ? { exercicio: ultimoPloaRs, despesa: n(ploaRs._sum.valor), educacao: n(ploaRsEducacao?._sum.valor) } : null,
+    emendasMunicipais: anoMunicipal ? { exercicio: anoMunicipal.exercicio, quantidade: anoMunicipal._count._all, valor: n(anoMunicipal._sum.valor) } : null,
     emendas: emendas._count._all > 0 ? { exercicio: emendas._max.exercicio!, quantidade: emendas._count._all, valorIfsul: n(emendas._sum.valorTotal) } : null,
     pnp: matriculasPnp > 0 ? { anoBase, matriculas: matriculasPnp } : null,
     pnpOrcamento: empenhado > 0 ? { anoBase, empenhado, acao: "20RL" } : null,

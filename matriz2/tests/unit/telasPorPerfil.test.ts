@@ -3,14 +3,16 @@ import { GRUPOS_MENU, ajustesDasMarcacoes, chaveDaMarcacao, gruposVisiveis, marc
 import { podeEscolherTelasDosPerfis } from "@/lib/permissoes";
 
 const telasDe = (grupos: ReturnType<typeof gruposVisiveis>) => grupos.flatMap((g) => g.itens.map((i) => i.href));
-const todas = GRUPOS_MENU.flatMap((g) => g.itens);
+// As telas de câmpus dependem do câmpus da pessoa, não do perfil (ver o teste do menu).
+const todasComCampus = GRUPOS_MENU.flatMap((g) => g.itens);
+const todas = todasComCampus.filter((i) => !i.somenteDoCampus);
 
 describe("telas por perfil", () => {
   it("sem ajuste, cada perfil vê o mesmo que via antes da configuração", () => {
     const tecnicas = todas.filter((i) => i.somenteAdmin).map((i) => i.href);
-    expect(tecnicas).toHaveLength(8);
+    expect(tecnicas).toHaveLength(9);
     expect(telasDe(gruposVisiveis("ADMIN"))).toEqual(todas.map((i) => i.href));
-    expect(telasDe(gruposVisiveis("SUPER_ADMIN"))).toEqual(todas.map((i) => i.href));
+    expect(telasDe(gruposVisiveis("SUPER_ADMIN"))).toEqual(todasComCampus.map((i) => i.href));
     expect(telasDe(gruposVisiveis("PADRAO"))).toEqual(todas.map((i) => i.href).filter((h) => !tecnicas.includes(h)));
   });
 

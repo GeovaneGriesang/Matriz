@@ -101,6 +101,18 @@ export const FICHAS_DAS_TELAS: Record<string, FichaDaTela> = {
     mostra: "PLOA e LOA do IFSul, ação por ação, as emendas parlamentares e a execução da despesa por ação e por câmpus, com a fonte de cada número.",
     atencao: "LOA e PLOA vão só até a instituição. Esses documentos não trazem valor por câmpus, portanto não confirmam, por exemplo, o pagamento do piso a um câmpus novo.",
   },
+  "/orcamento-do-estado": {
+    responde: "Quanto o Estado do RS arrecada e gasta, em que áreas, e o que ele propõe para 2027?",
+    mostra: "O projeto de lei orçamentária de 2027 linha a linha (por área, órgão, grupo de despesa, fonte e a educação em detalhe), a receita por origem com a parte dos municípios, a execução do ano por área e a série desde 2015, com os documentos oficiais.",
+    usar: "Troque a aba de cada tabela para ver o mesmo dinheiro agrupado de outro jeito; o + abre as partes da linha logo abaixo. O quadro do topo explica PPA, LDO, LOA e as fases da despesa.",
+    atencao: "O IFSul é federal e não recebe deste orçamento. A execução vem do relatório bimestral ao Tesouro: no ano corrente, só até o último bimestre entregue. Valores nominais, sem correção pela inflação.",
+  },
+  "/orcamento-municipal": {
+    responde: "Como é o orçamento de Venâncio Aires, o que está proposto para 2027 e para onde vão as emendas dos vereadores?",
+    mostra: "O projeto de 2027 que está na Câmara, por grupo de despesa e com os investimentos previstos; as emendas impositivas desde 2021, por vereador, partido, secretaria e emenda a emenda; a execução do ano por área e a série desde 2015.",
+    usar: "Nas emendas, escolha o ano do orçamento, o tipo e a secretaria, ou procure uma palavra (escola, APM, IFSul). O + abre as emendas da linha e, em cada emenda, a justificativa e o link para a Câmara.",
+    atencao: "Abre só para quem pertence ao câmpus Venâncio Aires (cadastro de usuários) e para o super-admin. O valor da emenda é o pedido; a Câmara não publica se a Prefeitura já pagou.",
+  },
   "/emendas": {
     responde: "Quanto os parlamentares propuseram para cada instituição da rede, e para o IFSul?",
     mostra: "As emendas de despesa apresentadas ao projeto de lei orçamentária, diretas a cada instituição ou pelo MEC, com autor, ação, grupo de despesa, valor e justificativa, em cartões, gráficos, lista e resumo por instituição.",

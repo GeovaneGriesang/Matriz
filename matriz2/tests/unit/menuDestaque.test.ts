@@ -49,13 +49,26 @@ describe("menu", () => {
     const doGrupo = (id: string, papel: "PADRAO" | "ADMIN") => gruposVisiveis(papel).find((g) => g.id === id)!.itens.map((i) => i.href).sort();
     expect(doGrupo("consultas", "PADRAO")).toEqual(["/comparativo", "/consulta", "/consulta/comparar", "/consulta/valor-do-aluno"]);
     expect(doGrupo("informacoes", "PADRAO")).toEqual(["/como-funciona", "/como-funciona/telas", "/conferencia/quarta-fase", "/situacao-dos-dados"]);
-    expect(doGrupo("consultas", "ADMIN")).toHaveLength(9);
+    expect(doGrupo("consultas", "ADMIN")).toHaveLength(10);
     expect(doGrupo("informacoes", "ADMIN")).toHaveLength(7);
     expect(GRUPOS_MENU.find((g) => g.id === "simulacoes")!.itens.map((i) => i.href).sort()).toEqual(["/consulta/curso", "/simulador/alternativas", "/simulador/distribuicao", "/simulador/projecao"]);
     expect(itens("PADRAO")).not.toContain("/evasao");
     expect(itens("ADMIN")).toContain("/evasao");
     expect(itens("PADRAO")).toContain("/situacao-dos-dados");
     for (const papel of ["PADRAO", "ADMIN", "SUPER_ADMIN"] as const) expect(itens(papel)).toContain("/simulador/distribuicao");
+  });
+
+  it("o orçamento de Venâncio Aires aparece só para quem é do câmpus e para o super-admin", async () => {
+    const { gruposVisiveis } = await import("@/lib/menu");
+    const ve = (papel: "PADRAO" | "ADMIN" | "SUPER_ADMIN", campus?: string | null) =>
+      gruposVisiveis(papel, [], campus).flatMap((g) => g.itens.map((i) => i.href)).includes("/orcamento-municipal");
+    expect(ve("PADRAO")).toBe(false);
+    expect(ve("ADMIN", "CAMPUS PELOTAS")).toBe(false);
+    expect(ve("PADRAO", "CAMPUS VENÂNCIO AIRES")).toBe(true);
+    expect(ve("ADMIN", "CAMPUS VENÂNCIO AIRES")).toBe(true);
+    expect(ve("SUPER_ADMIN")).toBe(true);
+    // Um ajuste de Telas por perfil não abre a tela para quem não é do câmpus.
+    expect(gruposVisiveis("PADRAO", [{ papel: "PADRAO", href: "/orcamento-municipal", visivel: true }]).flatMap((g) => g.itens.map((i) => i.href))).not.toContain("/orcamento-municipal");
   });
 
   it("marca o item de endereço mais longo, não o prefixo", () => {

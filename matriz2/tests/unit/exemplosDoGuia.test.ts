@@ -19,6 +19,8 @@ const completo: DadosDosExemplos = {
   loa: { exercicio: 2026, valor: 100 },
   emendas: { exercicio: 2027, quantidade: 4, valorIfsul: 4045449 },
   emendasExecutadas: { de: 2017, ate: 2026, emendas: 80, pago: 30000000 },
+  orcamentoEstado: { exercicio: 2027, despesa: 99193636672, educacao: 15559500000 },
+  emendasMunicipais: { exercicio: 2026, quantidade: 300, valor: 8119257.29 },
   pnp: { anoBase: 2025, matriculas: 1000 },
   pnpOrcamento: { anoBase: 2025, empenhado: 100, acao: "20RL" },
   confianca: { conferidos: 3, atencao: 2, estimados: 1 },

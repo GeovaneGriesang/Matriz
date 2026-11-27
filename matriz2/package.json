@@ -22,6 +22,9 @@
     "avisar:versao": "tsx scripts/avisarVersao.ts",
     "carregar:emendas-executadas": "tsx scripts/carregarEmendasExecutadas.ts",
     "carregar:execucao-despesa": "tsx scripts/carregarExecucaoDespesa.ts",
+    "carregar:siconfi": "tsx scripts/carregarSiconfi.ts",
+    "carregar:orcamento-rs": "tsx scripts/carregarOrcamentoRs.ts",
+    "carregar:emendas-municipais": "tsx scripts/carregarEmendasMunicipais.ts",
     "carregar:pnp-opcoes": "tsx scripts/preencherOpcoesPnp.ts",
     "seed:superadmin": "tsx scripts/seedSuperAdmin.ts"
   },

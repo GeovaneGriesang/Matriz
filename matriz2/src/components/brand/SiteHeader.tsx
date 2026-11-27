@@ -37,7 +37,7 @@ export async function SiteHeader() {
         </Link>
         {acessoPleno && (
           <div className="print:hidden">
-            <SiteNav papel={usuario.papel} ajustes={ajustes} />
+            <SiteNav papel={usuario.papel} ajustes={ajustes} campus={usuario.campus} />
           </div>
         )}
         {usuario && !acessoPleno && (

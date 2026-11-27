@@ -1,4 +1,5 @@
 import type { Papel } from "@prisma/client";
+import { podeVerTelaDoCampus } from "@/lib/campusDoUsuario";
 
 /**
  * O menu do sistema, num lugar só: o cabeçalho (`SiteNav`) e a página inicial leem daqui, para o texto de cada tela não
@@ -19,6 +20,8 @@ export interface ItemMenu {
   abas?: string[];
   /** Tela que a DDI pediu: aparece com fundo amarelo e o selo "Pedido da DDI" no menu e na página inicial. */
   pedidoDaDdi?: boolean;
+  /** Tela de um câmpus (ex.: o orçamento do município de Venâncio Aires): só quem pertence a ele a vê e a abre, além do super-admin. */
+  somenteDoCampus?: string;
 }
 
 export interface GrupoMenu {
@@ -80,6 +83,18 @@ const GRUPOS: GrupoMenu[] = [
         rotulo: "Orçamento da União (LOA)",
         descricao: "O IFSul na LOA e no PLOA, ação por ação, as emendas e a execução por câmpus.",
         somenteAdmin: true,
+      },
+      {
+        href: "/orcamento-do-estado",
+        rotulo: "Orçamento do Estado do RS",
+        descricao: "Quanto o Estado arrecada e gasta, por área (educação, saúde, segurança), o projeto de 2027 e a série desde 2015.",
+        somenteAdmin: true,
+      },
+      {
+        href: "/orcamento-municipal",
+        rotulo: "Orçamento de Venâncio Aires",
+        descricao: "O orçamento do município: o projeto de 2027, o que já foi gasto por área e as emendas impositivas dos vereadores.",
+        somenteDoCampus: "CAMPUS VENÂNCIO AIRES",
       },
       {
         href: "/emendas",
@@ -174,7 +189,8 @@ const alfabetica = (a: ItemMenu, b: ItemMenu) => a.rotulo.localeCompare(b.rotulo
 export const GRUPOS_MENU: GrupoMenu[] = GRUPOS.map((g) => ({ ...g, itens: [...g.itens].sort(alfabetica) }));
 
 /** As telas que o super-admin pode dar ou tirar de um perfil. "Início" fica fora: é a porta de entrada e aparece sempre. */
-const TELAS_CONFIGURAVEIS: ItemMenu[] = GRUPOS_MENU.flatMap((g) => g.itens).filter((i) => !i.somenteSuperAdmin);
+// As telas de câmpus ficam de fora: quem as vê é decidido pelo câmpus da pessoa, no cadastro de usuários.
+const TELAS_CONFIGURAVEIS: ItemMenu[] = GRUPOS_MENU.flatMap((g) => g.itens).filter((i) => !i.somenteSuperAdmin && !i.somenteDoCampus);
 
 /** Os perfis cujas telas o super-admin escolhe. O próprio super-admin vê sempre todas, para ninguém perder o acesso à configuração. */
 export const PERFIS_CONFIGURAVEIS = ["ADMIN", "PADRAO"] as const;
@@ -193,7 +209,8 @@ export function visivelNaPreConfiguracao(item: ItemMenu, papel: PerfilConfigurav
   return !item.somenteAdmin || papel === "ADMIN";
 }
 
-function telaAparece(item: ItemMenu, papel: Papel, ajustes: AjusteDeTela[]): boolean {
+function telaAparece(item: ItemMenu, papel: Papel, ajustes: AjusteDeTela[], campus?: string | null): boolean {
+  if (item.somenteDoCampus) return podeVerTelaDoCampus(papel, campus, item.somenteDoCampus);
   if (papel === "SUPER_ADMIN") return true;
   if (item.somenteSuperAdmin) return false;
   const ajuste = ajustes.find((a) => a.papel === papel && a.href === item.href);
@@ -201,9 +218,9 @@ function telaAparece(item: ItemMenu, papel: Papel, ajustes: AjusteDeTela[]): boo
 }
 
 /** Os grupos e itens que cada perfil vê no menu e no Início. As telas continuam abertas pelo endereço; só saem da vista. Grupo sem nenhuma tela some. */
-export function gruposVisiveis(papel: Papel | null | undefined, ajustes: AjusteDeTela[] = []): GrupoMenu[] {
+export function gruposVisiveis(papel: Papel | null | undefined, ajustes: AjusteDeTela[] = [], campus?: string | null): GrupoMenu[] {
   const perfil = papel ?? "PADRAO";
-  return GRUPOS_MENU.map((g) => ({ ...g, itens: g.itens.filter((i) => telaAparece(i, perfil, ajustes)) })).filter((g) => g.itens.length > 0);
+  return GRUPOS_MENU.map((g) => ({ ...g, itens: g.itens.filter((i) => telaAparece(i, perfil, ajustes, campus)) })).filter((g) => g.itens.length > 0);
 }
 
 /** A chave de uma marcação na tela Telas por perfil. */

@@ -68,6 +68,10 @@ export const CONHECIMENTO_POR_TELA: Record<string, string> = {
     "Mostra as emendas de despesa apresentadas ao PLOA para a Rede Federal, lidas do espelho oficial da Comissão Mista de Orçamento: diretas a cada instituição ou pelo MEC (ações 219U e 15R4, sem instituição definida). São propostas, antes do parecer; o valor final só aparece na LOA.",
   "/orcamento-da-uniao":
     "Mostra o IFSul na LOA e no PLOA por ação, as emendas parlamentares e a execução de 2026 (empenhado, liquidado e pago) do Portal da Transparência, por ação e por câmpus. Valor da matriz e gasto da UG não são a mesma coisa: a UG também executa emenda e crédito suplementar.",
+  "/orcamento-do-estado":
+    "Orçamento do Estado do RS: o projeto de 2027 da planilha oficial da Secretaria de Planejamento (por função, órgão, grupo, fonte e receita por origem) e a execução desde 2015 pelo RREO do Tesouro (Siconfi). O IFSul é federal e não recebe deste orçamento.",
+  "/orcamento-municipal":
+    "Orçamento de Venâncio Aires: projeto de 2027 (PL 96/2026), emendas impositivas dos vereadores desde 2021 lidas da Câmara, e a execução desde 2015 pelo RREO do Tesouro (Siconfi). Só para quem é do câmpus Venâncio Aires.",
   "/pnp": "Dados da Plataforma Nilo Peçanha (matrículas, eficiência, evasão, docentes). A PNP é a base de que a matriz parte, com dois anos de defasagem.",
   "/peso-efetivo": "O peso que a MDO aplicou a cada curso, com a fonte de cada linha.",
   "/conferencia": "Refaz IEA, RAP e IAPL de cada instituição e compara com o que a MDO publicou, só para apontar divergência.",

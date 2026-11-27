@@ -87,7 +87,8 @@ export async function criarUsuarioAction(formData: FormData): Promise<ResultadoU
   const existente = await prisma.usuario.findUnique({ where: { email } });
   if (existente) return { ok: false, errorMessage: `Já existe um usuário com o e-mail ${email}.` };
 
-  const novo = await prisma.usuario.create({ data: { email, nome, papel, senhaHash: null } });
+  const unidadeId = await unidadeValida(formData.get("unidadeId"));
+  const novo = await prisma.usuario.create({ data: { email, nome, papel, senhaHash: null, unidadeId } });
   const codigo = await criarCodigoVerificacao(novo.id, "PRIMEIRO_ACESSO");
   await registrarAuditoria(solicitante.id, "criar_usuario", { usuarioAlvoId: novo.id, email, papel });
   revalidatePath("/admin/usuarios");
@@ -193,6 +194,39 @@ export async function alterarPerfilUsuarioAction(formData: FormData): Promise<Re
   // A sessão lê o perfil do banco a cada pedido, então o novo já vale; derrubar as sessões faz a pessoa entrar de novo e ver o menu certo.
   await prisma.sessao.deleteMany({ where: { usuarioId: usuarioAlvoId } });
   await registrarAuditoria(solicitante.id, "alterar_perfil_usuario", { usuarioAlvoId, email: alvo.email, de: alvo.papel, para: novoPapel });
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
+
+/** O câmpus escolhido no formulário, se for um câmpus do IFSul; vazio é "nenhum câmpus" (a pessoa é da Reitoria ou de fora). */
+async function unidadeValida(valor: FormDataEntryValue | null): Promise<number | null> {
+  const id = Number(valor);
+  if (!valor || !Number.isInteger(id) || id <= 0) return null;
+  const u = await prisma.unidade.findFirst({ where: { id, instituicao: { sigla: "IFSUL" } }, select: { id: true } });
+  return u?.id ?? null;
+}
+
+/**
+ * Server Action (administrador, em contas de perfil padrão, ou super-admin) que define o câmpus a que a pessoa pertence. O câmpus
+ * abre as telas próprias dele: quem é de Venâncio Aires vê o orçamento do município de Venâncio Aires.
+ */
+export async function alterarCampusUsuarioAction(formData: FormData): Promise<ResultadoUsuario> {
+  const solicitante = await getAdminSession();
+  if (!solicitante) return { ok: false, errorMessage: "Não autenticado." };
+  if (!podeGerirUsuarios(solicitante.papel)) return { ok: false, errorMessage: "Você não tem permissão para fazer isso." };
+
+  const usuarioAlvoId = Number(formData.get("usuarioId"));
+  if (!Number.isInteger(usuarioAlvoId)) return { ok: false, errorMessage: "Usuário inválido." };
+  const alvo = await prisma.usuario.findUnique({ where: { id: usuarioAlvoId } });
+  if (!alvo) return { ok: false, errorMessage: "Usuário não encontrado." };
+  if (alvo.id !== solicitante.id && !podeAgirSobreConta(solicitante.papel, alvo.papel)) {
+    return { ok: false, errorMessage: "Você só pode mudar o câmpus de usuários de perfil padrão." };
+  }
+
+  const unidadeId = await unidadeValida(formData.get("unidadeId"));
+  if (alvo.unidadeId === unidadeId) return { ok: true };
+  await prisma.usuario.update({ where: { id: usuarioAlvoId }, data: { unidadeId } });
+  await registrarAuditoria(solicitante.id, "alterar_campus_usuario", { usuarioAlvoId, email: alvo.email, de: alvo.unidadeId, para: unidadeId });
   revalidatePath("/admin/usuarios");
   return { ok: true };
 }

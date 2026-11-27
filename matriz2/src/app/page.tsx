@@ -97,7 +97,7 @@ export default async function Home() {
   });
 
   const semNenhumDado = resumoAnos.length === 0;
-  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas());
+  const grupos = gruposVisiveis(usuario.papel, await carregarAjustesDeTelas(), usuario.campus);
   const enderecosVisiveis = new Set(grupos.flatMap((g) => g.itens.flatMap((i) => [i.href, ...(i.abas ?? [])])));
   const atalhos = ATALHOS.filter((a) => enderecosVisiveis.has(a.href));
 

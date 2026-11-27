@@ -8,6 +8,7 @@ import {
   resetarSenhaUsuarioAction,
   alternarAtivoUsuarioAction,
   alterarPerfilUsuarioAction,
+  alterarCampusUsuarioAction,
 } from "@/server/actions/usuarios";
 import { podeAgirSobreConta, podeMudarPerfil } from "@/lib/permissoes";
 import { TabelaOrdenavel, type ColunaOrdenavel } from "@/components/TabelaOrdenavel";
@@ -20,6 +21,12 @@ interface UsuarioLinha {
   ativo: boolean;
   criadoEm: Date;
   ultimoLoginEm: Date | null;
+  unidadeId: number | null;
+}
+
+interface CampusOpcao {
+  id: number;
+  nome: string;
 }
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -36,7 +43,20 @@ const ROTULO_PAPEL: Record<Papel, string> = {
  * A senha do reset manual só existe nesta resposta — não fica salva em lugar nenhum
  * — por isso fica destacada até quem a gerou fechar o aviso.
  */
-export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { usuarios: UsuarioLinha[]; meuId: number; meuPapel: Papel; perfisQueCrio: Papel[] }) {
+export function UsuariosPainel({
+  usuarios,
+  campi,
+  meuId,
+  meuPapel,
+  perfisQueCrio,
+}: {
+  usuarios: UsuarioLinha[];
+  campi: CampusOpcao[];
+  meuId: number;
+  meuPapel: Papel;
+  perfisQueCrio: Papel[];
+}) {
+  const nomeDoCampus = new Map(campi.map((c) => [c.id, c.nome]));
   const router = useRouter();
   const [avisoSegredo, setAvisoSegredo] = useState<{ email: string; rotulo: string; valor: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -93,6 +113,21 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
     setEnviando(null);
     if (!resultado.ok) {
       setErro(resultado.errorMessage ?? "Não foi possível mudar o perfil.");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function handleMudarCampus(usuarioId: number, unidadeId: string) {
+    setErro(null);
+    setEnviando(`campus-${usuarioId}`);
+    const formData = new FormData();
+    formData.set("usuarioId", String(usuarioId));
+    formData.set("unidadeId", unidadeId);
+    const resultado = await alterarCampusUsuarioAction(formData);
+    setEnviando(null);
+    if (!resultado.ok) {
+      setErro(resultado.errorMessage ?? "Não foi possível mudar o câmpus.");
       return;
     }
     router.refresh();
@@ -181,6 +216,24 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
             ))}
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="unidadeId" className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            Câmpus
+          </label>
+          <select
+            id="unidadeId"
+            name="unidadeId"
+            defaultValue=""
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          >
+            <option value="">nenhum</option>
+            {campi.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="submit"
           disabled={enviando === "criar"}
@@ -222,6 +275,31 @@ export function UsuariosPainel({ usuarios, meuId, meuPapel, perfisQueCrio }: { u
                     </select>
                   ) : (
                     <span className={u.papel === "SUPER_ADMIN" ? "text-if-green" : undefined}>{ROTULO_PAPEL[u.papel]}</span>
+                  ),
+              },
+              {
+                chave: "campus",
+                rotulo: "Câmpus",
+                valor: (u) => (u.unidadeId !== null ? (nomeDoCampus.get(u.unidadeId) ?? "") : ""),
+                render: (u) =>
+                  u.id === meuId || podeAgirSobreConta(meuPapel, u.papel) ? (
+                    <select
+                      value={u.unidadeId ?? ""}
+                      disabled={enviando === `campus-${u.id}`}
+                      onChange={(e) => handleMudarCampus(u.id, e.target.value)}
+                      aria-label={`Câmpus de ${u.nome}`}
+                      title="O câmpus abre as telas próprias dele (ex.: o orçamento do município de Venâncio Aires)"
+                      className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                    >
+                      <option value="">nenhum</option>
+                      {campi.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400">{u.unidadeId !== null ? nomeDoCampus.get(u.unidadeId) : "nenhum"}</span>
                   ),
               },
               {

@@ -70,6 +70,9 @@ model Usuario {
   ultimoLoginEm      DateTime?
   /// Até quando a pessoa já viu os avisos do sistema (o robô azul do topo conta os mais novos que isso).
   avisosVistosEm     DateTime?
+  /// O câmpus a que a pessoa pertence. Abre as telas próprias do câmpus (ex.: o orçamento do município de Venâncio Aires).
+  unidadeId          Int?
+  unidade            Unidade?  @relation(fields: [unidadeId], references: [id])
 
   sessoes                  Sessao[]
   auditorias               RegistroAuditoria[]
@@ -293,6 +296,7 @@ model Unidade {
   valoresRecebidos          ValorRecebidoCampus[]
   execucoesDespesaUg        ExecucaoDespesaUg[]
   emendasExecutadas         EmendaExecutada[]
+  usuarios                  Usuario[]
 
   @@unique([instituicaoId, nome])
   @@index([instituicaoId])
@@ -1577,4 +1581,112 @@ model AvisoDoSistema {
   emailErro      String?   @db.VarChar(500)
 
   @@index([criadoEm])
+}
+
+// ---------- Orçamento do Estado do RS e do município de Venâncio Aires ----------
+
+/// Uma linha dos relatórios fiscais que o Estado e o município entregam ao Tesouro Nacional (Siconfi): o Relatório Resumido da
+/// Execução Orçamentária (RREO) de cada bimestre. Fica só o último bimestre entregue de cada ano (o 6º, nos anos fechados) e só as
+/// colunas acumuladas, já com nome curto (dotacaoInicial, dotacaoAtualizada, empenhado, liquidado, pago, previsaoInicial,
+/// previsaoAtualizada, realizado). Carga: npm run carregar:siconfi.
+model ContaSiconfi {
+  id         Int     @id @default(autoincrement())
+  /// RS ou VENANCIO_AIRES.
+  ente       String  @db.VarChar(20)
+  codIbge    Int
+  exercicio  Int
+  /// Bimestre do relatório (1 a 6).
+  periodo    Int
+  /// "RREO-Anexo 01" (balanço orçamentário) ou "RREO-Anexo 02" (despesa por função e subfunção).
+  anexo      String  @db.VarChar(30)
+  ordem      Int
+  codConta   String  @db.VarChar(150)
+  conta      String  @db.VarChar(300)
+  /// Anexo 02: total, funcao ou subfuncao. Anexo 01: receita ou despesa.
+  nivel      String  @db.VarChar(20)
+  /// Anexo 02: a função a que a linha pertence.
+  funcao     String? @db.VarChar(150)
+  coluna     String  @db.VarChar(30)
+  valor      Decimal @db.Decimal(20, 2)
+  fonte      String  @db.VarChar(300)
+
+  @@index([ente, exercicio, anexo])
+}
+
+/// A despesa do projeto de lei orçamentária (PLOA) do Estado do RS, como a planilha oficial da Secretaria de Planejamento a publica:
+/// órgão, unidade orçamentária, função, subfunção, ação (instrumento de programação), grupo de despesa e fonte. Carga:
+/// npm run carregar:orcamento-rs.
+model OrcamentoEstadualDespesa {
+  id              Int     @id @default(autoincrement())
+  exercicio       Int
+  /// PLOA ou LOA.
+  documento       String  @db.VarChar(10)
+  orgaoCodigo     Int
+  orgaoNome       String  @db.VarChar(200)
+  uoCodigo        Int
+  uoNome          String  @db.VarChar(200)
+  funcaoCodigo    Int
+  funcaoNome      String  @db.VarChar(100)
+  subfuncaoCodigo Int
+  subfuncaoNome   String  @db.VarChar(150)
+  acaoCodigo      Int
+  acaoNome        String  @db.VarChar(300)
+  grupoCodigo     Int
+  grupoNome       String  @db.VarChar(100)
+  fonteCodigo     Int
+  fonteNome       String  @db.VarChar(200)
+  valor           Decimal @db.Decimal(18, 2)
+  fonte           String  @db.VarChar(300)
+
+  @@index([exercicio, documento])
+}
+
+/// A receita do projeto de lei orçamentária do Estado do RS, por órgão e natureza de receita, como na planilha oficial.
+model OrcamentoEstadualReceita {
+  id          Int     @id @default(autoincrement())
+  exercicio   Int
+  documento   String  @db.VarChar(10)
+  orgaoCodigo Int
+  orgaoNome   String  @db.VarChar(200)
+  codigo      String  @db.VarChar(30)
+  nome        String  @db.VarChar(300)
+  valor       Decimal @db.Decimal(18, 2)
+  fonte       String  @db.VarChar(300)
+
+  @@index([exercicio, documento])
+}
+
+/// Uma emenda impositiva de vereador ou de bancada ao orçamento do município, lida da página da Câmara de Vereadores. Carga:
+/// npm run carregar:emendas-municipais.
+model EmendaMunicipal {
+  id            Int       @id @default(autoincrement())
+  municipio     String    @db.VarChar(30)
+  /// O número da proposição na página da Câmara.
+  idExterno     Int       @unique
+  /// O ano da lei orçamentária que a emenda altera.
+  exercicio     Int
+  numero        String    @db.VarChar(20)
+  /// Individual ou Bancada.
+  tipo          String    @db.VarChar(20)
+  tipoDetalhe   String?   @db.VarChar(100)
+  projetoDeLei  String?   @db.VarChar(20)
+  autoria       String    @db.VarChar(200)
+  vereador      String?   @db.VarChar(200)
+  partido       String?   @db.VarChar(30)
+  beneficiario  String?   @db.VarChar(300)
+  orgao         String?   @db.VarChar(200)
+  programa      String?   @db.VarChar(200)
+  acao          String?   @db.VarChar(300)
+  fonteRecurso  String?   @db.VarChar(200)
+  valor         Decimal?  @db.Decimal(18, 2)
+  objeto        String    @db.Text
+  justificativa String?   @db.Text
+  situacao      String?   @db.VarChar(500)
+  apresentadaEm DateTime?
+  /// O texto cita o IFSul, o Instituto Federal ou o câmpus.
+  citaIfsul     Boolean   @default(false)
+  url           String    @db.VarChar(300)
+  fonte         String    @db.VarChar(300)
+
+  @@index([municipio, exercicio])
 }

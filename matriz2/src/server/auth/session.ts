@@ -1,3 +1,4 @@
+import { podeVerTelaDoCampus } from "@/lib/campusDoUsuario";
 import { podeGerirUsuarios, podeVerValores, temAcessoPleno } from "@/lib/permissoes";
 import { randomBytes, createHash } from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -70,6 +71,8 @@ export interface UsuarioLogado {
   nome: string;
   papel: Papel;
   precisaTrocarSenha: boolean;
+  /** O nome do câmpus a que a pessoa pertence (ex.: "CAMPUS VENÂNCIO AIRES"), ou null. Abre as telas próprias do câmpus. */
+  campus: string | null;
 }
 
 /**
@@ -86,7 +89,7 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
     where: { tokenHash: hashToken(token) },
     include: {
       usuario: {
-        select: { id: true, email: true, nome: true, papel: true, ativo: true, precisaTrocarSenha: true },
+        select: { id: true, email: true, nome: true, papel: true, ativo: true, precisaTrocarSenha: true, unidade: { select: { nome: true } } },
       },
     },
   });
@@ -98,6 +101,7 @@ export async function getAdminSession(): Promise<UsuarioLogado | null> {
     nome: sessao.usuario.nome,
     papel: sessao.usuario.papel,
     precisaTrocarSenha: sessao.usuario.precisaTrocarSenha,
+    campus: sessao.usuario.unidade?.nome ?? null,
   };
 }
 
@@ -173,6 +177,18 @@ export async function requireInformarValoresOrRedirect(nextPath: string): Promis
   const usuario = await requireAdminOrRedirect(nextPath);
   if (!podeVerValores(usuario.papel)) {
     redirect("/admin/inicio");
+  }
+  return usuario;
+}
+
+/**
+ * Telas de um câmpus (ex.: o orçamento do município de Venâncio Aires): abrem só para quem pertence ao câmpus, definido no cadastro
+ * de usuários, e para o super-admin. Ao contrário das demais telas, o bloqueio vale também pelo endereço, não só no menu.
+ */
+export async function requireTelaDoCampusOrRedirect(nextPath: string, campus: string): Promise<UsuarioLogado> {
+  const usuario = await requireAdminOrRedirect(nextPath);
+  if (!podeVerTelaDoCampus(usuario.papel, usuario.campus, campus)) {
+    redirect("/");
   }
   return usuario;
 }

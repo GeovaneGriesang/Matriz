@@ -4,6 +4,7 @@ import { perfisQueMeuPapelCria } from "@/lib/permissoes";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UsuariosPainel } from "@/components/admin/UsuariosPainel";
 import { TABLE_MAX_WIDTH } from "@/lib/layoutWidths";
+import { nomeCurtoDaUnidade } from "@/lib/campusDoUsuario";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,16 @@ export default async function AdminUsuariosPage() {
   const usuario = await requireGestorDeUsuariosOrRedirect("/admin/usuarios");
   const ehSuper = usuario.papel === "SUPER_ADMIN";
 
-  const usuarios = await prisma.usuario.findMany({
-    // O administrador não vê as contas de super-admin.
-    where: ehSuper ? undefined : { papel: { not: "SUPER_ADMIN" } },
-    orderBy: { criadoEm: "asc" },
-    select: { id: true, nome: true, email: true, papel: true, ativo: true, criadoEm: true, ultimoLoginEm: true },
-  });
+  const [usuarios, unidades] = await Promise.all([
+    prisma.usuario.findMany({
+      // O administrador não vê as contas de super-admin.
+      where: ehSuper ? undefined : { papel: { not: "SUPER_ADMIN" } },
+      orderBy: { criadoEm: "asc" },
+      select: { id: true, nome: true, email: true, papel: true, ativo: true, criadoEm: true, ultimoLoginEm: true, unidadeId: true },
+    }),
+    prisma.unidade.findMany({ where: { instituicao: { sigla: "IFSUL" } }, select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+  ]);
+  const campi = unidades.map((u) => ({ id: u.id, nome: nomeCurtoDaUnidade(u.nome) }));
 
   return (
     <main className={`mx-auto flex ${TABLE_MAX_WIDTH} flex-col gap-6 px-6 py-12 lg:px-12`}>
@@ -31,9 +36,13 @@ export default async function AdminUsuariosPage() {
           Ao criar, a pessoa recebe um código por e-mail para o primeiro acesso. "Resetar senha" é a reserva sem
           depender de e-mail: gera uma senha temporária e derruba as sessões abertas daquela conta.
         </p>
+        <p className="text-neutral-600 dark:text-neutral-400">
+          <strong>Câmpus:</strong> o câmpus a que a pessoa pertence. Ele abre as telas próprias do câmpus: quem é de Venâncio Aires vê o Orçamento do município de
+          Venâncio Aires. Deixe "nenhum" para quem é da Reitoria ou de fora do IFSul. O super-admin vê todas as telas, com qualquer câmpus.
+        </p>
       </div>
 
-      <UsuariosPainel usuarios={usuarios} meuId={usuario.id} meuPapel={usuario.papel} perfisQueCrio={perfisQueMeuPapelCria(usuario.papel)} />
+      <UsuariosPainel usuarios={usuarios} campi={campi} meuId={usuario.id} meuPapel={usuario.papel} perfisQueCrio={perfisQueMeuPapelCria(usuario.papel)} />
     </main>
   );
 }
